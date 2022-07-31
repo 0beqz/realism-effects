@@ -3,7 +3,6 @@ import {
 	FramebufferTexture,
 	HalfFloatType,
 	LinearFilter,
-	NearestFilter,
 	RGBAFormat,
 	ShaderMaterial,
 	Uniform,
@@ -17,13 +16,18 @@ import { VelocityPass } from "./VelocityPass"
 const zeroVec2 = new Vector2()
 
 export class TemporalResolvePass extends Pass {
-	#velocityPass = null
-
-	constructor(scene, camera, customComposeShader, options = {}) {
+	constructor(
+		scene,
+		camera,
+		customComposeShader,
+		{
+			width = typeof window !== "undefined" ? window.innerWidth : 2000,
+			height = typeof window !== "undefined" ? window.innerHeight : 1000,
+			velocityTexture = null,
+			lastVelocityTexture = null
+		} = {}
+	) {
 		super("TemporalResolvePass")
-
-		const width = options.width || typeof window !== "undefined" ? window.innerWidth : 2000
-		const height = options.height || typeof window !== "undefined" ? window.innerHeight : 1000
 
 		this.renderTarget = new WebGLRenderTarget(width, height, {
 			minFilter: LinearFilter,
@@ -32,7 +36,13 @@ export class TemporalResolvePass extends Pass {
 			depthBuffer: false
 		})
 
-		this.#velocityPass = new VelocityPass(scene, camera)
+		if (velocityTexture === null) {
+			this.velocityPass = new VelocityPass(scene, camera)
+
+			velocityTexture = this.velocityPass.renderTarget.texture
+		}
+
+		if (lastVelocityTexture) this.hasUserDefinedLastVelocityTexture = true
 
 		const fragmentShader = temporalResolve.replace("#include <custom_compose_shader>", customComposeShader)
 
@@ -41,11 +51,11 @@ export class TemporalResolvePass extends Pass {
 			uniforms: {
 				inputTexture: new Uniform(null),
 				accumulatedTexture: new Uniform(null),
-				velocityTexture: new Uniform(this.#velocityPass.renderTarget.texture),
-				lastVelocityTexture: new Uniform(null),
+				velocityTexture: new Uniform(velocityTexture),
+				lastVelocityTexture: new Uniform(lastVelocityTexture),
 				depthTexture: new Uniform(null),
-				temporalResolveMix: new Uniform(0),
-				temporalResolveCorrectionMix: new Uniform(0)
+				blend: new Uniform(0),
+				correction: new Uniform(0)
 			},
 			vertexShader,
 			fragmentShader
@@ -58,12 +68,13 @@ export class TemporalResolvePass extends Pass {
 		this.renderTarget.dispose()
 		this.accumulatedTexture.dispose()
 		this.fullscreenMaterial.dispose()
-		this.#velocityPass.dispose()
+
+		if (this.velocityPass) this.velocityPass.dispose()
 	}
 
 	setSize(width, height) {
 		this.renderTarget.setSize(width, height)
-		this.#velocityPass.setSize(width, height)
+		if (this.velocityPass) this.velocityPass.setSize(width, height)
 
 		this.setupAccumulatedTexture(width, height)
 	}
@@ -76,27 +87,30 @@ export class TemporalResolvePass extends Pass {
 		this.accumulatedTexture.magFilter = LinearFilter
 		this.accumulatedTexture.type = HalfFloatType
 
-		this.lastVelocityTexture = new FramebufferTexture(width, height, RGBAFormat)
-		this.lastVelocityTexture.minFilter = NearestFilter
-		this.lastVelocityTexture.magFilter = NearestFilter
-		this.lastVelocityTexture.type = HalfFloatType
+		if (!this.hasUserDefinedLastVelocityTexture) {
+			this.lastVelocityTexture = new FramebufferTexture(width, height, RGBAFormat)
+			this.lastVelocityTexture.minFilter = LinearFilter
+			this.lastVelocityTexture.magFilter = LinearFilter
+			this.lastVelocityTexture.type = HalfFloatType
+
+			this.fullscreenMaterial.uniforms.lastVelocityTexture.value = this.lastVelocityTexture
+		}
 
 		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.accumulatedTexture
-		this.fullscreenMaterial.uniforms.lastVelocityTexture.value = this.lastVelocityTexture
 
 		this.fullscreenMaterial.needsUpdate = true
 	}
 
 	render(renderer) {
-		this.#velocityPass.render(renderer)
-
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)
 
 		// save the render target's texture for use in next frame
 		renderer.copyFramebufferToTexture(zeroVec2, this.accumulatedTexture)
 
-		renderer.setRenderTarget(this.#velocityPass.renderTarget)
-		renderer.copyFramebufferToTexture(zeroVec2, this.lastVelocityTexture)
+		if (!this.hasUserDefinedLastVelocityTexture) {
+			renderer.setRenderTarget(this.velocityPass.renderTarget)
+			renderer.copyFramebufferToTexture(zeroVec2, this.lastVelocityTexture)
+		}
 	}
 }

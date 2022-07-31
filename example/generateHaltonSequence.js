@@ -1,4 +1,6 @@
-﻿// source: https://observablehq.com/@jrus/halton
+﻿const fs = require("fs")
+
+// source: https://observablehq.com/@jrus/halton
 const halton = function halton(index, base) {
 	let fraction = 1
 	let result = 0
@@ -12,15 +14,21 @@ const halton = function halton(index, base) {
 
 let data = []
 
-let i = ~~(Math.random() * 10e5)
-const end = i + 64
+let i = ~~(Math.random() * 10e7) + 10e5
+const end = i + 512
 
 for (; i < end; i++) {
 	data.push([halton(i, 2), halton(i, 3)])
 }
 
-data = data.map(entry => "vec2(" + entry.join(", ") + ")")
+data = data.map(entry => "{ x: " + entry[0] + ", y: " + entry[1] + "}")
 
-const output = "vec2 halton[64] = vec2[](" + data.join(", ") + ");"
+const output = "const halton = [" + data.join(", ") + "]"
 
-console.log(output)
+fs.writeFile("./halton.js", output, err => {
+	if (err) {
+		console.error(err)
+	}
+
+	console.log("Successfuly wrote Halton sequence to file")
+})

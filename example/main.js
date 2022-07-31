@@ -1,7 +1,7 @@
 import * as POSTPROCESSING from "postprocessing"
 import Stats from "stats.js"
 import * as THREE from "three"
-import { Color } from "three"
+import { Color, FrontSide } from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader"
@@ -11,6 +11,7 @@ import "./style.css"
 import { TRAADebugGUI } from "./TRAADebugGUI"
 
 let traaEffect
+let traaPass
 let stats
 let gui
 let envMesh
@@ -60,14 +61,13 @@ renderer.setPixelRatio(window.devicePixelRatio)
 renderer.setSize(window.innerWidth, window.innerHeight)
 
 const setAA = value => {
-	traaEffect.temporalResolveMix = 0
 	composer.multisampling = 0
 	composer.removePass(window.smaaPass)
+	composer.removePass(traaPass)
 
 	switch (value) {
 		case "TRAA":
-			traaEffect.temporalResolveMix = 0.95
-
+			composer.addPass(traaPass)
 			break
 
 		case "MSAA":
@@ -96,8 +96,9 @@ const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
 composer.addPass(renderPass)
 
 const params = {
-	temporalResolveMix: 0.95,
-	temporalResolveCorrectionMix: 0.5
+	blend: 0.95,
+	scale: 1,
+	correction: 0.5
 }
 
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
@@ -117,7 +118,7 @@ new RGBELoader().load("lago_disola_2k.hdr", envMap => {
 
 const gltflLoader = new GLTFLoader()
 
-const url = "mk1.glb"
+const url = "xeno.glb"
 
 gltflLoader.load(url, asset => {
 	scene.add(asset.scene)
@@ -130,18 +131,20 @@ gltflLoader.load(url, asset => {
 	})
 
 	const plane = scene.getObjectByName("Plane")
-	plane.material.setValues({
-		alphaMap: plane.material.map,
-		aoMap: plane.material.map,
-		transparent: true,
-		envMapIntensity: 0,
-		blending: 4,
-		depthWrite: false,
-		color: new Color().setScalar(7)
-	})
+	if (plane) {
+		plane.material.setValues({
+			alphaMap: plane.material.map,
+			aoMap: plane.material.map,
+			transparent: true,
+			envMapIntensity: 0,
+			blending: 4,
+			depthWrite: false,
+			color: new Color().setScalar(7)
+		})
 
-	plane.position.y += 0.001
-	plane.updateMatrixWorld()
+		plane.position.y += 0.001
+		plane.updateMatrixWorld()
+	}
 
 	traaEffect = new TRAAEffect(scene, camera, params)
 	window.traaEffect = traaEffect
@@ -171,7 +174,11 @@ gltflLoader.load(url, asset => {
 	stats.showPanel(0)
 	document.body.appendChild(stats.dom)
 
-	composer.addPass(new POSTPROCESSING.EffectPass(camera, traaEffect))
+	// adding one effect pass fixes the depth issue with the imported mesh
+	composer.addPass(new POSTPROCESSING.EffectPass(camera))
+
+	traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
+	composer.addPass(traaPass)
 
 	const smaaEffect = new POSTPROCESSING.SMAAEffect()
 
@@ -183,7 +190,7 @@ gltflLoader.load(url, asset => {
 const loadingEl = document.querySelector("#loading")
 
 let loadedCount = 0
-const loadFiles = 5
+const loadFiles = 3
 THREE.DefaultLoadingManager.onProgress = () => {
 	loadedCount++
 
@@ -226,4 +233,8 @@ document.addEventListener("keydown", ev => {
 	}[ev.key]
 
 	if (value) setAA(value)
+
+	if (ev.code === "Space" || ev.code === "Enter" || ev.code === "NumpadEnter") {
+		setAA(guiParams.Method === "TRAA" ? "No AA" : "TRAA")
+	}
 })

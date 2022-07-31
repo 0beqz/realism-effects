@@ -1,8 +1,8 @@
 ﻿import { Pass } from "postprocessing"
-import { Color, FrontSide, HalfFloatType, NearestFilter, ShaderMaterial, UniformsUtils, WebGLRenderTarget } from "three"
+import { Color, FrontSide, HalfFloatType, LinearFilter, ShaderMaterial, UniformsUtils, WebGLRenderTarget } from "three"
 import { VelocityShader } from "../shader/VelocityShader.js"
 
-const blackColor = new Color(0)
+const backgroundcColor = new Color(0xffffff)
 
 export class VelocityPass extends Pass {
 	#cachedMaterials = new WeakMap()
@@ -17,8 +17,8 @@ export class VelocityPass extends Pass {
 			typeof window !== "undefined" ? window.innerWidth : 2000,
 			typeof window !== "undefined" ? window.innerHeight : 1000,
 			{
-				minFilter: NearestFilter,
-				magFilter: NearestFilter,
+				minFilter: LinearFilter,
+				magFilter: LinearFilter,
 				type: HalfFloatType
 			}
 		)
@@ -76,7 +76,7 @@ export class VelocityPass extends Pass {
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.clear()
 		const { background } = this._scene
-		this._scene.background = blackColor
+		this._scene.background = backgroundcColor
 		renderer.render(this._scene, this._camera)
 		this._scene.background = background
 
