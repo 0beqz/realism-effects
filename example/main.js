@@ -32,15 +32,13 @@ window.camera = camera
 
 const canvas = document.querySelector(".webgl")
 
-let rendererCanvas
+const rendererCanvas = canvas
 
 // use an offscreen canvas if available
-if (window.OffscreenCanvas) {
-	rendererCanvas = canvas.transferControlToOffscreen()
-	rendererCanvas.style = canvas.style
-} else {
-	rendererCanvas = canvas
-}
+// if (window.OffscreenCanvas) {
+// 	rendererCanvas = canvas.transferControlToOffscreen()
+// 	rendererCanvas.style = canvas.style
+// }
 
 // Renderer
 const renderer = new THREE.WebGLRenderer({
@@ -96,7 +94,7 @@ const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
 composer.addPass(renderPass)
 
 const params = {
-	blend: 0.95,
+	blend: 0.9,
 	scale: 1,
 	correction: 0.5
 }
@@ -124,6 +122,8 @@ gltflLoader.load(url, asset => {
 	scene.add(asset.scene)
 	scene.updateMatrixWorld()
 
+	window.mesh = asset.scene
+
 	asset.scene.traverse(c => {
 		if (c.isMesh) {
 			// c.material.wireframe = true
@@ -133,8 +133,7 @@ gltflLoader.load(url, asset => {
 	const plane = scene.getObjectByName("Plane")
 	if (plane) {
 		plane.material.setValues({
-			alphaMap: plane.material.map,
-			aoMap: plane.material.map,
+			alphaMap: null,
 			transparent: true,
 			envMapIntensity: 0,
 			blending: 4,
@@ -144,6 +143,8 @@ gltflLoader.load(url, asset => {
 
 		plane.position.y += 0.001
 		plane.updateMatrixWorld()
+
+		plane.visible = false
 	}
 
 	traaEffect = new TRAAEffect(scene, camera, params)
@@ -204,12 +205,48 @@ THREE.DefaultLoadingManager.onProgress = () => {
 	if (loadingEl) loadingEl.textContent = progress + "%"
 }
 
+let skinMesh
+let mixer
+
+gltflLoader.load("skin.glb", asset => {
+	skinMesh = asset.scene
+	skinMesh.scale.multiplyScalar(2.1)
+	skinMesh.position.set(2.5, 0, 0)
+	skinMesh.rotation.y += Math.PI / 2
+	skinMesh.updateMatrixWorld()
+	skinMesh.traverse(c => {
+		if (c.material) {
+			c.material.roughness = 0
+			c.material.metalness = 1
+		}
+	})
+	scene.add(asset.scene)
+	mixer = new THREE.AnimationMixer(skinMesh)
+	const clips = asset.animations
+
+	const action = mixer.clipAction(clips[0])
+	action.play()
+})
+
+const clock = new THREE.Clock()
+
 const loop = () => {
+	const dt = clock.getDelta()
+
 	if (stats) stats.begin()
 
 	controls.update()
 
 	composer.render()
+
+	if (skinMesh) {
+		mixer.update(dt)
+		skinMesh.updateMatrixWorld()
+		// skinMesh = null
+	}
+
+	// mesh.rotation.y += 0.01
+	// mesh.updateMatrixWorld()
 
 	if (stats) stats.end()
 	window.requestAnimationFrame(loop)
@@ -224,6 +261,13 @@ window.addEventListener("resize", () => {
 	if (traaEffect) traaEffect.setSize(window.innerWidth, window.innerHeight)
 })
 
+// source: https://stackoverflow.com/a/2117523/7626841
+function uuidv4() {
+	return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
+		(c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16)
+	)
+}
+
 document.addEventListener("keydown", ev => {
 	const value = {
 		1: "TRAA",
@@ -236,5 +280,18 @@ document.addEventListener("keydown", ev => {
 
 	if (ev.code === "Space" || ev.code === "Enter" || ev.code === "NumpadEnter") {
 		setAA(guiParams.Method === "TRAA" ? "No AA" : "TRAA")
+	}
+
+	console.log(ev.code)
+
+	if (ev.code === "KeyP") {
+		const data = renderer.domElement.toDataURL()
+
+		const a = document.createElement("a") // Create <a>
+		a.href = data
+		a.download = "screenshot-" + uuidv4() + ".png" // File name Here
+		a.click() // Downloaded file
+
+		console.log("run")
 	}
 })

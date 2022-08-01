@@ -4,7 +4,6 @@ uniform sampler2D inputTexture;
 uniform sampler2D accumulatedTexture;
 uniform sampler2D velocityTexture;
 uniform sampler2D lastVelocityTexture;
-uniform sampler2D depthTexture;
 
 uniform float correction;
 uniform vec2 jitter;
@@ -30,6 +29,9 @@ varying vec2 vUv;
 #define max8(a, b, c, d, e, f, g, h) max(a, max7(b, c, d, e, f, g, h))
 #define max9(a, b, c, d, e, f, g, h, i) max(a, max8(b, c, d, e, f, g, h, i))
 
+#ifdef DILATION
+uniform sampler2D depthTexture;
+
 // source: https://www.elopezr.com/temporal-aa-and-the-quest-for-the-holy-trail/ (modified to GLSL)
 vec2 getVelocity(sampler2D tex, vec2 uv, vec2 texSize) {
     float closestDepth = 100.0;
@@ -51,23 +53,38 @@ vec2 getVelocity(sampler2D tex, vec2 uv, vec2 texSize) {
     return textureLod(velocityTexture, vUv + closestUVOffset, 0.).xy;
 }
 
+// credits for transforming screen position to world position: https://discourse.threejs.org/t/reconstruct-world-position-in-screen-space-from-depth-buffer/5532/2
+vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth, mat4 inverseProjectionMatrix, mat4 cameraMatrixWorld) {
+    vec4 ndc = vec4(
+        (uv.x - 0.5) * 2.0,
+        (uv.y - 0.5) * 2.0,
+        (depth - 0.5) * 2.0,
+        1.0);
+
+    vec4 clip = inverseProjectionMatrix * ndc;
+    vec4 view = cameraMatrixWorld * (clip / clip.w);
+
+    return view.xyz;
+}
+
+#endif
+
 void main() {
     ivec2 size = textureSize(inputTexture, 0);
     vec2 pxSize = vec2(float(size.x), float(size.y));
 
-    vec2 unjitteredUv = vUv - jitter;
+    vec2 unjitteredUv = vUv - jitter / pxSize;
 
     vec4 inputTexel = textureLod(inputTexture, unjitteredUv, 0.);
-    vec4 depthTexel = textureLod(depthTexture, unjitteredUv, 0.);
 
     vec4 accumulatedTexel;
     vec3 outputColor;
 
-    bool isBackground = depthTexel.r == 1. && depthTexel.g == 1. && depthTexel.b == 1.;
-
     // REPROJECT_START
 
     vec4 velocityTexel = textureLod(velocityTexture, vUv, 0.);
+
+    bool isBackground = velocityTexel.b == 1.;
 
     vec2 velUv = velocityTexel.xy;
     vec2 reprojectedUv = vUv - velUv;
@@ -77,8 +94,8 @@ void main() {
     float velocityLength = length(lastVelUv - velUv);
 
     // idea from: https://www.elopezr.com/temporal-aa-and-the-quest-for-the-holy-trail/
-    float velocityDisocclusion = (velocityLength - 0.000005) * 10.;
-    velocityDisocclusion *= velocityDisocclusion;
+    float velocityDisocclusion = (velocityLength - 0.000001) * 10.;
+    // velocityDisocclusion *= velocityDisocclusion;
 
 #ifdef DILATION
     velUv = getVelocity(velocityTexture, vUv, pxSize);
@@ -91,12 +108,16 @@ void main() {
 
     float movement = length(velUv) * 100.;
 
+    float alpha;
+
     // check if reprojecting is necessary (due to movement) and that the reprojected UV is valid
     if (reprojectedUv.x >= 0. && reprojectedUv.x <= 1. && reprojectedUv.y >= 0. && reprojectedUv.y <= 1.) {
         accumulatedTexel = textureLod(accumulatedTexture, reprojectedUv, 0.);
 
+        alpha = min(inputTexel.a, accumulatedTexel.a);
+
         // neighborhood clamping (only if needed)
-        if (movement >= 0.001 || velocityDisocclusion >= 0.001 || isBackground) {
+        if (isBackground || alpha < 1.) {
             vec2 px = 1. / pxSize;
 
             // get neighbor pixels

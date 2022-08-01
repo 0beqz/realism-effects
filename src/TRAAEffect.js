@@ -13,7 +13,7 @@ const defaultTRAAOptions = {
 	temporalResolve: true,
 	blend: 0.9,
 	correction: 1,
-	dilation: true
+	dilation: false
 }
 
 export class TRAAEffect extends Effect {
@@ -91,15 +91,6 @@ export class TRAAEffect extends Effect {
 							const composeShader = TRComposeShader
 							let fragmentShader = temporalResolve
 
-							// if we are not using temporal reprojection, then cut out the part that's doing the reprojection
-							if (!value) {
-								const removePart = fragmentShader.slice(
-									fragmentShader.indexOf("// REPROJECT_START"),
-									fragmentShader.indexOf("// REPROJECT_END") + "// REPROJECT_END".length
-								)
-								fragmentShader = temporalResolve.replace(removePart, "")
-							}
-
 							fragmentShader = fragmentShader.replace("#include <custom_compose_shader>", composeShader)
 
 							fragmentShader =
@@ -111,8 +102,6 @@ export class TRAAEffect extends Effect {
 
 							this.temporalResolvePass.fullscreenMaterial.fragmentShader = fragmentShader
 							this.temporalResolvePass.fullscreenMaterial.needsUpdate = true
-
-							this.blend = value ? 0.9 : 0
 							break
 
 						case "blend":
@@ -179,14 +168,15 @@ export class TRAAEffect extends Effect {
 	}
 
 	update(renderer, inputBuffer) {
-		if (this.depthPass) this.depthPass.renderPass.render(renderer, this.depthPass.renderTarget)
+		if (this.depthPass) {
+			this.depthPass.renderPass.render(renderer, this.depthPass.renderTarget)
+		}
 
 		this.checkNeedsResample()
 
 		this.samples++
 
 		this._camera.clearViewOffset()
-		this._camera.updateProjectionMatrix()
 
 		this.temporalResolvePass.velocityPass.render(renderer)
 
@@ -204,7 +194,7 @@ export class TRAAEffect extends Effect {
 
 		this.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = inputBuffer.texture
 		this.temporalResolvePass.fullscreenMaterial.uniforms.samples.value = this.samples
-		this.temporalResolvePass.fullscreenMaterial.uniforms.jitter.value.set(-x / width, y / height)
+		this.temporalResolvePass.fullscreenMaterial.uniforms.jitter.value.set(x / width, y / height)
 
 		// compose reflection of last and current frame into one reflection
 		this.temporalResolvePass.render(renderer)

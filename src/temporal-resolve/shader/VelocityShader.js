@@ -75,6 +75,7 @@ export const VelocityShader = {
 	},
 
 	vertexShader: /* glsl */ `
+	#define MAX_BONES 256
 			${ShaderChunk.skinning_pars_vertex}
 			${prev_skinning_pars_vertex}
 
@@ -110,8 +111,5 @@ export const VelocityShader = {
 				gl_FragColor = vec4( vel, 0., 1. );
 
 			}
-		`,
-	defines: {
-		MAX_BONES: 256
-	}
+		`
 }
