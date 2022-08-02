@@ -13,6 +13,7 @@ import { TRAADebugGUI } from "./TRAADebugGUI"
 let traaEffect
 let traaPass
 let smaaPass
+let fxaaPass
 let stats
 let gui
 let envMesh
@@ -64,6 +65,7 @@ const setAA = value => {
 	composer.multisampling = 0
 	composer.removePass(smaaPass)
 	composer.removePass(traaPass)
+	composer.removePass(fxaaPass)
 
 	switch (value) {
 		case "TRAA":
@@ -72,6 +74,10 @@ const setAA = value => {
 
 		case "MSAA":
 			composer.multisampling = 8
+			break
+
+		case "FXAA":
+			composer.addPass(fxaaPass)
 			break
 
 		case "SMAA":
@@ -100,10 +106,8 @@ const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
 composer.addPass(renderPass)
 
 const params = {
-	blend: 0.9,
-	scale: 1,
-	correction: 1,
-	dilation: false
+	blend: 0.95,
+	scale: 1
 }
 
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
@@ -196,8 +200,9 @@ gltflLoader.load(url, asset => {
 			options: {
 				"TRAA": "TRAA",
 				"three.js AA": "three.js AA",
-				"MSAA (WebGL2)": "MSAA",
-				"SMAA (postprocessing.js)": "SMAA",
+				"MSAA": "MSAA",
+				"FXAA": "FXAA",
+				"SMAA": "SMAA",
 				"Disabled": "Disabled"
 			}
 		})
@@ -221,6 +226,13 @@ gltflLoader.load(url, asset => {
 	const smaaEffect = new POSTPROCESSING.SMAAEffect()
 
 	smaaPass = new POSTPROCESSING.EffectPass(camera, smaaEffect)
+
+	const fxaaEffect = new POSTPROCESSING.FXAAEffect()
+
+	// https://github.com/pmndrs/postprocessing/issues/394
+	fxaaEffect.fragmentShader = fxaaEffect.fragmentShader.replaceAll("linearToRelativeLuminance", "luminance")
+
+	fxaaPass = new POSTPROCESSING.EffectPass(camera, fxaaEffect)
 
 	loop()
 })
@@ -257,7 +269,7 @@ gltflLoader.load("skin.glb", asset => {
 			c.material.metalness = 1
 		}
 	})
-	scene.add(asset.scene)
+	// scene.add(asset.scene)
 	mixer = new THREE.AnimationMixer(skinMesh)
 	const clips = asset.animations
 
@@ -313,9 +325,11 @@ const aaOptions = {
 	1: "TRAA",
 	2: "three.js AA",
 	3: "MSAA",
-	4: "SMAA",
-	5: "Disabled"
+	4: "FXAA",
+	5: "SMAA",
+	6: "Disabled"
 }
+
 const aaValues = Object.values(aaOptions)
 
 document.addEventListener("keydown", ev => {

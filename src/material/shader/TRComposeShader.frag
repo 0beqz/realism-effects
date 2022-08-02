@@ -1,5 +1,5 @@
 ﻿// the compose shader when Temporal Resolve is enabled
-alpha = velocityDisocclusion > 0.001 ? (alpha - 0.1) : (alpha + 0.05);
+alpha = velocityDisocclusion > 0.001 ? (alpha - 0.05) : (alpha + 0.05);
 alpha = saturate(alpha);
 
 float m = blend;
@@ -10,7 +10,7 @@ if (alpha < 0.75 && movement > threshold) {
     m -= min((movement - threshold) * 4., 0.5);
 }
 
-if (movement < FLOAT_EPSILON && velocityDisocclusion < FLOAT_EPSILON) m = 0.975;
+if (!isMoving) m = 0.975;
 
 m = saturate(m);
 

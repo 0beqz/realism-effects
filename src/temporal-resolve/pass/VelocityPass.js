@@ -114,7 +114,6 @@ export class VelocityPass extends Pass {
 		this.#setVelocityMaterialInScene()
 
 		renderer.setRenderTarget(this.renderTarget)
-		renderer.setClearAlpha(0)
 
 		const { background } = this._scene
 

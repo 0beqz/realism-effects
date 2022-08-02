@@ -24,7 +24,8 @@ export class TemporalResolvePass extends Pass {
 			width = typeof window !== "undefined" ? window.innerWidth : 2000,
 			height = typeof window !== "undefined" ? window.innerHeight : 1000,
 			velocityTexture = null,
-			lastVelocityTexture = null
+			lastVelocityTexture = null,
+			useLastVelocity = true
 		} = {}
 	) {
 		super("TemporalResolvePass")
@@ -46,7 +47,7 @@ export class TemporalResolvePass extends Pass {
 
 		this.resolutionScale = 0.5
 
-		this.saveLastVelocity = !lastVelocityTexture
+		this.useLastVelocity = !lastVelocityTexture && useLastVelocity
 
 		const fragmentShader = temporalResolve.replace("#include <custom_compose_shader>", customComposeShader)
 
@@ -57,8 +58,7 @@ export class TemporalResolvePass extends Pass {
 				accumulatedTexture: new Uniform(null),
 				velocityTexture: new Uniform(velocityTexture),
 				lastVelocityTexture: new Uniform(lastVelocityTexture),
-				blend: new Uniform(0),
-				correction: new Uniform(0)
+				blend: new Uniform(0)
 			},
 			depthTest: false,
 			depthWrite: false,
@@ -93,7 +93,7 @@ export class TemporalResolvePass extends Pass {
 		this.accumulatedTexture.type = HalfFloatType
 		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.accumulatedTexture
 
-		if (this.saveLastVelocity) {
+		if (this.useLastVelocity) {
 			this.lastVelocityTexture = new FramebufferTexture(
 				width * this.resolutionScale,
 				height * this.resolutionScale,
@@ -116,7 +116,7 @@ export class TemporalResolvePass extends Pass {
 		// save the render target's texture for use in next frame
 		renderer.copyFramebufferToTexture(zeroVec2, this.accumulatedTexture)
 
-		if (this.saveLastVelocity) {
+		if (this.useLastVelocity) {
 			renderer.setRenderTarget(this.velocityPass.renderTarget)
 			renderer.copyFramebufferToTexture(zeroVec2, this.lastVelocityTexture)
 		}

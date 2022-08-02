@@ -5,8 +5,6 @@ uniform sampler2D accumulatedTexture;
 uniform sampler2D velocityTexture;
 uniform sampler2D lastVelocityTexture;
 
-uniform float correction;
-
 varying vec2 vUv;
 
 #include <packing>
@@ -85,6 +83,7 @@ void main() {
     vec2 velUv = velocity.xy;
     vec2 reprojectedUv = vUv - velUv;
 
+#ifdef USE_LAST_VELOCITY
 #ifdef DILATION
     vec2 lastVelUv = getDilatedTexture(lastVelocityTexture, reprojectedUv, pxSize).xy;
 #else
@@ -93,10 +92,14 @@ void main() {
 
     float velocityLength = length(lastVelUv - velUv);
 
+#else
+    float velocityLength = length(velUv);
+#endif
+
     // idea from: https://www.elopezr.com/temporal-aa-and-the-quest-for-the-holy-trail/
     float velocityDisocclusion = (velocityLength - 0.000001) * 10.;
-
     float movement = length(velUv) * 100.;
+    bool isMoving = velocityDisocclusion > 0.001 || movement > 0.001;
 
     float alpha;
 
@@ -106,8 +109,6 @@ void main() {
         accumulatedTexel.rgb = transformToLogSpace(accumulatedTexel.rgb);
 
         alpha = min(inputTexel.a, accumulatedTexel.a);
-
-        bool isMoving = velocityDisocclusion > 0.001 || movement > 0.001;
 
         // neighborhood clamping (only if needed)
         if (isMoving || isBackground || alpha < 1.) {

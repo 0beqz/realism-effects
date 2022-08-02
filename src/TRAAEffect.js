@@ -9,11 +9,11 @@ import { generateHalton23Points } from "./utils/generateHalton23Points"
 
 const finalFragmentShader = finalTRAAShader.replace("#include <helperFunctions>", helperFunctions)
 
-const defaultTRAAOptions = {
+export const defaultTRAAOptions = {
 	temporalResolve: true,
 	blend: 0.9,
-	correction: 1,
-	dilation: false
+	dilation: false,
+	useLastVelocity: false
 }
 
 export class TRAAEffect extends Effect {
@@ -86,15 +86,21 @@ export class TRAAEffect extends Effect {
 							this.temporalResolvePass.fullscreenMaterial.uniforms.blend.value = value
 							break
 
-						case "correction":
-							this.temporalResolvePass.fullscreenMaterial.uniforms.correction.value = value
-							break
-
 						case "dilation":
 							if (value) {
 								this.temporalResolvePass.fullscreenMaterial.defines.DILATION = ""
 							} else {
 								delete this.temporalResolvePass.fullscreenMaterial.defines.DILATION
+							}
+
+							this.temporalResolvePass.fullscreenMaterial.needsUpdate = true
+							break
+
+						case "useLastVelocity":
+							if (value) {
+								this.temporalResolvePass.fullscreenMaterial.defines.USE_LAST_VELOCITY = ""
+							} else {
+								delete this.temporalResolvePass.fullscreenMaterial.defines.USE_LAST_VELOCITY
 							}
 
 							this.temporalResolvePass.fullscreenMaterial.needsUpdate = true
