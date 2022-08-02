@@ -83,10 +83,6 @@ const setAA = value => {
 		case "SMAA":
 			composer.addPass(smaaPass)
 			break
-
-		case "three.js AA":
-			composer.addPass(smaaPass)
-			break
 	}
 
 	guiParams.Method = value
