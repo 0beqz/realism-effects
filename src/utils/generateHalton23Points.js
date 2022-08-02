@@ -9,11 +9,12 @@ const halton = function halton(index, base) {
 	}
 	return result
 }
-// generates a Halton tuple in the range [-0.5:0.5]
-export const generateHaltonPoints = count => {
+
+// generates Halton tuples in the range [-0.5:0.5]
+export const generateHalton23Points = count => {
 	const data = []
 
-	let i = ~~(Math.random() * 10e7) + 10e5
+	let i = 1
 	const end = i + count
 
 	for (; i < end; i++) {

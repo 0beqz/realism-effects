@@ -12,7 +12,7 @@ import {
 } from "three"
 import { VelocityShader } from "../shader/VelocityShader.js"
 
-const backgroundColor = new Color().setRGB(0, 0, 1)
+const backgroundColor = new Color(0)
 const updateProperties = ["visible", "wireframe", "side"]
 
 export class VelocityPass extends Pass {
@@ -114,6 +114,7 @@ export class VelocityPass extends Pass {
 		this.#setVelocityMaterialInScene()
 
 		renderer.setRenderTarget(this.renderTarget)
+		renderer.setClearAlpha(0)
 
 		const { background } = this._scene
 

@@ -97,7 +97,8 @@ composer.addPass(renderPass)
 const params = {
 	blend: 0.95,
 	scale: 1,
-	correction: 1
+	correction: 1,
+	dilation: true
 }
 
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
@@ -112,21 +113,23 @@ new RGBELoader().load("lago_disola_2k.hdr", envMap => {
 	envMesh.radius = 440
 	envMesh.height = 20
 	envMesh.scale.setScalar(100)
-	scene.add(envMesh)
+	// scene.add(envMesh)
 })
 
-// const sphere = new THREE.Mesh(
-// 	new THREE.SphereBufferGeometry(64, 64, 64),
-// 	new THREE.MeshBasicMaterial({
-// 		color: "green",
-// 		side: THREE.BackSide,
-// 		map: new TextureLoader().load("chess.jpg") // source: https://www.vecteezy.com/vector-art/639981-checker-pattern-black-white
-// 	})
-// )
+const sphere = new THREE.Mesh(
+	new THREE.SphereBufferGeometry(64, 64, 64),
+	new THREE.MeshBasicMaterial({
+		color: 0xffffff,
+		side: THREE.BackSide
+		// map: new TextureLoader().load("chess.jpg") // source: https://www.vecteezy.com/vector-art/639981-checker-pattern-black-white
+	})
+)
 
 // sphere.material.map.repeat.setScalar(4)
 // sphere.material.map.wrapS = RepeatWrapping
 // sphere.material.map.wrapT = RepeatWrapping
+
+scene.add(sphere)
 
 const chessTexture = new TextureLoader().load("chess.jpg")
 
@@ -143,8 +146,6 @@ transparentMesh.position.set(-3, 3, 0)
 transparentMesh.updateMatrixWorld()
 
 // scene.add(transparentMesh)
-
-// scene.add(sphere)
 
 const gltflLoader = new GLTFLoader()
 

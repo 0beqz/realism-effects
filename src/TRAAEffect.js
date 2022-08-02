@@ -5,7 +5,7 @@ import helperFunctions from "./material/shader/helperFunctions.frag"
 import TRComposeShader from "./material/shader/TRComposeShader.frag"
 import { TemporalResolvePass } from "./temporal-resolve/pass/TemporalResolvePass.js"
 import temporalResolve from "./temporal-resolve/shader/temporalResolve.frag"
-import { generateHaltonPoints } from "./utils/Halton"
+import { generateHalton23Points } from "./utils/generateHalton23Points"
 
 const finalFragmentShader = finalTRAAShader.replace("#include <helperFunctions>", helperFunctions)
 
@@ -13,11 +13,11 @@ const defaultTRAAOptions = {
 	temporalResolve: true,
 	blend: 0.9,
 	correction: 1,
-	dilation: true
+	dilation: false
 }
 
 export class TRAAEffect extends Effect {
-	haltonSequence = generateHaltonPoints(1024)
+	haltonSequence = generateHalton23Points(1024)
 	haltonIndex = 0
 	selection = new Selection()
 	#lastSize
@@ -96,6 +96,16 @@ export class TRAAEffect extends Effect {
 
 						case "correction":
 							this.temporalResolvePass.fullscreenMaterial.uniforms.correction.value = value
+							break
+
+						case "dilation":
+							if (value) {
+								this.temporalResolvePass.fullscreenMaterial.defines.DILATION = ""
+							} else {
+								delete this.temporalResolvePass.fullscreenMaterial.defines.DILATION
+							}
+
+							this.temporalResolvePass.fullscreenMaterial.needsUpdate = true
 							break
 					}
 				}

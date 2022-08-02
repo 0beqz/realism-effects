@@ -18,5 +18,6 @@ export class TRAADebugGUI {
 		temporalResolveFolder.addInput(params, "blend", { min: 0, max: 1, step: 0.001 })
 		temporalResolveFolder.addInput(params, "scale", { min: 0, max: 2.5, step: 0.5 })
 		temporalResolveFolder.addInput(params, "correction", { min: 0, max: 1, step: 0.0001 })
+		temporalResolveFolder.addInput(params, "dilation")
 	}
 }

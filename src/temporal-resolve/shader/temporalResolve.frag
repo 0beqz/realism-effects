@@ -32,24 +32,24 @@ varying vec2 vUv;
 #ifdef DILATION
 
 // source: https://www.elopezr.com/temporal-aa-and-the-quest-for-the-holy-trail/ (modified to GLSL)
-vec3 getVelocity(sampler2D tex, vec2 uv, vec2 texSize) {
-    float closestDepth = 100.0;
+vec4 getVelocity(sampler2D tex, vec2 uv, vec2 texSize) {
+    float closestDepth = 0.;
     vec2 closestUVOffset;
 
     for (int j = -1; j <= 1; ++j) {
         for (int i = -1; i <= 1; ++i) {
             vec2 uvOffset = vec2(i, j) / texSize;
 
-            float neighborDepth = textureLod(velocityTexture, vUv + uvOffset, 0.).a;
+            float neighborDepth = textureLod(tex, vUv + uvOffset, 0.).b;
 
-            if (neighborDepth < closestDepth) {
+            if (neighborDepth > closestDepth) {
                 closestUVOffset = uvOffset;
                 closestDepth = neighborDepth;
             }
         }
     }
 
-    return textureLod(velocityTexture, vUv + closestUVOffset, 0.).xyz;
+    return textureLod(tex, vUv + closestUVOffset, 0.);
 }
 #endif
 
@@ -72,7 +72,7 @@ void main() {
 
     vec2 unjitteredUv = vUv - jitter / pxSize;
 
-    vec4 inputTexel = textureLod(inputTexture, unjitteredUv, 0.);
+    vec4 inputTexel = textureLod(inputTexture, vUv, 0.);
     inputTexel.rgb = transformToLogSpace(inputTexel.rgb);
 
     vec4 accumulatedTexel;
@@ -80,17 +80,30 @@ void main() {
 
     // REPROJECT_START
 
-#ifdef DILATION
-    vec3 velocity = getVelocity(velocityTexture, vUv, pxSize);
-#else
     vec4 velocity = textureLod(velocityTexture, vUv, 0.);
+
+#ifdef DILATION
+    // only use dilation if the texel is close enough to the camera as it doesn't work well for distant texels
+    if (velocity.b > 0.) {
+        velocity = getVelocity(velocityTexture, vUv, pxSize);
+    }
 #endif
 
     bool isBackground = velocity.b == 1.;
     vec2 velUv = velocity.xy;
     vec2 reprojectedUv = vUv - velUv;
 
+#ifdef DILATION
+    vec2 lastVelUv;
+
+    if (velocity.b > 0.) {
+        lastVelUv = getVelocity(lastVelocityTexture, reprojectedUv, pxSize).xy;
+    } else {
+        lastVelUv = textureLod(lastVelocityTexture, reprojectedUv, 0.).xy;
+    }
+#else
     vec2 lastVelUv = textureLod(lastVelocityTexture, reprojectedUv, 0.).xy;
+#endif
 
     float velocityLength = length(lastVelUv - velUv);
 
@@ -110,8 +123,10 @@ void main() {
 
         alpha = min(inputTexel.a, accumulatedTexel.a);
 
+        bool isMoving = velocityDisocclusion > 0.001 || movement > 0.001;
+
         // neighborhood clamping (only if needed)
-        if (isBackground || alpha < 1.) {
+        if (isMoving || isBackground || alpha < 1.) {
             vec2 px = 1. / pxSize;
 
             // get neighbor pixels
@@ -135,7 +150,7 @@ void main() {
 
             clampMix = min(1., clampMix);
 
-            accumulatedTexel.rgb = mix(accumulatedTexel.rgb, clampedColor, clampMix);
+            accumulatedTexel.rgb = mix(accumulatedTexel.rgb, clampedColor, correction);
         }
 
     } else {
