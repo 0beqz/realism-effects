@@ -6,7 +6,6 @@ uniform sampler2D velocityTexture;
 uniform sampler2D lastVelocityTexture;
 
 uniform float correction;
-uniform vec2 jitter;
 
 varying vec2 vUv;
 
@@ -30,9 +29,8 @@ varying vec2 vUv;
 #define max9(a, b, c, d, e, f, g, h, i) max(a, max8(b, c, d, e, f, g, h, i))
 
 #ifdef DILATION
-
 // source: https://www.elopezr.com/temporal-aa-and-the-quest-for-the-holy-trail/ (modified to GLSL)
-vec4 getVelocity(sampler2D tex, vec2 uv, vec2 texSize) {
+vec4 getDilatedTexture(sampler2D tex, vec2 uv, vec2 texSize) {
     float closestDepth = 0.;
     vec2 closestUVOffset;
 
@@ -55,9 +53,8 @@ vec4 getVelocity(sampler2D tex, vec2 uv, vec2 texSize) {
 
 // idea from: https://www.elopezr.com/temporal-aa-and-the-quest-for-the-holy-trail/
 vec3 transformToLogSpace(vec3 color) {
-    color.r = color.r == 0. ? -10. : log(color.r);
-    color.g = color.g == 0. ? -10. : log(color.g);
-    color.b = color.b == 0. ? -10. : log(color.b);
+    color = max(color, vec3(FLOAT_EPSILON));  // as log(0) is NaN
+    color = log(color);
 
     return color;
 }
@@ -70,8 +67,6 @@ void main() {
     ivec2 size = textureSize(inputTexture, 0);
     vec2 pxSize = vec2(size.x, size.y);
 
-    vec2 unjitteredUv = vUv - jitter / pxSize;
-
     vec4 inputTexel = textureLod(inputTexture, vUv, 0.);
     inputTexel.rgb = transformToLogSpace(inputTexel.rgb);
 
@@ -83,10 +78,7 @@ void main() {
     vec4 velocity = textureLod(velocityTexture, vUv, 0.);
 
 #ifdef DILATION
-    // only use dilation if the texel is close enough to the camera as it doesn't work well for distant texels
-    if (velocity.b > 0.) {
-        velocity = getVelocity(velocityTexture, vUv, pxSize);
-    }
+    velocity = getDilatedTexture(velocityTexture, vUv, pxSize);
 #endif
 
     bool isBackground = velocity.b == 1.;
@@ -94,13 +86,7 @@ void main() {
     vec2 reprojectedUv = vUv - velUv;
 
 #ifdef DILATION
-    vec2 lastVelUv;
-
-    if (velocity.b > 0.) {
-        lastVelUv = getVelocity(lastVelocityTexture, reprojectedUv, pxSize).xy;
-    } else {
-        lastVelUv = textureLod(lastVelocityTexture, reprojectedUv, 0.).xy;
-    }
+    vec2 lastVelUv = getDilatedTexture(lastVelocityTexture, reprojectedUv, pxSize).xy;
 #else
     vec2 lastVelUv = textureLod(lastVelocityTexture, reprojectedUv, 0.).xy;
 #endif
@@ -109,8 +95,6 @@ void main() {
 
     // idea from: https://www.elopezr.com/temporal-aa-and-the-quest-for-the-holy-trail/
     float velocityDisocclusion = (velocityLength - 0.000001) * 10.;
-
-    vec3 averageNeighborColor;
 
     float movement = length(velUv) * 100.;
 
@@ -130,27 +114,20 @@ void main() {
             vec2 px = 1. / pxSize;
 
             // get neighbor pixels
-            vec3 c02 = transformToLogSpace(textureLod(inputTexture, unjitteredUv + vec2(-px.x, px.y), 0.).rgb);
-            vec3 c12 = transformToLogSpace(textureLod(inputTexture, unjitteredUv + vec2(0., px.y), 0.).rgb);
-            vec3 c22 = transformToLogSpace(textureLod(inputTexture, unjitteredUv + vec2(px.x, px.y), 0.).rgb);
-            vec3 c01 = transformToLogSpace(textureLod(inputTexture, unjitteredUv + vec2(-px.x, 0.), 0.).rgb);
-            vec3 c11 = transformToLogSpace(textureLod(inputTexture, unjitteredUv + vec2(-px.x, 0.), 0.).rgb);
-            vec3 c21 = transformToLogSpace(textureLod(inputTexture, unjitteredUv + vec2(px.x, 0.), 0.).rgb);
-            vec3 c00 = transformToLogSpace(textureLod(inputTexture, unjitteredUv + vec2(-px.x, -px.y), 0.).rgb);
-            vec3 c10 = transformToLogSpace(textureLod(inputTexture, unjitteredUv + vec2(0., -px.y), 0.).rgb);
-            vec3 c20 = transformToLogSpace(textureLod(inputTexture, unjitteredUv + vec2(px.x, -px.y), 0.).rgb);
+            vec3 c02 = transformToLogSpace(textureLod(inputTexture, vUv + vec2(-px.x, px.y), 0.).rgb);
+            vec3 c12 = transformToLogSpace(textureLod(inputTexture, vUv + vec2(0., px.y), 0.).rgb);
+            vec3 c22 = transformToLogSpace(textureLod(inputTexture, vUv + vec2(px.x, px.y), 0.).rgb);
+            vec3 c01 = transformToLogSpace(textureLod(inputTexture, vUv + vec2(-px.x, 0.), 0.).rgb);
+            vec3 c11 = transformToLogSpace(textureLod(inputTexture, vUv + vec2(-px.x, 0.), 0.).rgb);
+            vec3 c21 = transformToLogSpace(textureLod(inputTexture, vUv + vec2(px.x, 0.), 0.).rgb);
+            vec3 c00 = transformToLogSpace(textureLod(inputTexture, vUv + vec2(-px.x, -px.y), 0.).rgb);
+            vec3 c10 = transformToLogSpace(textureLod(inputTexture, vUv + vec2(0., -px.y), 0.).rgb);
+            vec3 c20 = transformToLogSpace(textureLod(inputTexture, vUv + vec2(px.x, -px.y), 0.).rgb);
 
             vec3 minNeighborColor = min9(c02, c12, c22, c01, c11, c21, c00, c10, c20);
             vec3 maxNeighborColor = max9(c02, c12, c22, c01, c11, c21, c00, c10, c20);
 
-            vec3 clampedColor = clamp(accumulatedTexel.rgb, minNeighborColor, maxNeighborColor);
-
-            float clampMix = (1. - alpha * 0.75 + 0.25) * correction;
-            if (isBackground) clampMix = 1.;
-
-            clampMix = min(1., clampMix);
-
-            accumulatedTexel.rgb = mix(accumulatedTexel.rgb, clampedColor, correction);
+            accumulatedTexel.rgb = clamp(accumulatedTexel.rgb, minNeighborColor, maxNeighborColor);
         }
 
     } else {

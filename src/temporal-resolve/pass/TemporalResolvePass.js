@@ -44,7 +44,7 @@ export class TemporalResolvePass extends Pass {
 			velocityTexture = this.velocityPass.renderTarget.texture
 		}
 
-		this.resolutionScale = 1
+		this.resolutionScale = 0.5
 
 		this.saveLastVelocity = !lastVelocityTexture
 

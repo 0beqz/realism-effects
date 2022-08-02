@@ -54,6 +54,7 @@
 		"trailingComma": "none",
 		"arrowParens": "avoid",
 		"printWidth": 120,
+		"quoteProps": "consistent",
 		"overrides": [
 			{
 				"files": [

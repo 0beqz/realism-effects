@@ -1,5 +1,5 @@
-﻿import { Effect, Selection } from "postprocessing"
-import { Quaternion, Uniform, Vector2, Vector3 } from "three"
+﻿import { Effect } from "postprocessing"
+import { Quaternion, Uniform, Vector3 } from "three"
 import finalTRAAShader from "./material/shader/finalTRAAShader.frag"
 import helperFunctions from "./material/shader/helperFunctions.frag"
 import TRComposeShader from "./material/shader/TRComposeShader.frag"
@@ -19,7 +19,6 @@ const defaultTRAAOptions = {
 export class TRAAEffect extends Effect {
 	haltonSequence = generateHalton23Points(1024)
 	haltonIndex = 0
-	selection = new Selection()
 	#lastSize
 	#lastCameraTransform = {
 		position: new Vector3(),
@@ -29,12 +28,7 @@ export class TRAAEffect extends Effect {
 	constructor(scene, camera, options = defaultTRAAOptions) {
 		super("TRAAEffect", finalFragmentShader, {
 			type: "FinalTRAAEffectMaterial",
-			uniforms: new Map([
-				["inputTexture", new Uniform(null)],
-				["accumulatedTexture", new Uniform(null)],
-				["samples", new Uniform(0)]
-			]),
-			defines: new Map([["RENDER_MODE", "0"]])
+			uniforms: new Map([["accumulatedTexture", new Uniform(null)]])
 		})
 
 		this._scene = scene
@@ -46,9 +40,7 @@ export class TRAAEffect extends Effect {
 
 		// temporal resolve pass
 		this.temporalResolvePass = new TemporalResolvePass(scene, camera, "", options)
-		this.temporalResolvePass.fullscreenMaterial.uniforms.jitter = new Uniform(new Vector2())
 		this.temporalResolvePass.fullscreenMaterial.defines.FLOAT_EPSILON = 0.00001
-		if (options.dilation) this.temporalResolvePass.fullscreenMaterial.defines.DILATION = ""
 
 		this.uniforms.get("accumulatedTexture").value = this.temporalResolvePass.renderTarget.texture
 
@@ -158,7 +150,6 @@ export class TRAAEffect extends Effect {
 		}
 
 		this.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = inputBuffer.texture
-		this.temporalResolvePass.fullscreenMaterial.uniforms.jitter.value.set(x / width, y / height)
 
 		// compose reflection of last and current frame into one reflection
 		this.temporalResolvePass.render(renderer)

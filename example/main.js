@@ -1,7 +1,7 @@
 import * as POSTPROCESSING from "postprocessing"
 import Stats from "stats.js"
 import * as THREE from "three"
-import { BoxBufferGeometry, Color, MeshBasicMaterial, PlaneBufferGeometry, RepeatWrapping, TextureLoader } from "three"
+import { BoxBufferGeometry, Color, MeshBasicMaterial, TextureLoader } from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader"
@@ -12,6 +12,7 @@ import { TRAADebugGUI } from "./TRAADebugGUI"
 
 let traaEffect
 let traaPass
+let smaaPass
 let stats
 let gui
 let envMesh
@@ -46,10 +47,10 @@ const renderer = new THREE.WebGLRenderer({
 	canvas: rendererCanvas,
 	powerPreference: "high-performance",
 	premultipliedAlpha: false,
-	depth: false,
+	depth: true,
 	stencil: false,
 	antialias: true,
-	preserveDrawingBuffer: true
+	preserveDrawingBuffer: false
 })
 window.renderer = renderer
 
@@ -61,7 +62,7 @@ renderer.setSize(window.innerWidth, window.innerHeight)
 
 const setAA = value => {
 	composer.multisampling = 0
-	composer.removePass(window.smaaPass)
+	composer.removePass(smaaPass)
 	composer.removePass(traaPass)
 
 	switch (value) {
@@ -74,7 +75,11 @@ const setAA = value => {
 			break
 
 		case "SMAA":
-			composer.addPass(window.smaaPass)
+			composer.addPass(smaaPass)
+			break
+
+		case "three.js AA":
+			composer.addPass(smaaPass)
 			break
 	}
 
@@ -95,10 +100,10 @@ const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
 composer.addPass(renderPass)
 
 const params = {
-	blend: 0.95,
+	blend: 0.9,
 	scale: 1,
 	correction: 1,
-	dilation: true
+	dilation: false
 }
 
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
@@ -119,7 +124,7 @@ new RGBELoader().load("lago_disola_2k.hdr", envMap => {
 const sphere = new THREE.Mesh(
 	new THREE.SphereBufferGeometry(64, 64, 64),
 	new THREE.MeshBasicMaterial({
-		color: 0xffffff,
+		color: 0x005555,
 		side: THREE.BackSide
 		// map: new TextureLoader().load("chess.jpg") // source: https://www.vecteezy.com/vector-art/639981-checker-pattern-black-white
 	})
@@ -149,7 +154,7 @@ transparentMesh.updateMatrixWorld()
 
 const gltflLoader = new GLTFLoader()
 
-const url = "xeno.glb"
+const url = "time-machine.glb"
 
 gltflLoader.load(url, asset => {
 	scene.add(asset.scene)
@@ -167,10 +172,11 @@ gltflLoader.load(url, asset => {
 	if (plane) {
 		plane.material = new MeshBasicMaterial({
 			map: plane.material.map,
-			transparent: true,
+			aoMap: plane.material.map,
+			aoMapIntensity: 2,
 			blending: 4,
 			depthWrite: false,
-			color: new Color().setScalar(3)
+			color: new Color().setScalar(10)
 		})
 
 		plane.position.y += 0.001
@@ -188,10 +194,11 @@ gltflLoader.load(url, asset => {
 	aaFolder
 		.addInput(guiParams, "Method", {
 			options: {
-				TRAA: "TRAA",
-				MSAA: "MSAA",
-				SMAA: "SMAA",
-				"No AA": "No AA"
+				"TRAA": "TRAA",
+				"three.js AA": "three.js AA",
+				"MSAA (WebGL2)": "MSAA",
+				"SMAA (postprocessing.js)": "SMAA",
+				"Disabled": "Disabled"
 			}
 		})
 		.on("change", ev => {
@@ -213,7 +220,7 @@ gltflLoader.load(url, asset => {
 
 	const smaaEffect = new POSTPROCESSING.SMAAEffect()
 
-	window.smaaPass = new POSTPROCESSING.EffectPass(camera, smaaEffect)
+	smaaPass = new POSTPROCESSING.EffectPass(camera, smaaEffect)
 
 	loop()
 })
@@ -250,7 +257,7 @@ gltflLoader.load("skin.glb", asset => {
 			c.material.metalness = 1
 		}
 	})
-	// scene.add(asset.scene)
+	scene.add(asset.scene)
 	mixer = new THREE.AnimationMixer(skinMesh)
 	const clips = asset.animations
 
@@ -267,7 +274,11 @@ const loop = () => {
 
 	controls.update()
 
-	composer.render()
+	if (guiParams.Method === "three.js AA") {
+		renderer.render(scene, camera)
+	} else {
+		composer.render()
+	}
 
 	if (skinMesh) {
 		mixer.update(dt)
@@ -298,18 +309,41 @@ function uuidv4() {
 	)
 }
 
+const aaOptions = {
+	1: "TRAA",
+	2: "three.js AA",
+	3: "MSAA",
+	4: "SMAA",
+	5: "Disabled"
+}
+const aaValues = Object.values(aaOptions)
+
 document.addEventListener("keydown", ev => {
-	const value = {
-		1: "TRAA",
-		2: "MSAA",
-		3: "SMAA",
-		4: "No AA"
-	}[ev.key]
+	const value = aaOptions[ev.key]
 
 	if (value) setAA(value)
 
 	if (ev.code === "Space" || ev.code === "Enter" || ev.code === "NumpadEnter") {
-		setAA(guiParams.Method === "TRAA" ? "No AA" : "TRAA")
+		setAA(guiParams.Method === "TRAA" ? "Disabled" : "TRAA")
+	}
+
+	if (ev.code === "ArrowLeft") {
+		let index = aaValues.indexOf(guiParams.Method)
+		index--
+
+		if (index === -1) index = aaValues.length - 1
+
+		setAA(aaOptions[index + 1])
+	}
+
+	if (ev.code === "ArrowRight") {
+		let index = aaValues.indexOf(guiParams.Method)
+		console.log(guiParams.Method)
+		index++
+
+		if (index === aaValues.length) index = 0
+
+		setAA(aaOptions[index + 1])
 	}
 
 	if (ev.code === "KeyP") {
