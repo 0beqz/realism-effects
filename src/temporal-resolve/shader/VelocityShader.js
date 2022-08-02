@@ -75,7 +75,7 @@ export const VelocityShader = {
 	},
 
 	vertexShader: /* glsl */ `
-	#define MAX_BONES 256
+	#define MAX_BONES 1024
 			${ShaderChunk.skinning_pars_vertex}
 			${prev_skinning_pars_vertex}
 
@@ -98,17 +98,12 @@ export const VelocityShader = {
 			varying vec4 newPosition;
 
 			void main() {
-				#ifdef NEEDS_FULL_MOVEMENT
-					gl_FragColor = vec4(1., 1., 1., 1. );
-					return;
-				#endif
-
 				vec2 pos0 = (prevPosition.xy / prevPosition.w) * 0.5 + 0.5;
 				vec2 pos1 = (newPosition.xy / newPosition.w) * 0.5 + 0.5;
 
 				vec2 vel = pos1 - pos0;
 				
-				gl_FragColor = vec4( vel, 0., 1. );
+				gl_FragColor = vec4( vel, 0., 1. - gl_FragCoord.z );
 
 			}
 		`

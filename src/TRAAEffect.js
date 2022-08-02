@@ -1,5 +1,5 @@
-﻿import { DepthPass, Effect, Selection } from "postprocessing"
-import { LinearFilter, Quaternion, Uniform, Vector2, Vector3 } from "three"
+﻿import { Effect, Selection } from "postprocessing"
+import { Quaternion, Uniform, Vector2, Vector3 } from "three"
 import finalTRAAShader from "./material/shader/finalTRAAShader.frag"
 import helperFunctions from "./material/shader/helperFunctions.frag"
 import TRComposeShader from "./material/shader/TRComposeShader.frag"
@@ -13,13 +13,12 @@ const defaultTRAAOptions = {
 	temporalResolve: true,
 	blend: 0.9,
 	correction: 1,
-	dilation: false
+	dilation: true
 }
 
 export class TRAAEffect extends Effect {
-	samples = 0
-	counter = 0
 	haltonSequence = generateHaltonPoints(1024)
+	haltonIndex = 0
 	selection = new Selection()
 	#lastSize
 	#lastCameraTransform = {
@@ -33,7 +32,6 @@ export class TRAAEffect extends Effect {
 			uniforms: new Map([
 				["inputTexture", new Uniform(null)],
 				["accumulatedTexture", new Uniform(null)],
-				["depthTexture", new Uniform(null)],
 				["samples", new Uniform(0)]
 			]),
 			defines: new Map([["RENDER_MODE", "0"]])
@@ -48,8 +46,6 @@ export class TRAAEffect extends Effect {
 
 		// temporal resolve pass
 		this.temporalResolvePass = new TemporalResolvePass(scene, camera, "", options)
-		this.temporalResolvePass.fullscreenMaterial.uniforms.samples = new Uniform(0)
-		this.temporalResolvePass.fullscreenMaterial.uniforms.maxSamples = new Uniform(0)
 		this.temporalResolvePass.fullscreenMaterial.uniforms.jitter = new Uniform(new Vector2())
 		this.temporalResolvePass.fullscreenMaterial.defines.FLOAT_EPSILON = 0.00001
 		if (options.dilation) this.temporalResolvePass.fullscreenMaterial.defines.DILATION = ""
@@ -60,15 +56,22 @@ export class TRAAEffect extends Effect {
 		this.#lastCameraTransform.position.copy(camera.position)
 		this.#lastCameraTransform.quaternion.copy(camera.quaternion)
 
+		const composeShader = TRComposeShader
+		let fragmentShader = temporalResolve
+
+		fragmentShader = fragmentShader.replace("#include <custom_compose_shader>", composeShader)
+
+		fragmentShader =
+			/* glsl */ `
+		uniform float samples;
+		uniform float maxSamples;
+		uniform float blend;
+		` + fragmentShader
+
+		this.temporalResolvePass.fullscreenMaterial.fragmentShader = fragmentShader
+		this.temporalResolvePass.fullscreenMaterial.needsUpdate = true
+
 		this.setSize(options.width, options.height)
-
-		if (options.dilation) {
-			this.depthPass = new DepthPass(this._scene, this._camera)
-			this.depthPass.renderTarget.minFilter = LinearFilter
-			this.depthPass.renderTarget.magFilter = LinearFilter
-
-			this.temporalResolvePass.fullscreenMaterial.uniforms.depthTexture.value = this.depthPass.renderTarget.texture
-		}
 
 		this.#makeOptionsReactive(options)
 	}
@@ -87,23 +90,6 @@ export class TRAAEffect extends Effect {
 					options[key] = value
 
 					switch (key) {
-						case "temporalResolve":
-							const composeShader = TRComposeShader
-							let fragmentShader = temporalResolve
-
-							fragmentShader = fragmentShader.replace("#include <custom_compose_shader>", composeShader)
-
-							fragmentShader =
-								/* glsl */ `
-							uniform float samples;
-							uniform float maxSamples;
-							uniform float blend;
-							` + fragmentShader
-
-							this.temporalResolvePass.fullscreenMaterial.fragmentShader = fragmentShader
-							this.temporalResolvePass.fullscreenMaterial.needsUpdate = true
-							break
-
 						case "blend":
 							this.temporalResolvePass.fullscreenMaterial.uniforms.blend.value = value
 							break
@@ -132,21 +118,7 @@ export class TRAAEffect extends Effect {
 
 		this.temporalResolvePass.setSize(width, height)
 
-		if (this.depthPass) this.depthPass.setSize(width, height)
-
 		this.#lastSize = { width, height, resolutionScale: this.resolutionScale }
-	}
-
-	checkNeedsResample() {
-		const moveDist = this.#lastCameraTransform.position.distanceToSquared(this._camera.position)
-		const rotateDist = 8 * (1 - this.#lastCameraTransform.quaternion.dot(this._camera.quaternion))
-
-		if (moveDist > 0.000001 || rotateDist > 0.000001) {
-			this.samples = 0
-
-			this.#lastCameraTransform.position.copy(this._camera.position)
-			this.#lastCameraTransform.quaternion.copy(this._camera.quaternion)
-		}
 	}
 
 	dispose() {
@@ -155,26 +127,9 @@ export class TRAAEffect extends Effect {
 		this.temporalResolvePass.dispose()
 	}
 
-	checkNeedsResample() {
-		const moveDist = this.#lastCameraTransform.position.distanceToSquared(this._camera.position)
-		const rotateDist = 8 * (1 - this.#lastCameraTransform.quaternion.dot(this._camera.quaternion))
-
-		if (moveDist > 0.000001 || rotateDist > 0.000001) {
-			this.samples = 1
-
-			this.#lastCameraTransform.position.copy(this._camera.position)
-			this.#lastCameraTransform.quaternion.copy(this._camera.quaternion)
-		}
-	}
-
 	update(renderer, inputBuffer) {
-		if (this.depthPass) {
-			this.depthPass.renderPass.render(renderer, this.depthPass.renderTarget)
-		}
-
-		this.checkNeedsResample()
-
-		this.samples++
+		const { autoUpdate } = this._scene
+		this._scene.autoUpdate = false
 
 		this._camera.clearViewOffset()
 
@@ -182,9 +137,9 @@ export class TRAAEffect extends Effect {
 
 		const { width, height } = this.#lastSize
 
-		this.counter = (this.counter + 1) % this.haltonSequence.length
+		this.haltonIndex = (this.haltonIndex + 1) % this.haltonSequence.length
 
-		let [x, y] = this.haltonSequence[this.counter]
+		let [x, y] = this.haltonSequence[this.haltonIndex]
 		x *= this.scale
 		y *= this.scale
 
@@ -193,10 +148,11 @@ export class TRAAEffect extends Effect {
 		}
 
 		this.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = inputBuffer.texture
-		this.temporalResolvePass.fullscreenMaterial.uniforms.samples.value = this.samples
 		this.temporalResolvePass.fullscreenMaterial.uniforms.jitter.value.set(x / width, y / height)
 
 		// compose reflection of last and current frame into one reflection
 		this.temporalResolvePass.render(renderer)
+
+		this._scene.autoUpdate = autoUpdate
 	}
 }

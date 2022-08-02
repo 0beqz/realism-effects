@@ -30,10 +30,9 @@ varying vec2 vUv;
 #define max9(a, b, c, d, e, f, g, h, i) max(a, max8(b, c, d, e, f, g, h, i))
 
 #ifdef DILATION
-uniform sampler2D depthTexture;
 
 // source: https://www.elopezr.com/temporal-aa-and-the-quest-for-the-holy-trail/ (modified to GLSL)
-vec2 getVelocity(sampler2D tex, vec2 uv, vec2 texSize) {
+vec3 getVelocity(sampler2D tex, vec2 uv, vec2 texSize) {
     float closestDepth = 100.0;
     vec2 closestUVOffset;
 
@@ -41,7 +40,7 @@ vec2 getVelocity(sampler2D tex, vec2 uv, vec2 texSize) {
         for (int i = -1; i <= 1; ++i) {
             vec2 uvOffset = vec2(i, j) / texSize;
 
-            float neighborDepth = unpackRGBAToDepth(textureLod(depthTexture, vUv + uvOffset, 0.));
+            float neighborDepth = textureLod(velocityTexture, vUv + uvOffset, 0.).a;
 
             if (neighborDepth < closestDepth) {
                 closestUVOffset = uvOffset;
@@ -50,43 +49,45 @@ vec2 getVelocity(sampler2D tex, vec2 uv, vec2 texSize) {
         }
     }
 
-    return textureLod(velocityTexture, vUv + closestUVOffset, 0.).xy;
+    return textureLod(velocityTexture, vUv + closestUVOffset, 0.).xyz;
 }
-
-// credits for transforming screen position to world position: https://discourse.threejs.org/t/reconstruct-world-position-in-screen-space-from-depth-buffer/5532/2
-vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth, mat4 inverseProjectionMatrix, mat4 cameraMatrixWorld) {
-    vec4 ndc = vec4(
-        (uv.x - 0.5) * 2.0,
-        (uv.y - 0.5) * 2.0,
-        (depth - 0.5) * 2.0,
-        1.0);
-
-    vec4 clip = inverseProjectionMatrix * ndc;
-    vec4 view = cameraMatrixWorld * (clip / clip.w);
-
-    return view.xyz;
-}
-
 #endif
+
+// idea from: https://www.elopezr.com/temporal-aa-and-the-quest-for-the-holy-trail/
+vec3 transformToLogSpace(vec3 color) {
+    color.r = color.r == 0. ? -10. : log(color.r);
+    color.g = color.g == 0. ? -10. : log(color.g);
+    color.b = color.b == 0. ? -10. : log(color.b);
+
+    return color;
+}
+
+vec3 transformToColor(vec3 logSpaceColor) {
+    return exp(logSpaceColor);
+}
 
 void main() {
     ivec2 size = textureSize(inputTexture, 0);
-    vec2 pxSize = vec2(float(size.x), float(size.y));
+    vec2 pxSize = vec2(size.x, size.y);
 
     vec2 unjitteredUv = vUv - jitter / pxSize;
 
     vec4 inputTexel = textureLod(inputTexture, unjitteredUv, 0.);
+    inputTexel.rgb = transformToLogSpace(inputTexel.rgb);
 
     vec4 accumulatedTexel;
     vec3 outputColor;
 
     // REPROJECT_START
 
-    vec4 velocityTexel = textureLod(velocityTexture, vUv, 0.);
+#ifdef DILATION
+    vec3 velocity = getVelocity(velocityTexture, vUv, pxSize);
+#else
+    vec4 velocity = textureLod(velocityTexture, vUv, 0.);
+#endif
 
-    bool isBackground = velocityTexel.b == 1.;
-
-    vec2 velUv = velocityTexel.xy;
+    bool isBackground = velocity.b == 1.;
+    vec2 velUv = velocity.xy;
     vec2 reprojectedUv = vUv - velUv;
 
     vec2 lastVelUv = textureLod(lastVelocityTexture, reprojectedUv, 0.).xy;
@@ -95,16 +96,8 @@ void main() {
 
     // idea from: https://www.elopezr.com/temporal-aa-and-the-quest-for-the-holy-trail/
     float velocityDisocclusion = (velocityLength - 0.000001) * 10.;
-    // velocityDisocclusion *= velocityDisocclusion;
-
-#ifdef DILATION
-    velUv = getVelocity(velocityTexture, vUv, pxSize);
-    reprojectedUv = vUv - velUv;
-#endif
 
     vec3 averageNeighborColor;
-
-    bool didReproject = true;
 
     float movement = length(velUv) * 100.;
 
@@ -113,6 +106,7 @@ void main() {
     // check if reprojecting is necessary (due to movement) and that the reprojected UV is valid
     if (reprojectedUv.x >= 0. && reprojectedUv.x <= 1. && reprojectedUv.y >= 0. && reprojectedUv.y <= 1.) {
         accumulatedTexel = textureLod(accumulatedTexture, reprojectedUv, 0.);
+        accumulatedTexel.rgb = transformToLogSpace(accumulatedTexel.rgb);
 
         alpha = min(inputTexel.a, accumulatedTexel.a);
 
@@ -121,28 +115,32 @@ void main() {
             vec2 px = 1. / pxSize;
 
             // get neighbor pixels
-            vec3 c02 = textureLod(inputTexture, unjitteredUv + vec2(-px.x, px.y), 0.).rgb;
-            vec3 c12 = textureLod(inputTexture, unjitteredUv + vec2(0., px.y), 0.).rgb;
-            vec3 c22 = textureLod(inputTexture, unjitteredUv + vec2(px.x, px.y), 0.).rgb;
-            vec3 c01 = textureLod(inputTexture, unjitteredUv + vec2(-px.x, 0.), 0.).rgb;
-            vec3 c11 = inputTexel.rgb;
-            vec3 c21 = textureLod(inputTexture, unjitteredUv + vec2(px.x, 0.), 0.).rgb;
-            vec3 c00 = textureLod(inputTexture, unjitteredUv + vec2(-px.x, -px.y), 0.).rgb;
-            vec3 c10 = textureLod(inputTexture, unjitteredUv + vec2(0., -px.y), 0.).rgb;
-            vec3 c20 = textureLod(inputTexture, unjitteredUv + vec2(px.x, -px.y), 0.).rgb;
+            vec3 c02 = transformToLogSpace(textureLod(inputTexture, unjitteredUv + vec2(-px.x, px.y), 0.).rgb);
+            vec3 c12 = transformToLogSpace(textureLod(inputTexture, unjitteredUv + vec2(0., px.y), 0.).rgb);
+            vec3 c22 = transformToLogSpace(textureLod(inputTexture, unjitteredUv + vec2(px.x, px.y), 0.).rgb);
+            vec3 c01 = transformToLogSpace(textureLod(inputTexture, unjitteredUv + vec2(-px.x, 0.), 0.).rgb);
+            vec3 c11 = transformToLogSpace(textureLod(inputTexture, unjitteredUv + vec2(-px.x, 0.), 0.).rgb);
+            vec3 c21 = transformToLogSpace(textureLod(inputTexture, unjitteredUv + vec2(px.x, 0.), 0.).rgb);
+            vec3 c00 = transformToLogSpace(textureLod(inputTexture, unjitteredUv + vec2(-px.x, -px.y), 0.).rgb);
+            vec3 c10 = transformToLogSpace(textureLod(inputTexture, unjitteredUv + vec2(0., -px.y), 0.).rgb);
+            vec3 c20 = transformToLogSpace(textureLod(inputTexture, unjitteredUv + vec2(px.x, -px.y), 0.).rgb);
 
             vec3 minNeighborColor = min9(c02, c12, c22, c01, c11, c21, c00, c10, c20);
             vec3 maxNeighborColor = max9(c02, c12, c22, c01, c11, c21, c00, c10, c20);
 
             vec3 clampedColor = clamp(accumulatedTexel.rgb, minNeighborColor, maxNeighborColor);
 
-            accumulatedTexel.rgb = mix(accumulatedTexel.rgb, clampedColor, correction);
+            float clampMix = (1. - alpha * 0.75 + 0.25) * correction;
+            if (isBackground) clampMix = 1.;
+
+            clampMix = min(1., clampMix);
+
+            accumulatedTexel.rgb = mix(accumulatedTexel.rgb, clampedColor, clampMix);
         }
 
     } else {
         // reprojected UV coordinates are outside of screen, so just use the current frame for it
         accumulatedTexel.rgb = inputTexel.rgb;
-        didReproject = false;
     }
 
     // REPROJECT_END

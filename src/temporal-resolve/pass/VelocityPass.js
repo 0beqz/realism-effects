@@ -3,9 +3,8 @@ import {
 	Color,
 	DataTexture,
 	FloatType,
-	FrontSide,
 	HalfFloatType,
-	NearestFilter,
+	LinearFilter,
 	RGBAFormat,
 	ShaderMaterial,
 	UniformsUtils,
@@ -14,6 +13,7 @@ import {
 import { VelocityShader } from "../shader/VelocityShader.js"
 
 const backgroundColor = new Color().setRGB(0, 0, 1)
+const updateProperties = ["visible", "wireframe", "side"]
 
 export class VelocityPass extends Pass {
 	#cachedMaterials = new WeakMap()
@@ -28,8 +28,8 @@ export class VelocityPass extends Pass {
 			typeof window !== "undefined" ? window.innerWidth : 2000,
 			typeof window !== "undefined" ? window.innerHeight : 1000,
 			{
-				minFilter: NearestFilter,
-				magFilter: NearestFilter,
+				minFilter: LinearFilter,
+				magFilter: LinearFilter,
 				type: HalfFloatType
 			}
 		)
@@ -46,9 +46,10 @@ export class VelocityPass extends Pass {
 					velocityMaterial = new ShaderMaterial({
 						uniforms: UniformsUtils.clone(VelocityShader.uniforms),
 						vertexShader: VelocityShader.vertexShader,
-						fragmentShader: VelocityShader.fragmentShader,
-						side: FrontSide
+						fragmentShader: VelocityShader.fragmentShader
 					})
+
+					if (c.skeleton && c.skeleton.boneTexture) this.#saveBoneTexture(c)
 
 					this.#cachedMaterials.set(c, [originalMaterial, velocityMaterial])
 				}
@@ -58,7 +59,7 @@ export class VelocityPass extends Pass {
 					c.modelViewMatrix
 				)
 
-				velocityMaterial.wireframe = originalMaterial.wireframe
+				for (const prop of updateProperties) velocityMaterial[prop] = originalMaterial[prop]
 
 				if (c.skeleton) {
 					velocityMaterial.defines.USE_SKINNING = ""
@@ -117,7 +118,9 @@ export class VelocityPass extends Pass {
 		const { background } = this._scene
 
 		this._scene.background = backgroundColor
+
 		renderer.render(this._scene, this._camera)
+
 		this._scene.background = background
 
 		this.#unsetVelocityMaterialInScene()

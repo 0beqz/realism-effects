@@ -3,8 +3,6 @@ import {
 	FramebufferTexture,
 	HalfFloatType,
 	LinearFilter,
-	Matrix4,
-	NearestFilter,
 	RGBAFormat,
 	ShaderMaterial,
 	Uniform,
@@ -46,6 +44,8 @@ export class TemporalResolvePass extends Pass {
 			velocityTexture = this.velocityPass.renderTarget.texture
 		}
 
+		this.resolutionScale = 0.5
+
 		this.saveLastVelocity = !lastVelocityTexture
 
 		const fragmentShader = temporalResolve.replace("#include <custom_compose_shader>", customComposeShader)
@@ -57,13 +57,8 @@ export class TemporalResolvePass extends Pass {
 				accumulatedTexture: new Uniform(null),
 				velocityTexture: new Uniform(velocityTexture),
 				lastVelocityTexture: new Uniform(lastVelocityTexture),
-				depthTexture: new Uniform(null),
 				blend: new Uniform(0),
-				correction: new Uniform(0),
-				curInverseProjectionMatrix: { value: new Matrix4() },
-				curCameraMatrixWorld: { value: new Matrix4() },
-				prevInverseProjectionMatrix: { value: new Matrix4() },
-				prevCameraMatrixWorld: { value: new Matrix4() }
+				correction: new Uniform(0)
 			},
 			depthTest: false,
 			depthWrite: false,
@@ -84,7 +79,7 @@ export class TemporalResolvePass extends Pass {
 
 	setSize(width, height) {
 		this.renderTarget.setSize(width, height)
-		if (this.velocityPass) this.velocityPass.setSize(width, height)
+		if (this.velocityPass) this.velocityPass.setSize(width * this.resolutionScale, height * this.resolutionScale)
 
 		this.setupAccumulatedTexture(width, height)
 	}
@@ -99,9 +94,13 @@ export class TemporalResolvePass extends Pass {
 		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.accumulatedTexture
 
 		if (this.saveLastVelocity) {
-			this.lastVelocityTexture = new FramebufferTexture(width, height, RGBAFormat)
-			this.lastVelocityTexture.minFilter = NearestFilter
-			this.lastVelocityTexture.magFilter = NearestFilter
+			this.lastVelocityTexture = new FramebufferTexture(
+				width * this.resolutionScale,
+				height * this.resolutionScale,
+				RGBAFormat
+			)
+			this.lastVelocityTexture.minFilter = LinearFilter
+			this.lastVelocityTexture.magFilter = LinearFilter
 			this.lastVelocityTexture.type = HalfFloatType
 
 			this.fullscreenMaterial.uniforms.lastVelocityTexture.value = this.lastVelocityTexture
@@ -111,9 +110,6 @@ export class TemporalResolvePass extends Pass {
 	}
 
 	render(renderer) {
-		this.fullscreenMaterial.uniforms.curInverseProjectionMatrix.value.copy(this._camera.projectionMatrixInverse)
-		this.fullscreenMaterial.uniforms.curCameraMatrixWorld.value.copy(this._camera.matrixWorld)
-
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)
 
@@ -124,8 +120,5 @@ export class TemporalResolvePass extends Pass {
 			renderer.setRenderTarget(this.velocityPass.renderTarget)
 			renderer.copyFramebufferToTexture(zeroVec2, this.lastVelocityTexture)
 		}
-
-		this.fullscreenMaterial.uniforms.prevInverseProjectionMatrix.value.copy(this._camera.projectionMatrixInverse)
-		this.fullscreenMaterial.uniforms.prevCameraMatrixWorld.value.copy(this._camera.matrixWorld)
 	}
 }

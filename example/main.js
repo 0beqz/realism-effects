@@ -1,7 +1,7 @@
 import * as POSTPROCESSING from "postprocessing"
 import Stats from "stats.js"
 import * as THREE from "three"
-import { Color, FrontSide } from "three"
+import { BoxBufferGeometry, Color, MeshBasicMaterial, PlaneBufferGeometry, RepeatWrapping, TextureLoader } from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader"
@@ -32,13 +32,14 @@ window.camera = camera
 
 const canvas = document.querySelector(".webgl")
 
-const rendererCanvas = canvas
+let rendererCanvas = canvas
 
 // use an offscreen canvas if available
-// if (window.OffscreenCanvas) {
-// 	rendererCanvas = canvas.transferControlToOffscreen()
-// 	rendererCanvas.style = canvas.style
-// }
+if (window.OffscreenCanvas) {
+	rendererCanvas = canvas.transferControlToOffscreen()
+	rendererCanvas.style = canvas.style
+	rendererCanvas.toDataURL = canvas.toDataURL.bind(canvas)
+}
 
 // Renderer
 const renderer = new THREE.WebGLRenderer({
@@ -47,7 +48,7 @@ const renderer = new THREE.WebGLRenderer({
 	premultipliedAlpha: false,
 	depth: false,
 	stencil: false,
-	antialias: false,
+	antialias: true,
 	preserveDrawingBuffer: true
 })
 window.renderer = renderer
@@ -70,8 +71,8 @@ const setAA = value => {
 
 		case "MSAA":
 			composer.multisampling = 8
-
 			break
+
 		case "SMAA":
 			composer.addPass(window.smaaPass)
 			break
@@ -94,9 +95,9 @@ const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
 composer.addPass(renderPass)
 
 const params = {
-	blend: 0.9,
+	blend: 0.95,
 	scale: 1,
-	correction: 0.5
+	correction: 1
 }
 
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
@@ -113,6 +114,37 @@ new RGBELoader().load("lago_disola_2k.hdr", envMap => {
 	envMesh.scale.setScalar(100)
 	scene.add(envMesh)
 })
+
+// const sphere = new THREE.Mesh(
+// 	new THREE.SphereBufferGeometry(64, 64, 64),
+// 	new THREE.MeshBasicMaterial({
+// 		color: "green",
+// 		side: THREE.BackSide,
+// 		map: new TextureLoader().load("chess.jpg") // source: https://www.vecteezy.com/vector-art/639981-checker-pattern-black-white
+// 	})
+// )
+
+// sphere.material.map.repeat.setScalar(4)
+// sphere.material.map.wrapS = RepeatWrapping
+// sphere.material.map.wrapT = RepeatWrapping
+
+const chessTexture = new TextureLoader().load("chess.jpg")
+
+const transparentMesh = new THREE.Mesh(
+	new BoxBufferGeometry(4, 4),
+	new MeshBasicMaterial({
+		map: chessTexture,
+		alphaMap: chessTexture,
+		transparent: true
+	})
+)
+
+transparentMesh.position.set(-3, 3, 0)
+transparentMesh.updateMatrixWorld()
+
+// scene.add(transparentMesh)
+
+// scene.add(sphere)
 
 const gltflLoader = new GLTFLoader()
 
@@ -132,18 +164,16 @@ gltflLoader.load(url, asset => {
 
 	const plane = scene.getObjectByName("Plane")
 	if (plane) {
-		plane.material.setValues({
-			alphaMap: null,
+		plane.material = new MeshBasicMaterial({
+			map: plane.material.map,
 			transparent: true,
-			envMapIntensity: 0,
 			blending: 4,
 			depthWrite: false,
-			color: new Color().setScalar(7)
+			color: new Color().setScalar(3)
 		})
 
 		plane.position.y += 0.001
 		plane.updateMatrixWorld()
-
 		plane.visible = false
 	}
 
@@ -175,7 +205,6 @@ gltflLoader.load(url, asset => {
 	stats.showPanel(0)
 	document.body.appendChild(stats.dom)
 
-	// adding one effect pass fixes the depth issue with the imported mesh
 	composer.addPass(new POSTPROCESSING.EffectPass(camera))
 
 	traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
@@ -220,7 +249,7 @@ gltflLoader.load("skin.glb", asset => {
 			c.material.metalness = 1
 		}
 	})
-	scene.add(asset.scene)
+	// scene.add(asset.scene)
 	mixer = new THREE.AnimationMixer(skinMesh)
 	const clips = asset.animations
 
@@ -282,8 +311,6 @@ document.addEventListener("keydown", ev => {
 		setAA(guiParams.Method === "TRAA" ? "No AA" : "TRAA")
 	}
 
-	console.log(ev.code)
-
 	if (ev.code === "KeyP") {
 		const data = renderer.domElement.toDataURL()
 
@@ -291,7 +318,5 @@ document.addEventListener("keydown", ev => {
 		a.href = data
 		a.download = "screenshot-" + uuidv4() + ".png" // File name Here
 		a.click() // Downloaded file
-
-		console.log("run")
 	}
 })
