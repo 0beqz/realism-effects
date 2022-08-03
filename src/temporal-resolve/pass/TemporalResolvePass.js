@@ -5,6 +5,7 @@ import {
 	LinearFilter,
 	RGBAFormat,
 	ShaderMaterial,
+	sRGBEncoding,
 	Uniform,
 	Vector2,
 	WebGLRenderTarget
@@ -35,7 +36,8 @@ export class TemporalResolvePass extends Pass {
 		this.renderTarget = new WebGLRenderTarget(width, height, {
 			minFilter: LinearFilter,
 			magFilter: LinearFilter,
-			type: HalfFloatType,
+			// type: HalfFloatType,
+			encoding: sRGBEncoding,
 			depthBuffer: false
 		})
 
@@ -90,7 +92,8 @@ export class TemporalResolvePass extends Pass {
 		this.accumulatedTexture = new FramebufferTexture(width, height, RGBAFormat)
 		this.accumulatedTexture.minFilter = LinearFilter
 		this.accumulatedTexture.magFilter = LinearFilter
-		this.accumulatedTexture.type = HalfFloatType
+		// this.accumulatedTexture.type = HalfFloatType
+		this.accumulatedTexture.encoding = sRGBEncoding
 		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.accumulatedTexture
 
 		if (this.useLastVelocity) {

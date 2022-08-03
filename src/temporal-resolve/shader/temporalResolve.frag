@@ -72,11 +72,10 @@ void main() {
     vec3 outputColor;
 
     // REPROJECT_START
-
-    vec4 velocity = textureLod(velocityTexture, vUv, 0.);
-
 #ifdef DILATION
-    velocity = getDilatedTexture(velocityTexture, vUv, pxSize);
+    vec4 velocity = getDilatedTexture(velocityTexture, vUv, pxSize);
+#else
+    vec4 velocity = textureLod(velocityTexture, vUv, 0.);
 #endif
 
     bool isBackground = velocity.b == 1.;
@@ -108,7 +107,7 @@ void main() {
         accumulatedTexel = textureLod(accumulatedTexture, reprojectedUv, 0.);
         accumulatedTexel.rgb = transformToLogSpace(accumulatedTexel.rgb);
 
-        alpha = min(inputTexel.a, accumulatedTexel.a);
+        alpha = accumulatedTexel.a;
 
         // neighborhood clamping (only if needed)
         if (isMoving || isBackground || alpha < 1.) {

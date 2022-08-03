@@ -1,7 +1,7 @@
 import * as POSTPROCESSING from "postprocessing"
 import Stats from "stats.js"
 import * as THREE from "three"
-import { BoxBufferGeometry, Color, MeshBasicMaterial, TextureLoader } from "three"
+import { BackSide, BoxBufferGeometry, Color, MeshBasicMaterial, TextureLoader } from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader"
@@ -17,6 +17,7 @@ let fxaaPass
 let stats
 let gui
 let envMesh
+let sphere
 const guiParams = {
 	Method: "TRAA",
 	Background: true
@@ -102,8 +103,9 @@ const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
 composer.addPass(renderPass)
 
 const params = {
-	blend: 0.95,
-	scale: 1
+	blend: 0.9,
+	scale: 1,
+	dilation: true
 }
 
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
@@ -118,37 +120,22 @@ new RGBELoader().load("lago_disola_2k.hdr", envMap => {
 	envMesh.radius = 440
 	envMesh.height = 20
 	envMesh.scale.setScalar(100)
-	// scene.add(envMesh)
+	scene.add(envMesh)
 })
 
-const sphere = new THREE.Mesh(
-	new THREE.SphereBufferGeometry(64, 64, 64),
-	new THREE.MeshBasicMaterial({
-		color: 0x005555,
-		side: THREE.BackSide
-		// map: new TextureLoader().load("chess.jpg") // source: https://www.vecteezy.com/vector-art/639981-checker-pattern-black-white
-	})
-)
+// const chessTexture = new TextureLoader().load("chess.jpg")
 
-// sphere.material.map.repeat.setScalar(4)
-// sphere.material.map.wrapS = RepeatWrapping
-// sphere.material.map.wrapT = RepeatWrapping
+// const transparentMesh = new THREE.Mesh(
+// 	new BoxBufferGeometry(4, 4),
+// 	new MeshBasicMaterial({
+// 		map: chessTexture,
+// 		alphaMap: chessTexture,
+// 		transparent: true
+// 	})
+// )
 
-scene.add(sphere)
-
-const chessTexture = new TextureLoader().load("chess.jpg")
-
-const transparentMesh = new THREE.Mesh(
-	new BoxBufferGeometry(4, 4),
-	new MeshBasicMaterial({
-		map: chessTexture,
-		alphaMap: chessTexture,
-		transparent: true
-	})
-)
-
-transparentMesh.position.set(-3, 3, 0)
-transparentMesh.updateMatrixWorld()
+// transparentMesh.position.set(-3, 3, 0)
+// transparentMesh.updateMatrixWorld()
 
 // scene.add(transparentMesh)
 
@@ -176,13 +163,26 @@ gltflLoader.load(url, asset => {
 			aoMapIntensity: 2,
 			blending: 4,
 			depthWrite: false,
-			color: new Color().setScalar(10)
+			color: new Color().setScalar(10),
+			transparent: true
 		})
 
 		plane.position.y += 0.001
 		plane.updateMatrixWorld()
-		plane.visible = false
 	}
+
+	sphere = scene.getObjectByName("Sphere")
+	if (sphere) {
+		sphere.material.envMapIntensity = 0.25
+		sphere.visible = false
+	}
+
+	const velCatcher = new THREE.Mesh(new THREE.PlaneBufferGeometry(512, 512))
+	velCatcher.material.colorWrite = false
+	velCatcher.material.depthWrite = false
+	velCatcher.rotation.x = -Math.PI / 2
+	velCatcher.updateMatrixWorld()
+	scene.add(velCatcher)
 
 	traaEffect = new TRAAEffect(scene, camera, params)
 	window.traaEffect = traaEffect
@@ -208,7 +208,7 @@ gltflLoader.load(url, asset => {
 
 	const sceneFolder = gui.pane.addFolder({ title: "Scene" })
 	sceneFolder.addInput(guiParams, "Background").on("change", ev => {
-		envMesh.visible = ev.value
+		if (sphere) sphere.visible = !ev.value
 	})
 	stats = new Stats()
 	stats.showPanel(0)
@@ -276,8 +276,6 @@ gltflLoader.load("skin.glb", asset => {
 const clock = new THREE.Clock()
 
 const loop = () => {
-	const dt = clock.getDelta()
-
 	if (stats) stats.begin()
 
 	controls.update()
@@ -288,6 +286,7 @@ const loop = () => {
 		composer.render()
 	}
 
+	const dt = clock.getDelta()
 	if (skinMesh) {
 		mixer.update(dt)
 		skinMesh.updateMatrixWorld()
