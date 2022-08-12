@@ -69,5 +69,8 @@
 	"version": "1.0.0",
 	"lint-staged": {
 		"*.{js,css,md}": "prettier --write"
+	},
+	"dependencies": {
+		"screen-space-reflections": "^2.1.1"
 	}
 }

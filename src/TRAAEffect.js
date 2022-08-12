@@ -10,15 +10,18 @@ import { generateHalton23Points } from "./utils/generateHalton23Points"
 const finalFragmentShader = finalTRAAShader.replace("#include <helperFunctions>", helperFunctions)
 
 export const defaultTRAAOptions = {
-	temporalResolve: true,
 	blend: 0.9,
-	dilation: false,
-	useLastVelocity: false
+	clampRadius: 1,
+	velocityResolutionScale: 1,
+	useVelocity: true,
+	useLastVelocity: true,
+	dilation: true
 }
 
 export class TRAAEffect extends Effect {
 	haltonSequence = generateHalton23Points(1024)
 	haltonIndex = 0
+	samples = 0
 	#lastSize
 	#lastCameraTransform = {
 		position: new Vector3(),
@@ -81,9 +84,21 @@ export class TRAAEffect extends Effect {
 
 					options[key] = value
 
+					const { width, height } = this.temporalResolvePass.renderTarget
+
 					switch (key) {
 						case "blend":
 							this.temporalResolvePass.fullscreenMaterial.uniforms.blend.value = value
+							break
+
+						case "clampRadius":
+							this.temporalResolvePass.fullscreenMaterial.defines.CLAMP_RADIUS = Math.round(value)
+							this.temporalResolvePass.fullscreenMaterial.needsUpdate = true
+							break
+
+						case "velocityResolutionScale":
+							this.temporalResolvePass.velocityResolutionScale = value
+							this.samples = 0
 							break
 
 						case "dilation":
@@ -96,6 +111,22 @@ export class TRAAEffect extends Effect {
 							this.temporalResolvePass.fullscreenMaterial.needsUpdate = true
 							break
 
+						case "useVelocity":
+							if (value) {
+								this.temporalResolvePass.fullscreenMaterial.defines.USE_VELOCITY = ""
+							} else {
+								delete this.temporalResolvePass.fullscreenMaterial.defines.USE_VELOCITY
+							}
+
+							this.temporalResolvePass.fullscreenMaterial.needsUpdate = true
+
+							this.temporalResolvePass.useVelocity = value
+							this.temporalResolvePass.useLastVelocity = value
+
+							this.temporalResolvePass.setSize(width, height)
+							this.samples = 0
+							break
+
 						case "useLastVelocity":
 							if (value) {
 								this.temporalResolvePass.fullscreenMaterial.defines.USE_LAST_VELOCITY = ""
@@ -104,6 +135,11 @@ export class TRAAEffect extends Effect {
 							}
 
 							this.temporalResolvePass.fullscreenMaterial.needsUpdate = true
+
+							this.temporalResolvePass.useLastVelocity = value
+
+							this.temporalResolvePass.setSize(width, height)
+							this.samples = 0
 							break
 					}
 				}
@@ -125,6 +161,7 @@ export class TRAAEffect extends Effect {
 			return
 
 		this.temporalResolvePass.setSize(width, height)
+		this.samples = 0
 
 		this.#lastSize = { width, height, resolutionScale: this.resolutionScale }
 	}
@@ -135,27 +172,41 @@ export class TRAAEffect extends Effect {
 		this.temporalResolvePass.dispose()
 	}
 
+	checkNeedsResample() {
+		const moveDist = this.#lastCameraTransform.position.distanceToSquared(this._camera.position)
+		const rotateDist = 8 * (1 - this.#lastCameraTransform.quaternion.dot(this._camera.quaternion))
+
+		if (moveDist > 0.000001 || rotateDist > 0.000001) {
+			this.samples = 1
+
+			this.#lastCameraTransform.position.copy(this._camera.position)
+			this.#lastCameraTransform.quaternion.copy(this._camera.quaternion)
+		}
+	}
+
 	update(renderer, inputBuffer) {
+		this.samples++
+		this.checkNeedsResample()
+
 		const { autoUpdate } = this._scene
 		this._scene.autoUpdate = false
 
 		this._camera.clearViewOffset()
 
-		this.temporalResolvePass.velocityPass.render(renderer)
+		if (this.temporalResolvePass.useVelocity) this.temporalResolvePass.velocityPass.render(renderer)
 
 		const { width, height } = this.#lastSize
 
 		this.haltonIndex = (this.haltonIndex + 1) % this.haltonSequence.length
 
-		let [x, y] = this.haltonSequence[this.haltonIndex]
-		x *= this.scale
-		y *= this.scale
+		const [x, y] = this.haltonSequence[this.haltonIndex]
 
 		if (this._camera.setViewOffset) {
 			this._camera.setViewOffset(width, height, x, y, width, height)
 		}
 
 		this.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = inputBuffer.texture
+		this.temporalResolvePass.fullscreenMaterial.uniforms.samples.value = this.samples
 
 		// compose reflection of last and current frame into one reflection
 		this.temporalResolvePass.render(renderer)

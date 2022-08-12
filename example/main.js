@@ -1,7 +1,7 @@
 import * as POSTPROCESSING from "postprocessing"
 import Stats from "stats.js"
 import * as THREE from "three"
-import { BackSide, BoxBufferGeometry, Color, MeshBasicMaterial, TextureLoader } from "three"
+import { Color, MeshBasicMaterial, Vector2 } from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader"
@@ -9,23 +9,29 @@ import { GroundProjectedEnv } from "three/examples/jsm/objects/GroundProjectedEn
 import { TRAAEffect } from "../src/TRAAEffect"
 import "./style.css"
 import { TRAADebugGUI } from "./TRAADebugGUI"
+import { defaultSSROptions, SSREffect } from "./SSR"
+import { SSRDebugGUI } from "./SSRDebugGUI"
+import { Vector3 } from "three"
+
+SSREffect.patchDirectEnvIntensity()
 
 let traaEffect
 let traaPass
 let smaaPass
 let fxaaPass
+let ssrEffect
 let stats
 let gui
 let envMesh
 let sphere
 const guiParams = {
 	Method: "TRAA",
-	Background: true
+	Background: false
 }
 
 const scene = new THREE.Scene()
 window.scene = scene
-scene.add(new THREE.AmbientLight())
+scene.add(new THREE.AmbientLight(new Color().setScalar(1)))
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 1000)
 
@@ -96,7 +102,6 @@ camera.position.set(-6, 2.46102 + 2, 0)
 controls.target.set(0, 2.46102, 0)
 controls.maxPolarAngle = Math.PI / 2
 controls.maxDistance = 30
-controls.enableDamping = true
 
 const composer = new POSTPROCESSING.EffectComposer(renderer)
 const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
@@ -110,18 +115,6 @@ const params = {
 
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
 pmremGenerator.compileEquirectangularShader()
-
-new RGBELoader().load("lago_disola_2k.hdr", envMap => {
-	envMap.mapping = THREE.EquirectangularReflectionMapping
-
-	scene.environment = envMap
-
-	envMesh = new GroundProjectedEnv(envMap)
-	envMesh.radius = 440
-	envMesh.height = 20
-	envMesh.scale.setScalar(100)
-	scene.add(envMesh)
-})
 
 // const chessTexture = new TextureLoader().load("chess.jpg")
 
@@ -152,6 +145,8 @@ gltflLoader.load(url, asset => {
 	asset.scene.traverse(c => {
 		if (c.isMesh) {
 			// c.material.wireframe = true
+			c.material.envMapIntensity = 1
+			c.material.roughness = 0.1
 		}
 	})
 
@@ -169,12 +164,13 @@ gltflLoader.load(url, asset => {
 
 		plane.position.y += 0.001
 		plane.updateMatrixWorld()
+
+		plane.visible = false
 	}
 
 	sphere = scene.getObjectByName("Sphere")
 	if (sphere) {
 		sphere.material.envMapIntensity = 0.25
-		sphere.visible = false
 	}
 
 	const velCatcher = new THREE.Mesh(new THREE.PlaneBufferGeometry(512, 512))
@@ -183,6 +179,31 @@ gltflLoader.load(url, asset => {
 	velCatcher.rotation.x = -Math.PI / 2
 	velCatcher.updateMatrixWorld()
 	scene.add(velCatcher)
+
+	const options = {
+		...defaultSSROptions,
+		...{
+			blur: 0.61,
+			blurKernel: 3,
+			blurSharpness: 40,
+			clampRadius: 3,
+			distance: 8.7,
+			maxDepthDifference: 100,
+			blend: 0.85,
+			correction: 1,
+			jitter: 0.24,
+			jitterRoughness: 2.87,
+			exponent: 3,
+			ior: 2,
+			correctionRadius: 3,
+			correction: 1,
+			blend: 0.925,
+			refineSteps: 3,
+			maxDepthDifference: 1000
+		}
+	}
+
+	ssrEffect = new SSREffect(scene, camera, options)
 
 	traaEffect = new TRAAEffect(scene, camera, params)
 	window.traaEffect = traaEffect
@@ -206,31 +227,100 @@ gltflLoader.load(url, asset => {
 			setAA(ev.value)
 		})
 
-	const sceneFolder = gui.pane.addFolder({ title: "Scene" })
+	const sceneFolder = gui.pane.addFolder({ title: "Scene", expanded: false })
 	sceneFolder.addInput(guiParams, "Background").on("change", ev => {
-		if (sphere) sphere.visible = !ev.value
+		sphere.visible = !ev.value
+		envMesh.visible = ev.value
 	})
 	stats = new Stats()
 	stats.showPanel(0)
 	document.body.appendChild(stats.dom)
 
-	composer.addPass(new POSTPROCESSING.EffectPass(camera))
+	// composer.addPass(
+	// 	new POSTPROCESSING.EffectPass(
+	// 		camera,
+	// 		new POSTPROCESSING.BloomEffect({
+	// 			intensity: 1.2,
+	// 			mipmapBlur: true,
+	// 			luminanceSmoothing: 0.3,
+	// 			luminanceThreshold: 0.4,
+	// 			kernelSize: POSTPROCESSING.KernelSize.HUGE
+	// 		})
+	// 	)
+	// )
 
-	traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
-	composer.addPass(traaPass)
+	// ssrEffect = new SSREffect(scene, camera, {
+	// 	blurMix: 0,
+	// 	blurKernelSize: 3,
+	// 	maxDepthDifference: 100,
+	// 	temporalResolveMix: 0.975,
+	// 	temporalResolveCorrection: 0.4,
+	// 	jitter: 0.13,
+	// 	jitterRough: 0.33,
+	// 	jitterSpread: 1.2,
+	// 	colorExponent: 3,
+	// 	ior: 2
+	// })
 
-	const smaaEffect = new POSTPROCESSING.SMAAEffect()
+	// scene.environment = ssrEffect.generateBoxProjectedEnvMapFallback(
+	// 	renderer,
+	// 	new Vector3(0, 1, 0),
+	// 	new Vector3(22.3966 * 2, 32, 12.619 * 2)
+	// )
 
-	smaaPass = new POSTPROCESSING.EffectPass(camera, smaaEffect)
+	scene.traverse(c => {
+		if (c.isMesh && c.material.isMeshStandardMaterial) {
+			ssrEffect.selection.add(c)
+		}
+	})
 
-	const fxaaEffect = new POSTPROCESSING.FXAAEffect()
+	const gui2 = new SSRDebugGUI(ssrEffect, options)
+	gui2.pane.containerElem_.style.left = "8px"
 
-	// https://github.com/pmndrs/postprocessing/issues/394
-	fxaaEffect.fragmentShader = fxaaEffect.fragmentShader.replaceAll("linearToRelativeLuminance", "luminance")
+	new POSTPROCESSING.LUT3dlLoader().load("test.3dl", lutTexture => {
+		const lutEffect = new POSTPROCESSING.LUTEffect(lutTexture)
 
-	fxaaPass = new POSTPROCESSING.EffectPass(camera, fxaaEffect)
+		const ssrPass = new POSTPROCESSING.EffectPass(camera, ssrEffect, lutEffect)
 
-	loop()
+		if (scene.getObjectByName("Court_Lines_Glow")) {
+			scene.getObjectByName("Court_Lines_Glow").material.color.setScalar(0)
+			scene.getObjectByName("Court_Lines_Glow").material.emissiveIntensity = 10
+			scene.getObjectByName("Court_Lines_Glow").material.emissive.setRGB(1, 0, 0)
+
+			scene.getObjectByName("Circle005").material.color.setScalar(0)
+			scene.getObjectByName("Circle005").material.emissiveIntensity = 10
+			scene.getObjectByName("Circle005").material.emissive.setRGB(0, 0.05, 0.5)
+		}
+
+		composer.addPass(ssrPass)
+
+		traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
+		composer.addPass(traaPass)
+
+		const smaaEffect = new POSTPROCESSING.SMAAEffect()
+
+		smaaPass = new POSTPROCESSING.EffectPass(camera, smaaEffect)
+
+		const fxaaEffect = new POSTPROCESSING.FXAAEffect()
+
+		fxaaPass = new POSTPROCESSING.EffectPass(camera, fxaaEffect)
+
+		new RGBELoader().load("lago_disola_2k.hdr", envMap => {
+			envMap.mapping = THREE.EquirectangularReflectionMapping
+
+			scene.environment = envMap
+
+			envMesh = new GroundProjectedEnv(envMap)
+			envMesh.radius = 440
+			envMesh.height = 20
+			envMesh.scale.setScalar(100)
+			envMesh.updateMatrixWorld()
+			scene.add(envMesh)
+			envMesh.visible = false
+		})
+
+		loop()
+	})
 })
 
 const loadingEl = document.querySelector("#loading")
@@ -278,14 +368,6 @@ const clock = new THREE.Clock()
 const loop = () => {
 	if (stats) stats.begin()
 
-	controls.update()
-
-	if (guiParams.Method === "three.js AA") {
-		renderer.render(scene, camera)
-	} else {
-		composer.render()
-	}
-
 	const dt = clock.getDelta()
 	if (skinMesh) {
 		mixer.update(dt)
@@ -293,8 +375,15 @@ const loop = () => {
 		// skinMesh = null
 	}
 
-	// mesh.rotation.y += 0.01
-	// mesh.updateMatrixWorld()
+	// mesh.rotation.y += 5 * dt
+
+	controls.update()
+
+	if (guiParams.Method === "three.js AA") {
+		renderer.render(scene, camera)
+	} else {
+		composer.render()
+	}
 
 	if (stats) stats.end()
 	window.requestAnimationFrame(loop)
@@ -347,7 +436,6 @@ document.addEventListener("keydown", ev => {
 
 	if (ev.code === "ArrowRight") {
 		let index = aaValues.indexOf(guiParams.Method)
-		console.log(guiParams.Method)
 		index++
 
 		if (index === aaValues.length) index = 0
