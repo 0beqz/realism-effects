@@ -1,5 +1,6 @@
 ﻿import { Pass } from "postprocessing"
 import {
+	FloatType,
 	FramebufferTexture,
 	HalfFloatType,
 	LinearFilter,
@@ -29,7 +30,18 @@ export class TemporalResolvePass extends Pass {
 		quaternion: new Quaternion()
 	}
 
-	constructor(scene, camera, customComposeShader, options = {}) {
+	constructor(
+		scene,
+		camera,
+		customComposeShader,
+		options = {
+			renderVelocity: true,
+			dilation: true,
+			boxBlur: true,
+			maxNeighborDepthDifference: 1,
+			logTransform: false
+		}
+	) {
 		super("TemporalResolvePass")
 
 		this._scene = scene
@@ -50,9 +62,24 @@ export class TemporalResolvePass extends Pass {
 		this.fullscreenMaterial.defines.correctionRadius = options.correctionRadius || 1
 		if (options.dilation) this.fullscreenMaterial.defines.dilation = ""
 		if (options.boxBlur) this.fullscreenMaterial.defines.boxBlur = ""
+		if (options.logTransform) this.fullscreenMaterial.defines.logTransform = ""
+		if (options.maxNeighborDepthDifference !== undefined)
+			this.fullscreenMaterial.defines.maxNeighborDepthDifference = options.maxNeighborDepthDifference.toFixed(5)
+
+		let velocityResolutionScale = options.velocityResolutionScale === undefined ? 1 : options.velocityResolutionScale
+
+		Object.defineProperty(this, "velocityResolutionScale", {
+			get() {
+				return velocityResolutionScale
+			},
+			set(value) {
+				velocityResolutionScale = value
+
+				this.setSize(this.renderTarget.width, this.renderTarget.height)
+			}
+		})
 
 		this.setupFramebuffers(1, 1)
-		this.checkCanUseSharedVelocityTexture()
 	}
 
 	dispose() {
@@ -70,9 +97,6 @@ export class TemporalResolvePass extends Pass {
 	setSize(width, height) {
 		this.renderTarget.setSize(width, height)
 		this.velocityPass.setSize(width * this.velocityResolutionScale, height * this.velocityResolutionScale)
-
-		this.velocityPass.renderTarget.texture.minFilter = this.velocityResolutionScale === 1 ? NearestFilter : LinearFilter
-		this.velocityPass.renderTarget.texture.magFilter = this.velocityResolutionScale === 1 ? NearestFilter : LinearFilter
 		this.velocityPass.renderTarget.texture.needsUpdate = true
 
 		this.fullscreenMaterial.uniforms.invTexSize.value.set(1 / width, 1 / height)
@@ -93,9 +117,9 @@ export class TemporalResolvePass extends Pass {
 			height * this.velocityResolutionScale,
 			RGBAFormat
 		)
-		this.lastVelocityTexture.minFilter = this.velocityResolutionScale === 1 ? NearestFilter : LinearFilter
-		this.lastVelocityTexture.magFilter = this.velocityResolutionScale === 1 ? NearestFilter : LinearFilter
-		this.lastVelocityTexture.type = HalfFloatType
+		this.lastVelocityTexture.minFilter = NearestFilter
+		this.lastVelocityTexture.magFilter = NearestFilter
+		this.lastVelocityTexture.type = FloatType
 
 		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.accumulatedTexture
 		this.fullscreenMaterial.uniforms.lastVelocityTexture.value = this.lastVelocityTexture
@@ -104,15 +128,16 @@ export class TemporalResolvePass extends Pass {
 	}
 
 	checkCanUseSharedVelocityTexture() {
+		const now = performance.now()
 		const canUseSharedVelocityTexture =
 			this._scene.userData.velocityTexture &&
 			this.velocityPass.renderTarget.texture !== this._scene.userData.velocityTexture
 
-		if (canUseSharedVelocityTexture) {
+		if (canUseSharedVelocityTexture && now - this._scene.userData.lastVelocityTextureTime < 1000) {
 			// let's use the shared one instead
 			if (this.velocityPass.renderTarget.texture !== this.fullscreenMaterial.uniforms.velocityTexture.value) {
-				this.fullscreenMaterial.uniforms.lastVelocityTexture.value = this._scene.userData.lastVelocityTexture
 				this.fullscreenMaterial.uniforms.velocityTexture.value = this._scene.userData.velocityTexture
+				this.fullscreenMaterial.uniforms.lastVelocityTexture.value = this._scene.userData.lastVelocityTexture
 				this.fullscreenMaterial.needsUpdate = true
 			}
 		} else {
@@ -121,10 +146,12 @@ export class TemporalResolvePass extends Pass {
 				this.fullscreenMaterial.uniforms.velocityTexture.value = this.velocityPass.renderTarget.texture
 				this.fullscreenMaterial.uniforms.lastVelocityTexture.value = this.lastVelocityTexture
 				this.fullscreenMaterial.needsUpdate = true
+				// console.log("set", this.lastVelocityTexture)
 
 				if (!this._scene.userData.velocityTexture) {
 					this._scene.userData.velocityTexture = this.velocityPass.renderTarget.texture
 					this._scene.userData.lastVelocityTexture = this.lastVelocityTexture
+					this._scene.userData.lastVelocityTextureTime = now
 				}
 			}
 		}
@@ -149,11 +176,17 @@ export class TemporalResolvePass extends Pass {
 		this.checkNeedsResample()
 		this.fullscreenMaterial.uniforms.samples.value = this.samples
 
-		if (this.renderVelocity) {
-			const isUsingSharedVelocityTexture = this.checkCanUseSharedVelocityTexture()
-			if (!isUsingSharedVelocityTexture) {
-				this.velocityPass.render(renderer)
-			}
+		this.fullscreenMaterial.uniforms.curInverseProjectionMatrix.value.copy(this._camera.projectionMatrixInverse)
+		this.fullscreenMaterial.uniforms.curCameraMatrixWorld.value.copy(this._camera.matrixWorld)
+
+		const isUsingSharedVelocityTexture = this.checkCanUseSharedVelocityTexture()
+		if (!isUsingSharedVelocityTexture && this.renderVelocity) {
+			this.velocityPass.render(renderer)
+		}
+
+		if (this._scene.userData.velocityTexture === this.fullscreenMaterial.uniforms.velocityTexture.value) {
+			const now = performance.now()
+			this._scene.userData.lastVelocityTextureTime = now
 		}
 
 		renderer.setRenderTarget(this.renderTarget)
@@ -164,5 +197,8 @@ export class TemporalResolvePass extends Pass {
 
 		renderer.setRenderTarget(this.velocityPass.renderTarget)
 		renderer.copyFramebufferToTexture(zeroVec2, this.lastVelocityTexture)
+
+		this.fullscreenMaterial.uniforms.prevInverseProjectionMatrix.value.copy(this._camera.projectionMatrixInverse)
+		this.fullscreenMaterial.uniforms.prevCameraMatrixWorld.value.copy(this._camera.matrixWorld)
 	}
 }

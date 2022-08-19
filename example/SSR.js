@@ -15,11 +15,11 @@ import {
 	ShaderChunk,
 	Color,
 	Quaternion,
+	NearestFilter,
 	VideoTexture,
 	DataTexture,
 	RGBAFormat,
 	FloatType,
-	NearestFilter,
 	FramebufferTexture,
 	WebGLCubeRenderTarget,
 	CubeCamera,
@@ -46,17 +46,17 @@ function _extends() {
 	return _extends.apply(this, arguments)
 }
 
-var boxBlur =
+const boxBlur =
 	"#define GLSLIFY 1\nuniform float blur;uniform float blurSharpness;uniform int blurKernel;vec3 denoise(vec3 center,sampler2D tex,vec2 uv,vec2 invTexSize,float blur,float blurSharpness,int blurKernel){vec3 color;float total;vec3 col;float weight;for(int x=-blurKernel;x<=blurKernel;x++){for(int y=-blurKernel;y<=blurKernel;y++){col=textureLod(tex,uv+vec2(x,y)*invTexSize,0.).rgb;weight=1.0-abs(dot(col-center,vec3(0.25)));weight=pow(weight,blurSharpness);color+=col*weight;total+=weight;}}return color/total;}" // eslint-disable-line
 
-var finalSSRShader =
-	"#define GLSLIFY 1\n#define MODE_DEFAULT 0\n#define MODE_REFLECTIONS 1\n#define MODE_RAW_REFLECTION 2\n#define MODE_BLURRED_REFLECTIONS 3\n#define MODE_INPUT 4\n#define MODE_BLUR_MIX 5\n#define FLOAT_EPSILON 0.00001\nuniform sampler2D inputTexture;uniform sampler2D reflectionsTexture;uniform float samples;\n#include <boxBlur>\nvoid mainImage(const in vec4 inputColor,const in vec2 uv,out vec4 outputColor){vec4 reflectionsTexel=texture2D(reflectionsTexture,vUv);ivec2 size=textureSize(reflectionsTexture,0);vec2 invTexSize=1./vec2(size.x,size.y);vec3 reflectionClr=reflectionsTexel.xyz;if(blur>FLOAT_EPSILON){vec3 blurredReflectionsColor=denoise(reflectionsTexel.rgb,reflectionsTexture,vUv,invTexSize,blur,blurSharpness,blurKernel);reflectionClr=mix(reflectionClr,blurredReflectionsColor.rgb,blur);}\n#if RENDER_MODE == MODE_DEFAULT\noutputColor=vec4(inputColor.rgb+reflectionClr,1.0);\n#endif\n#if RENDER_MODE == MODE_REFLECTIONS\noutputColor=vec4(reflectionClr,1.0);\n#endif\n#if RENDER_MODE == MODE_RAW_REFLECTION\noutputColor=vec4(reflectionsTexel.xyz,1.0);\n#endif\n#if RENDER_MODE == MODE_BLURRED_REFLECTIONS\noutputColor=vec4(blurredReflectionsTexel.xyz,1.0);\n#endif\n#if RENDER_MODE == MODE_INPUT\noutputColor=vec4(inputColor.xyz,1.0);\n#endif\n#if RENDER_MODE == MODE_BLUR_MIX\noutputColor=vec4(vec3(blur),1.0);\n#endif\n}" // eslint-disable-line
+const finalSSRShader =
+	"#define GLSLIFY 1\n#define MODE_DEFAULT 0\n#define MODE_REFLECTIONS 1\n#define MODE_RAW_REFLECTION 2\n#define MODE_BLURRED_REFLECTIONS 3\n#define MODE_INPUT 4\n#define MODE_BLUR_MIX 5\n#define FLOAT_EPSILON 0.00001\nuniform sampler2D inputTexture;uniform sampler2D reflectionsTexture;uniform float intensity;\n#include <boxBlur>\nvoid mainImage(const in vec4 inputColor,const in vec2 uv,out vec4 outputColor){vec4 reflectionsTexel=texture2D(reflectionsTexture,vUv);ivec2 size=textureSize(reflectionsTexture,0);vec2 invTexSize=1./vec2(size.x,size.y);vec3 reflectionClr=reflectionsTexel.xyz;if(blur>FLOAT_EPSILON){vec3 blurredReflectionsColor=denoise(reflectionsTexel.rgb,reflectionsTexture,vUv,invTexSize,blur,blurSharpness,blurKernel);reflectionClr=mix(reflectionClr,blurredReflectionsColor.rgb,blur);}reflectionClr*=intensity;\n#if RENDER_MODE == MODE_DEFAULT\noutputColor=vec4(inputColor.rgb+reflectionClr,1.0);\n#endif\n#if RENDER_MODE == MODE_REFLECTIONS\noutputColor=vec4(reflectionClr,1.0);\n#endif\n#if RENDER_MODE == MODE_RAW_REFLECTION\noutputColor=vec4(reflectionsTexel.xyz,1.0);\n#endif\n#if RENDER_MODE == MODE_BLURRED_REFLECTIONS\noutputColor=vec4(blurredReflectionsTexel.xyz,1.0);\n#endif\n#if RENDER_MODE == MODE_INPUT\noutputColor=vec4(inputColor.xyz,1.0);\n#endif\n#if RENDER_MODE == MODE_BLUR_MIX\noutputColor=vec4(vec3(blur),1.0);\n#endif\n}" // eslint-disable-line
 
-var helperFunctions =
+const helperFunctions =
 	"#define GLSLIFY 1\nvec3 getViewPosition(const float depth){float clipW=_projectionMatrix[2][3]*depth+_projectionMatrix[3][3];vec4 clipPosition=vec4((vec3(vUv,depth)-0.5)*2.0,1.0);clipPosition*=clipW;return(_inverseProjectionMatrix*clipPosition).xyz;}float getViewZ(const in float depth){\n#ifdef PERSPECTIVE_CAMERA\nreturn perspectiveDepthToViewZ(depth,cameraNear,cameraFar);\n#else\nreturn orthographicDepthToViewZ(depth,cameraNear,cameraFar);\n#endif\n}vec3 screenSpaceToWorldSpace(const vec2 uv,const float depth){vec4 ndc=vec4((uv.x-0.5)*2.0,(uv.y-0.5)*2.0,(depth-0.5)*2.0,1.0);vec4 clip=_inverseProjectionMatrix*ndc;vec4 view=cameraMatrixWorld*(clip/clip.w);return view.xyz;}\n#define Scale (vec3(0.8, 0.8, 0.8))\n#define K (19.19)\nvec3 hash(vec3 a){a=fract(a*Scale);a+=dot(a,a.yxz+K);return fract((a.xxy+a.yxx)*a.zyx);}float fresnel_dielectric_cos(float cosi,float eta){float c=abs(cosi);float g=eta*eta-1.0+c*c;float result;if(g>0.0){g=sqrt(g);float A=(g-c)/(g+c);float B=(c*(g+c)-1.0)/(c*(g-c)+1.0);result=0.5*A*A*(1.0+B*B);}else{result=1.0;}return result;}float fresnel_dielectric(vec3 Incoming,vec3 Normal,float eta){float cosine=dot(Incoming,Normal);return min(1.0,5.0*fresnel_dielectric_cos(cosine,eta));}" // eslint-disable-line
 
-var trCompose =
-	"#define GLSLIFY 1\n#define INV_EULER 0.36787944117144233\nalpha=velocityDisocclusion<FLOAT_EPSILON ?(alpha+0.0075): 0.0;alpha=clamp(alpha,0.0,1.0);bool needsBlur=!didReproject||velocityDisocclusion>0.5;\n#ifdef boxBlur\nif(needsBlur)inputColor=boxBlurredColor;\n#endif\nif(alpha==1.0){outputColor=accumulatedColor;}else{float m=mix(alpha,1.0,blend);if(needsBlur)m=0.0;outputColor=accumulatedColor*m+inputColor*(1.0-m);}" // eslint-disable-line
+const trCompose =
+	"#define GLSLIFY 1\n#define INV_EULER 0.36787944117144233\nalpha=velocityDisocclusion<FLOAT_EPSILON ?(alpha+0.0075): 0.0;alpha=clamp(alpha,0.0,1.0);bool needsBlur=!didReproject||velocityDisocclusion>0.5;\n#ifdef boxBlur\nif(needsBlur)inputColor=boxBlurredColor;\n#endif\nif(false&&alpha==1.0){outputColor=accumulatedColor;}else{float m=blend;if(needsBlur)m=0.0;m=1.-1./(samples);m=max(m,blend);if(!didReproject)m=0.;outputColor=accumulatedColor*m+inputColor*(1.0-m);}" // eslint-disable-line
 
 // WebGL2: will render normals to RGB channel of "gNormal" buffer, roughness to A channel of "gNormal" buffer, depth to RGBA channel of "gDepth" buffer
 // and velocity to "gVelocity" buffer
@@ -187,11 +187,11 @@ class MRTMaterial extends ShaderMaterial {
 	}
 }
 
-var vertexShader$1 =
+const vertexShader$1 =
 	"#define GLSLIFY 1\nvarying vec2 vUv;void main(){vUv=position.xy*0.5+0.5;gl_Position=vec4(position.xy,1.0,1.0);}" // eslint-disable-line
 
-var fragmentShader =
-	"#define GLSLIFY 1\nvarying vec2 vUv;uniform sampler2D inputTexture;uniform sampler2D accumulatedTexture;uniform sampler2D normalTexture;uniform sampler2D depthTexture;uniform sampler2D envMap;uniform mat4 _projectionMatrix;uniform mat4 _inverseProjectionMatrix;uniform mat4 cameraMatrixWorld;uniform float cameraNear;uniform float cameraFar;uniform float rayDistance;uniform float intensity;uniform float maxDepthDifference;uniform float roughnessFade;uniform float maxRoughness;uniform float fade;uniform float thickness;uniform float ior;uniform float samples;uniform float jitter;uniform float jitterRoughness;\n#define INVALID_RAY_COORDS vec2(-1.0);\n#define EARLY_OUT_COLOR vec4(0.0, 0.0, 0.0, 1.0)\n#define FLOAT_EPSILON 0.00001\nfloat nearMinusFar;float nearMulFar;float farMinusNear;\n#include <packing>\n#include <helperFunctions>\nvec2 RayMarch(vec3 dir,inout vec3 hitPos,inout float rayHitDepthDifference);vec2 BinarySearch(in vec3 dir,inout vec3 hitPos,inout float rayHitDepthDifference);float fastGetViewZ(const in float depth);vec3 getIBLRadiance(const in vec3 viewDir,const in vec3 normal,const in float roughness);void main(){vec4 depthTexel=textureLod(depthTexture,vUv,0.0);if(dot(depthTexel.rgb,depthTexel.rgb)<FLOAT_EPSILON){gl_FragColor=EARLY_OUT_COLOR;return;}float unpackedDepth=unpackRGBAToDepth(depthTexel);vec4 normalTexel=textureLod(normalTexture,vUv,0.0);float roughness=normalTexel.a;float specular=1.0-roughness;nearMinusFar=cameraNear-cameraFar;nearMulFar=cameraNear*cameraFar;farMinusNear=cameraFar-cameraNear;normalTexel.rgb=unpackRGBToNormal(normalTexel.rgb);float depth=fastGetViewZ(unpackedDepth);vec3 viewPos=getViewPosition(depth);vec3 viewDir=normalize(viewPos);vec3 viewNormal=normalTexel.xyz;vec3 worldPos=screenSpaceToWorldSpace(vUv,unpackedDepth);vec3 jitt=vec3(0.0);if(jitterRoughness!=0.0||jitter!=0.0){vec3 randomJitter=hash(50.0*samples*worldPos)-0.5;float spread=((2.0-specular)+roughness*jitterRoughness);float jitterMix=jitter*0.25+jitterRoughness*roughness;if(jitterMix>1.0)jitterMix=1.0;jitt=mix(vec3(0.0),randomJitter*spread,jitterMix);}viewNormal+=jitt;float fresnelFactor=fresnel_dielectric(viewDir,viewNormal,ior);vec3 iblRadiance=getIBLRadiance(-viewDir,viewNormal,0.)*fresnelFactor;iblRadiance=clamp(iblRadiance,vec3(0.0),vec3(1.0));float lastFrameAlpha=textureLod(accumulatedTexture,vUv,0.0).a;if(roughness>maxRoughness||(roughness>1.0-FLOAT_EPSILON&&roughnessFade>1.0-FLOAT_EPSILON)){gl_FragColor=vec4(iblRadiance,lastFrameAlpha);return;}vec3 reflected=reflect(viewDir,viewNormal);vec3 rayDir=reflected*-viewPos.z;vec3 hitPos=viewPos;float rayHitDepthDifference;vec2 coords=RayMarch(rayDir,hitPos,rayHitDepthDifference);if(coords.x==-1.0){gl_FragColor=vec4(iblRadiance,lastFrameAlpha);return;}vec4 SSRTexel=textureLod(inputTexture,coords.xy,0.0);vec4 SSRTexelReflected=textureLod(accumulatedTexture,coords.xy,0.0);vec3 SSR=SSRTexel.rgb+SSRTexelReflected.rgb;float roughnessFactor=mix(specular,1.0,max(0.0,1.0-roughnessFade));vec2 coordsNDC=(coords.xy*2.0-1.0);float screenFade=0.1;float maxDimension=min(1.0,max(abs(coordsNDC.x),abs(coordsNDC.y)));float reflectionIntensity=1.0-(max(0.0,maxDimension-screenFade)/(1.0-screenFade));reflectionIntensity=max(0.,reflectionIntensity);vec3 finalSSR=mix(iblRadiance,SSR,reflectionIntensity)*roughnessFactor;if(fade!=0.0){vec3 hitWorldPos=screenSpaceToWorldSpace(coords,rayHitDepthDifference);float reflectionDistance=distance(hitWorldPos,worldPos)+1.0;float opacity=1.0/(reflectionDistance*fade*0.1);if(opacity>1.0)opacity=1.0;finalSSR*=opacity;}finalSSR*=fresnelFactor*intensity;finalSSR=min(vec3(1.0),finalSSR);float alpha=hitPos.z==1.0 ? 1.0 : SSRTexelReflected.a;alpha=min(lastFrameAlpha,alpha);gl_FragColor=vec4(finalSSR,alpha);}vec2 RayMarch(vec3 dir,inout vec3 hitPos,inout float rayHitDepthDifference){dir=normalize(dir);dir*=rayDistance/float(steps);float depth;vec4 projectedCoord;vec4 lastProjectedCoord;float unpackedDepth;vec4 depthTexel;for(int i=0;i<steps;i++){hitPos+=dir;projectedCoord=_projectionMatrix*vec4(hitPos,1.0);projectedCoord.xy/=projectedCoord.w;projectedCoord.xy=projectedCoord.xy*0.5+0.5;\n#ifndef missedRays\nif(projectedCoord.x<0.0||projectedCoord.x>1.0||projectedCoord.y<0.0||projectedCoord.y>1.0){return INVALID_RAY_COORDS;}\n#endif\ndepthTexel=textureLod(depthTexture,projectedCoord.xy,0.0);unpackedDepth=unpackRGBAToDepth(depthTexel);depth=fastGetViewZ(unpackedDepth);rayHitDepthDifference=depth-hitPos.z;if(rayHitDepthDifference>=0.0&&rayHitDepthDifference<thickness){\n#if refineSteps == 0\nif(dot(depthTexel.rgb,depthTexel.rgb)<FLOAT_EPSILON)return INVALID_RAY_COORDS;\n#else\nreturn BinarySearch(dir,hitPos,rayHitDepthDifference);\n#endif\n}\n#ifndef missedRays\nif(hitPos.z>0.0){return INVALID_RAY_COORDS;}\n#endif\nlastProjectedCoord=projectedCoord;}hitPos.z=1.0;\n#ifndef missedRays\nreturn INVALID_RAY_COORDS;\n#endif\nrayHitDepthDifference=unpackedDepth;return projectedCoord.xy;}vec2 BinarySearch(in vec3 dir,inout vec3 hitPos,inout float rayHitDepthDifference){float depth;vec4 projectedCoord;vec2 lastMinProjectedCoordXY;float unpackedDepth;vec4 depthTexel;for(int i=0;i<refineSteps;i++){projectedCoord=_projectionMatrix*vec4(hitPos,1.0);projectedCoord.xy/=projectedCoord.w;projectedCoord.xy=projectedCoord.xy*0.5+0.5;depthTexel=textureLod(depthTexture,projectedCoord.xy,0.0);unpackedDepth=unpackRGBAToDepth(depthTexel);depth=fastGetViewZ(unpackedDepth);rayHitDepthDifference=depth-hitPos.z;dir*=0.5;if(rayHitDepthDifference>0.0){hitPos-=dir;}else{hitPos+=dir;}}if(dot(depthTexel.rgb,depthTexel.rgb)<FLOAT_EPSILON)return INVALID_RAY_COORDS;if(abs(rayHitDepthDifference)>maxDepthDifference)return INVALID_RAY_COORDS;projectedCoord=_projectionMatrix*vec4(hitPos,1.0);projectedCoord.xy/=projectedCoord.w;projectedCoord.xy=projectedCoord.xy*0.5+0.5;rayHitDepthDifference=unpackedDepth;return projectedCoord.xy;}float fastGetViewZ(const in float depth){\n#ifdef PERSPECTIVE_CAMERA\nreturn nearMulFar/(farMinusNear*depth-cameraFar);\n#else\nreturn depth*nearMinusFar-cameraNear;\n#endif\n}\n#include <common>\n#include <cube_uv_reflection_fragment>\nvec3 getIBLRadiance(const in vec3 viewDir,const in vec3 normal,const in float roughness){\n#if defined(ENVMAP_TYPE_CUBE_UV)\nvec3 reflectVec=reflect(-viewDir,normal);reflectVec=normalize(mix(reflectVec,normal,roughness*roughness));reflectVec=inverseTransformDirection(reflectVec,viewMatrix);vec4 envMapColor=textureCubeUV(envMap,reflectVec,roughness);return envMapColor.rgb*intensity;\n#else\nreturn vec3(0.0);\n#endif\n}" // eslint-disable-line
+const fragmentShader =
+	"#define GLSLIFY 1\nvarying vec2 vUv;uniform sampler2D inputTexture;uniform sampler2D accumulatedTexture;uniform sampler2D normalTexture;uniform sampler2D depthTexture;uniform sampler2D envMap;uniform mat4 _projectionMatrix;uniform mat4 _inverseProjectionMatrix;uniform mat4 cameraMatrixWorld;uniform float cameraNear;uniform float cameraFar;uniform float rayDistance;uniform float maxDepthDifference;uniform float roughnessFade;uniform float maxRoughness;uniform float fade;uniform float thickness;uniform float ior;uniform float samples;uniform float jitter;uniform float jitterRoughness;\n#define INVALID_RAY_COORDS vec2(-1.0);\n#define EARLY_OUT_COLOR vec4(0.0, 0.0, 0.0, 1.0)\n#define FLOAT_EPSILON 0.00001\nfloat nearMinusFar;float nearMulFar;float farMinusNear;\n#include <packing>\n#include <helperFunctions>\nvec2 RayMarch(vec3 dir,inout vec3 hitPos,inout float rayHitDepthDifference);vec2 BinarySearch(in vec3 dir,inout vec3 hitPos,inout float rayHitDepthDifference);float fastGetViewZ(const in float depth);vec3 getIBLRadiance(const in vec3 viewDir,const in vec3 normal,const in float roughness);void main(){vec4 depthTexel=textureLod(depthTexture,vUv,0.0);if(dot(depthTexel.rgb,depthTexel.rgb)<FLOAT_EPSILON){gl_FragColor=EARLY_OUT_COLOR;return;}float unpackedDepth=unpackRGBAToDepth(depthTexel);vec4 normalTexel=textureLod(normalTexture,vUv,0.0);float roughness=normalTexel.a;float specular=1.0-roughness;nearMinusFar=cameraNear-cameraFar;nearMulFar=cameraNear*cameraFar;farMinusNear=cameraFar-cameraNear;normalTexel.rgb=unpackRGBToNormal(normalTexel.rgb);float depth=fastGetViewZ(unpackedDepth);vec3 viewPos=getViewPosition(depth);vec3 viewDir=normalize(viewPos);vec3 viewNormal=normalTexel.xyz;vec3 worldPos=screenSpaceToWorldSpace(vUv,unpackedDepth);vec3 jitt=vec3(0.0);if(jitterRoughness!=0.0||jitter!=0.0){vec3 randomJitter=hash(50.0*samples*worldPos)-0.5;float spread=((2.0-specular)+roughness*jitterRoughness);float jitterMix=jitter*0.25+jitterRoughness*roughness;if(jitterMix>1.0)jitterMix=1.0;jitt=mix(vec3(0.0),randomJitter*spread,jitterMix);}viewNormal+=jitt;float fresnelFactor=fresnel_dielectric(viewDir,viewNormal,ior);vec3 iblRadiance=getIBLRadiance(-viewDir,viewNormal,0.)*fresnelFactor;iblRadiance=clamp(iblRadiance,vec3(0.0),vec3(1.0));float lastFrameAlpha=textureLod(accumulatedTexture,vUv,0.0).a;if(roughness>maxRoughness||(roughness>1.0-FLOAT_EPSILON&&roughnessFade>1.0-FLOAT_EPSILON)){gl_FragColor=vec4(iblRadiance,lastFrameAlpha);return;}vec3 reflected=reflect(viewDir,viewNormal);vec3 rayDir=reflected*-viewPos.z;vec3 hitPos=viewPos;float rayHitDepthDifference;vec2 coords=RayMarch(rayDir,hitPos,rayHitDepthDifference);if(coords.x==-1.0){gl_FragColor=vec4(iblRadiance,lastFrameAlpha);return;}vec4 SSRTexel=textureLod(inputTexture,coords.xy,0.0);vec4 SSRTexelReflected=textureLod(accumulatedTexture,coords.xy,0.0);vec3 SSR=SSRTexel.rgb+SSRTexelReflected.rgb;float roughnessFactor=mix(specular,1.0,max(0.0,1.0-roughnessFade));vec2 coordsNDC=(coords.xy*2.0-1.0);float screenFade=0.1;float maxDimension=min(1.0,max(abs(coordsNDC.x),abs(coordsNDC.y)));float reflectionIntensity=1.0-(max(0.0,maxDimension-screenFade)/(1.0-screenFade));reflectionIntensity=max(0.,reflectionIntensity);vec3 finalSSR=mix(iblRadiance,SSR,reflectionIntensity)*roughnessFactor;if(fade!=0.0){vec3 hitWorldPos=screenSpaceToWorldSpace(coords,rayHitDepthDifference);float reflectionDistance=distance(hitWorldPos,worldPos)+1.0;float opacity=1.0/(reflectionDistance*fade*0.1);if(opacity>1.0)opacity=1.0;finalSSR*=opacity;}finalSSR*=fresnelFactor;finalSSR=min(vec3(1.0),finalSSR);float alpha=hitPos.z==1.0 ? 1.0 : SSRTexelReflected.a;alpha=min(lastFrameAlpha,alpha);gl_FragColor=vec4(finalSSR,alpha);}vec2 RayMarch(vec3 dir,inout vec3 hitPos,inout float rayHitDepthDifference){dir=normalize(dir);dir*=rayDistance/float(steps);float depth;vec4 projectedCoord;vec4 lastProjectedCoord;float unpackedDepth;vec4 depthTexel;for(int i=0;i<steps;i++){hitPos+=dir;projectedCoord=_projectionMatrix*vec4(hitPos,1.0);projectedCoord.xy/=projectedCoord.w;projectedCoord.xy=projectedCoord.xy*0.5+0.5;\n#ifndef missedRays\nif(projectedCoord.x<0.0||projectedCoord.x>1.0||projectedCoord.y<0.0||projectedCoord.y>1.0){return INVALID_RAY_COORDS;}\n#endif\ndepthTexel=textureLod(depthTexture,projectedCoord.xy,0.0);unpackedDepth=unpackRGBAToDepth(depthTexel);depth=fastGetViewZ(unpackedDepth);rayHitDepthDifference=depth-hitPos.z;if(rayHitDepthDifference>=0.0&&rayHitDepthDifference<thickness){\n#if refineSteps == 0\nif(dot(depthTexel.rgb,depthTexel.rgb)<FLOAT_EPSILON)return INVALID_RAY_COORDS;\n#else\nreturn BinarySearch(dir,hitPos,rayHitDepthDifference);\n#endif\n}\n#ifndef missedRays\nif(hitPos.z>0.0){return INVALID_RAY_COORDS;}\n#endif\nlastProjectedCoord=projectedCoord;}hitPos.z=1.0;\n#ifndef missedRays\nreturn INVALID_RAY_COORDS;\n#endif\nrayHitDepthDifference=unpackedDepth;return projectedCoord.xy;}vec2 BinarySearch(in vec3 dir,inout vec3 hitPos,inout float rayHitDepthDifference){float depth;vec4 projectedCoord;vec2 lastMinProjectedCoordXY;float unpackedDepth;vec4 depthTexel;for(int i=0;i<refineSteps;i++){projectedCoord=_projectionMatrix*vec4(hitPos,1.0);projectedCoord.xy/=projectedCoord.w;projectedCoord.xy=projectedCoord.xy*0.5+0.5;depthTexel=textureLod(depthTexture,projectedCoord.xy,0.0);unpackedDepth=unpackRGBAToDepth(depthTexel);depth=fastGetViewZ(unpackedDepth);rayHitDepthDifference=depth-hitPos.z;dir*=0.5;if(rayHitDepthDifference>0.0){hitPos-=dir;}else{hitPos+=dir;}}if(dot(depthTexel.rgb,depthTexel.rgb)<FLOAT_EPSILON)return INVALID_RAY_COORDS;if(abs(rayHitDepthDifference)>maxDepthDifference)return INVALID_RAY_COORDS;projectedCoord=_projectionMatrix*vec4(hitPos,1.0);projectedCoord.xy/=projectedCoord.w;projectedCoord.xy=projectedCoord.xy*0.5+0.5;rayHitDepthDifference=unpackedDepth;return projectedCoord.xy;}float fastGetViewZ(const in float depth){\n#ifdef PERSPECTIVE_CAMERA\nreturn nearMulFar/(farMinusNear*depth-cameraFar);\n#else\nreturn depth*nearMinusFar-cameraNear;\n#endif\n}\n#include <common>\n#include <cube_uv_reflection_fragment>\nvec3 getIBLRadiance(const in vec3 viewDir,const in vec3 normal,const in float roughness){\n#if defined(ENVMAP_TYPE_CUBE_UV)\nvec3 reflectVec=reflect(-viewDir,normal);reflectVec=normalize(mix(reflectVec,normal,roughness*roughness));reflectVec=inverseTransformDirection(reflectVec,viewMatrix);vec4 envMapColor=textureCubeUV(envMap,reflectVec,roughness);return envMapColor.rgb*0.;\n#else\nreturn vec3(0.0);\n#endif\n}" // eslint-disable-line
 
 class ReflectionsMaterial extends ShaderMaterial {
 	constructor() {
@@ -208,7 +208,6 @@ class ReflectionsMaterial extends ShaderMaterial {
 				cameraNear: new Uniform(0),
 				cameraFar: new Uniform(0),
 				rayDistance: new Uniform(0),
-				intensity: new Uniform(0),
 				roughnessFade: new Uniform(0),
 				fade: new Uniform(0),
 				thickness: new Uniform(0),
@@ -512,11 +511,11 @@ const defaultSSROptions = {
 	velocityResolutionScale: 1
 }
 
-var vertexShader =
+const vertexShader =
 	"#define GLSLIFY 1\nvarying vec2 vUv;void main(){vUv=position.xy*0.5+0.5;gl_Position=vec4(position.xy,1.0,1.0);}" // eslint-disable-line
 
-var temporalResolve =
-	"#define GLSLIFY 1\nuniform sampler2D inputTexture;uniform sampler2D accumulatedTexture;uniform sampler2D velocityTexture;uniform sampler2D lastVelocityTexture;uniform float blend;uniform float correction;uniform float exponent;uniform float samples;uniform vec2 invTexSize;uniform mat4 curInverseProjectionMatrix;uniform mat4 curCameraMatrixWorld;uniform mat4 prevInverseProjectionMatrix;uniform mat4 prevCameraMatrixWorld;varying vec2 vUv;\n#define MAX_NEIGHBOR_DEPTH_DIFFERENCE 0.001\n#define FLOAT_EPSILON 0.00001\n#define FLOAT_ONE_MINUS_EPSILON 0.99999\nvec3 transformexponent;vec3 undoColorTransformExponent;vec3 transformColor(vec3 color){if(exponent==1.0)return color;return pow(abs(color),transformexponent);}vec3 undoColorTransform(vec3 color){if(exponent==1.0)return color;return max(pow(abs(color),undoColorTransformExponent),vec3(0.0));}void main(){if(exponent!=1.0){transformexponent=vec3(1.0/exponent);undoColorTransformExponent=vec3(exponent);}vec4 inputTexel=textureLod(inputTexture,vUv,0.0);vec4 accumulatedTexel;vec3 inputColor=transformColor(inputTexel.rgb);vec3 accumulatedColor;float alpha=inputTexel.a;float velocityDisocclusion;bool didReproject=false;\n#ifdef boxBlur\nvec3 boxBlurredColor=inputTexel.rgb;\n#endif\nvec4 velocity=textureLod(velocityTexture,vUv,0.0);bool isMoving=alpha<1.0||dot(velocity.xy,velocity.xy)>0.0;if(isMoving){vec3 minNeighborColor=inputColor;vec3 maxNeighborColor=inputColor;vec3 col;vec2 neighborUv;vec2 reprojectedUv=vUv-velocity.xy;vec4 lastVelocity=textureLod(lastVelocityTexture,reprojectedUv,0.0);float depth=velocity.b;float closestDepth=depth;float lastClosestDepth=lastVelocity.b;float neighborDepth;float lastNeighborDepth;for(int x=-correctionRadius;x<=correctionRadius;x++){for(int y=-correctionRadius;y<=correctionRadius;y++){if(x!=0||y!=0){neighborUv=vUv+vec2(x,y)*invTexSize;vec4 neigborVelocity=textureLod(velocityTexture,neighborUv,0.0);neighborDepth=neigborVelocity.b;col=textureLod(inputTexture,neighborUv,0.0).xyz;int absX=abs(x);int absY=abs(y);\n#ifdef dilation\nif(absX==1&&absY==1){if(neighborDepth>closestDepth){velocity=neigborVelocity;closestDepth=neighborDepth;}vec4 lastNeighborVelocity=textureLod(velocityTexture,vUv+vec2(x,y)*invTexSize,0.0);lastNeighborDepth=lastNeighborVelocity.b;if(neighborDepth>closestDepth){lastVelocity=lastNeighborVelocity;lastClosestDepth=lastNeighborDepth;}}\n#endif\nif(abs(depth-neighborDepth)<MAX_NEIGHBOR_DEPTH_DIFFERENCE){\n#ifdef boxBlur\nif(absX<=2&&absY<=2)boxBlurredColor+=col;\n#endif\ncol=transformColor(col);minNeighborColor=min(col,minNeighborColor);maxNeighborColor=max(col,maxNeighborColor);}}}}float velocityLength=length(lastVelocity.xy-velocity.xy);velocityDisocclusion=(velocityLength-0.000005)*10.0;velocityDisocclusion*=velocityDisocclusion;reprojectedUv=vUv-velocity.xy;\n#ifdef boxBlur\nfloat pxRadius=correctionRadius>5 ? 121.0 : pow(float(correctionRadius*2+1),2.0);boxBlurredColor/=pxRadius;boxBlurredColor=transformColor(boxBlurredColor);\n#endif\nif(reprojectedUv.x>=0.0&&reprojectedUv.x<=1.0&&reprojectedUv.y>=0.0&&reprojectedUv.y<=1.0){accumulatedTexel=textureLod(accumulatedTexture,reprojectedUv,0.0);accumulatedColor=transformColor(accumulatedTexel.rgb);vec3 clampedColor=clamp(accumulatedColor,minNeighborColor,maxNeighborColor);accumulatedColor=mix(accumulatedColor,clampedColor,correction);didReproject=true;}else{\n#ifdef boxBlur\naccumulatedColor=boxBlurredColor;\n#else\naccumulatedColor=inputColor;\n#endif\n}if(velocity.r>FLOAT_ONE_MINUS_EPSILON&&velocity.g>FLOAT_ONE_MINUS_EPSILON){alpha=0.0;velocityDisocclusion=1.0;}}else{accumulatedColor=transformColor(textureLod(accumulatedTexture,vUv,0.0).rgb);}vec3 outputColor=inputColor;\n#include <custom_compose_shader>\ngl_FragColor=vec4(undoColorTransform(outputColor),alpha);}" // eslint-disable-line
+const temporalResolve =
+	"#define GLSLIFY 1\nuniform sampler2D inputTexture;uniform sampler2D accumulatedTexture;uniform sampler2D velocityTexture;uniform sampler2D lastVelocityTexture;uniform float blend;uniform float correction;uniform float exponent;uniform float samples;uniform vec2 invTexSize;uniform mat4 curInverseProjectionMatrix;uniform mat4 curCameraMatrixWorld;uniform mat4 prevInverseProjectionMatrix;uniform mat4 prevCameraMatrixWorld;varying vec2 vUv;\n#define FLOAT_EPSILON 0.00001\n#define FLOAT_ONE_MINUS_EPSILON 0.99999\nvec3 transformexponent;vec3 undoColorTransformExponent;vec3 transformColor(vec3 color){if(exponent==1.0)return color;\n#ifdef logTransform\nreturn log(max(color,vec3(FLOAT_EPSILON)));\n#else\nreturn pow(abs(color),transformexponent);\n#endif\n}vec3 undoColorTransform(vec3 color){if(exponent==1.0)return color;\n#ifdef logTransform\nreturn exp(color);\n#else\nreturn max(pow(abs(color),undoColorTransformExponent),vec3(0.0));\n#endif\n}void main(){if(exponent!=1.0){transformexponent=vec3(1.0/exponent);undoColorTransformExponent=vec3(exponent);}vec4 inputTexel=textureLod(inputTexture,vUv,0.0);vec4 accumulatedTexel;vec3 inputColor=transformColor(inputTexel.rgb);vec3 accumulatedColor;float alpha=inputTexel.a;float velocityDisocclusion;bool didReproject=false;\n#ifdef boxBlur\nvec3 boxBlurredColor=inputTexel.rgb;\n#endif\nvec4 velocity=textureLod(velocityTexture,vUv,0.0);float depth=velocity.b;bool isMoving=alpha<1.0||dot(velocity.xy,velocity.xy)>0.0;if(true){vec3 minNeighborColor=inputColor;vec3 maxNeighborColor=inputColor;vec3 col;vec2 neighborUv;vec2 reprojectedUv=vUv-velocity.xy;vec4 lastVelocity=textureLod(lastVelocityTexture,reprojectedUv,0.0);float closestDepth=depth;float lastClosestDepth=lastVelocity.b;float neighborDepth;float lastNeighborDepth;float colorCount=1.0;for(int x=-correctionRadius;x<=correctionRadius;x++){for(int y=-correctionRadius;y<=correctionRadius;y++){if(x!=0||y!=0){neighborUv=vUv+vec2(x,y)*invTexSize;if(neighborUv.x>=0.0&&neighborUv.x<=1.0&&neighborUv.y>=0.0&&neighborUv.y<=1.0){vec4 neigborVelocity=textureLod(velocityTexture,neighborUv,0.0);neighborDepth=neigborVelocity.b;int absX=abs(x);int absY=abs(y);\n#ifdef dilation\nif(absX<=1&&absY<=1){if(neighborDepth>closestDepth){velocity=neigborVelocity;closestDepth=neighborDepth;}vec4 lastNeighborVelocity=textureLod(velocityTexture,vUv+vec2(x,y)*invTexSize,0.0);lastNeighborDepth=lastNeighborVelocity.b;if(lastNeighborDepth>lastClosestDepth){lastVelocity=lastNeighborVelocity;lastClosestDepth=lastNeighborDepth;}}\n#endif\nif(abs(depth-neighborDepth)<maxNeighborDepthDifference){col=textureLod(inputTexture,neighborUv,0.0).xyz;col=transformColor(col);\n#ifdef boxBlur\nif(absX<=2&&absY<=2){boxBlurredColor+=col;colorCount+=1.0;}\n#endif\nminNeighborColor=min(col,minNeighborColor);maxNeighborColor=max(col,maxNeighborColor);}}}}}float velocityLength=length(lastVelocity.xy-velocity.xy);velocityDisocclusion=(velocityLength-0.000005)*10.0;velocityDisocclusion*=velocityDisocclusion;reprojectedUv=vUv-velocity.xy;\n#ifdef boxBlur\nboxBlurredColor/=colorCount;\n#endif\nif(reprojectedUv.x>=0.0&&reprojectedUv.x<=1.0&&reprojectedUv.y>=0.0&&reprojectedUv.y<=1.0){accumulatedTexel=textureLod(accumulatedTexture,reprojectedUv,0.0);alpha=min(alpha,accumulatedTexel.a);accumulatedColor=transformColor(accumulatedTexel.rgb);if(alpha<1.0){vec3 clampedColor=clamp(accumulatedColor,minNeighborColor,maxNeighborColor);accumulatedColor=mix(accumulatedColor,clampedColor,correction);}vec3 clampedColor=clamp(accumulatedColor,minNeighborColor,maxNeighborColor);accumulatedColor=mix(accumulatedColor,clampedColor,correction);didReproject=true;}else{\n#ifdef boxBlur\naccumulatedColor=boxBlurredColor;\n#else\naccumulatedColor=inputColor;\n#endif\n}if(velocity.r>FLOAT_ONE_MINUS_EPSILON&&velocity.g>FLOAT_ONE_MINUS_EPSILON){alpha=0.0;velocityDisocclusion=1.0;}}else{accumulatedColor=transformColor(textureLod(accumulatedTexture,vUv,0.0).rgb);}vec3 outputColor=inputColor;\n#include <custom_compose_shader>\ngl_FragColor=vec4(undoColorTransform(outputColor),alpha);}" // eslint-disable-line
 
 class TemporalResolveMaterial extends ShaderMaterial {
 	constructor(customComposeShader) {
@@ -535,6 +534,7 @@ class TemporalResolveMaterial extends ShaderMaterial {
 				invTexSize: new Uniform(new Vector2())
 			},
 			defines: {
+				maxNeighborDepthDifference: "0.001",
 				correctionRadius: 1
 			},
 			vertexShader,
@@ -709,6 +709,8 @@ class VelocityPass extends Pass {
 			((_window = window) == null ? void 0 : _window.innerWidth) || 1000,
 			((_window2 = window) == null ? void 0 : _window2.innerHeight) || 1000,
 			{
+				minFilter: NearestFilter,
+				magFilter: NearestFilter,
 				type: HalfFloatType
 			}
 		)
@@ -773,7 +775,6 @@ class VelocityPass extends Pass {
 			boneTexture.image.data.set(object.skeleton.boneTexture.image.data)
 		} else {
 			let _boneTexture
-
 			;(_boneTexture = boneTexture) == null ? void 0 : _boneTexture.dispose()
 			const boneMatrices = object.skeleton.boneTexture.image.data.slice()
 			const size = object.skeleton.boneTexture.image.width
@@ -841,8 +842,20 @@ const zeroVec2 = new Vector2() // the following variables can be accessed by the
 // the custom compose shader will write the final color to the variable "outputColor"
 
 class TemporalResolvePass extends Pass {
-	constructor(scene, camera, customComposeShader, options = {}) {
+	constructor(
+		scene,
+		camera,
+		customComposeShader,
+		options = {
+			renderVelocity: true,
+			dilation: true,
+			boxBlur: true,
+			maxNeighborDepthDifference: 1,
+			logTransform: false
+		}
+	) {
 		super("TemporalResolvePass")
+		this.renderVelocity = false
 		this.velocityPass = null
 		this.velocityResolutionScale = 1
 		this.samples = 1
@@ -858,13 +871,27 @@ class TemporalResolvePass extends Pass {
 			type: HalfFloatType,
 			depthBuffer: false
 		})
+		if (options.renderVelocity !== undefined) this.renderVelocity = options.renderVelocity
 		this.velocityPass = new VelocityPass(scene, camera)
 		this.fullscreenMaterial = new TemporalResolveMaterial(customComposeShader)
 		this.fullscreenMaterial.defines.correctionRadius = options.correctionRadius || 1
 		if (options.dilation) this.fullscreenMaterial.defines.dilation = ""
 		if (options.boxBlur) this.fullscreenMaterial.defines.boxBlur = ""
+		if (options.logTransform) this.fullscreenMaterial.defines.logTransform = ""
+		if (options.maxNeighborDepthDifference !== undefined)
+			this.fullscreenMaterial.defines.maxNeighborDepthDifference = options.maxNeighborDepthDifference.toFixed(5)
+		let velocityResolutionScale = options.velocityResolutionScale === undefined ? 1 : options.velocityResolutionScale
+		Object.defineProperty(this, "velocityResolutionScale", {
+			get() {
+				return velocityResolutionScale
+			},
+
+			set(value) {
+				velocityResolutionScale = value
+				this.setSize(this.renderTarget.width, this.renderTarget.height)
+			}
+		})
 		this.setupFramebuffers(1, 1)
-		this.checkCanUseSharedVelocityTexture()
 	}
 
 	dispose() {
@@ -882,8 +909,6 @@ class TemporalResolvePass extends Pass {
 	setSize(width, height) {
 		this.renderTarget.setSize(width, height)
 		this.velocityPass.setSize(width * this.velocityResolutionScale, height * this.velocityResolutionScale)
-		this.velocityPass.renderTarget.texture.minFilter = this.velocityResolutionScale === 1 ? NearestFilter : LinearFilter
-		this.velocityPass.renderTarget.texture.magFilter = this.velocityResolutionScale === 1 ? NearestFilter : LinearFilter
 		this.velocityPass.renderTarget.texture.needsUpdate = true
 		this.fullscreenMaterial.uniforms.invTexSize.value.set(1 / width, 1 / height)
 		this.setupFramebuffers(width, height)
@@ -901,8 +926,8 @@ class TemporalResolvePass extends Pass {
 			height * this.velocityResolutionScale,
 			RGBAFormat
 		)
-		this.lastVelocityTexture.minFilter = this.velocityResolutionScale === 1 ? NearestFilter : LinearFilter
-		this.lastVelocityTexture.magFilter = this.velocityResolutionScale === 1 ? NearestFilter : LinearFilter
+		this.lastVelocityTexture.minFilter = NearestFilter
+		this.lastVelocityTexture.magFilter = NearestFilter
 		this.lastVelocityTexture.type = HalfFloatType
 		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.accumulatedTexture
 		this.fullscreenMaterial.uniforms.lastVelocityTexture.value = this.lastVelocityTexture
@@ -910,13 +935,14 @@ class TemporalResolvePass extends Pass {
 	}
 
 	checkCanUseSharedVelocityTexture() {
+		const now = performance.now()
 		const canUseSharedVelocityTexture =
 			this._scene.userData.velocityTexture &&
 			this.velocityPass.renderTarget.texture !== this._scene.userData.velocityTexture
 
-		if (canUseSharedVelocityTexture) {
+		if (canUseSharedVelocityTexture && now - this._scene.userData.lastVelocityTextureTime < 1000) {
 			// let's use the shared one instead
-			if (this.velocityPass.renderTarget.texture === this.fullscreenMaterial.uniforms.velocityTexture.value) {
+			if (this.velocityPass.renderTarget.texture !== this.fullscreenMaterial.uniforms.velocityTexture.value) {
 				this.fullscreenMaterial.uniforms.lastVelocityTexture.value = this._scene.userData.lastVelocityTexture
 				this.fullscreenMaterial.uniforms.velocityTexture.value = this._scene.userData.velocityTexture
 				this.fullscreenMaterial.needsUpdate = true
@@ -930,7 +956,7 @@ class TemporalResolvePass extends Pass {
 
 				if (!this._scene.userData.velocityTexture) {
 					this._scene.userData.velocityTexture = this.velocityPass.renderTarget.texture
-					this._scene.userData.lastVelocityTexture = this.lastVelocityTexture
+					this._scene.userData.lastVelocityTextureTime = now
 				}
 			}
 		}
@@ -952,8 +978,17 @@ class TemporalResolvePass extends Pass {
 	render(renderer) {
 		this.samples++
 		this.checkNeedsResample()
-		this.fullscreenMaterial.uniforms.samples.value = this.samples // const isUsingSharedVelocityTexture = this.checkCanUseSharedVelocityTexture()
-		// if (!isUsingSharedVelocityTexture) this.velocityPass.render(renderer)
+		this.fullscreenMaterial.uniforms.samples.value = this.samples
+		const isUsingSharedVelocityTexture = this.checkCanUseSharedVelocityTexture()
+
+		if (!isUsingSharedVelocityTexture && this.renderVelocity) {
+			this.velocityPass.render(renderer)
+		}
+
+		if (this._scene.userData.velocityTexture === this.fullscreenMaterial.uniforms.velocityTexture.value) {
+			const now = performance.now()
+			this._scene.userData.lastVelocityTextureTime = now
+		}
 
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera) // save the render target's texture for use in next frame
@@ -1107,6 +1142,7 @@ class SSREffect extends Effect {
 			type: "FinalSSRMaterial",
 			uniforms: new Map([
 				["reflectionsTexture", new Uniform(null)],
+				["intensity", new Uniform(1)],
 				["blur", new Uniform(0)],
 				["blurSharpness", new Uniform(0)],
 				["blurKernel", new Uniform(0)]
@@ -1123,7 +1159,8 @@ class SSREffect extends Effect {
 		this._camera = camera
 		const trOptions = {
 			boxBlur: true,
-			dilation: true
+			dilation: true,
+			renderVelocity: false
 		}
 		options = _extends({}, defaultSSROptions, options, trOptions) // set up passes
 		// temporal resolve pass
@@ -1163,6 +1200,10 @@ class SSREffect extends Effect {
 					}
 
 					switch (key) {
+						case "intensity":
+							this.uniforms.get("intensity").value = value
+							break
+
 						case "resolutionScale":
 							this.setSize(this.lastSize.width, this.lastSize.height)
 							break

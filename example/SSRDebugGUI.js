@@ -15,8 +15,8 @@ export class SSRDebugGUI {
 		})
 
 		const generalFolder = pane.addFolder({ title: "General" })
-		generalFolder.addInput(params, "intensity", { min: 0, max: 3, step: 0.01 })
-		generalFolder.addInput(params, "exponent", { min: 0.125, max: 16, step: 0.125 })
+		generalFolder.addInput(params, "intensity", { min: 0, max: 20, step: 0.01 })
+		generalFolder.addInput(params, "exponent", { min: 0.025, max: 5, step: 0.025 })
 		generalFolder.addInput(params, "distance", { min: 0.001, max: 50, step: 0.1 })
 		generalFolder.addInput(params, "fade", {
 			min: 0,
@@ -60,8 +60,8 @@ export class SSRDebugGUI {
 
 		const jitterFolder = pane.addFolder({ title: "Jitter" })
 
-		jitterFolder.addInput(params, "jitter", { min: 0, max: 4, step: 0.01 })
-		jitterFolder.addInput(params, "jitterRoughness", { min: 0, max: 4, step: 0.01 })
+		jitterFolder.addInput(params, "jitter", { min: 0, max: 1, step: 0.01 })
+		jitterFolder.addInput(params, "jitterRoughness", { min: 0, max: 1, step: 0.01 })
 
 		const definesFolder = pane.addFolder({ title: "Tracing" })
 

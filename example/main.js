@@ -9,9 +9,11 @@ import { GroundProjectedEnv } from "three/examples/jsm/objects/GroundProjectedEn
 import { TRAAEffect } from "../src/TRAAEffect"
 import "./style.css"
 import { TRAADebugGUI } from "./TRAADebugGUI"
-import { defaultSSROptions, SSREffect } from "./SSR"
+import { defaultSSROptions, SSREffect } from "./SSR/index"
 import { SSRDebugGUI } from "./SSRDebugGUI"
 import { Vector3 } from "three"
+import { DirectionalLight } from "three"
+import { FogExp2 } from "three"
 
 SSREffect.patchDirectEnvIntensity()
 
@@ -20,6 +22,7 @@ let traaPass
 let smaaPass
 let fxaaPass
 let ssrEffect
+let ssrPass
 let stats
 let gui
 let envMesh
@@ -31,7 +34,8 @@ const guiParams = {
 
 const scene = new THREE.Scene()
 window.scene = scene
-scene.add(new THREE.AmbientLight(new Color().setScalar(1)))
+const ambientLight = new THREE.AmbientLight(new Color().setScalar(0))
+scene.add(ambientLight)
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 1000)
 
@@ -63,7 +67,7 @@ const renderer = new THREE.WebGLRenderer({
 window.renderer = renderer
 
 renderer.outputEncoding = THREE.sRGBEncoding
-renderer.toneMapping = THREE.ACESFilmicToneMapping
+renderer.toneMapping = THREE.CineonToneMapping
 renderer.toneMappingExposure = 1.4
 renderer.setPixelRatio(window.devicePixelRatio)
 renderer.setSize(window.innerWidth, window.innerHeight)
@@ -134,7 +138,7 @@ pmremGenerator.compileEquirectangularShader()
 
 const gltflLoader = new GLTFLoader()
 
-const url = "time-machine.glb"
+const url = "room.glb"
 
 gltflLoader.load(url, asset => {
 	scene.add(asset.scene)
@@ -145,10 +149,13 @@ gltflLoader.load(url, asset => {
 	asset.scene.traverse(c => {
 		if (c.isMesh) {
 			// c.material.wireframe = true
-			c.material.envMapIntensity = 1
+			c.material.envMapIntensity = 0
 			c.material.roughness = 0.1
+			c.castShadow = c.receiveShadow = true
 		}
 	})
+
+	// scene.getObjectByName("Wall_Floor2_0").material.roughness = 0.025
 
 	const plane = scene.getObjectByName("Plane")
 	if (plane) {
@@ -173,6 +180,39 @@ gltflLoader.load(url, asset => {
 		sphere.material.envMapIntensity = 0.25
 	}
 
+	scene.getObjectByName("Cube").material = new MeshBasicMaterial({
+		map: scene.getObjectByName("Cube").material.map,
+		color: new Color().setScalar(10),
+		fog: true
+	})
+	scene.getObjectByName("Cube").castShadow = false
+	scene.getObjectByName("Cube").receiveShadow = true
+
+	const light = new DirectionalLight(0xffaa44, 10)
+	light.position.set(-500, 207, 98)
+	light.updateMatrixWorld()
+	light.castShadow = true
+	scene.add(light)
+	window.light = light
+
+	renderer.shadowMap.enabled = true
+	renderer.shadowMap.autoUpdate = false
+	renderer.shadowMap.needsUpdate = true
+
+	// Set up shadow properties for the light
+	light.shadow.mapSize.width = 8192 // default
+	light.shadow.mapSize.height = 8192 // default
+	light.shadow.camera.near = 50 // default
+	light.shadow.camera.far = 1000 // default
+	light.shadow.bias = -0.000001
+
+	const s = 100
+
+	light.shadow.camera.left = -s
+	light.shadow.camera.bottom = -s
+	light.shadow.camera.right = s
+	light.shadow.camera.top = s
+
 	const velCatcher = new THREE.Mesh(new THREE.PlaneBufferGeometry(512, 512))
 	velCatcher.material.colorWrite = false
 	velCatcher.material.depthWrite = false
@@ -183,29 +223,28 @@ gltflLoader.load(url, asset => {
 	const options = {
 		...defaultSSROptions,
 		...{
-			blur: 0.61,
-			blurKernel: 3,
-			blurSharpness: 40,
-			clampRadius: 3,
-			distance: 8.7,
 			maxDepthDifference: 100,
-			blend: 0.85,
-			correction: 1,
-			jitter: 0.24,
-			jitterRoughness: 2.87,
-			exponent: 3,
-			ior: 2,
-			correctionRadius: 3,
-			correction: 1,
+			exponent: 0.3,
+			ior: 2.33,
+			blur: 0,
+			blurKernel: 3,
+			blurSharpness: 32,
+			intensity: 2.5,
+			missedRays: true,
+			correctionRadius: 2,
+			resolutionScale: 1,
+			velocityResolutionScale: 1,
+			distance: 30,
+			steps: 20,
+			refineSteps: 2,
 			blend: 0.925,
-			refineSteps: 3,
-			maxDepthDifference: 1000
+			jitter: 0.7,
+			jitterRoughness: 0,
+			correction: 0
 		}
 	}
-
-	ssrEffect = new SSREffect(scene, camera, options)
-
 	traaEffect = new TRAAEffect(scene, camera, params)
+
 	window.traaEffect = traaEffect
 
 	gui = new TRAADebugGUI(traaEffect, params)
@@ -232,41 +271,56 @@ gltflLoader.load(url, asset => {
 		sphere.visible = !ev.value
 		envMesh.visible = ev.value
 	})
+	sceneFolder.addInput(light.position, "x", { min: -500, max: 500, step: 1 }).on("change", ev => {
+		ssrEffect.temporalResolvePass.samples = 1
+		traaEffect.temporalResolvePass.samples = 1
+		renderer.shadowMap.needsUpdate = true
+		light.updateMatrixWorld()
+	})
+	sceneFolder.addInput(light.position, "y", { min: -500, max: 500, step: 1 }).on("change", ev => {
+		ssrEffect.temporalResolvePass.samples = 1
+		traaEffect.temporalResolvePass.samples = 1
+		renderer.shadowMap.needsUpdate = true
+		light.updateMatrixWorld()
+	})
+	sceneFolder.addInput(light.position, "z", { min: -500, max: 500, step: 1 }).on("change", ev => {
+		ssrEffect.temporalResolvePass.samples = 1
+		traaEffect.temporalResolvePass.samples = 1
+		renderer.shadowMap.needsUpdate = true
+		light.updateMatrixWorld()
+	})
+	sceneFolder.addInput(light, "intensity", { min: 0, max: 40, step: 0.1 }).on("change", ev => {
+		ssrEffect.temporalResolvePass.samples = 1
+		traaEffect.temporalResolvePass.samples = 1
+		renderer.shadowMap.needsUpdate = true
+	})
 	stats = new Stats()
 	stats.showPanel(0)
 	document.body.appendChild(stats.dom)
 
-	// composer.addPass(
-	// 	new POSTPROCESSING.EffectPass(
-	// 		camera,
-	// 		new POSTPROCESSING.BloomEffect({
-	// 			intensity: 1.2,
-	// 			mipmapBlur: true,
-	// 			luminanceSmoothing: 0.3,
-	// 			luminanceThreshold: 0.4,
-	// 			kernelSize: POSTPROCESSING.KernelSize.HUGE
-	// 		})
-	// 	)
-	// )
+	const bloomEffect = new POSTPROCESSING.BloomEffect({
+		intensity: 1,
+		mipmapBlur: true,
+		luminanceSmoothing: 0.5,
+		luminanceThreshold: 0.6,
+		kernelSize: POSTPROCESSING.KernelSize.HUGE
+	})
 
-	// ssrEffect = new SSREffect(scene, camera, {
-	// 	blurMix: 0,
-	// 	blurKernelSize: 3,
-	// 	maxDepthDifference: 100,
-	// 	temporalResolveMix: 0.975,
-	// 	temporalResolveCorrection: 0.4,
-	// 	jitter: 0.13,
-	// 	jitterRough: 0.33,
-	// 	jitterSpread: 1.2,
-	// 	colorExponent: 3,
-	// 	ior: 2
-	// })
+	const vignetteEffect = new POSTPROCESSING.VignetteEffect({
+		darkness: 0.6
+	})
 
-	// scene.environment = ssrEffect.generateBoxProjectedEnvMapFallback(
-	// 	renderer,
-	// 	new Vector3(0, 1, 0),
-	// 	new Vector3(22.3966 * 2, 32, 12.619 * 2)
-	// )
+	// scene.fog = new FogExp2(0xffaa44, 0.001)
+
+	ssrEffect = new SSREffect(scene, camera, options)
+
+	scene.environment = ssrEffect.generateBoxProjectedEnvMapFallback(
+		renderer,
+		new Vector3(0, 10, 0),
+		new Vector3(57.6103 * 2, 61.6674, 50.5753 * 2)
+	)
+
+	ambientLight.intensity = 0
 
 	scene.traverse(c => {
 		if (c.isMesh && c.material.isMeshStandardMaterial) {
@@ -277,10 +331,10 @@ gltflLoader.load(url, asset => {
 	const gui2 = new SSRDebugGUI(ssrEffect, options)
 	gui2.pane.containerElem_.style.left = "8px"
 
-	new POSTPROCESSING.LUT3dlLoader().load("test.3dl", lutTexture => {
+	new POSTPROCESSING.LUT3dlLoader().load("room.3dl", lutTexture => {
 		const lutEffect = new POSTPROCESSING.LUTEffect(lutTexture)
 
-		const ssrPass = new POSTPROCESSING.EffectPass(camera, ssrEffect, lutEffect)
+		ssrPass = new POSTPROCESSING.EffectPass(camera, ssrEffect, lutEffect)
 
 		if (scene.getObjectByName("Court_Lines_Glow")) {
 			scene.getObjectByName("Court_Lines_Glow").material.color.setScalar(0)
@@ -293,6 +347,8 @@ gltflLoader.load(url, asset => {
 		}
 
 		composer.addPass(ssrPass)
+
+		composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, vignetteEffect))
 
 		traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
 		composer.addPass(traaPass)
@@ -308,7 +364,7 @@ gltflLoader.load(url, asset => {
 		new RGBELoader().load("lago_disola_2k.hdr", envMap => {
 			envMap.mapping = THREE.EquirectangularReflectionMapping
 
-			scene.environment = envMap
+			// scene.environment = envMap
 
 			envMesh = new GroundProjectedEnv(envMap)
 			envMesh.radius = 440
@@ -423,6 +479,10 @@ document.addEventListener("keydown", ev => {
 
 	if (ev.code === "Space" || ev.code === "Enter" || ev.code === "NumpadEnter") {
 		setAA(guiParams.Method === "TRAA" ? "Disabled" : "TRAA")
+	}
+
+	if (ev.code === "KeyQ") {
+		ssrPass.enabled = !ssrPass.enabled
 	}
 
 	if (ev.code === "ArrowLeft") {

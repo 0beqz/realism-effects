@@ -1,0 +1,330 @@
+﻿varying vec2 vUv;
+
+uniform sampler2D inputTexture;
+uniform sampler2D accumulatedTexture;
+uniform sampler2D normalTexture;
+uniform sampler2D depthTexture;
+uniform sampler2D envMap;
+
+uniform mat4 _projectionMatrix;
+uniform mat4 _inverseProjectionMatrix;
+uniform mat4 cameraMatrixWorld;
+uniform float cameraNear;
+uniform float cameraFar;
+
+uniform float rayDistance;
+uniform float maxDepthDifference;
+uniform float roughnessFade;
+uniform float maxRoughness;
+uniform float fade;
+uniform float thickness;
+uniform float ior;
+
+uniform float samples;
+uniform float exponent;
+
+uniform float jitter;
+uniform float jitterRoughness;
+
+#define INVALID_RAY_COORDS vec2(-1.0);
+#define EARLY_OUT_COLOR    vec4(0.0, 0.0, 0.0, 1.0)
+#define FLOAT_EPSILON      0.00001
+#define M_PI               3.1415926535897932384626433832795
+
+float nearMinusFar;
+float nearMulFar;
+float farMinusNear;
+
+#include <packing>
+
+// helper functions
+#include <helperFunctions>
+
+vec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
+vec2 BinarySearch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
+float fastGetViewZ(const in float depth);
+vec3 getIBLRadiance(const in vec3 viewDir, const in vec3 normal, const in float roughness);
+vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float lastFrameAlpha, float sampleCount);
+
+vec2 hash23(vec3 p3) {
+    p3 = fract(p3 * vec3(.1031, .1030, .0973));
+    p3 += dot(p3, p3.yzx + 33.33);
+    return fract((p3.xx + p3.yz) * p3.zy);
+}
+
+void main() {
+    vec4 depthTexel = textureLod(depthTexture, vUv, 0.0);
+
+    // filter out sky
+    if (dot(depthTexel.rgb, depthTexel.rgb) < FLOAT_EPSILON) {
+        gl_FragColor = EARLY_OUT_COLOR;
+        return;
+    }
+
+    float unpackedDepth = unpackRGBAToDepth(depthTexel);
+
+    vec4 normalTexel = textureLod(normalTexture, vUv, 0.0);
+    float roughness = normalTexel.a;
+
+    float specular = 1.0 - roughness;
+
+    // pre-calculated variables for the "fastGetViewZ" function
+    nearMinusFar = cameraNear - cameraFar;
+    nearMulFar = cameraNear * cameraFar;
+    farMinusNear = cameraFar - cameraNear;
+
+    normalTexel.rgb = unpackRGBToNormal(normalTexel.rgb);
+
+    // view-space depth
+    float depth = fastGetViewZ(unpackedDepth);
+
+    float lastFrameAlpha = textureLod(accumulatedTexture, vUv, 0.0).a;
+    vec3 worldPos = screenSpaceToWorldSpace(vUv, unpackedDepth);
+
+    // view-space position of the current texel
+    vec3 viewPos = getViewPosition(depth);
+    vec3 viewDir = normalize(viewPos);
+    vec3 viewNormal = normalTexel.xyz;
+
+    if (roughness > maxRoughness || (roughness > 1.0 - FLOAT_EPSILON && roughnessFade > 1.0 - FLOAT_EPSILON)) {
+        float fresnelFactor = fresnel_dielectric(viewDir, viewNormal, ior);
+        vec3 iblRadiance = getIBLRadiance(-viewDir, viewNormal, 0.) * fresnelFactor;
+        iblRadiance = clamp(iblRadiance, vec3(0.0), vec3(1.0));
+        gl_FragColor = vec4(iblRadiance, lastFrameAlpha);
+        return;
+    }
+
+    vec3 ssrCol;
+    float alpha;
+
+    for (float s = 0.0; s < 2.0; s++) {
+        vec4 SSR = doSample(viewPos, viewDir, viewNormal, roughness, lastFrameAlpha, s);
+        float m = 1. / (s + 1.);
+
+        ssrCol = mix(ssrCol, SSR.xyz, m);
+        alpha = max(alpha, SSR.a);
+    }
+
+    float roughnessFactor = mix(specular, 1.0, max(0.0, 1.0 - roughnessFade));
+
+    vec3 finalSSR = ssrCol * roughnessFactor;
+    alpha = min(lastFrameAlpha, alpha);
+
+    gl_FragColor = vec4(finalSSR, alpha);
+}
+
+vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float lastFrameAlpha, float sampleCount) {
+    // jitteriing
+    vec3 jitt = vec3(0.0);
+
+    float specular = 1.0 - roughness;
+
+    if (jitterRoughness != 0.0 || jitter != 0.0) {
+        float ind = (samples * 2.0 + sampleCount);
+
+        vec3 seed = 50.0 * ind * worldPos;
+
+        vec2 random = hash23(seed);
+        float r1 = random.x;
+        float r2 = random.y;
+
+        float angle = 2.0 * M_PI;
+
+        float x = cos(angle * r1) * 2. * sqrt(r2 * (1.0 - r2));
+        float y = sin(angle * r1) * 2. * sqrt(r2 * (1.0 - r2));
+        float z = 1. - 2. * r2;
+
+        vec3 randomJitter = vec3(x, y, z);
+        randomJitter = normalize(randomJitter);
+        jitt = randomJitter;
+    }
+
+    float spread = jitter + roughness * jitterRoughness;
+    spread = min(1.0, spread);
+
+    viewNormal = mix(viewNormal, jitt, spread);
+
+    float fresnelFactor = fresnel_dielectric(viewDir, viewNormal, ior);
+
+    vec3 iblRadiance = getIBLRadiance(-viewDir, viewNormal, 0.) * fresnelFactor;
+    iblRadiance = clamp(iblRadiance, vec3(0.0), vec3(1.0));
+
+    // view-space reflected ray
+    vec3 reflected = reflect(viewDir, viewNormal);
+
+    vec3 rayDir = reflected * -viewPos.z;
+
+    vec3 hitPos = viewPos;
+    float rayHitDepthDifference;
+
+    vec2 coords = RayMarch(rayDir, hitPos, rayHitDepthDifference);
+
+    if (coords.x == -1.0) {
+        return vec4(iblRadiance, lastFrameAlpha);
+    }
+
+    vec2 coordsNDC = (coords.xy * 2.0 - 1.0);
+    float screenFade = 0.1;
+    float maxDimension = min(1.0, max(abs(coordsNDC.x), abs(coordsNDC.y)));
+    float reflectionIntensity = 1.0 - (max(0.0, maxDimension - screenFade) / (1.0 - screenFade));
+    reflectionIntensity = max(0., reflectionIntensity);
+
+    vec4 SSRTexel = textureLod(inputTexture, coords.xy, 0.0);
+    vec4 SSRTexelReflected = textureLod(accumulatedTexture, coords.xy, 0.0);
+
+    vec3 SSR = SSRTexel.rgb + SSRTexelReflected.rgb;
+
+    vec3 finalSSR = mix(iblRadiance, SSR, reflectionIntensity);
+
+    if (fade != 0.0) {
+        vec3 hitWorldPos = screenSpaceToWorldSpace(coords, rayHitDepthDifference);
+
+        // distance from the reflection point to what it's reflecting
+        float reflectionDistance = distance(hitWorldPos, worldPos) + 1.0;
+
+        float opacity = 1.0 / (reflectionDistance * fade * 0.1);
+        if (opacity > 1.0) opacity = 1.0;
+        finalSSR *= opacity;
+    }
+
+    finalSSR *= fresnelFactor;
+    finalSSR = min(vec3(1.0), finalSSR);
+
+    float alpha = hitPos.z == 1.0 ? 1.0 : SSRTexelReflected.a;
+
+    return vec4(finalSSR, alpha);
+}
+
+vec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {
+    dir = normalize(dir);
+    dir *= rayDistance / float(steps);
+
+    float depth;
+    vec4 projectedCoord;
+    vec4 lastProjectedCoord;
+    float unpackedDepth;
+    vec4 depthTexel;
+
+    for (int i = 0; i < steps; i++) {
+        hitPos += dir;
+
+        projectedCoord = _projectionMatrix * vec4(hitPos, 1.0);
+        projectedCoord.xy /= projectedCoord.w;
+        // [-1, 1] --> [0, 1] (NDC to screen position)
+        projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;
+
+// the ray is outside the camera's frustum
+#ifndef missedRays
+        if (projectedCoord.x < 0.0 || projectedCoord.x > 1.0 || projectedCoord.y < 0.0 || projectedCoord.y > 1.0) {
+            return INVALID_RAY_COORDS;
+        }
+#endif
+
+        depthTexel = textureLod(depthTexture, projectedCoord.xy, 0.0);
+
+        unpackedDepth = unpackRGBAToDepth(depthTexel);
+
+        depth = fastGetViewZ(unpackedDepth);
+
+        rayHitDepthDifference = depth - hitPos.z;
+
+        if (rayHitDepthDifference >= 0.0 && rayHitDepthDifference < thickness) {
+#if refineSteps == 0
+            // filter out sky
+            if (dot(depthTexel.rgb, depthTexel.rgb) < FLOAT_EPSILON) return INVALID_RAY_COORDS;
+#else
+            return BinarySearch(dir, hitPos, rayHitDepthDifference);
+#endif
+        }
+
+#ifndef missedRays
+        // the ray is behind the camera
+        if (hitPos.z > 0.0) {
+            return INVALID_RAY_COORDS;
+        }
+#endif
+
+        lastProjectedCoord = projectedCoord;
+    }
+
+    // since hitPos isn't used anywhere we can use it to mark that this reflection would have been invalid
+    hitPos.z = 1.0;
+
+#ifndef missedRays
+    return INVALID_RAY_COORDS;
+#endif
+
+    rayHitDepthDifference = unpackedDepth;
+
+    return projectedCoord.xy;
+}
+
+vec2 BinarySearch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {
+    float depth;
+    vec4 projectedCoord;
+    vec2 lastMinProjectedCoordXY;
+    float unpackedDepth;
+    vec4 depthTexel;
+
+    for (int i = 0; i < refineSteps; i++) {
+        projectedCoord = _projectionMatrix * vec4(hitPos, 1.0);
+        projectedCoord.xy /= projectedCoord.w;
+        projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;
+
+        depthTexel = textureLod(depthTexture, projectedCoord.xy, 0.0);
+
+        unpackedDepth = unpackRGBAToDepth(depthTexel);
+        depth = fastGetViewZ(unpackedDepth);
+
+        rayHitDepthDifference = depth - hitPos.z;
+
+        dir *= 0.5;
+
+        if (rayHitDepthDifference > 0.0) {
+            hitPos -= dir;
+        } else {
+            hitPos += dir;
+        }
+    }
+
+    // filter out sky
+    if (dot(depthTexel.rgb, depthTexel.rgb) < FLOAT_EPSILON) return INVALID_RAY_COORDS;
+
+    if (abs(rayHitDepthDifference) > maxDepthDifference) return INVALID_RAY_COORDS;
+
+    projectedCoord = _projectionMatrix * vec4(hitPos, 1.0);
+    projectedCoord.xy /= projectedCoord.w;
+    projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;
+
+    rayHitDepthDifference = unpackedDepth;
+
+    return projectedCoord.xy;
+}
+
+// source: https://github.com/mrdoob/three.js/blob/342946c8392639028da439b6dc0597e58209c696/examples/js/shaders/SAOShader.js#L123
+float fastGetViewZ(const in float depth) {
+#ifdef PERSPECTIVE_CAMERA
+    return nearMulFar / (farMinusNear * depth - cameraFar);
+#else
+    return depth * nearMinusFar - cameraNear;
+#endif
+}
+
+#include <common>
+#include <cube_uv_reflection_fragment>
+
+// from: https://github.com/mrdoob/three.js/blob/d5b82d2ca410e2e24ca2f7320212dfbee0fe8e89/src/renderers/shaders/ShaderChunk/envmap_physical_pars_fragment.glsl.js#L22
+vec3 getIBLRadiance(const in vec3 viewDir, const in vec3 normal, const in float roughness) {
+#if defined(ENVMAP_TYPE_CUBE_UV)
+    vec3 reflectVec = reflect(-viewDir, normal);
+
+    // Mixing the reflection with the normal is more accurate and keeps rough objects from gathering light from behind their tangent plane.
+    reflectVec = normalize(mix(reflectVec, normal, roughness * roughness));
+    reflectVec = inverseTransformDirection(reflectVec, viewMatrix);
+
+    vec4 envMapColor = textureCubeUV(envMap, reflectVec, roughness);
+    return envMapColor.rgb;
+#else
+    return vec3(0.0);
+#endif
+}

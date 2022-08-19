@@ -5,6 +5,7 @@ import {
 	FloatType,
 	HalfFloatType,
 	Matrix4,
+	NearestFilter,
 	Quaternion,
 	RGBAFormat,
 	Vector3,
@@ -34,7 +35,9 @@ export class VelocityPass extends Pass {
 		this._camera = camera
 
 		this.renderTarget = new WebGLRenderTarget(window?.innerWidth || 1000, window?.innerHeight || 1000, {
-			type: HalfFloatType
+			minFilter: NearestFilter,
+			magFilter: NearestFilter,
+			type: FloatType
 		})
 	}
 
@@ -71,11 +74,7 @@ export class VelocityPass extends Pass {
 				}
 			}
 
-			c.visible =
-				this.cameraMovedThisFrame ||
-				!c.matrixWorld.equals(velocityMaterial.lastMatrixWorld) ||
-				c.skeleton ||
-				"FULL_MOVEMENT" in velocityMaterial.defines
+			c.visible = true
 
 			c.material = velocityMaterial
 
@@ -159,7 +158,7 @@ export class VelocityPass extends Pass {
 			return true
 		}
 
-		return false
+		return true
 	}
 
 	render(renderer) {
