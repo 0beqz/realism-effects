@@ -3,8 +3,6 @@ import {
 	Color,
 	DataTexture,
 	FloatType,
-	HalfFloatType,
-	LinearFilter,
 	Matrix4,
 	NearestFilter,
 	Quaternion,
@@ -26,8 +24,6 @@ export class VelocityPass extends Pass {
 		quaternion: new Quaternion()
 	}
 	visibleMeshes = []
-	renderedMeshesThisFrame = 0
-	renderedMeshesLastFrame = 0
 
 	constructor(scene, camera) {
 		super("VelocityPass")
@@ -75,13 +71,7 @@ export class VelocityPass extends Pass {
 				}
 			}
 
-			c.visible = true
-
 			c.material = velocityMaterial
-
-			if (!c.visible) continue
-
-			this.renderedMeshesThisFrame++
 
 			for (const prop of updateProperties) velocityMaterial[prop] = originalMaterial[prop]
 
@@ -116,8 +106,6 @@ export class VelocityPass extends Pass {
 	unsetVelocityMaterialInScene() {
 		for (const c of this.visibleMeshes) {
 			if (c.material.isVelocityMaterial) {
-				c.visible = true
-
 				c.material.lastMatrixWorld.copy(c.matrixWorld)
 				c.material.uniforms.prevVelocityMatrix.value.multiplyMatrices(this._camera.projectionMatrix, c.modelViewMatrix)
 
@@ -135,42 +123,20 @@ export class VelocityPass extends Pass {
 	renderVelocity(renderer) {
 		renderer.setRenderTarget(this.renderTarget)
 
-		if (this.renderedMeshesThisFrame > 0) {
-			const { background } = this._scene
+		const { background } = this._scene
 
-			this._scene.background = backgroundColor
+		this._scene.background = backgroundColor
 
-			renderer.render(this._scene, this._camera)
+		renderer.render(this._scene, this._camera)
 
-			this._scene.background = background
-		} else {
-			renderer.clearColor()
-		}
-	}
-
-	checkCameraMoved() {
-		const moveDist = this.lastCameraTransform.position.distanceToSquared(this._camera.position)
-		const rotateDist = 8 * (1 - this.lastCameraTransform.quaternion.dot(this._camera.quaternion))
-
-		if (moveDist > 0.000001 || rotateDist > 0.000001) {
-			this.lastCameraTransform.position.copy(this._camera.position)
-			this.lastCameraTransform.quaternion.copy(this._camera.quaternion)
-
-			return true
-		}
-
-		return false
+		this._scene.background = background
 	}
 
 	render(renderer) {
-		this.cameraMovedThisFrame = this.checkCameraMoved()
-
 		this.setVelocityMaterialInScene()
 
-		if (this.renderedMeshesThisFrame > 0 || this.renderedMeshesLastFrame > 0) this.renderVelocity(renderer)
+		this.renderVelocity(renderer)
 
 		this.unsetVelocityMaterialInScene()
-
-		this.renderedMeshesLastFrame = this.renderedMeshesThisFrame
 	}
 }

@@ -26,7 +26,7 @@
  * @property {boolean} [useNormalMap] if roughness maps should be taken account of when calculating reflections
  * @property {boolean} [useRoughnessMap] if normal maps should be taken account of when calculating reflections
  * @property {Number} [resolutionScale] resolution of the SSR effect, a resolution of 0.5 means the effect will be rendered at half resolution
- * @property {Number} [velocityResolutionScale] resolution of the velocity buffer, a resolution of 0.5 means velocity will be rendered at half resolution
+ * @property {Number} [qualityScale] resolution of the velocity buffer, a resolution of 0.5 means velocity will be rendered at half resolution
  */
 
 /**
@@ -59,5 +59,5 @@ export const defaultSSROptions = {
 	useNormalMap: true,
 	useRoughnessMap: true,
 	resolutionScale: 1,
-	velocityResolutionScale: 1
+	qualityScale: 1
 }

@@ -23,7 +23,7 @@ const zeroVec2 = new Vector2()
 export class TemporalResolvePass extends Pass {
 	renderVelocity = false
 	velocityPass = null
-	velocityResolutionScale = 1
+	qualityScale = 1
 	samples = 1
 	lastCameraTransform = {
 		position: new Vector3(),
@@ -66,14 +66,14 @@ export class TemporalResolvePass extends Pass {
 		if (options.maxNeighborDepthDifference !== undefined)
 			this.fullscreenMaterial.defines.maxNeighborDepthDifference = options.maxNeighborDepthDifference.toFixed(5)
 
-		let velocityResolutionScale = options.velocityResolutionScale === undefined ? 1 : options.velocityResolutionScale
+		let qualityScale = options.qualityScale === undefined ? 1 : options.qualityScale
 
-		Object.defineProperty(this, "velocityResolutionScale", {
+		Object.defineProperty(this, "qualityScale", {
 			get() {
-				return velocityResolutionScale
+				return qualityScale
 			},
 			set(value) {
-				velocityResolutionScale = value
+				qualityScale = value
 
 				this.setSize(this.renderTarget.width, this.renderTarget.height)
 			}
@@ -96,7 +96,7 @@ export class TemporalResolvePass extends Pass {
 
 	setSize(width, height) {
 		this.renderTarget.setSize(width, height)
-		this.velocityPass.setSize(width * this.velocityResolutionScale, height * this.velocityResolutionScale)
+		this.velocityPass.setSize(width * this.qualityScale, height * this.qualityScale)
 		this.velocityPass.renderTarget.texture.needsUpdate = true
 
 		this.fullscreenMaterial.uniforms.invTexSize.value.set(1 / width, 1 / height)
@@ -112,11 +112,7 @@ export class TemporalResolvePass extends Pass {
 		this.accumulatedTexture.magFilter = LinearFilter
 		this.accumulatedTexture.type = HalfFloatType
 
-		this.lastVelocityTexture = new FramebufferTexture(
-			width * this.velocityResolutionScale,
-			height * this.velocityResolutionScale,
-			RGBAFormat
-		)
+		this.lastVelocityTexture = new FramebufferTexture(width * this.qualityScale, height * this.qualityScale, RGBAFormat)
 		this.lastVelocityTexture.minFilter = NearestFilter
 		this.lastVelocityTexture.magFilter = NearestFilter
 		this.lastVelocityTexture.type = FloatType

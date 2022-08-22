@@ -13,7 +13,7 @@ export const defaultTRAAOptions = {
 	correction: 1,
 	correctionRadius: 1,
 	exponent: 1,
-	velocityResolutionScale: 1,
+	qualityScale: 1,
 	useVelocity: true,
 	useLastVelocity: true,
 	dilation: true
@@ -93,8 +93,8 @@ export class TRAAEffect extends Effect {
 							this.temporalResolvePass.fullscreenMaterial.needsUpdate = true
 							break
 
-						case "velocityResolutionScale":
-							this.temporalResolvePass.velocityResolutionScale = value
+						case "qualityScale":
+							this.temporalResolvePass.qualityScale = value
 							this.samples = 0
 							break
 

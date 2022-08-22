@@ -1,12 +1,5 @@
-﻿import { DepthDownsamplingPass, DepthPass, Pass, RenderPass } from "postprocessing"
-import {
-	HalfFloatType,
-	LinearFilter,
-	NearestFilter,
-	sRGBEncoding,
-	WebGLMultipleRenderTargets,
-	WebGLRenderTarget
-} from "three"
+﻿import { DepthPass, Pass, RenderPass } from "postprocessing"
+import { HalfFloatType, NearestFilter, WebGLMultipleRenderTargets, WebGLRenderTarget } from "three"
 import { MRTMaterial } from "../material/MRTMaterial.js"
 import { ReflectionsMaterial } from "../material/ReflectionsMaterial.js"
 import { getVisibleChildren } from "../utils/Utils.js"
@@ -88,11 +81,11 @@ export class ReflectionsPass extends Pass {
 
 	setSize(width, height) {
 		this.renderTarget.setSize(width * this.ssrEffect.resolutionScale, height * this.ssrEffect.resolutionScale)
-		this.gBuffersRenderTarget.setSize(width, height)
-		this.downsamplingPass.setSize(width, height)
+		this.gBuffersRenderTarget.setSize(width * this.ssrEffect.qualityScale, height * this.ssrEffect.qualityScale)
+		this.downsamplingPass.setSize(width * this.ssrEffect.qualityScale, height * this.ssrEffect.qualityScale)
+
 		this.fullscreenMaterial.uniforms.invTexSize.value.set(1 / width, 1 / height)
 
-		// this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.ssrEffect.temporalResolvePass.accumulatedTexture
 		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.ssrEffect.temporalResolvePass.renderTarget.texture
 		this.fullscreenMaterial.needsUpdate = true
 	}
@@ -189,7 +182,7 @@ export class ReflectionsPass extends Pass {
 		}
 	}
 
-	render(renderer, inputBuffer, outputBuffer) {
+	render(renderer, inputBuffer) {
 		this.setMRTMaterialInScene()
 
 		renderer.setRenderTarget(this.gBuffersRenderTarget)
@@ -197,7 +190,9 @@ export class ReflectionsPass extends Pass {
 
 		this.unsetMRTMaterialInScene()
 
-		this.downsamplingPass.render(renderer, inputBuffer, outputBuffer)
+		// if (this.ssrEffect.qualityScale < 1) this.downsamplingPass.render(renderer, inputBuffer)
+
+		this.fullscreenMaterial.uniforms.depthTexture.value = this.gBuffersRenderTarget.texture[1]
 
 		// render depth and velocity in seperate passes
 		if (!this.USE_MRT) this.webgl1DepthPass.renderPass.render(renderer, this.webgl1DepthPass.renderTarget)

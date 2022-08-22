@@ -16,8 +16,7 @@ import helperFunctions from "./material/shader/helperFunctions.frag"
 import trCompose from "./material/shader/trCompose.frag"
 import { ReflectionsPass } from "./pass/ReflectionsPass.js"
 import { defaultSSROptions } from "./SSROptions"
-import { TemporalResolvePass } from "./temporal-resolve/pass/TemporalResolvePass.js"
-import { generateHalton23Points } from "./utils/generateHalton23Points"
+import { TemporalResolvePass } from "./temporal-resolve/TemporalResolvePass.js"
 import { useBoxProjectedEnvMap } from "./utils/useBoxProjectedEnvMap"
 import { setupEnvMap } from "./utils/Utils"
 
@@ -25,15 +24,10 @@ const finalFragmentShader = finalSSRShader
 	.replace("#include <helperFunctions>", helperFunctions)
 	.replace("#include <boxBlur>", boxBlur)
 
-// all the properties for which we don't have to resample
-const noResetSamplesProperties = ["blur", "blurSharpness", "blurKernel"]
-
 const defaultCubeRenderTarget = new WebGLCubeRenderTarget(1)
 let pmremGenerator
 
 export class SSREffect extends Effect {
-	haltonSequence = generateHalton23Points(1024)
-	haltonIndex = 0
 	selection = new Selection()
 	lastSize
 	cubeCamera = new CubeCamera(0.001, 1000, defaultCubeRenderTarget)
@@ -62,7 +56,7 @@ export class SSREffect extends Effect {
 		this._camera = camera
 
 		const trOptions = {
-			boxBlur: true,
+			boxBlur: false,
 			dilation: true,
 			renderVelocity: false,
 			neighborhoodClamping: false,
@@ -76,6 +70,7 @@ export class SSREffect extends Effect {
 
 		// temporal resolve pass
 		this.temporalResolvePass = new TemporalResolvePass(scene, camera, trCompose, options)
+		this.temporalResolvePass.haltonIndex = ~~(this.temporalResolvePass.haltonSequence.length / 2)
 
 		this.uniforms.get("reflectionsTexture").value = this.temporalResolvePass.renderTarget.texture
 
@@ -87,7 +82,7 @@ export class SSREffect extends Effect {
 			width: options.width,
 			height: options.height,
 			resolutionScale: options.resolutionScale,
-			velocityResolutionScale: options.velocityResolutionScale
+			qualityScale: options.qualityScale
 		}
 
 		this.setSize(options.width, options.height)
@@ -100,6 +95,8 @@ export class SSREffect extends Effect {
 
 		const reflectionPassFullscreenMaterialUniforms = this.reflectionsPass.fullscreenMaterial.uniforms
 		const reflectionPassFullscreenMaterialUniformsKeys = Object.keys(reflectionPassFullscreenMaterialUniforms)
+
+		const noResetSamplesProperties = [...this.uniforms.keys()]
 
 		for (const key of Object.keys(options)) {
 			Object.defineProperty(this, key, {
@@ -124,8 +121,8 @@ export class SSREffect extends Effect {
 							this.setSize(this.lastSize.width, this.lastSize.height)
 							break
 
-						case "velocityResolutionScale":
-							this.temporalResolvePass.velocityResolutionScale = value
+						case "qualityScale":
+							this.temporalResolvePass.qualityScale = value
 							this.setSize(this.lastSize.width, this.lastSize.height, true)
 							break
 
@@ -214,18 +211,20 @@ export class SSREffect extends Effect {
 			width === this.lastSize.width &&
 			height === this.lastSize.height &&
 			this.resolutionScale === this.lastSize.resolutionScale &&
-			this.velocityResolutionScale === this.lastSize.velocityResolutionScale
+			this.qualityScale === this.lastSize.qualityScale
 		)
 			return
 
 		this.temporalResolvePass.setSize(width, height)
 		this.reflectionsPass.setSize(width, height)
 
+		this.temporalResolvePass.jitterScale = 2 * (1 / this.resolutionScale - 1)
+
 		this.lastSize = {
 			width,
 			height,
 			resolutionScale: this.resolutionScale,
-			velocityResolutionScale: this.velocityResolutionScale
+			qualityScale: this.qualityScale
 		}
 	}
 
@@ -308,23 +307,11 @@ export class SSREffect extends Effect {
 			}
 		}
 
-		this._camera.clearViewOffset()
+		this.temporalResolvePass.unjitter()
 
 		this.temporalResolvePass.velocityPass.render(renderer)
 
-		// cheap trick to get rid of aliasing on the final buffer (technique known from TAA)
-		if (this.resolutionScale < 1) {
-			this.haltonIndex = (this.haltonIndex + 1) % this.haltonSequence.length
-
-			const [x, y] = this.haltonSequence[this.haltonIndex]
-
-			const { width, height } = this.lastSize
-
-			const m = 1 / this.resolutionScale
-
-			// jittering the view offset each frame reduces aliasing for the reflection
-			if (this._camera.setViewOffset) this._camera.setViewOffset(width, height, x * m, y * m, width, height)
-		}
+		this.temporalResolvePass.jitter()
 
 		// render reflections of current frame
 		this.reflectionsPass.render(renderer, inputBuffer)
@@ -332,9 +319,7 @@ export class SSREffect extends Effect {
 		// compose reflection of last and current frame into one reflection
 		this.temporalResolvePass.render(renderer)
 
-		this._camera.clearViewOffset()
-
-		// this.uniforms.get("reflectionsTexture").value = this.reflectionsPass.downsamplingPass.renderTarget.texture[1]
+		this.temporalResolvePass.unjitter()
 	}
 
 	static patchDirectEnvIntensity(envMapIntensity = 0) {

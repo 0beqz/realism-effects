@@ -12,8 +12,9 @@ import {
 	Vector3,
 	WebGLRenderTarget
 } from "three"
-import { TemporalResolveMaterial } from "../material/TemporalResolveMaterial"
-import { VelocityPass } from "./VelocityPass"
+import { generateHalton23Points } from "./utils/generateHalton23Points"
+import { TemporalResolveMaterial } from "./material/TemporalResolveMaterial"
+import { VelocityPass } from "./pass/VelocityPass"
 
 const zeroVec2 = new Vector2()
 
@@ -22,9 +23,12 @@ const zeroVec2 = new Vector2()
 // the custom compose shader will write the final color to the variable "outputColor"
 
 export class TemporalResolvePass extends Pass {
+	haltonSequence = []
+	haltonIndex = 0
+	jitterScale = 1
 	renderVelocity = false
 	velocityPass = null
-	velocityResolutionScale = 1
+	qualityScale = 1
 	samples = 1
 	lastCameraTransform = {
 		position: new Vector3(),
@@ -63,7 +67,8 @@ export class TemporalResolvePass extends Pass {
 
 		this.fullscreenMaterial = new TemporalResolveMaterial(customComposeShader)
 
-		this.fullscreenMaterial.defines.correctionRadius = options.correctionRadius || 1
+		this.fullscreenMaterial.defines.correctionRadius =
+			options.correctionRadius === undefined ? 1 : options.correctionRadius
 
 		if (options.dilation) this.fullscreenMaterial.defines.dilation = ""
 		if (options.boxBlur) this.fullscreenMaterial.defines.boxBlur = ""
@@ -73,14 +78,14 @@ export class TemporalResolvePass extends Pass {
 		if (options.maxNeighborDepthDifference !== undefined)
 			this.fullscreenMaterial.defines.maxNeighborDepthDifference = options.maxNeighborDepthDifference.toFixed(5)
 
-		let velocityResolutionScale = options.velocityResolutionScale === undefined ? 1 : options.velocityResolutionScale
+		let qualityScale = options.qualityScale === undefined ? 1 : options.qualityScale
 
-		Object.defineProperty(this, "velocityResolutionScale", {
+		Object.defineProperty(this, "qualityScale", {
 			get() {
-				return velocityResolutionScale
+				return qualityScale
 			},
 			set(value) {
-				velocityResolutionScale = value
+				qualityScale = value
 
 				this.setSize(this.renderTarget.width, this.renderTarget.height)
 			}
@@ -103,7 +108,7 @@ export class TemporalResolvePass extends Pass {
 
 	setSize(width, height) {
 		this.renderTarget.setSize(width, height)
-		this.velocityPass.setSize(width * this.velocityResolutionScale, height * this.velocityResolutionScale)
+		this.velocityPass.setSize(width * this.qualityScale, height * this.qualityScale)
 		this.velocityPass.renderTarget.texture.needsUpdate = true
 
 		this.fullscreenMaterial.uniforms.invTexSize.value.set(1 / width, 1 / height)
@@ -115,15 +120,11 @@ export class TemporalResolvePass extends Pass {
 		if (this.lastVelocityTexture) this.lastVelocityTexture.dispose()
 
 		this.accumulatedTexture = new FramebufferTexture(width, height, RGBAFormat)
-		this.accumulatedTexture.minFilter = NearestFilter
-		this.accumulatedTexture.magFilter = NearestFilter
+		this.accumulatedTexture.minFilter = LinearFilter
+		this.accumulatedTexture.magFilter = LinearFilter
 		this.accumulatedTexture.type = HalfFloatType
 
-		this.lastVelocityTexture = new FramebufferTexture(
-			width * this.velocityResolutionScale,
-			height * this.velocityResolutionScale,
-			RGBAFormat
-		)
+		this.lastVelocityTexture = new FramebufferTexture(width * this.qualityScale, height * this.qualityScale, RGBAFormat)
 		this.lastVelocityTexture.minFilter = NearestFilter
 		this.lastVelocityTexture.magFilter = NearestFilter
 		this.lastVelocityTexture.type = FloatType
@@ -153,7 +154,6 @@ export class TemporalResolvePass extends Pass {
 				this.fullscreenMaterial.uniforms.velocityTexture.value = this.velocityPass.renderTarget.texture
 				this.fullscreenMaterial.uniforms.lastVelocityTexture.value = this.lastVelocityTexture
 				this.fullscreenMaterial.needsUpdate = true
-				// console.log("set", this.lastVelocityTexture)
 
 				if (!this._scene.userData.velocityTexture) {
 					this._scene.userData.velocityTexture = this.velocityPass.renderTarget.texture
@@ -186,6 +186,8 @@ export class TemporalResolvePass extends Pass {
 		this.fullscreenMaterial.uniforms.curInverseProjectionMatrix.value.copy(this._camera.projectionMatrixInverse)
 		this.fullscreenMaterial.uniforms.curCameraMatrixWorld.value.copy(this._camera.matrixWorld)
 
+		this._camera.clearViewOffset()
+
 		const isUsingSharedVelocityTexture = this.checkCanUseSharedVelocityTexture()
 		if (!isUsingSharedVelocityTexture && this.renderVelocity) {
 			this.velocityPass.render(renderer)
@@ -207,5 +209,26 @@ export class TemporalResolvePass extends Pass {
 
 		this.fullscreenMaterial.uniforms.prevInverseProjectionMatrix.value.copy(this._camera.projectionMatrixInverse)
 		this.fullscreenMaterial.uniforms.prevCameraMatrixWorld.value.copy(this._camera.matrixWorld)
+	}
+
+	jitter() {
+		if (this.jitterScale === 0) return
+
+		if (this.haltonSequence.length === 0) this.haltonSequence = generateHalton23Points(1024)
+
+		// cheap trick to get rid of aliasing on the final buffer (technique known from TAA)
+		this.haltonIndex = (this.haltonIndex + 1) % this.haltonSequence.length
+
+		const [x, y] = this.haltonSequence[this.haltonIndex]
+
+		const { width, height } = this.renderTarget
+
+		// jittering the view offset each frame reduces aliasing for the reflection
+		if (this._camera.setViewOffset)
+			this._camera.setViewOffset(width, height, x * this.jitterScale, y * this.jitterScale, width, height)
+	}
+
+	unjitter() {
+		this._camera.clearViewOffset()
 	}
 }

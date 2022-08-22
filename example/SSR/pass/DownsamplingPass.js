@@ -147,8 +147,6 @@ export class DownsamplingPass extends Pass {
 	}
 
 	setSize(width, height) {
-		width *= 0.5
-		height *= 0.5
 		this.renderTarget.setSize(width, height)
 
 		const invTexSize = new Vector2(1 / width, 1 / height)

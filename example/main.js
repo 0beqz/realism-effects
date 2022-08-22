@@ -100,10 +100,11 @@ const setAA = value => {
 
 // since using "rendererCanvas" doesn't work when using an offscreen canvas
 const controls = new OrbitControls(camera, document.querySelector("#orbitControlsDomElem"))
-camera.position.set(-6, 2.46102 + 2, 0)
-controls.target.set(0, 2.46102, 0)
+camera.position.fromArray([-55.48651952979117, 14.717377645401774, 2.3037376138234147])
+controls.target.fromArray([-25.74478629167503, 14.14908331969509, -1.5829506361015864])
 controls.maxPolarAngle = Math.PI / 2
 controls.maxDistance = 30
+window.controls = controls
 
 const composer = new POSTPROCESSING.EffectComposer(renderer)
 window.composer = composer
@@ -240,16 +241,15 @@ gltflLoader.load(url, asset => {
 		...defaultSSROptions,
 		...{
 			maxDepthDifference: 100,
+			exponent: 1,
 			power: 1,
 			ior: 2.33,
-			blur: 1,
-			blurKernel: 3,
-			blurSharpness: 32,
+			blur: 0,
 			intensity: 0.95,
 			missedRays: true,
 			correctionRadius: 1,
 			resolutionScale: 0.5,
-			velocityResolutionScale: 0.5,
+			qualityScale: 0.5,
 			distance: 30,
 			steps: 20,
 			spp: 8,

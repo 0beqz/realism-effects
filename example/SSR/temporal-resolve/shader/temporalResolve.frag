@@ -41,6 +41,7 @@ vec3 transformColor(vec3 color) {
 #ifdef logTransform
     return log(max(color, vec3(FLOAT_EPSILON)));
 #else
+    if (exponent == 1.0) return color;
     return pow(abs(color), transformexponent);
 #endif
 }

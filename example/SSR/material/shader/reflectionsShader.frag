@@ -48,7 +48,7 @@ vec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
 vec2 BinarySearch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
 float fastGetViewZ(const in float depth);
 vec3 getIBLRadiance(const in vec3 viewDir, const in vec3 normal, const in float roughness);
-vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float lastFrameAlpha, float sampleCount, vec3 worldPos);
+vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float lastFrameAlpha, float sampleCount, vec3 worldPos, float spread);
 
 vec2 hash23(vec3 p3) {
     p3 = fract(p3 * vec3(.1031, .1030, .0973));
@@ -92,14 +92,13 @@ void main() {
 
     if (roughness > maxRoughness || (roughness > 1.0 - FLOAT_EPSILON && roughnessFade > 1.0 - FLOAT_EPSILON)) {
         float fresnelFactor = fresnel_dielectric(viewDir, viewNormal, ior);
-        vec3 iblRadiance = getIBLRadiance(-viewDir, viewNormal, 0.) * fresnelFactor;
+        vec3 iblRadiance = getIBLRadiance(-viewDir, viewNormal, roughness) * fresnelFactor;
         iblRadiance = clamp(iblRadiance, vec3(0.0), vec3(1.0));
         gl_FragColor = vec4(iblRadiance, lastFrameAlpha);
         return;
     }
 
     vec3 ssrCol;
-    float alpha;
 
     int iterations = (jitter == 0.0 && roughness < 0.05) ? 1 : spp;
 
@@ -107,30 +106,32 @@ void main() {
 
     float weight = 1.0 / float(iterations);
 
+    float spread = jitter + roughness * jitterRoughness;
+    spread = min(1.0, spread);
+
     for (int s = 0; s <= iterations; s++) {
         float sF = float(s);
-        vec4 SSR = doSample(viewPos, viewDir, viewNormal, roughness, lastFrameAlpha, sF, worldPos);
+        vec4 SSR = doSample(viewPos, viewDir, viewNormal, roughness, lastFrameAlpha, sF, worldPos, spread);
         float m = 1. / (sF + 1.);
 
         ssrCol = mix(ssrCol, SSR.xyz, weight);
-        alpha = max(alpha, SSR.a);
     }
 
     float roughnessFactor = mix(specular, 1.0, max(0.0, 1.0 - roughnessFade));
 
     vec3 finalSSR = ssrCol * roughnessFactor;
     finalSSR = clamp(finalSSR, vec3(0.0), vec3(1.0));
-    // alpha = min(lastFrameAlpha, alpha);
 
-    gl_FragColor = vec4(finalSSR, lastFrameAlpha);
+    float alpha = lastFrameAlpha;
+
+    // this reduces the smearing on mirror-like or glossy surfaces
+    if (samples < 2. && spread < 0.5) alpha = min(lastFrameAlpha, spread * 0.25);
+
+    gl_FragColor = vec4(finalSSR, alpha);
 }
 
-vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float lastFrameAlpha, float sampleCount, vec3 worldPos) {
-    // jitteriing
-    vec3 jitt = vec3(0.0);
-
-    float specular = 1.0 - roughness;
-
+vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float lastFrameAlpha, float sampleCount, vec3 worldPos, float spread) {
+    // jittering
     if (jitterRoughness != 0.0 || jitter != 0.0) {
         float ind = log(samples * float(spp) + sampleCount);
 
@@ -140,24 +141,17 @@ vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
         float r1 = random.x;
         float r2 = random.y;
 
-        float angle = TWO_PI;
-
-        float x = cos(angle * r1) * 2. * sqrt(r2 * (1.0 - r2));
-        float y = sin(angle * r1) * 2. * sqrt(r2 * (1.0 - r2));
+        float x = cos(TWO_PI * r1) * 2. * sqrt(r2 * (1.0 - r2));
+        float y = sin(TWO_PI * r1) * 2. * sqrt(r2 * (1.0 - r2));
         float z = 1. - 2. * r2;
 
         vec3 randomJitter = vec3(x, y, z);
-        jitt = randomJitter;
+        viewNormal += randomJitter * spread;
     }
-
-    float spread = jitter + roughness * jitterRoughness;
-    spread = min(1.0, spread);
-
-    viewNormal += jitt * spread;
 
     float fresnelFactor = fresnel_dielectric(viewDir, viewNormal, ior);
 
-    vec3 iblRadiance = getIBLRadiance(-viewDir, viewNormal, 0.) * fresnelFactor;
+    vec3 iblRadiance = getIBLRadiance(-viewDir, viewNormal, spread) * fresnelFactor;
     iblRadiance = clamp(iblRadiance, vec3(0.0), vec3(1.0));
 
     // view-space reflected ray
@@ -180,12 +174,12 @@ vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     float reflectionIntensity = 1.0 - (max(0.0, maxDimension - screenFade) / (1.0 - screenFade));
     reflectionIntensity = max(0., reflectionIntensity);
 
-    vec3 hitWorldPos2 = screenSpaceToWorldSpace(coords, rayHitDepthDifference);
+    vec3 hitWorldPos = screenSpaceToWorldSpace(coords, rayHitDepthDifference);
 
     // distance from the reflection point to what it's reflecting
-    float reflectionDistance2 = distance(hitWorldPos2, worldPos);
+    float reflectionDistance = distance(hitWorldPos, worldPos);
 
-    float lod = min(8., sqrt(reflectionDistance2) * 7.5 * spread);
+    float lod = min(8., log(reflectionDistance) * 10.0 * spread);
     vec4 SSRTexel = textureLod(inputTexture, coords.xy, lod);
     vec4 SSRTexelReflected = textureLod(accumulatedTexture, coords.xy, lod);
 
@@ -194,18 +188,15 @@ vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     vec3 finalSSR = mix(iblRadiance, SSR, reflectionIntensity);
 
     if (fade != 0.0) {
-        vec3 hitWorldPos = screenSpaceToWorldSpace(coords, rayHitDepthDifference);
-
-        // distance from the reflection point to what it's reflecting
-        float reflectionDistance = distance(hitWorldPos, worldPos) + 1.0;
-
-        float opacity = 1.0 / (reflectionDistance * fade * 0.1);
+        float opacity = 1.0 / ((reflectionDistance + 1.0) * fade * 0.1);
         if (opacity > 1.0) opacity = 1.0;
         finalSSR *= opacity;
     }
 
     finalSSR *= fresnelFactor;
     finalSSR = min(vec3(1.0), finalSSR);
+
+    // finalSSR = vec3(floor(lod) / 8.);
 
     return vec4(finalSSR, SSRTexelReflected.a);
 }
@@ -330,10 +321,10 @@ vec3 getIBLRadiance(const in vec3 viewDir, const in vec3 normal, const in float 
     vec3 reflectVec = reflect(-viewDir, normal);
 
     // Mixing the reflection with the normal is more accurate and keeps rough objects from gathering light from behind their tangent plane.
-    reflectVec = normalize(mix(reflectVec, normal, roughness * roughness));
+    // reflectVec = normalize(mix(reflectVec, normal, roughness * roughness));
     reflectVec = inverseTransformDirection(reflectVec, viewMatrix);
 
-    vec4 envMapColor = textureCubeUV(envMap, reflectVec, roughness);
+    vec4 envMapColor = textureCubeUV(envMap, reflectVec, min(0.2, roughness));
     return envMapColor.rgb;
 #else
     return vec3(0.0);

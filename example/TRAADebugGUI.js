@@ -19,7 +19,7 @@ export class TRAADebugGUI {
 		const temporalResolveFolder = pane.addFolder({ title: "Temporal Resolve" })
 
 		temporalResolveFolder.addInput(params, "blend", { min: 0, max: 1, step: 0.001 })
-		temporalResolveFolder.addInput(params, "velocityResolutionScale", { min: 0.01, max: 1, step: 0.125 })
+		temporalResolveFolder.addInput(params, "qualityScale", { min: 0.01, max: 1, step: 0.125 })
 		temporalResolveFolder.addInput(params, "correction", { min: 0.01, max: 1, step: 0.01 })
 		temporalResolveFolder.addInput(params, "correctionRadius", { min: 1, max: 4, step: 1 })
 		temporalResolveFolder.addInput(params, "dilation")
