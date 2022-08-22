@@ -2,6 +2,7 @@
  * Options of the SSR effect
  * @typedef {Object} SSROptions
  * @property {Number} [intensity] intensity of the reflections
+ * @property {Number} [power] the exponent by whicht the final reflections color will be potentiated
  * @property {Number} [exponent] exponent by which reflections will be potentiated when composing the current frame's reflections and the accumulated reflections into a final reflection; higher values will make reflections clearer by highlighting darker spots less
  * @property {Number} [distance] maximum distance a reflection ray can travel to find what it reflects
  * @property {Number} [fade] how much reflections will fade out by distance
@@ -20,6 +21,7 @@
  * @property {Number} [jitterRoughness] how intense jittering should be in relation to a material's roughness
  * @property {Number} [steps] number of steps a reflection ray can maximally do to find an object it intersected (and thus reflects)
  * @property {Number} [refineSteps] once we had our ray intersect something, we need to find the exact point in space it intersected and thus it reflects; this can be done through binary search with the given number of maximum steps
+ * @property {Number} [steps] number of samples per pixel
  * @property {boolean} [missedRays] if there should still be reflections for rays for which a reflecting point couldn't be found; enabling this will result in stretched looking reflections which can look good or bad depending on the angle
  * @property {boolean} [useNormalMap] if roughness maps should be taken account of when calculating reflections
  * @property {boolean} [useRoughnessMap] if normal maps should be taken account of when calculating reflections
@@ -33,6 +35,7 @@
  */
 export const defaultSSROptions = {
 	intensity: 1,
+	power: 1,
 	exponent: 1,
 	distance: 10,
 	fade: 0,
@@ -51,6 +54,7 @@ export const defaultSSROptions = {
 	jitterRoughness: 0,
 	steps: 20,
 	refineSteps: 5,
+	spp: 1,
 	missedRays: true,
 	useNormalMap: true,
 	useRoughnessMap: true,

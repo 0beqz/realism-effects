@@ -59,6 +59,8 @@ const getIBLRadiance_patch = /* glsl */ `
 `
 
 export function useBoxProjectedEnvMap(shader, envMapPosition, envMapSize) {
+	if ("BOX_PROJECTED_ENV_MAP" in shader.defines) return
+
 	// defines
 	shader.defines.BOX_PROJECTED_ENV_MAP = ""
 

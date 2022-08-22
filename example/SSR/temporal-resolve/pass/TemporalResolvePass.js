@@ -4,6 +4,7 @@ import {
 	FramebufferTexture,
 	HalfFloatType,
 	LinearFilter,
+	LinearMipMapLinearFilter,
 	NearestFilter,
 	Quaternion,
 	RGBAFormat,
@@ -39,7 +40,9 @@ export class TemporalResolvePass extends Pass {
 			dilation: true,
 			boxBlur: true,
 			maxNeighborDepthDifference: 1,
-			logTransform: false
+			logTransform: false,
+			neighborhoodClamping: false,
+			generateMipmaps: false
 		}
 	) {
 		super("TemporalResolvePass")
@@ -48,8 +51,9 @@ export class TemporalResolvePass extends Pass {
 		this._camera = camera
 
 		this.renderTarget = new WebGLRenderTarget(1, 1, {
-			minFilter: LinearFilter,
-			magFilter: LinearFilter,
+			minFilter: options.generateMipmaps === true ? LinearMipMapLinearFilter : LinearFilter,
+			magFilter: options.generateMipmaps === true ? LinearMipMapLinearFilter : LinearFilter,
+			generateMipmaps: options.generateMipmaps === true,
 			type: HalfFloatType,
 			depthBuffer: false
 		})
@@ -60,9 +64,12 @@ export class TemporalResolvePass extends Pass {
 		this.fullscreenMaterial = new TemporalResolveMaterial(customComposeShader)
 
 		this.fullscreenMaterial.defines.correctionRadius = options.correctionRadius || 1
+
 		if (options.dilation) this.fullscreenMaterial.defines.dilation = ""
 		if (options.boxBlur) this.fullscreenMaterial.defines.boxBlur = ""
 		if (options.logTransform) this.fullscreenMaterial.defines.logTransform = ""
+		if (options.neighborhoodClamping) this.fullscreenMaterial.defines.neighborhoodClamping = ""
+
 		if (options.maxNeighborDepthDifference !== undefined)
 			this.fullscreenMaterial.defines.maxNeighborDepthDifference = options.maxNeighborDepthDifference.toFixed(5)
 
@@ -108,8 +115,8 @@ export class TemporalResolvePass extends Pass {
 		if (this.lastVelocityTexture) this.lastVelocityTexture.dispose()
 
 		this.accumulatedTexture = new FramebufferTexture(width, height, RGBAFormat)
-		this.accumulatedTexture.minFilter = LinearFilter
-		this.accumulatedTexture.magFilter = LinearFilter
+		this.accumulatedTexture.minFilter = NearestFilter
+		this.accumulatedTexture.magFilter = NearestFilter
 		this.accumulatedTexture.type = HalfFloatType
 
 		this.lastVelocityTexture = new FramebufferTexture(

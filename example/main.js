@@ -1,19 +1,17 @@
 import * as POSTPROCESSING from "postprocessing"
 import Stats from "stats.js"
 import * as THREE from "three"
-import { Color, MeshBasicMaterial, Vector2 } from "three"
+import { Color, DirectionalLight, HalfFloatType, LinearMipMapLinearFilter, MeshBasicMaterial, Vector3 } from "three"
+import { WebGLRenderTarget } from "three/build/three.module"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader"
 import { GroundProjectedEnv } from "three/examples/jsm/objects/GroundProjectedEnv"
 import { TRAAEffect } from "../src/TRAAEffect"
-import "./style.css"
-import { TRAADebugGUI } from "./TRAADebugGUI"
 import { defaultSSROptions, SSREffect } from "./SSR/index"
 import { SSRDebugGUI } from "./SSRDebugGUI"
-import { Vector3 } from "three"
-import { DirectionalLight } from "three"
-import { FogExp2 } from "three"
+import "./style.css"
+import { TRAADebugGUI } from "./TRAADebugGUI"
 
 SSREffect.patchDirectEnvIntensity()
 
@@ -67,7 +65,7 @@ const renderer = new THREE.WebGLRenderer({
 window.renderer = renderer
 
 renderer.outputEncoding = THREE.sRGBEncoding
-renderer.toneMapping = THREE.CineonToneMapping
+renderer.toneMapping = THREE.ACESFilmicToneMapping
 renderer.toneMappingExposure = 1.4
 renderer.setPixelRatio(window.devicePixelRatio)
 renderer.setSize(window.innerWidth, window.innerHeight)
@@ -108,8 +106,17 @@ controls.maxPolarAngle = Math.PI / 2
 controls.maxDistance = 30
 
 const composer = new POSTPROCESSING.EffectComposer(renderer)
+window.composer = composer
 const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
 composer.addPass(renderPass)
+
+composer.inputBuffer = new WebGLRenderTarget(window.innerWidth, window.innerHeight, {
+	...composer.inputBuffer,
+	minFilter: LinearMipMapLinearFilter,
+	magFilter: LinearMipMapLinearFilter,
+	generateMipmaps: true,
+	type: HalfFloatType
+})
 
 const params = {
 	blend: 0.9,
@@ -151,14 +158,15 @@ gltflLoader.load(url, asset => {
 			// c.material.wireframe = true
 			c.material.envMapIntensity = 0
 			c.material.roughness = 0.1
+			c.material.normalScale.setScalar(0)
 			c.castShadow = c.receiveShadow = true
 		}
 	})
 
-	// scene.getObjectByName("Wall_Floor2_0").material.roughness = 0.025
+	// scene.getObjectByName("Wall_Floor2_0").material.color.setRGB(0, 1, 1)
 
 	const plane = scene.getObjectByName("Plane")
-	if (plane) {
+	if (plane && plane.material) {
 		plane.material = new MeshBasicMaterial({
 			map: plane.material.map,
 			aoMap: plane.material.map,
@@ -180,15 +188,23 @@ gltflLoader.load(url, asset => {
 		sphere.material.envMapIntensity = 0.25
 	}
 
-	scene.getObjectByName("Cube").material = new MeshBasicMaterial({
-		map: scene.getObjectByName("Cube").material.map,
-		color: new Color().setScalar(10),
-		fog: true
-	})
-	scene.getObjectByName("Cube").castShadow = false
-	scene.getObjectByName("Cube").receiveShadow = true
+	if (scene.getObjectByName("Cube")) {
+		scene.getObjectByName("Cube").material = new MeshBasicMaterial({
+			map: scene.getObjectByName("Cube").material.map,
+			color: new Color().setScalar(10),
+			fog: true
+		})
+		scene.getObjectByName("Cube").castShadow = false
+		scene.getObjectByName("Cube").receiveShadow = true
+	}
 
-	const light = new DirectionalLight(0xffaa44, 10)
+	if (scene.getObjectByName("Icosphere")) {
+		scene.getObjectByName("Icosphere").material = new MeshBasicMaterial({
+			color: scene.getObjectByName("Icosphere").material.color.clone().multiplyScalar(100)
+		})
+	}
+
+	const light = new DirectionalLight(0xff8822, 10)
 	light.position.set(-500, 207, 98)
 	light.updateMatrixWorld()
 	light.castShadow = true
@@ -213,31 +229,32 @@ gltflLoader.load(url, asset => {
 	light.shadow.camera.right = s
 	light.shadow.camera.top = s
 
-	const velCatcher = new THREE.Mesh(new THREE.PlaneBufferGeometry(512, 512))
-	velCatcher.material.colorWrite = false
-	velCatcher.material.depthWrite = false
-	velCatcher.rotation.x = -Math.PI / 2
-	velCatcher.updateMatrixWorld()
-	scene.add(velCatcher)
+	// const velCatcher = new THREE.Mesh(new THREE.PlaneBufferGeometry(512, 512))
+	// velCatcher.material.colorWrite = false
+	// velCatcher.material.depthWrite = false
+	// velCatcher.rotation.x = -Math.PI / 2
+	// velCatcher.updateMatrixWorld()
+	// scene.add(velCatcher)
 
 	const options = {
 		...defaultSSROptions,
 		...{
 			maxDepthDifference: 100,
-			exponent: 0.3,
+			power: 1,
 			ior: 2.33,
-			blur: 0,
+			blur: 1,
 			blurKernel: 3,
 			blurSharpness: 32,
-			intensity: 2.5,
+			intensity: 0.95,
 			missedRays: true,
-			correctionRadius: 2,
-			resolutionScale: 1,
-			velocityResolutionScale: 1,
+			correctionRadius: 1,
+			resolutionScale: 0.5,
+			velocityResolutionScale: 0.5,
 			distance: 30,
 			steps: 20,
+			spp: 8,
 			refineSteps: 2,
-			blend: 0.925,
+			blend: 0.95,
 			jitter: 0.7,
 			jitterRoughness: 0,
 			correction: 0
@@ -276,23 +293,27 @@ gltflLoader.load(url, asset => {
 		traaEffect.temporalResolvePass.samples = 1
 		renderer.shadowMap.needsUpdate = true
 		light.updateMatrixWorld()
+		createEnvMap()
 	})
 	sceneFolder.addInput(light.position, "y", { min: -500, max: 500, step: 1 }).on("change", ev => {
 		ssrEffect.temporalResolvePass.samples = 1
 		traaEffect.temporalResolvePass.samples = 1
 		renderer.shadowMap.needsUpdate = true
 		light.updateMatrixWorld()
+		createEnvMap()
 	})
 	sceneFolder.addInput(light.position, "z", { min: -500, max: 500, step: 1 }).on("change", ev => {
 		ssrEffect.temporalResolvePass.samples = 1
 		traaEffect.temporalResolvePass.samples = 1
 		renderer.shadowMap.needsUpdate = true
 		light.updateMatrixWorld()
+		createEnvMap()
 	})
 	sceneFolder.addInput(light, "intensity", { min: 0, max: 40, step: 0.1 }).on("change", ev => {
 		ssrEffect.temporalResolvePass.samples = 1
 		traaEffect.temporalResolvePass.samples = 1
 		renderer.shadowMap.needsUpdate = true
+		createEnvMap()
 	})
 	stats = new Stats()
 	stats.showPanel(0)
@@ -314,13 +335,21 @@ gltflLoader.load(url, asset => {
 
 	ssrEffect = new SSREffect(scene, camera, options)
 
-	scene.environment = ssrEffect.generateBoxProjectedEnvMapFallback(
-		renderer,
-		new Vector3(0, 10, 0),
-		new Vector3(57.6103 * 2, 61.6674, 50.5753 * 2)
-	)
+	new RGBELoader().load("lago_disola_2k.hdr", envMap => {
+		envMap.mapping = THREE.EquirectangularReflectionMapping
 
-	ambientLight.intensity = 0
+		scene.environment = envMap
+
+		envMesh = new GroundProjectedEnv(envMap)
+		envMesh.radius = 440
+		envMesh.height = 20
+		envMesh.scale.setScalar(100)
+		envMesh.updateMatrixWorld()
+		scene.add(envMesh)
+		envMesh.visible = false
+
+		createEnvMap()
+	})
 
 	scene.traverse(c => {
 		if (c.isMesh && c.material.isMeshStandardMaterial) {
@@ -361,23 +390,24 @@ gltflLoader.load(url, asset => {
 
 		fxaaPass = new POSTPROCESSING.EffectPass(camera, fxaaEffect)
 
-		new RGBELoader().load("lago_disola_2k.hdr", envMap => {
-			envMap.mapping = THREE.EquirectangularReflectionMapping
-
-			// scene.environment = envMap
-
-			envMesh = new GroundProjectedEnv(envMap)
-			envMesh.radius = 440
-			envMesh.height = 20
-			envMesh.scale.setScalar(100)
-			envMesh.updateMatrixWorld()
-			scene.add(envMesh)
-			envMesh.visible = false
-		})
-
 		loop()
 	})
 })
+
+const createEnvMap = () => {
+	if (scene.getObjectByName("Object_2")) scene.getObjectByName("Object_2").visible = false
+
+	const env = ssrEffect.generateBoxProjectedEnvMapFallback(
+		renderer,
+		new Vector3(0, 5, 0),
+		new Vector3(64.6103 * 2, 150, 60.5753 * 2)
+	)
+
+	if (scene.getObjectByName("Object_2")) scene.getObjectByName("Object_2").visible = true
+
+	scene.environment = env
+	ambientLight.intensity = 0
+}
 
 const loadingEl = document.querySelector("#loading")
 
@@ -430,8 +460,6 @@ const loop = () => {
 		skinMesh.updateMatrixWorld()
 		// skinMesh = null
 	}
-
-	// mesh.rotation.y += 5 * dt
 
 	controls.update()
 

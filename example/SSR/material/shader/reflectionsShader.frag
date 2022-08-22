@@ -1,9 +1,12 @@
 ﻿varying vec2 vUv;
 
+// precision lowp float;
+
 uniform sampler2D inputTexture;
 uniform sampler2D accumulatedTexture;
 uniform sampler2D normalTexture;
 uniform sampler2D depthTexture;
+uniform sampler2D fullResDepthTexture;
 uniform sampler2D envMap;
 
 uniform mat4 _projectionMatrix;
@@ -19,6 +22,7 @@ uniform float maxRoughness;
 uniform float fade;
 uniform float thickness;
 uniform float ior;
+uniform vec2 invTexSize;
 
 uniform float samples;
 uniform float exponent;
@@ -29,7 +33,7 @@ uniform float jitterRoughness;
 #define INVALID_RAY_COORDS vec2(-1.0);
 #define EARLY_OUT_COLOR    vec4(0.0, 0.0, 0.0, 1.0)
 #define FLOAT_EPSILON      0.00001
-#define M_PI               3.1415926535897932384626433832795
+#define TWO_PI             6.283185307179586
 
 float nearMinusFar;
 float nearMulFar;
@@ -44,7 +48,7 @@ vec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
 vec2 BinarySearch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
 float fastGetViewZ(const in float depth);
 vec3 getIBLRadiance(const in vec3 viewDir, const in vec3 normal, const in float roughness);
-vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float lastFrameAlpha, float sampleCount);
+vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float lastFrameAlpha, float sampleCount, vec3 worldPos);
 
 vec2 hash23(vec3 p3) {
     p3 = fract(p3 * vec3(.1031, .1030, .0973));
@@ -97,52 +101,59 @@ void main() {
     vec3 ssrCol;
     float alpha;
 
-    for (float s = 0.0; s < 2.0; s++) {
-        vec4 SSR = doSample(viewPos, viewDir, viewNormal, roughness, lastFrameAlpha, s);
-        float m = 1. / (s + 1.);
+    int iterations = (jitter == 0.0 && roughness < 0.05) ? 1 : spp;
 
-        ssrCol = mix(ssrCol, SSR.xyz, m);
+    if (lastFrameAlpha <= 0.05) iterations += 4;
+
+    float weight = 1.0 / float(iterations);
+
+    for (int s = 0; s <= iterations; s++) {
+        float sF = float(s);
+        vec4 SSR = doSample(viewPos, viewDir, viewNormal, roughness, lastFrameAlpha, sF, worldPos);
+        float m = 1. / (sF + 1.);
+
+        ssrCol = mix(ssrCol, SSR.xyz, weight);
         alpha = max(alpha, SSR.a);
     }
 
     float roughnessFactor = mix(specular, 1.0, max(0.0, 1.0 - roughnessFade));
 
     vec3 finalSSR = ssrCol * roughnessFactor;
-    alpha = min(lastFrameAlpha, alpha);
+    finalSSR = clamp(finalSSR, vec3(0.0), vec3(1.0));
+    // alpha = min(lastFrameAlpha, alpha);
 
-    gl_FragColor = vec4(finalSSR, alpha);
+    gl_FragColor = vec4(finalSSR, lastFrameAlpha);
 }
 
-vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float lastFrameAlpha, float sampleCount) {
+vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float lastFrameAlpha, float sampleCount, vec3 worldPos) {
     // jitteriing
     vec3 jitt = vec3(0.0);
 
     float specular = 1.0 - roughness;
 
     if (jitterRoughness != 0.0 || jitter != 0.0) {
-        float ind = (samples * 2.0 + sampleCount);
+        float ind = log(samples * float(spp) + sampleCount);
 
-        vec3 seed = 50.0 * ind * worldPos;
+        vec3 seed = 50.0 * ind * worldPos + ind;
 
         vec2 random = hash23(seed);
         float r1 = random.x;
         float r2 = random.y;
 
-        float angle = 2.0 * M_PI;
+        float angle = TWO_PI;
 
         float x = cos(angle * r1) * 2. * sqrt(r2 * (1.0 - r2));
         float y = sin(angle * r1) * 2. * sqrt(r2 * (1.0 - r2));
         float z = 1. - 2. * r2;
 
         vec3 randomJitter = vec3(x, y, z);
-        randomJitter = normalize(randomJitter);
         jitt = randomJitter;
     }
 
     float spread = jitter + roughness * jitterRoughness;
     spread = min(1.0, spread);
 
-    viewNormal = mix(viewNormal, jitt, spread);
+    viewNormal += jitt * spread;
 
     float fresnelFactor = fresnel_dielectric(viewDir, viewNormal, ior);
 
@@ -150,7 +161,7 @@ vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     iblRadiance = clamp(iblRadiance, vec3(0.0), vec3(1.0));
 
     // view-space reflected ray
-    vec3 reflected = reflect(viewDir, viewNormal);
+    vec3 reflected = normalize(reflect(viewDir, viewNormal));
 
     vec3 rayDir = reflected * -viewPos.z;
 
@@ -169,8 +180,14 @@ vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     float reflectionIntensity = 1.0 - (max(0.0, maxDimension - screenFade) / (1.0 - screenFade));
     reflectionIntensity = max(0., reflectionIntensity);
 
-    vec4 SSRTexel = textureLod(inputTexture, coords.xy, 0.0);
-    vec4 SSRTexelReflected = textureLod(accumulatedTexture, coords.xy, 0.0);
+    vec3 hitWorldPos2 = screenSpaceToWorldSpace(coords, rayHitDepthDifference);
+
+    // distance from the reflection point to what it's reflecting
+    float reflectionDistance2 = distance(hitWorldPos2, worldPos);
+
+    float lod = min(8., sqrt(reflectionDistance2) * 7.5 * spread);
+    vec4 SSRTexel = textureLod(inputTexture, coords.xy, lod);
+    vec4 SSRTexelReflected = textureLod(accumulatedTexture, coords.xy, lod);
 
     vec3 SSR = SSRTexel.rgb + SSRTexelReflected.rgb;
 
@@ -190,9 +207,7 @@ vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     finalSSR *= fresnelFactor;
     finalSSR = min(vec3(1.0), finalSSR);
 
-    float alpha = hitPos.z == 1.0 ? 1.0 : SSRTexelReflected.a;
-
-    return vec4(finalSSR, alpha);
+    return vec4(finalSSR, SSRTexelReflected.a);
 }
 
 vec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {
@@ -213,12 +228,10 @@ vec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {
         // [-1, 1] --> [0, 1] (NDC to screen position)
         projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;
 
-// the ray is outside the camera's frustum
-#ifndef missedRays
+        // the ray is outside the camera's frustum
         if (projectedCoord.x < 0.0 || projectedCoord.x > 1.0 || projectedCoord.y < 0.0 || projectedCoord.y > 1.0) {
             return INVALID_RAY_COORDS;
         }
-#endif
 
         depthTexel = textureLod(depthTexture, projectedCoord.xy, 0.0);
 
@@ -237,12 +250,10 @@ vec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {
 #endif
         }
 
-#ifndef missedRays
         // the ray is behind the camera
         if (hitPos.z > 0.0) {
             return INVALID_RAY_COORDS;
         }
-#endif
 
         lastProjectedCoord = projectedCoord;
     }
@@ -271,7 +282,7 @@ vec2 BinarySearch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDiffere
         projectedCoord.xy /= projectedCoord.w;
         projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;
 
-        depthTexel = textureLod(depthTexture, projectedCoord.xy, 0.0);
+        depthTexel = textureLod(fullResDepthTexture, projectedCoord.xy, 0.0);
 
         unpackedDepth = unpackRGBAToDepth(depthTexel);
         depth = fastGetViewZ(unpackedDepth);

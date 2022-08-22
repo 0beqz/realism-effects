@@ -16,8 +16,9 @@ export class SSRDebugGUI {
 
 		const generalFolder = pane.addFolder({ title: "General" })
 		generalFolder.addInput(params, "intensity", { min: 0, max: 20, step: 0.01 })
+		generalFolder.addInput(params, "power", { min: 0.025, max: 5, step: 0.025 })
 		generalFolder.addInput(params, "exponent", { min: 0.025, max: 5, step: 0.025 })
-		generalFolder.addInput(params, "distance", { min: 0.001, max: 50, step: 0.1 })
+		generalFolder.addInput(params, "distance", { min: 0.001, max: 250, step: 0.1 })
 		generalFolder.addInput(params, "fade", {
 			min: 0,
 			max: 20,
@@ -67,6 +68,7 @@ export class SSRDebugGUI {
 
 		definesFolder.addInput(params, "steps", { min: 1, max: 256, step: 1 })
 		definesFolder.addInput(params, "refineSteps", { min: 0, max: 16, step: 1 })
+		definesFolder.addInput(params, "spp", { min: 1, max: 32, step: 1 })
 		definesFolder.addInput(params, "missedRays")
 
 		const resolutionFolder = pane.addFolder({ title: "Resolution", expanded: false })

@@ -3,7 +3,6 @@
 uniform sampler2D inputTexture;
 uniform sampler2D accumulatedTexture;
 uniform sampler2D velocityTexture;
-uniform sampler2D lastVelocityTexture;
 
 uniform float blend;
 uniform float correction;
@@ -26,21 +25,20 @@ vec3 undoColorTransformExponent;
 
 // idea from: https://www.elopezr.com/temporal-aa-and-the-quest-for-the-holy-trail/
 vec3 transformColor(vec3 color) {
-    if (exponent == 1.0) return color;
-
 #ifdef logTransform
     return log(max(color, vec3(FLOAT_EPSILON)));
 #else
+    if (exponent == 1.0) return color;
+
     return pow(abs(color), transformexponent);
 #endif
 }
 
 vec3 undoColorTransform(vec3 color) {
-    if (exponent == 1.0) return color;
-
 #ifdef logTransform
     return exp(color);
 #else
+    if (exponent == 1.0) return color;
     return max(pow(abs(color), undoColorTransformExponent), vec3(0.0));
 #endif
 }
@@ -80,12 +78,9 @@ void main() {
         vec2 neighborUv;
 
         vec2 reprojectedUv = vUv - velocity.xy;
-        vec4 lastVelocity = textureLod(lastVelocityTexture, reprojectedUv, 0.0);
 
         float closestDepth = depth;
-        float lastClosestDepth = lastVelocity.b;
         float neighborDepth;
-        float lastNeighborDepth;
         float colorCount = 1.0;
 
         for (int x = -correctionRadius; x <= correctionRadius; x++) {
@@ -105,14 +100,6 @@ void main() {
                             if (neighborDepth > closestDepth) {
                                 velocity = neigborVelocity;
                                 closestDepth = neighborDepth;
-                            }
-
-                            vec4 lastNeighborVelocity = textureLod(velocityTexture, vUv + vec2(x, y) * invTexSize, 0.0);
-                            lastNeighborDepth = lastNeighborVelocity.b;
-
-                            if (lastNeighborDepth > lastClosestDepth) {
-                                lastVelocity = lastNeighborVelocity;
-                                lastClosestDepth = lastNeighborDepth;
                             }
                         }
 #endif
@@ -138,12 +125,6 @@ void main() {
         }
 
         // velocity
-        float velocityLength = length(lastVelocity.xy - velocity.xy);
-
-        // using the velocity to find disocclusions
-        velocityDisocclusion = (velocityLength - 0.000005) * 10.0;
-        velocityDisocclusion *= velocityDisocclusion;
-
         reprojectedUv = vUv - velocity.xy;
 
         // box blur

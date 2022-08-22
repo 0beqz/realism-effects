@@ -4,6 +4,7 @@ import {
 	LinearFilter,
 	PMREMGenerator,
 	ShaderChunk,
+	sRGBEncoding,
 	Texture,
 	Uniform,
 	Vector3,
@@ -49,6 +50,7 @@ export class SSREffect extends Effect {
 			uniforms: new Map([
 				["reflectionsTexture", new Uniform(null)],
 				["intensity", new Uniform(1)],
+				["power", new Uniform(1)],
 				["blur", new Uniform(0)],
 				["blurSharpness", new Uniform(0)],
 				["blurKernel", new Uniform(0)]
@@ -62,7 +64,10 @@ export class SSREffect extends Effect {
 		const trOptions = {
 			boxBlur: true,
 			dilation: true,
-			renderVelocity: false
+			renderVelocity: false,
+			neighborhoodClamping: false,
+			logTransform: true,
+			generateMipmaps: true
 		}
 
 		options = { ...defaultSSROptions, ...options, ...trOptions }
@@ -75,7 +80,7 @@ export class SSREffect extends Effect {
 		this.uniforms.get("reflectionsTexture").value = this.temporalResolvePass.renderTarget.texture
 
 		// reflections pass
-		this.reflectionsPass = new ReflectionsPass(this, options)
+		this.reflectionsPass = new ReflectionsPass(this)
 		this.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = this.reflectionsPass.renderTarget.texture
 
 		this.lastSize = {
@@ -147,6 +152,11 @@ export class SSREffect extends Effect {
 							this.reflectionsPass.fullscreenMaterial.needsUpdate = needsUpdate
 							break
 
+						case "spp":
+							this.reflectionsPass.fullscreenMaterial.defines.spp = parseInt(value)
+							this.reflectionsPass.fullscreenMaterial.needsUpdate = needsUpdate
+							break
+
 						case "missedRays":
 							if (value) {
 								this.reflectionsPass.fullscreenMaterial.defines.missedRays = ""
@@ -173,6 +183,14 @@ export class SSREffect extends Effect {
 
 						case "distance":
 							reflectionPassFullscreenMaterialUniforms.rayDistance.value = value
+
+						case "exponent":
+							this.temporalResolvePass.fullscreenMaterial.uniforms.exponent.value = value
+							break
+
+						case "power":
+							this.uniforms.get("power").value = value
+							break
 
 						// must be a uniform
 						default:
@@ -213,7 +231,13 @@ export class SSREffect extends Effect {
 
 	generateBoxProjectedEnvMapFallback(renderer, position = new Vector3(), size = new Vector3(), envMapSize = 512) {
 		this.cubeCamera.renderTarget.dispose()
-		this.cubeCamera.renderTarget = new WebGLCubeRenderTarget(envMapSize)
+
+		this.cubeCamera.renderTarget = new WebGLCubeRenderTarget(envMapSize, {
+			encoding: sRGBEncoding,
+			minFilter: LinearFilter,
+			magFilter: LinearFilter,
+			generateMipmaps: false
+		})
 
 		this.cubeCamera.position.copy(position)
 		this.cubeCamera.updateMatrixWorld()
@@ -226,12 +250,13 @@ export class SSREffect extends Effect {
 		const envMap = pmremGenerator.fromCubemap(this.cubeCamera.renderTarget.texture).texture
 		envMap.minFilter = LinearFilter
 		envMap.magFilter = LinearFilter
+		envMap.generateMipmaps = false
 
 		const reflectionsMaterial = this.reflectionsPass.fullscreenMaterial
 
 		useBoxProjectedEnvMap(reflectionsMaterial, position, size)
 		reflectionsMaterial.fragmentShader = reflectionsMaterial.fragmentShader
-			.replace("vec3 worldPos", "worldPos")
+			.replace("vec3 worldPos = ", "worldPos = ")
 			.replace("varying vec3 vWorldPosition;", "vec3 worldPos;")
 
 		reflectionsMaterial.uniforms.envMapPosition.value.copy(position)
@@ -242,18 +267,6 @@ export class SSREffect extends Effect {
 		this.usingBoxProjectedEnvMap = true
 
 		return envMap
-	}
-
-	setIBLRadiance(iblRadiance, renderer) {
-		this._scene.traverse(c => {
-			if (c.material) {
-				const uniforms = renderer.properties.get(c.material)?.uniforms
-
-				if (uniforms && "disableIBLRadiance" in uniforms) {
-					uniforms.disableIBLRadiance.value = iblRadiance
-				}
-			}
-		})
 	}
 
 	deleteBoxProjectedEnvMapFallback() {
@@ -297,22 +310,31 @@ export class SSREffect extends Effect {
 
 		this._camera.clearViewOffset()
 
-		// this.haltonIndex = (this.haltonIndex + 1) % this.haltonSequence.length
-
-		// const [x, y] = this.haltonSequence[this.haltonIndex]
-
-		// const { width, height } = this.lastSize
-
 		this.temporalResolvePass.velocityPass.render(renderer)
 
-		// jittering the view offset each frame reduces aliasing for the reflection
-		// if (this._camera.setViewOffset) this._camera.setViewOffset(width, height, x, y, width, height)
+		// cheap trick to get rid of aliasing on the final buffer (technique known from TAA)
+		if (this.resolutionScale < 1) {
+			this.haltonIndex = (this.haltonIndex + 1) % this.haltonSequence.length
+
+			const [x, y] = this.haltonSequence[this.haltonIndex]
+
+			const { width, height } = this.lastSize
+
+			const m = 1 / this.resolutionScale
+
+			// jittering the view offset each frame reduces aliasing for the reflection
+			if (this._camera.setViewOffset) this._camera.setViewOffset(width, height, x * m, y * m, width, height)
+		}
 
 		// render reflections of current frame
 		this.reflectionsPass.render(renderer, inputBuffer)
 
 		// compose reflection of last and current frame into one reflection
 		this.temporalResolvePass.render(renderer)
+
+		this._camera.clearViewOffset()
+
+		// this.uniforms.get("reflectionsTexture").value = this.reflectionsPass.downsamplingPass.renderTarget.texture[1]
 	}
 
 	static patchDirectEnvIntensity(envMapIntensity = 0) {

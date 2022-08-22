@@ -35,7 +35,7 @@ export class VelocityPass extends Pass {
 		this._scene = scene
 		this._camera = camera
 
-		this.renderTarget = new WebGLRenderTarget(window?.innerWidth || 1000, window?.innerHeight || 1000, {
+		this.renderTarget = new WebGLRenderTarget(1, 1, {
 			minFilter: NearestFilter,
 			magFilter: NearestFilter,
 			type: FloatType

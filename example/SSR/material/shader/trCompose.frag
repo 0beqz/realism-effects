@@ -1,17 +1,24 @@
-﻿float depthDiff = abs(depth - lastDepth) * 1000.;
+﻿const float alphaStep = 0.01;
 
-alpha = depthDiff <= 0.05 ? (alpha + 0.01) : 0.0;
-alpha = clamp(alpha, 0.0, 1.0);
+alpha = didReproject && depthDiff <= maxNeighborDepthDifference ? (alpha + alphaStep) : 0.0;
+
+if (isMoving) alpha = min(alpha, alphaStep * 24.);
 
 float m = blend;
 
-float currentSample = alpha / 0.01 + 1.0;
-m = 1. - 1. / (currentSample * 1.0);
+float currentSample = alpha / alphaStep + 1.0;
+m = 1. - 1. / currentSample;
+m = min(blend, m);
 
-if (alpha <= 0.1) inputColor = boxBlurredColor;
+#ifdef neighborhoodClamping
+if (alpha <= 0.05) inputColor = boxBlurredColor;
+#endif
 
-outputColor = accumulatedColor * m + inputColor * (1.0 - m);
+outputColor = mix(accumulatedColor, inputColor, 1.0 - m);
 
-// if (depthDiff > 0.05) outputColor = vec3(0., 1., 0.);
+// outputColor = vec3(alpha);
 
-// outputColor = vec3(depthDiff);
+// if (alpha < 0.1)
+//     outputColor = vec3(0., 1., 0.);
+// else
+//     outputColor = vec3(0.);

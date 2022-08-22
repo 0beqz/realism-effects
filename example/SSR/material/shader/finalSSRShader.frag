@@ -9,6 +9,7 @@
 
 uniform sampler2D inputTexture;
 uniform sampler2D reflectionsTexture;
+uniform float power;
 
 uniform float intensity;
 
@@ -80,18 +81,19 @@ vec3 sirBirdDenoise(sampler2D imageTexture, vec3 sampleCenter, in vec2 uv, in ve
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
     vec4 reflectionsTexel = texture2D(reflectionsTexture, vUv);
-    ivec2 size = textureSize(reflectionsTexture, 0);
-    vec2 invTexSize = 1. / vec2(size.x, size.y);
-
     vec3 reflectionClr = reflectionsTexel.xyz;
 
-    if (blur > FLOAT_EPSILON && reflectionsTexel.a < 0.125) {
+    if (reflectionsTexel.a <= 0.05) {
+        ivec2 size = textureSize(reflectionsTexture, 0);
+
         vec3 blurredReflectionsColor = sirBirdDenoise(reflectionsTexture, reflectionClr, vUv, vec2(size.x, size.y));
 
-        reflectionClr = mix(reflectionClr, blurredReflectionsColor.rgb, blur * (0.125 - reflectionsTexel.a) * 8.0);
+        reflectionClr = mix(reflectionClr, blurredReflectionsColor.rgb, blur);
     }
 
     reflectionClr *= intensity;
+
+    if (power != 1.0) reflectionClr = pow(reflectionClr, vec3(power));
 
 #if RENDER_MODE == MODE_DEFAULT
     outputColor = vec4(inputColor.rgb + reflectionClr, 1.0);

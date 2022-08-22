@@ -21,8 +21,8 @@ varying vec2 vUv;
 #define FLOAT_EPSILON           0.00001
 #define FLOAT_ONE_MINUS_EPSILON 0.99999
 
-vec3 transformexponent;
-vec3 undoColorTransformExponent;
+vec3 transformexponent = vec3(1.);
+vec3 undoColorTransformExponent = vec3(1.);
 
 // credits for transforming screen position to world position: https://discourse.threejs.org/t/reconstruct-world-position-in-screen-space-from-depth-buffer/5532/2
 vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth, mat4 inverseProjectionMatrix, mat4 cameraMatrixWorld) {
@@ -38,8 +38,6 @@ vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth, mat4 inverseProje
 
 // idea from: https://www.elopezr.com/temporal-aa-and-the-quest-for-the-holy-trail/
 vec3 transformColor(vec3 color) {
-    if (exponent == 1.0) return color;
-
 #ifdef logTransform
     return log(max(color, vec3(FLOAT_EPSILON)));
 #else
@@ -48,22 +46,20 @@ vec3 transformColor(vec3 color) {
 }
 
 vec3 undoColorTransform(vec3 color) {
-    if (exponent == 1.0) return color;
-
 #ifdef logTransform
     return exp(color);
 #else
+    if (exponent == 1.0) return color;
     return max(pow(abs(color), undoColorTransformExponent), vec3(0.0));
 #endif
 }
 
 void main() {
-    if (exponent != 1.0) {
-        transformexponent = vec3(1.0 / exponent);
-        undoColorTransformExponent = vec3(exponent);
-    }
-
     vec4 inputTexel = textureLod(inputTexture, vUv, 0.0);
+
+    transformexponent = vec3(1.0 / exponent);
+    undoColorTransformExponent = vec3(exponent);
+
     vec4 accumulatedTexel;
 
     vec3 inputColor = transformColor(inputTexel.rgb);
@@ -80,13 +76,14 @@ void main() {
 #endif
 
     vec4 velocity = textureLod(velocityTexture, vUv, 0.0);
-    bool isMoving = alpha < 1.0 || dot(velocity.xy, velocity.xy) > 0.0;
 
     vec3 minNeighborColor = inputColor;
     vec3 maxNeighborColor = inputColor;
 
+    vec4 neighborTexel;
     vec3 col;
     vec2 neighborUv;
+    vec2 offset;
 
     vec2 reprojectedUv = vUv - velocity.xy;
     vec4 lastVelocity = textureLod(lastVelocityTexture, reprojectedUv, 0.0);
@@ -103,7 +100,8 @@ void main() {
     for (int x = -correctionRadius; x <= correctionRadius; x++) {
         for (int y = -correctionRadius; y <= correctionRadius; y++) {
             if (x != 0 || y != 0) {
-                neighborUv = vUv + vec2(x, y) * invTexSize;
+                offset = vec2(x, y) * invTexSize;
+                neighborUv = vUv + offset;
 
                 if (neighborUv.x >= 0.0 && neighborUv.x <= 1.0 && neighborUv.y >= 0.0 && neighborUv.y <= 1.0) {
                     vec4 neigborVelocity = textureLod(velocityTexture, neighborUv, 0.0);
@@ -129,22 +127,28 @@ void main() {
                     }
 #endif
 
+#ifdef neighborhoodClamping
+
                     // the neighbor pixel is invalid if it's too far away from this pixel
                     if (abs(depth - neighborDepth) < maxNeighborDepthDifference) {
-                        col = textureLod(inputTexture, neighborUv, 0.0).xyz;
+                        neighborTexel = textureLod(inputTexture, neighborUv, 0.0);
+                        col = neighborTexel.xyz;
+                        col = transformColor(col);
 
-#ifdef boxBlur
+                        // alpha = min(alpha, neighborTexel.a);
+
+    #ifdef boxBlur
                         if (absX <= 3 && absY <= 3) {
                             boxBlurredColor += col;
                             colorCount += 1.0;
                         }
-#endif
-
-                        col = transformColor(col);
+    #endif
 
                         minNeighborColor = min(col, minNeighborColor);
                         maxNeighborColor = max(col, maxNeighborColor);
                     }
+
+#endif
                 }
             }
         }
@@ -158,7 +162,6 @@ void main() {
 #ifdef boxBlur
     // box blur
     boxBlurredColor /= colorCount;
-    boxBlurredColor = transformColor(boxBlurredColor);
 #endif
 
     // the reprojected UV coordinates are inside the view
@@ -167,13 +170,16 @@ void main() {
         alpha = min(alpha, accumulatedTexel.a);
         accumulatedColor = transformColor(accumulatedTexel.rgb);
 
-        if (alpha < 1.0) {
+#ifdef neighborhoodClamping
+
+        if (alpha < 0.05) {
             vec3 clampedColor = clamp(accumulatedColor, minNeighborColor, maxNeighborColor);
 
             accumulatedColor = mix(accumulatedColor, clampedColor, correction);
         }
 
         vec3 clampedColor = clamp(accumulatedColor, minNeighborColor, maxNeighborColor);
+#endif
 
         didReproject = true;
     } else {
@@ -185,14 +191,12 @@ void main() {
 #endif
     }
 
-    // this texel is marked as constantly moving (e.g. from a VideoTexture), so treat it accordingly
-    // if (velocity.r > FLOAT_ONE_MINUS_EPSILON && velocity.g > FLOAT_ONE_MINUS_EPSILON) {
-    //     alpha = 0.0;
-    // }
-
     // REPROJECT_END
 
     vec3 outputColor = inputColor;
+
+    float depthDiff = abs(depth - lastDepth);
+    bool isMoving = dot(velocity.xy, velocity.xy) > 0.0;
 
 // the user's shader to compose a final outputColor from the inputTexel and accumulatedTexel
 #include <custom_compose_shader>
