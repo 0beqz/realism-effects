@@ -13,7 +13,7 @@ import { SSRDebugGUI } from "./SSRDebugGUI"
 import "./style.css"
 import { TRAADebugGUI } from "./TRAADebugGUI"
 
-// SSREffect.patchDirectEnvIntensity()
+SSREffect.patchDirectEnvIntensity()
 
 let traaEffect
 let traaPass
@@ -75,6 +75,9 @@ const setAA = value => {
 	composer.removePass(smaaPass)
 	composer.removePass(traaPass)
 	composer.removePass(fxaaPass)
+
+	delete scene.userData.velocityTexture
+	delete scene.userData.lastVelocityTexture
 
 	switch (value) {
 		case "TRAA":
@@ -157,7 +160,7 @@ gltflLoader.load(url, asset => {
 	asset.scene.traverse(c => {
 		if (c.isMesh) {
 			// c.material.wireframe = true
-			// c.material.envMapIntensity = 0
+			c.material.envMapIntensity = 0
 			// c.material.roughness = 0.1
 			c.material.normalScale.setScalar(0)
 			c.castShadow = c.receiveShadow = true
@@ -385,9 +388,9 @@ gltflLoader.load(url, asset => {
 		traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
 		composer.addPass(traaPass)
 
-		// composer.addPass(ssrPass)
+		composer.addPass(ssrPass)
 
-		composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, vignetteEffect))
+		// composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, vignetteEffect))
 
 		const smaaEffect = new POSTPROCESSING.SMAAEffect()
 

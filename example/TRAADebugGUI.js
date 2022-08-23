@@ -20,29 +20,27 @@ export class TRAADebugGUI {
 
 		temporalResolveFolder.addInput(params, "blend", { min: 0, max: 1, step: 0.001 })
 		temporalResolveFolder.addInput(params, "qualityScale", { min: 0.01, max: 1, step: 0.125 })
-		temporalResolveFolder.addInput(params, "correction", { min: 0.01, max: 1, step: 0.01 })
-		temporalResolveFolder.addInput(params, "correctionRadius", { min: 1, max: 4, step: 1 })
 		temporalResolveFolder.addInput(params, "dilation")
 
-		const outputFolder = pane.addFolder({ title: "Output", expanded: false })
+		// const outputFolder = pane.addFolder({ title: "Output", expanded: false })
 
-		const outputOptions = {
-			"Render Mode": 0
-		}
+		// const outputOptions = {
+		// 	"Render Mode": 0
+		// }
 
-		outputFolder
-			.addInput(outputOptions, "Render Mode", {
-				options: {
-					Default: 0,
-					Depth: 1,
-					Velocity: 2,
-					Alpha: 3,
-					Disocclusion: 4
-				}
-			})
-			.on("change", ev => {
-				traaEffect.temporalResolvePass.fullscreenMaterial.defines.RENDER_MODE = ev.value
-				traaEffect.temporalResolvePass.fullscreenMaterial.needsUpdate = true
-			})
+		// outputFolder
+		// 	.addInput(outputOptions, "Render Mode", {
+		// 		options: {
+		// 			Default: 0,
+		// 			Depth: 1,
+		// 			Velocity: 2,
+		// 			Alpha: 3,
+		// 			Disocclusion: 4
+		// 		}
+		// 	})
+		// 	.on("change", ev => {
+		// 		traaEffect.temporalResolvePass.fullscreenMaterial.defines.RENDER_MODE = ev.value
+		// 		traaEffect.temporalResolvePass.fullscreenMaterial.needsUpdate = true
+		// 	})
 	}
 }

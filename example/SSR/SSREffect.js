@@ -232,6 +232,7 @@ export class SSREffect extends Effect {
 			pmremGenerator = new PMREMGenerator(renderer)
 			pmremGenerator.compileCubemapShader()
 		}
+
 		const envMap = pmremGenerator.fromCubemap(this.cubeCamera.renderTarget.texture).texture
 		envMap.minFilter = LinearFilter
 		envMap.magFilter = LinearFilter
@@ -303,7 +304,8 @@ export class SSREffect extends Effect {
 		// render reflections of current frame
 		this.reflectionsPass.render(renderer, inputBuffer)
 
-		this.uniforms.get("diffuseTexture").value = this.reflectionsPass.gBuffersRenderTarget.texture[2]
+		if (this.reflectionsPass.renderDiffuse)
+			this.uniforms.get("diffuseTexture").value = this.reflectionsPass.gBuffersRenderTarget.texture[2]
 
 		// compose reflection of last and current frame into one reflection
 		this.temporalResolvePass.render(renderer)

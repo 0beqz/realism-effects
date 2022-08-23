@@ -90,8 +90,8 @@ void main() {
     float depth = 1.0 - velocity.b;
     float lastDepth = 1.0 - lastVelocity.b;
 
-    float closestDepth = depth;
-    float lastClosestDepth = lastVelocity.b;
+    float minDepth = depth;
+    float lastMinDepth = lastVelocity.b;
     float maxDepth = 0.;
     float lastMaxDepth = 0.;
 
@@ -115,9 +115,9 @@ void main() {
 
                     if (absX <= 1 && absY <= 1) {
     #ifdef dilation
-                        if (neighborDepth < closestDepth) {
+                        if (neighborDepth < minDepth) {
                             velocity = neigborVelocity;
-                            closestDepth = neighborDepth;
+                            minDepth = neighborDepth;
                         }
 
                         if (neighborDepth > maxDepth) maxDepth = neighborDepth;
@@ -127,9 +127,9 @@ void main() {
                         vec4 lastNeighborVelocity = textureLod(lastVelocityTexture, reprojectedNeighborUv, 0.0);
                         lastNeighborDepth = 1.0 - lastNeighborVelocity.b;
 
-                        if (lastNeighborDepth < lastClosestDepth) {
+                        if (lastNeighborDepth < lastMinDepth) {
                             lastVelocity = lastNeighborVelocity;
-                            lastClosestDepth = lastNeighborDepth;
+                            lastMinDepth = lastNeighborDepth;
                         }
 
                         if (lastNeighborDepth > lastMaxDepth) lastMaxDepth = lastNeighborDepth;
@@ -180,7 +180,7 @@ void main() {
         accumulatedTexel = textureLod(accumulatedTexture, reprojectedUv, 0.0);
 
         // check if this pixel belongs to the background and isn't within 1px close to a mesh (need to check for that too due to anti-aliasing)
-        if (maxDepth == 1. && closestDepth == 1.) {
+        if (maxDepth == 1. && minDepth == 1.) {
             gl_FragColor = mix(inputTexel, accumulatedTexel, 0.625);
             return;
         }

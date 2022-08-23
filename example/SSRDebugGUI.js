@@ -51,8 +51,8 @@ export class SSRDebugGUI {
 		const temporalResolveFolder = pane.addFolder({ title: "Temporal Resolve" })
 
 		temporalResolveFolder.addInput(params, "blend", { min: 0, max: 1, step: 0.001 })
-		temporalResolveFolder.addInput(params, "correction", { min: 0, max: 1, step: 0.0001 })
-		temporalResolveFolder.addInput(params, "correctionRadius", { min: 1, max: 4, step: 1 })
+		// temporalResolveFolder.addInput(params, "correction", { min: 0, max: 1, step: 0.0001 })
+		// temporalResolveFolder.addInput(params, "correctionRadius", { min: 1, max: 4, step: 1 })
 
 		const blurFolder = pane.addFolder({ title: "Blur" })
 		blurFolder.addInput(params, "blur", { min: 0, max: 1, step: 0.01 })

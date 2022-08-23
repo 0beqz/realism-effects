@@ -208,10 +208,10 @@ export class ReflectionsPass extends Pass {
 
 		this.unsetMRTMaterialInScene()
 
-		if (this.downsampling && this.ssrEffect.qualityScale < 1) this.downsamplingPass.render(renderer, inputBuffer)
-
 		// render depth and velocity in seperate passes
 		if (!this.isWebGL2) this.webgl1DepthPass.renderPass.render(renderer, this.webgl1DepthPass.renderTarget)
+
+		if (this.downsampling && this.ssrEffect.qualityScale < 1) this.downsamplingPass.render(renderer, inputBuffer)
 
 		this.fullscreenMaterial.uniforms.inputTexture.value = inputBuffer.texture
 		this.fullscreenMaterial.uniforms.samples.value = this.ssrEffect.temporalResolvePass.samples

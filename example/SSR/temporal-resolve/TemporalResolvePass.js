@@ -141,7 +141,8 @@ export class TemporalResolvePass extends Pass {
 	}
 
 	checkCanUseSharedVelocityTexture() {
-		const now = performance.now()
+		const now = Date.now()
+
 		const canUseSharedVelocityTexture =
 			this._scene.userData.velocityTexture &&
 			this.velocityPass.renderTarget.texture !== this._scene.userData.velocityTexture
@@ -192,12 +193,10 @@ export class TemporalResolvePass extends Pass {
 		this.fullscreenMaterial.uniforms.curCameraMatrixWorld.value.copy(this._camera.matrixWorld)
 
 		const isUsingSharedVelocityTexture = this.checkCanUseSharedVelocityTexture()
-		if (this.renderVelocity && !isUsingSharedVelocityTexture) {
-			this.velocityPass.render(renderer)
-		}
+		if (this.renderVelocity && !isUsingSharedVelocityTexture) this.velocityPass.render(renderer)
 
 		if (this._scene.userData.velocityTexture === this.fullscreenMaterial.uniforms.velocityTexture.value) {
-			const now = performance.now()
+			const now = Date.now()
 			this._scene.userData.lastVelocityTextureTime = now
 		}
 
@@ -207,8 +206,10 @@ export class TemporalResolvePass extends Pass {
 		// save the render target's texture for use in next frame
 		renderer.copyFramebufferToTexture(zeroVec2, this.accumulatedTexture)
 
-		renderer.setRenderTarget(this.velocityPass.renderTarget)
-		renderer.copyFramebufferToTexture(zeroVec2, this.lastVelocityTexture)
+		if (!isUsingSharedVelocityTexture) {
+			renderer.setRenderTarget(this.velocityPass.renderTarget)
+			renderer.copyFramebufferToTexture(zeroVec2, this.lastVelocityTexture)
+		}
 
 		this.fullscreenMaterial.uniforms.prevInverseProjectionMatrix.value.copy(this._camera.projectionMatrixInverse)
 		this.fullscreenMaterial.uniforms.prevCameraMatrixWorld.value.copy(this._camera.matrixWorld)
