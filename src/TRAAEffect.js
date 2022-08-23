@@ -3,7 +3,7 @@ import { Quaternion, Uniform, Vector3 } from "three"
 import finalTRAAShader from "./material/shader/finalTRAAShader.frag"
 import helperFunctions from "./material/shader/helperFunctions.frag"
 import trCompose from "./material/shader/trCompose.frag"
-import { TemporalResolvePass } from "../example/SSR/temporal-resolve/TemporalResolvePass.js"
+import { TemporalResolvePass } from "../src/SSR/temporal-resolve/TemporalResolvePass.js"
 import { generateHalton23Points } from "./utils/generateHalton23Points"
 
 const finalFragmentShader = finalTRAAShader.replace("#include <helperFunctions>", helperFunctions)
@@ -14,7 +14,7 @@ export const defaultTRAAOptions = {
 	correctionRadius: 1,
 	exponent: 1,
 	logTransform: true,
-	qualityScale: 0.5,
+	qualityScale: 1,
 	neighborhoodClamping: false,
 	boxBlur: false,
 	dilation: true,
