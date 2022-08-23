@@ -13,7 +13,7 @@ import { SSRDebugGUI } from "./SSRDebugGUI"
 import "./style.css"
 import { TRAADebugGUI } from "./TRAADebugGUI"
 
-SSREffect.patchDirectEnvIntensity()
+// SSREffect.patchDirectEnvIntensity()
 
 let traaEffect
 let traaPass
@@ -122,11 +122,7 @@ composer.inputBuffer = new WebGLRenderTarget(window.innerWidth, window.innerHeig
 	type: HalfFloatType
 })
 
-const params = {
-	blend: 0.9,
-	scale: 1,
-	dilation: true
-}
+const params = {}
 
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
 pmremGenerator.compileEquirectangularShader()
@@ -161,7 +157,7 @@ gltflLoader.load(url, asset => {
 	asset.scene.traverse(c => {
 		if (c.isMesh) {
 			// c.material.wireframe = true
-			c.material.envMapIntensity = 0
+			// c.material.envMapIntensity = 0
 			// c.material.roughness = 0.1
 			c.material.normalScale.setScalar(0)
 			c.castShadow = c.receiveShadow = true
@@ -357,7 +353,7 @@ gltflLoader.load(url, asset => {
 		envMesh.scale.setScalar(100)
 		envMesh.updateMatrixWorld()
 		scene.add(envMesh)
-		// envMesh.visible = false
+		envMesh.visible = false
 
 		createEnvMap()
 	})
@@ -386,12 +382,12 @@ gltflLoader.load(url, asset => {
 			scene.getObjectByName("Circle005").material.emissive.setRGB(0, 0.05, 0.5)
 		}
 
-		composer.addPass(ssrPass)
-
-		composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, vignetteEffect))
-
 		traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
 		composer.addPass(traaPass)
+
+		// composer.addPass(ssrPass)
+
+		composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, vignetteEffect))
 
 		const smaaEffect = new POSTPROCESSING.SMAAEffect()
 
@@ -451,7 +447,7 @@ let mixer
 
 // gltflLoader.load("skin.glb", asset => {
 // 	skinMesh = asset.scene
-// 	skinMesh.scale.multiplyScalar(2.1)
+// 	skinMesh.scale.multiplyScalar(2.1 * 5)
 // 	skinMesh.position.set(2.5, 0, 0)
 // 	skinMesh.rotation.y += Math.PI / 2
 // 	skinMesh.updateMatrixWorld()
@@ -461,7 +457,7 @@ let mixer
 // 			c.material.metalness = 1
 // 		}
 // 	})
-// 	// scene.add(asset.scene)
+// 	scene.add(asset.scene)
 // 	mixer = new THREE.AnimationMixer(skinMesh)
 // 	const clips = asset.animations
 
@@ -492,6 +488,8 @@ const loop = () => {
 	if (stats) stats.end()
 	window.requestAnimationFrame(loop)
 }
+
+// controls.autoRotate = true
 
 // event handlers
 window.addEventListener("resize", () => {

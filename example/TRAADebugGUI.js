@@ -23,14 +23,6 @@ export class TRAADebugGUI {
 		temporalResolveFolder.addInput(params, "correction", { min: 0.01, max: 1, step: 0.01 })
 		temporalResolveFolder.addInput(params, "correctionRadius", { min: 1, max: 4, step: 1 })
 		temporalResolveFolder.addInput(params, "dilation")
-		temporalResolveFolder.addInput(params, "useVelocity").on("change", ev => {
-			if (!ev.value) {
-				params.useLastVelocity = false
-
-				pane.refresh()
-			}
-		})
-		temporalResolveFolder.addInput(params, "useLastVelocity")
 
 		const outputFolder = pane.addFolder({ title: "Output", expanded: false })
 

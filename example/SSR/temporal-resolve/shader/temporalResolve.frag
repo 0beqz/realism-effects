@@ -21,7 +21,7 @@ varying vec2 vUv;
 #define FLOAT_EPSILON           0.00001
 #define FLOAT_ONE_MINUS_EPSILON 0.99999
 
-vec3 transformexponent = vec3(1.);
+vec3 transformExponent = vec3(1.);
 vec3 undoColorTransformExponent = vec3(1.);
 
 // credits for transforming screen position to world position: https://discourse.threejs.org/t/reconstruct-world-position-in-screen-space-from-depth-buffer/5532/2
@@ -42,7 +42,7 @@ vec3 transformColor(vec3 color) {
     return log(max(color, vec3(FLOAT_EPSILON)));
 #else
     if (exponent == 1.0) return color;
-    return pow(abs(color), transformexponent);
+    return pow(abs(color), transformExponent);
 #endif
 }
 
@@ -58,7 +58,7 @@ vec3 undoColorTransform(vec3 color) {
 void main() {
     vec4 inputTexel = textureLod(inputTexture, vUv, 0.0);
 
-    transformexponent = vec3(1.0 / exponent);
+    transformExponent = vec3(1.0 / exponent);
     undoColorTransformExponent = vec3(exponent);
 
     vec4 accumulatedTexel;
@@ -67,8 +67,6 @@ void main() {
     vec3 accumulatedColor;
 
     float alpha = inputTexel.a;
-
-    // REPROJECT_START
 
     bool didReproject = false;
 
@@ -89,15 +87,19 @@ void main() {
     vec2 reprojectedUv = vUv - velocity.xy;
     vec4 lastVelocity = textureLod(lastVelocityTexture, reprojectedUv, 0.0);
 
-    float depth = 1. - velocity.b;
+    float depth = 1.0 - velocity.b;
     float lastDepth = 1.0 - lastVelocity.b;
 
     float closestDepth = depth;
     float lastClosestDepth = lastVelocity.b;
+    float maxDepth = 0.;
+    float lastMaxDepth = 0.;
+
     float neighborDepth;
     float lastNeighborDepth;
     float colorCount = 1.0;
 
+#if defined(dilation) || defined(neighborhoodClamping) || defined(boxBlur)
     for (int x = -correctionRadius; x <= correctionRadius; x++) {
         for (int y = -correctionRadius; y <= correctionRadius; y++) {
             if (x != 0 || y != 0) {
@@ -105,30 +107,36 @@ void main() {
                 neighborUv = vUv + offset;
 
                 if (neighborUv.x >= 0.0 && neighborUv.x <= 1.0 && neighborUv.y >= 0.0 && neighborUv.y <= 1.0) {
-                    vec4 neigborVelocity = textureLod(velocityTexture, neighborUv, 0.0);
+                    vec4 neigborVelocity = textureLod(velocityTexture, vUv + offset, 0.0);
                     neighborDepth = 1.0 - neigborVelocity.b;
 
                     int absX = abs(x);
                     int absY = abs(y);
 
-#ifdef dilation
                     if (absX <= 1 && absY <= 1) {
+    #ifdef dilation
                         if (neighborDepth < closestDepth) {
                             velocity = neigborVelocity;
                             closestDepth = neighborDepth;
                         }
 
-                        vec4 lastNeighborVelocity = textureLod(lastVelocityTexture, reprojectedUv + vec2(x, y) * invTexSize, 0.0);
-                        lastNeighborDepth = lastNeighborVelocity.b;
+                        if (neighborDepth > maxDepth) maxDepth = neighborDepth;
+
+                        vec2 reprojectedNeighborUv = reprojectedUv + vec2(x, y) * invTexSize;
+
+                        vec4 lastNeighborVelocity = textureLod(lastVelocityTexture, reprojectedNeighborUv, 0.0);
+                        lastNeighborDepth = 1.0 - lastNeighborVelocity.b;
 
                         if (lastNeighborDepth < lastClosestDepth) {
                             lastVelocity = lastNeighborVelocity;
                             lastClosestDepth = lastNeighborDepth;
                         }
-                    }
-#endif
 
-#ifdef neighborhoodClamping
+                        if (lastNeighborDepth > lastMaxDepth) lastMaxDepth = lastNeighborDepth;
+    #endif
+                    }
+
+    #if defined(neighborhoodClamping) || defined(boxBlur)
 
                     // the neighbor pixel is invalid if it's too far away from this pixel
                     if (abs(depth - neighborDepth) < maxNeighborDepthDifference) {
@@ -136,50 +144,54 @@ void main() {
                         col = neighborTexel.xyz;
                         col = transformColor(col);
 
-                        // alpha = min(alpha, neighborTexel.a);
-
-    #ifdef boxBlur
+        #ifdef boxBlur
                         if (absX <= 3 && absY <= 3) {
                             boxBlurredColor += col;
                             colorCount += 1.0;
                         }
-    #endif
+        #endif
 
                         minNeighborColor = min(col, minNeighborColor);
                         maxNeighborColor = max(col, maxNeighborColor);
                     }
 
-#endif
+    #endif
                 }
             }
         }
     }
 
+#endif
+
     // velocity
     reprojectedUv = vUv - velocity.xy;
 
     // box blur
-
 #ifdef boxBlur
-    // box blur
     boxBlurredColor /= colorCount;
 #endif
+
+    // depth
+    depth = maxDepth;
+    lastDepth = lastMaxDepth;
 
     // the reprojected UV coordinates are inside the view
     if (reprojectedUv.x >= 0.0 && reprojectedUv.x <= 1.0 && reprojectedUv.y >= 0.0 && reprojectedUv.y <= 1.0) {
         accumulatedTexel = textureLod(accumulatedTexture, reprojectedUv, 0.0);
+
+        // check if this pixel belongs to the background and isn't within 1px close to a mesh (need to check for that too due to anti-aliasing)
+        if (maxDepth == 1. && closestDepth == 1.) {
+            gl_FragColor = mix(inputTexel, accumulatedTexel, 0.625);
+            return;
+        }
+
         alpha = min(alpha, accumulatedTexel.a);
         accumulatedColor = transformColor(accumulatedTexel.rgb);
 
 #ifdef neighborhoodClamping
-
-        if (alpha < 0.05) {
-            vec3 clampedColor = clamp(accumulatedColor, minNeighborColor, maxNeighborColor);
-
-            accumulatedColor = mix(accumulatedColor, clampedColor, correction);
-        }
-
         vec3 clampedColor = clamp(accumulatedColor, minNeighborColor, maxNeighborColor);
+
+        accumulatedColor = mix(accumulatedColor, clampedColor, correction);
 #endif
 
         didReproject = true;
@@ -191,8 +203,6 @@ void main() {
         accumulatedColor = inputColor;
 #endif
     }
-
-    // REPROJECT_END
 
     vec3 outputColor = inputColor;
 

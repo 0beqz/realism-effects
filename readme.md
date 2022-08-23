@@ -35,11 +35,6 @@ When not moving the camera, TRAA performs better than MSAA and SMAA.
 It is slightly behind FXAA and three.js' default anti-aliasing method regarding performance.
 When moving the camera TRAA will still perform similar to MSAA.
 
-### With `useVelocity` disabled
-
-Since we no longer need to render the scene again to find out each pixel's velocity (how much they moved between the current and last frame - needed for reprojection),
-performance improves drastically. TRAA will then be pretty much on par with FXAA and three.js default anti-aliasing method.
-
 ## Resources
 
 https://www.activision.com/cdn/research/Dynamic_Temporal_Antialiasing_and_Upsampling_in_Call_of_Duty_v4.pdf

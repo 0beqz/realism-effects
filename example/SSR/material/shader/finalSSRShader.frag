@@ -6,6 +6,7 @@
 #define MODE_BLUR_MIX            5
 
 #define FLOAT_EPSILON            0.00001
+// #define USE_DIFFUSE
 
 uniform sampler2D diffuseTexture;
 uniform sampler2D reflectionsTexture;
@@ -82,7 +83,7 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
     vec4 reflectionsTexel = texture2D(reflectionsTexture, vUv);
     vec3 reflectionClr = reflectionsTexel.xyz;
 
-    if (reflectionsTexel.a <= 0.05) {
+    if (blur > 0. && reflectionsTexel.a <= 0.05) {
         ivec2 size = textureSize(reflectionsTexture, 0);
 
         vec3 blurredReflectionsColor = sirBirdDenoise(reflectionsTexture, reflectionClr, vUv, vec2(size.x, size.y));
@@ -90,14 +91,17 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
         reflectionClr = mix(reflectionClr, blurredReflectionsColor.rgb, blur);
     }
 
-    vec3 diffuseColor = textureLod(diffuseTexture, vUv, 0.).rgb;
-
     reflectionClr *= intensity;
+
+#ifdef USE_DIFFUSE
+    vec3 diffuseColor = LinearTosRGB(textureLod(diffuseTexture, vUv, 0.)).rgb;
+    reflectionClr *= diffuseColor;
+#endif
 
     if (power != 1.0) reflectionClr = pow(reflectionClr, vec3(power));
 
 #if RENDER_MODE == MODE_DEFAULT
-    outputColor = vec4(inputColor.rgb + pow(diffuseColor, vec3(1. / 2.2)) * reflectionClr, 1.0);
+    outputColor = vec4(inputColor.rgb + reflectionClr, 1.0);
 #endif
 
 #if RENDER_MODE == MODE_REFLECTIONS

@@ -26,7 +26,7 @@ export class MRTMaterial extends ShaderMaterial {
 				color: new Uniform(new Color())
 			},
 			vertexShader: /* glsl */ `
-                #ifdef USE_MRT
+                #ifdef isWebGL2
                  varying vec2 vHighPrecisionZW;
                 #endif
                 #define NORMAL
@@ -59,7 +59,7 @@ export class MRTMaterial extends ShaderMaterial {
                     #if defined( FLAT_SHADED ) || defined( USE_BUMPMAP ) || defined( TANGENTSPACE_NORMALMAP )
                         vViewPosition = - mvPosition.xyz;
                     #endif
-                    #ifdef USE_MRT
+                    #ifdef isWebGL2
                         vHighPrecisionZW = gl_Position.zw;
                     #endif 
                     #ifdef USE_UV
@@ -81,15 +81,22 @@ export class MRTMaterial extends ShaderMaterial {
                 #include <logdepthbuf_pars_fragment>
                 #include <clipping_planes_pars_fragment>
                 #include <roughnessmap_pars_fragment>
+
+                #ifdef renderDiffuse
                 #include <map_pars_fragment>
+                #endif
                 
-                #ifdef USE_MRT
+                #ifdef isWebGL2
                 layout(location = 0) out vec4 gNormal;
                 layout(location = 1) out vec4 gDepth;
+
+                #ifdef renderDiffuse
                 layout(location = 2) out vec4 gDiffuse;
+                #endif
                 
                 varying vec2 vHighPrecisionZW;
                 #endif
+                
                 uniform float roughness;
                 uniform vec3 color;
 
@@ -112,15 +119,18 @@ export class MRTMaterial extends ShaderMaterial {
                     }
 
                     vec3 normalColor = packNormalToRGB( normal );
-                    #ifdef USE_MRT
+                    #ifdef isWebGL2
                         float fragCoordZ = 0.5 * vHighPrecisionZW[0] / vHighPrecisionZW[1] + 0.5;
                         vec4 depthColor = packDepthToRGBA( fragCoordZ );
                         gNormal = vec4( normalColor, roughnessFactor );
                         gDepth = depthColor;
 
+                        #ifdef renderDiffuse
+
                         vec4 diffuseColor = vec4(color, 1.0);
                         #include <map_fragment>
                         gDiffuse = diffuseColor;
+                        #endif
                     #else
                         gl_FragColor = vec4(normalColor, roughnessFactor);
                     #endif
@@ -135,7 +145,7 @@ export class MRTMaterial extends ShaderMaterial {
 
 		Object.defineProperty(this, "glslVersion", {
 			get() {
-				return "USE_MRT" in this.defines ? GLSL3 : null
+				return "isWebGL2" in this.defines ? GLSL3 : null
 			},
 			set(_) {}
 		})

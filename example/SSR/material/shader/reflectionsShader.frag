@@ -192,13 +192,15 @@ vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     vec3 SSR = SSRTexel.rgb + SSRTexelReflected.rgb;
     vec3 finalSSR = vec3(0.);
 
-    if (true || reflectionIntensity > FLOAT_ONE_MINUS_EPSILON) {
-        finalSSR = SSR;
-    } else {
-        iblRadiance = getIBLRadiance(-viewDir, viewNormal, spread) * fresnelFactor;
-        iblRadiance = clamp(iblRadiance, vec3(0.0), vec3(1.0));
-        finalSSR = mix(iblRadiance, SSR, reflectionIntensity);
-    }
+    // if (reflectionIntensity > FLOAT_ONE_MINUS_EPSILON) {
+    //     finalSSR = SSR;
+    // } else {
+    //     iblRadiance = getIBLRadiance(-viewDir, viewNormal, spread) * fresnelFactor;
+    //     iblRadiance = clamp(iblRadiance, vec3(0.0), vec3(1.0));
+    //     finalSSR = mix(iblRadiance, SSR, reflectionIntensity);
+    // }
+
+    finalSSR = SSR;
 
     if (fade != 0.0) {
         float opacity = 1.0 / ((reflectionDistance + 1.0) * fade * 0.1);

@@ -1,20 +1,13 @@
-﻿alpha = velocityDisocclusion > 0.001 ? 0. : (alpha + 0.025);
-alpha = clamp(alpha, 0., 1.);
+﻿const float alphaStep = 0.001;
+const float depthDiffThreshold = 0.000005;
 
-float m = blend;
+alpha = didReproject && depthDiff <= depthDiffThreshold ? (alpha + alphaStep) : 0.0;
 
-if (velocityDisocclusion > 0.2) m -= max(0.5, velocityDisocclusion) - 0.2;
+float s = alpha / alphaStep + 1.0;
+float m = 1. - 1. / s;
 
-if (!isMoving) {
-    if (alpha == 1.0) {
-        if (samples > 32.) m = max(m, 0.985);
-    } else if (alpha < 0.5) {
-        if (samples > 32.) m -= 0.5 * (1. - alpha);
-    }
-}
+m = min(m, blend);
 
-m = clamp(m, 0., 1.);
+outputColor = mix(inputColor, accumulatedColor, m);
 
-outputColor = mix(accumulatedColor, inputColor, 1.0 - m);
-
-// outputColor = vec3(m);
+// outputColor = vec3(alpha);

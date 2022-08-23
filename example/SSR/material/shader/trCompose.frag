@@ -3,12 +3,11 @@
 alpha = didReproject && depthDiff <= maxNeighborDepthDifference ? (alpha + alphaStep) : 0.0;
 
 if (isMoving) alpha = min(alpha, alphaStep * 24.);
-// if (isMoving) alpha = min(alpha, alphaStep * 64.);
 
 float m = blend;
 
-float currentSample = alpha / alphaStep + 1.0;
-m = 1. - 1. / currentSample;
+float s = alpha / alphaStep + 1.0;
+m = 1. - 1. / s;
 m = min(blend, m);
 
 #ifdef neighborhoodClamping

@@ -4,7 +4,7 @@ import {
 	FramebufferTexture,
 	HalfFloatType,
 	LinearFilter,
-	LinearMipMapLinearFilter,
+	LinearMipMapNearestFilter,
 	NearestFilter,
 	Quaternion,
 	RGBAFormat,
@@ -12,9 +12,9 @@ import {
 	Vector3,
 	WebGLRenderTarget
 } from "three"
-import { generateHalton23Points } from "./utils/generateHalton23Points"
 import { TemporalResolveMaterial } from "./material/TemporalResolveMaterial"
 import { VelocityPass } from "./pass/VelocityPass"
+import { generateHalton23Points } from "./utils/generateHalton23Points"
 
 const zeroVec2 = new Vector2()
 
@@ -41,7 +41,7 @@ export class TemporalResolvePass extends Pass {
 		customComposeShader,
 		options = {
 			renderVelocity: true,
-			dilation: true,
+			dilation: false,
 			boxBlur: true,
 			maxNeighborDepthDifference: 1,
 			logTransform: false,
@@ -55,8 +55,8 @@ export class TemporalResolvePass extends Pass {
 		this._camera = camera
 
 		this.renderTarget = new WebGLRenderTarget(1, 1, {
-			minFilter: options.generateMipmaps === true ? LinearMipMapLinearFilter : LinearFilter,
-			magFilter: options.generateMipmaps === true ? LinearMipMapLinearFilter : LinearFilter,
+			minFilter: options.generateMipmaps === true ? LinearMipMapNearestFilter : NearestFilter,
+			magFilter: options.generateMipmaps === true ? LinearMipMapNearestFilter : NearestFilter,
 			generateMipmaps: options.generateMipmaps === true,
 			type: HalfFloatType,
 			depthBuffer: false
@@ -133,6 +133,11 @@ export class TemporalResolvePass extends Pass {
 		this.fullscreenMaterial.uniforms.lastVelocityTexture.value = this.lastVelocityTexture
 
 		this.fullscreenMaterial.needsUpdate = true
+
+		// since we disposed the old "lastVelocityTexture" we need to update the shared lastVelocityTexture if we do share it
+		if (this._scene.userData.velocityTexture === this.velocityPass.renderTarget.texture) {
+			this._scene.userData.lastVelocityTexture = this.lastVelocityTexture
+		}
 	}
 
 	checkCanUseSharedVelocityTexture() {
@@ -186,10 +191,8 @@ export class TemporalResolvePass extends Pass {
 		this.fullscreenMaterial.uniforms.curInverseProjectionMatrix.value.copy(this._camera.projectionMatrixInverse)
 		this.fullscreenMaterial.uniforms.curCameraMatrixWorld.value.copy(this._camera.matrixWorld)
 
-		this._camera.clearViewOffset()
-
 		const isUsingSharedVelocityTexture = this.checkCanUseSharedVelocityTexture()
-		if (!isUsingSharedVelocityTexture && this.renderVelocity) {
+		if (this.renderVelocity && !isUsingSharedVelocityTexture) {
 			this.velocityPass.render(renderer)
 		}
 
@@ -224,8 +227,9 @@ export class TemporalResolvePass extends Pass {
 		const { width, height } = this.renderTarget
 
 		// jittering the view offset each frame reduces aliasing for the reflection
-		if (this._camera.setViewOffset)
+		if (this._camera.setViewOffset) {
 			this._camera.setViewOffset(width, height, x * this.jitterScale, y * this.jitterScale, width, height)
+		}
 	}
 
 	unjitter() {

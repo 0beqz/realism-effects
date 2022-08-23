@@ -1,5 +1,5 @@
 ﻿import { DepthPass, Pass, RenderPass } from "postprocessing"
-import { HalfFloatType, NearestFilter, WebGLMultipleRenderTargets, WebGLRenderTarget } from "three"
+import { HalfFloatType, LinearFilter, NearestFilter, WebGLMultipleRenderTargets, WebGLRenderTarget } from "three"
 import { MRTMaterial } from "../material/MRTMaterial.js"
 import { ReflectionsMaterial } from "../material/ReflectionsMaterial.js"
 import { getVisibleChildren } from "../utils/Utils.js"
@@ -18,7 +18,7 @@ const isWebGL2Available = () => {
 export class ReflectionsPass extends Pass {
 	ssrEffect
 	cachedMaterials = new WeakMap()
-	USE_MRT = false
+	isWebGL2 = false
 	webgl1DepthPass = null
 	visibleMeshes = []
 
@@ -28,6 +28,8 @@ export class ReflectionsPass extends Pass {
 		this.ssrEffect = ssrEffect
 		this._scene = ssrEffect._scene
 		this._camera = ssrEffect._camera
+
+		this.renderDiffuse = false
 
 		this.fullscreenMaterial = new ReflectionsMaterial()
 		if (ssrEffect._camera.isPerspectiveCamera) this.fullscreenMaterial.defines.PERSPECTIVE_CAMERA = ""
@@ -41,11 +43,11 @@ export class ReflectionsPass extends Pass {
 
 		this.renderPass = new RenderPass(this._scene, this._camera)
 
-		this.USE_MRT = isWebGL2Available()
+		this.isWebGL2 = isWebGL2Available()
 
-		if (this.USE_MRT) {
+		if (this.isWebGL2) {
 			// buffers: normal, depth (2), roughness will be written to the alpha channel of the normal buffer
-			this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(1, 1, 3, {
+			this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(1, 1, this.renderDiffuse ? 3 : 2, {
 				minFilter: NearestFilter,
 				magFilter: NearestFilter
 			})
@@ -67,26 +69,38 @@ export class ReflectionsPass extends Pass {
 		}
 
 		this.downsamplingPass = new DownsamplingPass(this.depthTexture, this.normalTexture)
+		this.downsampling = true
 
 		// set up uniforms
 		this.fullscreenMaterial.uniforms.normalTexture.value = this.normalTexture
-		this.fullscreenMaterial.uniforms.diffuseTexture.value = this.gBuffersRenderTarget.texture[2]
 		this.fullscreenMaterial.uniforms.fullResDepthTexture.value = this.depthTexture
 		this.fullscreenMaterial.uniforms.cameraMatrixWorld.value = this._camera.matrixWorld
 		this.fullscreenMaterial.uniforms._projectionMatrix.value = this._camera.projectionMatrix
 		this.fullscreenMaterial.uniforms._inverseProjectionMatrix.value = this._camera.projectionMatrixInverse
+
+		if (this.renderDiffuse) this.fullscreenMaterial.uniforms.diffuseTexture.value = this.gBuffersRenderTarget.texture[2]
 	}
 
 	setSize(width, height) {
 		this.renderTarget.setSize(width * this.ssrEffect.resolutionScale, height * this.ssrEffect.resolutionScale)
+		if (this.ssrEffect.resolutionScale < 0.5) {
+			this.renderTarget.texture.minFilter = LinearFilter
+			this.renderTarget.texture.magFilter = LinearFilter
+		} else {
+			this.renderTarget.texture.minFilter = NearestFilter
+			this.renderTarget.texture.magFilter = NearestFilter
+		}
+
 		this.gBuffersRenderTarget.setSize(width * this.ssrEffect.qualityScale, height * this.ssrEffect.qualityScale)
-		this.downsamplingPass.setSize(width * this.ssrEffect.qualityScale, height * this.ssrEffect.qualityScale)
+		this.downsamplingPass.setSize(width * 0.5, height * 0.5)
 
 		this.fullscreenMaterial.uniforms.invTexSize.value.set(1 / width, 1 / height)
 
 		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.ssrEffect.temporalResolvePass.renderTarget.texture
 		this.fullscreenMaterial.uniforms.depthTexture.value =
-			this.ssrEffect.qualityScale === 1 ? this.depthTexture : this.downsamplingPass.renderTarget.texture[0]
+			this.downsampling && this.ssrEffect.qualityScale < 1
+				? this.downsamplingPass.renderTarget.texture[0]
+				: this.depthTexture
 
 		this.fullscreenMaterial.needsUpdate = true
 	}
@@ -95,7 +109,7 @@ export class ReflectionsPass extends Pass {
 		this.renderTarget.dispose()
 		this.gBuffersRenderTarget.dispose()
 		this.renderPass.dispose()
-		if (!this.USE_MRT) this.webgl1DepthPass.dispose()
+		if (!this.isWebGL2) this.webgl1DepthPass.dispose()
 
 		this.fullscreenMaterial.dispose()
 
@@ -140,7 +154,8 @@ export class ReflectionsPass extends Pass {
 
 					mrtMaterial = new MRTMaterial()
 
-					if (this.USE_MRT) mrtMaterial.defines.USE_MRT = ""
+					if (this.isWebGL2) mrtMaterial.defines.isWebGL2 = ""
+					if (this.renderDiffuse) mrtMaterial.defines.renderDiffuse = ""
 
 					mrtMaterial.normalScale = originalMaterial.normalScale
 					mrtMaterial.uniforms.normalScale.value = originalMaterial.normalScale
@@ -193,10 +208,10 @@ export class ReflectionsPass extends Pass {
 
 		this.unsetMRTMaterialInScene()
 
-		if (this.ssrEffect.qualityScale < 1) this.downsamplingPass.render(renderer, inputBuffer)
+		if (this.downsampling && this.ssrEffect.qualityScale < 1) this.downsamplingPass.render(renderer, inputBuffer)
 
 		// render depth and velocity in seperate passes
-		if (!this.USE_MRT) this.webgl1DepthPass.renderPass.render(renderer, this.webgl1DepthPass.renderTarget)
+		if (!this.isWebGL2) this.webgl1DepthPass.renderPass.render(renderer, this.webgl1DepthPass.renderTarget)
 
 		this.fullscreenMaterial.uniforms.inputTexture.value = inputBuffer.texture
 		this.fullscreenMaterial.uniforms.samples.value = this.ssrEffect.temporalResolvePass.samples

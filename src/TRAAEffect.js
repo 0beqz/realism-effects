@@ -3,7 +3,7 @@ import { Quaternion, Uniform, Vector3 } from "three"
 import finalTRAAShader from "./material/shader/finalTRAAShader.frag"
 import helperFunctions from "./material/shader/helperFunctions.frag"
 import trCompose from "./material/shader/trCompose.frag"
-import { TemporalResolvePass } from "./temporal-resolve/pass/TemporalResolvePass.js"
+import { TemporalResolvePass } from "../example/SSR/temporal-resolve/TemporalResolvePass.js"
 import { generateHalton23Points } from "./utils/generateHalton23Points"
 
 const finalFragmentShader = finalTRAAShader.replace("#include <helperFunctions>", helperFunctions)
@@ -13,15 +13,16 @@ export const defaultTRAAOptions = {
 	correction: 1,
 	correctionRadius: 1,
 	exponent: 1,
+	logTransform: true,
 	qualityScale: 1,
-	useVelocity: true,
-	useLastVelocity: true,
+	neighborhoodClamping: false,
+	boxBlur: false,
 	dilation: true
 }
 
 export class TRAAEffect extends Effect {
 	haltonSequence = generateHalton23Points(1024)
-	haltonIndex = 512
+	haltonIndex = 0
 	samples = 0
 	#lastSize
 	#lastCameraTransform = {
@@ -46,16 +47,8 @@ export class TRAAEffect extends Effect {
 		this.#lastCameraTransform.position.copy(camera.position)
 		this.#lastCameraTransform.quaternion.copy(camera.quaternion)
 
-		// temporal resolve pass
-		const trOptions = {
-			renderVelocity: false,
-			dilation: true,
-			boxBlur: false,
-			maxNeighborDepthDifference: 1,
-			logTransform: true
-		}
-
-		this.temporalResolvePass = new TemporalResolvePass(scene, camera, trCompose, trOptions)
+		this.temporalResolvePass = new TemporalResolvePass(scene, camera, trCompose, options)
+		this.temporalResolvePass.jitterScale = 1
 
 		this.temporalResolvePass.fullscreenMaterial.needsUpdate = true
 
@@ -99,44 +92,16 @@ export class TRAAEffect extends Effect {
 							break
 
 						case "dilation":
+						case "boxBlur":
+						case "logTransform":
+						case "neighborhoodClamping":
 							if (value) {
-								this.temporalResolvePass.fullscreenMaterial.defines.dilation = ""
+								this.temporalResolvePass.fullscreenMaterial.defines[key] = ""
 							} else {
-								delete this.temporalResolvePass.fullscreenMaterial.defines.dilation
+								delete this.temporalResolvePass.fullscreenMaterial.defines[key]
 							}
 
 							this.temporalResolvePass.fullscreenMaterial.needsUpdate = true
-							break
-
-						case "useVelocity":
-							if (value) {
-								this.temporalResolvePass.fullscreenMaterial.defines.USE_VELOCITY = ""
-							} else {
-								delete this.temporalResolvePass.fullscreenMaterial.defines.USE_VELOCITY
-							}
-
-							this.temporalResolvePass.fullscreenMaterial.needsUpdate = true
-
-							this.temporalResolvePass.useVelocity = value
-							this.temporalResolvePass.useLastVelocity = value
-
-							this.temporalResolvePass.setSize(width, height)
-							this.samples = 0
-							break
-
-						case "useLastVelocity":
-							if (value) {
-								this.temporalResolvePass.fullscreenMaterial.defines.USE_LAST_VELOCITY = ""
-							} else {
-								delete this.temporalResolvePass.fullscreenMaterial.defines.USE_LAST_VELOCITY
-							}
-
-							this.temporalResolvePass.fullscreenMaterial.needsUpdate = true
-
-							this.temporalResolvePass.useLastVelocity = value
-
-							this.temporalResolvePass.setSize(width, height)
-							this.samples = 0
 							break
 					}
 				}
@@ -188,21 +153,12 @@ export class TRAAEffect extends Effect {
 		const { autoUpdate } = this._scene
 		this._scene.autoUpdate = false
 
-		this._camera.clearViewOffset()
+		this.temporalResolvePass.unjitter()
 
-		if (this.temporalResolvePass.useVelocity && !this.temporalResolvePass.checkCanUseSharedVelocityTexture()) {
+		if (!this.temporalResolvePass.checkCanUseSharedVelocityTexture())
 			this.temporalResolvePass.velocityPass.render(renderer)
-		}
 
-		const { width, height } = this.#lastSize
-
-		this.haltonIndex = (this.haltonIndex + 1) % this.haltonSequence.length
-
-		const [x, y] = this.haltonSequence[this.haltonIndex]
-
-		if (this._camera.setViewOffset) {
-			this._camera.setViewOffset(width, height, x, y, width, height)
-		}
+		this.temporalResolvePass.jitter()
 
 		this.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = inputBuffer.texture
 		this.temporalResolvePass.fullscreenMaterial.uniforms.samples.value = this.samples
@@ -211,7 +167,5 @@ export class TRAAEffect extends Effect {
 		this.temporalResolvePass.render(renderer)
 
 		this._scene.autoUpdate = autoUpdate
-
-		this._camera.clearViewOffset()
 	}
 }

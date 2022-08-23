@@ -66,6 +66,7 @@ export class SSREffect extends Effect {
 
 		// temporal resolve pass
 		this.temporalResolvePass = new TemporalResolvePass(scene, camera, trCompose, options)
+		this.temporalResolvePass.haltonIndex = ~~(this.temporalResolvePass.haltonSequence.length / 2)
 
 		this.uniforms.get("reflectionsTexture").value = this.temporalResolvePass.renderTarget.texture
 
@@ -292,11 +293,12 @@ export class SSREffect extends Effect {
 			}
 		}
 
-		this.temporalResolvePass.unjitter()
+		// this.temporalResolvePass.unjitter()
 
-		this.temporalResolvePass.velocityPass.render(renderer)
+		if (!this.temporalResolvePass.checkCanUseSharedVelocityTexture())
+			this.temporalResolvePass.velocityPass.render(renderer)
 
-		this.temporalResolvePass.jitter()
+		// this.temporalResolvePass.jitter()
 
 		// render reflections of current frame
 		this.reflectionsPass.render(renderer, inputBuffer)
@@ -306,7 +308,7 @@ export class SSREffect extends Effect {
 		// compose reflection of last and current frame into one reflection
 		this.temporalResolvePass.render(renderer)
 
-		this.temporalResolvePass.unjitter()
+		// this.temporalResolvePass.unjitter()
 	}
 
 	static patchDirectEnvIntensity(envMapIntensity = 0) {
