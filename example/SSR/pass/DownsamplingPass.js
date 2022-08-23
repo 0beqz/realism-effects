@@ -121,19 +121,18 @@ export class DownsamplingPass extends Pass {
                 d[0] = readDepth(uvs[0], t[0]); d[1] = readDepth(uvs[1], t[1]);
                 d[2] = readDepth(uvs[2], t[2]); d[3] = readDepth(uvs[3], t[3]);
 
-                // vec4 minT;
-                // float minD = 1.0;
-                // for(int i = 0; i < 4; i++){
-                //     if(d[i] < minD){
-                //         minD = d[i];
-                //         minT = t[i];
-                //     }
-                // }
+                vec4 minT;
+                float minD = 0.0;
+                for(int i = 0; i < 4; i++){
+                    if(d[i] > minD){
+                        minD = d[i];
+                        minT = t[i];
+                    }
+                }
 
-                int index = findBestDepth(d);
+                // int index = findBestDepth(d);
 
-                gDepth = t[index];
-                // gNormal = textureLod(normalTexture, uvs[index], 0.);
+                gDepth = minT;
             }
             `,
 			uniforms: {
@@ -152,8 +151,8 @@ export class DownsamplingPass extends Pass {
 		const invTexSize = new Vector2(1 / width, 1 / height)
 
 		this.fullscreenMaterial.uniforms.coords1.value.copy(invTexSize)
-		this.fullscreenMaterial.uniforms.coords2.value.set(0, invTexSize)
-		this.fullscreenMaterial.uniforms.coords3.value.set(invTexSize, 0)
+		this.fullscreenMaterial.uniforms.coords2.value.set(0, invTexSize.y)
+		this.fullscreenMaterial.uniforms.coords3.value.set(invTexSize.x, 0)
 	}
 
 	render(renderer) {

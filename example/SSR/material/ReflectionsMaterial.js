@@ -13,6 +13,7 @@ export class ReflectionsMaterial extends ShaderMaterial {
 				inputTexture: new Uniform(null),
 				accumulatedTexture: new Uniform(null),
 				normalTexture: new Uniform(null),
+				diffuseTexture: new Uniform(null),
 				depthTexture: new Uniform(null),
 				fullResDepthTexture: new Uniform(null),
 				_projectionMatrix: new Uniform(new Matrix4()),

@@ -6,6 +6,7 @@ uniform sampler2D inputTexture;
 uniform sampler2D accumulatedTexture;
 uniform sampler2D normalTexture;
 uniform sampler2D depthTexture;
+uniform sampler2D diffuseTexture;
 uniform sampler2D fullResDepthTexture;
 uniform sampler2D envMap;
 
@@ -30,10 +31,11 @@ uniform float exponent;
 uniform float jitter;
 uniform float jitterRoughness;
 
-#define INVALID_RAY_COORDS vec2(-1.0);
-#define EARLY_OUT_COLOR    vec4(0.0, 0.0, 0.0, 1.0)
-#define FLOAT_EPSILON      0.00001
-#define TWO_PI             6.283185307179586
+#define INVALID_RAY_COORDS      vec2(-1.0);
+#define EARLY_OUT_COLOR         vec4(0.0, 0.0, 0.0, 1.0)
+#define FLOAT_EPSILON           0.00001
+#define FLOAT_ONE_MINUS_EPSILON 0.99999
+#define TWO_PI                  6.283185307179586
 
 float nearMinusFar;
 float nearMulFar;
@@ -107,7 +109,8 @@ void main() {
     float weight = 1.0 / float(iterations);
 
     float spread = jitter + roughness * jitterRoughness;
-    spread = min(1.0, spread);
+    spread *= 2.;
+    // spread = min(1.0, spread);
 
     for (int s = 0; s <= iterations; s++) {
         float sF = float(s);
@@ -124,7 +127,7 @@ void main() {
 
     float alpha = lastFrameAlpha;
 
-    // this reduces the smearing on mirror-like or glossy surfaces
+    // this reduces the smearing on mirror-like or glossy surfaces when the camera moves
     if (samples < 2. && spread < 0.5) alpha = min(lastFrameAlpha, spread * 0.25);
 
     gl_FragColor = vec4(finalSSR, alpha);
@@ -151,8 +154,7 @@ vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
 
     float fresnelFactor = fresnel_dielectric(viewDir, viewNormal, ior);
 
-    vec3 iblRadiance = getIBLRadiance(-viewDir, viewNormal, spread) * fresnelFactor;
-    iblRadiance = clamp(iblRadiance, vec3(0.0), vec3(1.0));
+    vec3 iblRadiance = vec3(0.);
 
     // view-space reflected ray
     vec3 reflected = normalize(reflect(viewDir, viewNormal));
@@ -164,15 +166,16 @@ vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
 
     vec2 coords = RayMarch(rayDir, hitPos, rayHitDepthDifference);
 
+    // invalid ray
     if (coords.x == -1.0) {
+        iblRadiance = getIBLRadiance(-viewDir, viewNormal, 0.) * fresnelFactor;
+        iblRadiance = clamp(iblRadiance, vec3(0.0), vec3(1.0));
+
         return vec4(iblRadiance, lastFrameAlpha);
     }
 
-    vec2 coordsNDC = (coords.xy * 2.0 - 1.0);
-    float screenFade = 0.1;
-    float maxDimension = min(1.0, max(abs(coordsNDC.x), abs(coordsNDC.y)));
-    float reflectionIntensity = 1.0 - (max(0.0, maxDimension - screenFade) / (1.0 - screenFade));
-    reflectionIntensity = max(0., reflectionIntensity);
+    vec2 dCoords = smoothstep(0.2, 0.6, abs(vec2(0.5, 0.5) - coords.xy));
+    float reflectionIntensity = clamp(1.0 - (dCoords.x + dCoords.y), 0.0, 1.0);
 
     vec3 hitWorldPos = screenSpaceToWorldSpace(coords, rayHitDepthDifference);
 
@@ -180,12 +183,22 @@ vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     float reflectionDistance = distance(hitWorldPos, worldPos);
 
     float lod = min(8., log(reflectionDistance) * 10.0 * spread);
+    // lod = 0.;
+
     vec4 SSRTexel = textureLod(inputTexture, coords.xy, lod);
+
     vec4 SSRTexelReflected = textureLod(accumulatedTexture, coords.xy, lod);
 
     vec3 SSR = SSRTexel.rgb + SSRTexelReflected.rgb;
+    vec3 finalSSR = vec3(0.);
 
-    vec3 finalSSR = mix(iblRadiance, SSR, reflectionIntensity);
+    if (true || reflectionIntensity > FLOAT_ONE_MINUS_EPSILON) {
+        finalSSR = SSR;
+    } else {
+        iblRadiance = getIBLRadiance(-viewDir, viewNormal, spread) * fresnelFactor;
+        iblRadiance = clamp(iblRadiance, vec3(0.0), vec3(1.0));
+        finalSSR = mix(iblRadiance, SSR, reflectionIntensity);
+    }
 
     if (fade != 0.0) {
         float opacity = 1.0 / ((reflectionDistance + 1.0) * fade * 0.1);

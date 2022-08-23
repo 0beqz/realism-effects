@@ -102,6 +102,9 @@ const setAA = value => {
 const controls = new OrbitControls(camera, document.querySelector("#orbitControlsDomElem"))
 camera.position.fromArray([-55.48651952979117, 14.717377645401774, 2.3037376138234147])
 controls.target.fromArray([-25.74478629167503, 14.14908331969509, -1.5829506361015864])
+
+camera.position.set(0, 10, 24)
+controls.target.set(0, 9.95, 0)
 controls.maxPolarAngle = Math.PI / 2
 controls.maxDistance = 30
 window.controls = controls
@@ -146,10 +149,11 @@ pmremGenerator.compileEquirectangularShader()
 
 const gltflLoader = new GLTFLoader()
 
-const url = "room.glb"
+const url = "brandenburger_tor.glb"
 
 gltflLoader.load(url, asset => {
 	scene.add(asset.scene)
+	asset.scene.scale.multiplyScalar(10)
 	scene.updateMatrixWorld()
 
 	window.mesh = asset.scene
@@ -158,7 +162,7 @@ gltflLoader.load(url, asset => {
 		if (c.isMesh) {
 			// c.material.wireframe = true
 			c.material.envMapIntensity = 0
-			c.material.roughness = 0.1
+			// c.material.roughness = 0.1
 			c.material.normalScale.setScalar(0)
 			c.castShadow = c.receiveShadow = true
 		}
@@ -184,12 +188,16 @@ gltflLoader.load(url, asset => {
 		plane.visible = false
 	}
 
+	const lightMesh = scene.getObjectByName("light")
+	if (lightMesh && lightMesh.material)
+		lightMesh.material = new MeshBasicMaterial({ color: new Color().setRGB(1, 0.5, 0.2) })
+
 	sphere = scene.getObjectByName("Sphere")
 	if (sphere) {
 		sphere.material.envMapIntensity = 0.25
 	}
 
-	if (scene.getObjectByName("Cube")) {
+	if (scene.getObjectByName("Cube") && scene.getObjectByName("Cube").material) {
 		scene.getObjectByName("Cube").material = new MeshBasicMaterial({
 			map: scene.getObjectByName("Cube").material.map,
 			color: new Color().setScalar(10),
@@ -205,8 +213,8 @@ gltflLoader.load(url, asset => {
 		})
 	}
 
-	const light = new DirectionalLight(0xff8822, 10)
-	light.position.set(-500, 207, 98)
+	const light = new DirectionalLight(0xffffff, 4.6)
+	light.position.set(-500, 207, 140)
 	light.updateMatrixWorld()
 	light.castShadow = true
 	scene.add(light)
@@ -240,24 +248,26 @@ gltflLoader.load(url, asset => {
 	const options = {
 		...defaultSSROptions,
 		...{
-			maxDepthDifference: 100,
+			maxDepthDifference: 20,
 			exponent: 1,
-			power: 1,
-			ior: 2.33,
-			blur: 0,
-			intensity: 0.95,
-			missedRays: true,
+			intensity: 3,
+			power: 1.5,
+			ior: 2.09,
+			blur: 1,
+			missedRays: false,
 			correctionRadius: 1,
 			resolutionScale: 0.5,
 			qualityScale: 0.5,
-			distance: 30,
+			distance: 20,
 			steps: 20,
-			spp: 8,
-			refineSteps: 2,
-			blend: 0.95,
-			jitter: 0.7,
+			spp: 10,
+			refineSteps: 7,
+			blend: 0.975,
+			jitter: 0.61,
 			jitterRoughness: 0,
-			correction: 0
+			correction: 0,
+			thickness: 11.96,
+			roughnessFade: 0
 		}
 	}
 	traaEffect = new TRAAEffect(scene, camera, params)
@@ -309,7 +319,7 @@ gltflLoader.load(url, asset => {
 		light.updateMatrixWorld()
 		createEnvMap()
 	})
-	sceneFolder.addInput(light, "intensity", { min: 0, max: 40, step: 0.1 }).on("change", ev => {
+	sceneFolder.addInput(light, "intensity", { min: 0, max: 10, step: 0.1 }).on("change", ev => {
 		ssrEffect.temporalResolvePass.samples = 1
 		traaEffect.temporalResolvePass.samples = 1
 		renderer.shadowMap.needsUpdate = true
@@ -339,6 +349,7 @@ gltflLoader.load(url, asset => {
 		envMap.mapping = THREE.EquirectangularReflectionMapping
 
 		scene.environment = envMap
+		scene.background = envMap
 
 		envMesh = new GroundProjectedEnv(envMap)
 		envMesh.radius = 440
@@ -346,7 +357,7 @@ gltflLoader.load(url, asset => {
 		envMesh.scale.setScalar(100)
 		envMesh.updateMatrixWorld()
 		scene.add(envMesh)
-		envMesh.visible = false
+		// envMesh.visible = false
 
 		createEnvMap()
 	})
@@ -395,15 +406,24 @@ gltflLoader.load(url, asset => {
 })
 
 const createEnvMap = () => {
+	return
 	if (scene.getObjectByName("Object_2")) scene.getObjectByName("Object_2").visible = false
+	if (scene.getObjectByName("boxes")) scene.getObjectByName("boxes").visible = false
+
+	// const env = ssrEffect.generateBoxProjectedEnvMapFallback(
+	// 	renderer,
+	// 	new Vector3(0, 5, 0),
+	// 	new Vector3(64.6103 * 2, 150, 60.5753 * 2)
+	// )
 
 	const env = ssrEffect.generateBoxProjectedEnvMapFallback(
 		renderer,
-		new Vector3(0, 5, 0),
-		new Vector3(64.6103 * 2, 150, 60.5753 * 2)
+		new Vector3(0, 1, 0),
+		new Vector3(9.9 * 2, 19.9, 9.9 * 2)
 	)
 
 	if (scene.getObjectByName("Object_2")) scene.getObjectByName("Object_2").visible = true
+	if (scene.getObjectByName("boxes")) scene.getObjectByName("boxes").visible = true
 
 	scene.environment = env
 	ambientLight.intensity = 0
@@ -429,25 +449,25 @@ THREE.DefaultLoadingManager.onProgress = () => {
 let skinMesh
 let mixer
 
-gltflLoader.load("skin.glb", asset => {
-	skinMesh = asset.scene
-	skinMesh.scale.multiplyScalar(2.1)
-	skinMesh.position.set(2.5, 0, 0)
-	skinMesh.rotation.y += Math.PI / 2
-	skinMesh.updateMatrixWorld()
-	skinMesh.traverse(c => {
-		if (c.material) {
-			c.material.roughness = 0
-			c.material.metalness = 1
-		}
-	})
-	// scene.add(asset.scene)
-	mixer = new THREE.AnimationMixer(skinMesh)
-	const clips = asset.animations
+// gltflLoader.load("skin.glb", asset => {
+// 	skinMesh = asset.scene
+// 	skinMesh.scale.multiplyScalar(2.1)
+// 	skinMesh.position.set(2.5, 0, 0)
+// 	skinMesh.rotation.y += Math.PI / 2
+// 	skinMesh.updateMatrixWorld()
+// 	skinMesh.traverse(c => {
+// 		if (c.material) {
+// 			c.material.roughness = 0
+// 			c.material.metalness = 1
+// 		}
+// 	})
+// 	// scene.add(asset.scene)
+// 	mixer = new THREE.AnimationMixer(skinMesh)
+// 	const clips = asset.animations
 
-	const action = mixer.clipAction(clips[0])
-	action.play()
-})
+// 	const action = mixer.clipAction(clips[0])
+// 	action.play()
+// })
 
 const clock = new THREE.Clock()
 

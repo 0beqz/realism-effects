@@ -15,8 +15,6 @@
  * @property {boolean} [correction] how much pixels should be corrected when doing temporal resolving; higher values will result in less smearing but more noise
  * @property {boolean} [correctionRadius] how many surrounding pixels will be used for neighborhood clamping; a higher value can reduce noise when moving the camera but will result in less performance
  * @property {Number} [blur] how much the blurred reflections should be mixed with the raw reflections
- * @property {Number} [blurKernel] kernel size of the Box Blur Filter; higher kernel sizes will result in blurrier reflections with more artifacts
- * @property {Number} [blurSharpness] exponent of the Box Blur filter; higher values will result in more sharpness
  * @property {Number} [jitter] how intense jittering should be
  * @property {Number} [jitterRoughness] how intense jittering should be in relation to a material's roughness
  * @property {Number} [steps] number of steps a reflection ray can maximally do to find an object it intersected (and thus reflects)
@@ -48,8 +46,6 @@ export const defaultSSROptions = {
 	correction: 1,
 	correctionRadius: 1,
 	blur: 0.5,
-	blurKernel: 1,
-	blurSharpness: 10,
 	jitter: 0,
 	jitterRoughness: 0,
 	steps: 20,

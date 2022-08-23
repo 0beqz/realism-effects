@@ -10,7 +10,6 @@ import {
 	Vector3,
 	WebGLCubeRenderTarget
 } from "three"
-import boxBlur from "./material/shader/boxBlur.frag"
 import finalSSRShader from "./material/shader/finalSSRShader.frag"
 import helperFunctions from "./material/shader/helperFunctions.frag"
 import trCompose from "./material/shader/trCompose.frag"
@@ -20,9 +19,7 @@ import { TemporalResolvePass } from "./temporal-resolve/TemporalResolvePass.js"
 import { useBoxProjectedEnvMap } from "./utils/useBoxProjectedEnvMap"
 import { setupEnvMap } from "./utils/Utils"
 
-const finalFragmentShader = finalSSRShader
-	.replace("#include <helperFunctions>", helperFunctions)
-	.replace("#include <boxBlur>", boxBlur)
+const finalFragmentShader = finalSSRShader.replace("#include <helperFunctions>", helperFunctions)
 
 const defaultCubeRenderTarget = new WebGLCubeRenderTarget(1)
 let pmremGenerator
@@ -42,12 +39,11 @@ export class SSREffect extends Effect {
 		super("SSREffect", finalFragmentShader, {
 			type: "FinalSSRMaterial",
 			uniforms: new Map([
+				["diffuseTexture", new Uniform(null)],
 				["reflectionsTexture", new Uniform(null)],
 				["intensity", new Uniform(1)],
 				["power", new Uniform(1)],
-				["blur", new Uniform(0)],
-				["blurSharpness", new Uniform(0)],
-				["blurKernel", new Uniform(0)]
+				["blur", new Uniform(0)]
 			]),
 			defines: new Map([["RENDER_MODE", "0"]])
 		})
@@ -56,7 +52,7 @@ export class SSREffect extends Effect {
 		this._camera = camera
 
 		const trOptions = {
-			boxBlur: false,
+			boxBlur: true,
 			dilation: true,
 			renderVelocity: false,
 			neighborhoodClamping: false,
@@ -70,7 +66,6 @@ export class SSREffect extends Effect {
 
 		// temporal resolve pass
 		this.temporalResolvePass = new TemporalResolvePass(scene, camera, trCompose, options)
-		this.temporalResolvePass.haltonIndex = ~~(this.temporalResolvePass.haltonSequence.length / 2)
 
 		this.uniforms.get("reflectionsTexture").value = this.temporalResolvePass.renderTarget.texture
 
@@ -128,14 +123,6 @@ export class SSREffect extends Effect {
 
 						case "blur":
 							this.uniforms.get("blur").value = value
-							break
-
-						case "blurSharpness":
-							this.uniforms.get("blurSharpness").value = value
-							break
-
-						case "blurKernel":
-							this.uniforms.get("blurKernel").value = value
 							break
 
 						// defines
@@ -217,8 +204,6 @@ export class SSREffect extends Effect {
 
 		this.temporalResolvePass.setSize(width, height)
 		this.reflectionsPass.setSize(width, height)
-
-		this.temporalResolvePass.jitterScale = 2 * (1 / this.resolutionScale - 1)
 
 		this.lastSize = {
 			width,
@@ -315,6 +300,8 @@ export class SSREffect extends Effect {
 
 		// render reflections of current frame
 		this.reflectionsPass.render(renderer, inputBuffer)
+
+		this.uniforms.get("diffuseTexture").value = this.reflectionsPass.gBuffersRenderTarget.texture[2]
 
 		// compose reflection of last and current frame into one reflection
 		this.temporalResolvePass.render(renderer)

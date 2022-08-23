@@ -45,7 +45,7 @@ export class ReflectionsPass extends Pass {
 
 		if (this.USE_MRT) {
 			// buffers: normal, depth (2), roughness will be written to the alpha channel of the normal buffer
-			this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(1, 1, 2, {
+			this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(1, 1, 3, {
 				minFilter: NearestFilter,
 				magFilter: NearestFilter
 			})
@@ -70,13 +70,11 @@ export class ReflectionsPass extends Pass {
 
 		// set up uniforms
 		this.fullscreenMaterial.uniforms.normalTexture.value = this.normalTexture
-		this.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
+		this.fullscreenMaterial.uniforms.diffuseTexture.value = this.gBuffersRenderTarget.texture[2]
 		this.fullscreenMaterial.uniforms.fullResDepthTexture.value = this.depthTexture
 		this.fullscreenMaterial.uniforms.cameraMatrixWorld.value = this._camera.matrixWorld
 		this.fullscreenMaterial.uniforms._projectionMatrix.value = this._camera.projectionMatrix
 		this.fullscreenMaterial.uniforms._inverseProjectionMatrix.value = this._camera.projectionMatrixInverse
-
-		this.fullscreenMaterial.uniforms.depthTexture.value = this.downsamplingPass.renderTarget.texture[0]
 	}
 
 	setSize(width, height) {
@@ -87,6 +85,9 @@ export class ReflectionsPass extends Pass {
 		this.fullscreenMaterial.uniforms.invTexSize.value.set(1 / width, 1 / height)
 
 		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.ssrEffect.temporalResolvePass.renderTarget.texture
+		this.fullscreenMaterial.uniforms.depthTexture.value =
+			this.ssrEffect.qualityScale === 1 ? this.depthTexture : this.downsamplingPass.renderTarget.texture[0]
+
 		this.fullscreenMaterial.needsUpdate = true
 	}
 
@@ -156,9 +157,11 @@ export class ReflectionsPass extends Pass {
 				}
 
 				// update the child's MRT material
+				this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "normalMap", "USE_NORMAL_MAP")
+				this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "roughnessMap", "USE_ROUGHNESS_MAP")
+				this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "map", "USE_MAP")
 
-				this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "normalMap", "useNormalMap")
-				this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "roughnessMap", "useRoughnessMap")
+				if (originalMaterial.color) mrtMaterial.uniforms.color.value.copy(originalMaterial.color)
 
 				mrtMaterial.uniforms.roughness.value =
 					this.ssrEffect.selection.size === 0 || this.ssrEffect.selection.has(c)
@@ -190,9 +193,7 @@ export class ReflectionsPass extends Pass {
 
 		this.unsetMRTMaterialInScene()
 
-		// if (this.ssrEffect.qualityScale < 1) this.downsamplingPass.render(renderer, inputBuffer)
-
-		this.fullscreenMaterial.uniforms.depthTexture.value = this.gBuffersRenderTarget.texture[1]
+		if (this.ssrEffect.qualityScale < 1) this.downsamplingPass.render(renderer, inputBuffer)
 
 		// render depth and velocity in seperate passes
 		if (!this.USE_MRT) this.webgl1DepthPass.renderPass.render(renderer, this.webgl1DepthPass.renderTarget)

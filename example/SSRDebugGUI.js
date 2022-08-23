@@ -31,7 +31,7 @@ export class SSRDebugGUI {
 		})
 		generalFolder.addInput(params, "thickness", {
 			min: 0,
-			max: 10,
+			max: 100,
 			step: 0.01
 		})
 		generalFolder.addInput(params, "ior", {
@@ -56,8 +56,6 @@ export class SSRDebugGUI {
 
 		const blurFolder = pane.addFolder({ title: "Blur" })
 		blurFolder.addInput(params, "blur", { min: 0, max: 1, step: 0.01 })
-		blurFolder.addInput(params, "blurKernel", { min: 0, max: 5, step: 1 })
-		blurFolder.addInput(params, "blurSharpness", { min: 0, max: 100, step: 1 })
 
 		const jitterFolder = pane.addFolder({ title: "Jitter" })
 

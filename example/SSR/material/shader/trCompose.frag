@@ -3,6 +3,7 @@
 alpha = didReproject && depthDiff <= maxNeighborDepthDifference ? (alpha + alphaStep) : 0.0;
 
 if (isMoving) alpha = min(alpha, alphaStep * 24.);
+// if (isMoving) alpha = min(alpha, alphaStep * 64.);
 
 float m = blend;
 
