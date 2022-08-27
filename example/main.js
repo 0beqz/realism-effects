@@ -35,7 +35,7 @@ window.scene = scene
 const ambientLight = new THREE.AmbientLight(new Color().setScalar(0))
 scene.add(ambientLight)
 
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 1000)
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.01, 1000)
 
 scene.add(camera)
 scene.autoUpdate = false
@@ -103,11 +103,9 @@ const setAA = value => {
 
 // since using "rendererCanvas" doesn't work when using an offscreen canvas
 const controls = new OrbitControls(camera, document.querySelector("#orbitControlsDomElem"))
-camera.position.fromArray([-55.48651952979117, 14.717377645401774, 2.3037376138234147])
-controls.target.fromArray([-25.74478629167503, 14.14908331969509, -1.5829506361015864])
 
 camera.position.set(0, 10, 24)
-controls.target.set(0, 9.95, 0)
+controls.target.set(0, 8, 0)
 controls.maxPolarAngle = Math.PI / 2
 // controls.maxDistance = 30
 window.controls = controls
@@ -246,7 +244,7 @@ gltflLoader.load(url, asset => {
 	const options = {
 		...defaultSSROptions,
 		...{
-			maxDepthDifference: 1.2,
+			maxDepthDifference: 43.5,
 			exponent: 1.15,
 			intensity: 3.25,
 			power: 1.55,
@@ -255,7 +253,7 @@ gltflLoader.load(url, asset => {
 			missedRays: true,
 			resolutionScale: 0.5,
 			qualityScale: 1,
-			distance: 5.2,
+			distance: 9.2,
 			steps: 45,
 			refineSteps: 7,
 			spp: 12,
@@ -388,7 +386,7 @@ gltflLoader.load(url, asset => {
 
 		composer.addPass(ssrPass)
 
-		// composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, vignetteEffect))
+		composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, vignetteEffect))
 
 		const smaaEffect = new POSTPROCESSING.SMAAEffect()
 

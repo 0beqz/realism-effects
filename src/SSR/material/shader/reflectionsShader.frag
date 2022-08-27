@@ -36,6 +36,7 @@ uniform float jitterRoughness;
 #define FLOAT_EPSILON           0.00001
 #define FLOAT_ONE_MINUS_EPSILON 0.99999
 #define TWO_PI                  6.283185307179586
+#define USE_DIFFUSE
 
 float nearMinusFar;
 float nearMulFar;
@@ -173,7 +174,6 @@ vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
 
 #ifdef USE_DIFFUSE
         vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.);
-        iblRadiance *= diffuseTexel.rgb;
 #endif
 
         return vec4(iblRadiance, lastFrameAlpha);
@@ -195,7 +195,7 @@ vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
 
 #ifdef USE_DIFFUSE
     vec4 diffuseTexel = textureLod(diffuseTexture, coords.xy, lod);
-    SSRTexelReflected.rgb *= SSRTexelReflected.rgb;
+    SSRTexel.rgb *= diffuseTexel.rgb;
 #endif
 
     vec3 SSR = SSRTexel.rgb + SSRTexelReflected.rgb;

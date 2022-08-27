@@ -35,8 +35,8 @@ export class ReflectionsPass extends Pass {
 		if (ssrEffect._camera.isPerspectiveCamera) this.fullscreenMaterial.defines.PERSPECTIVE_CAMERA = ""
 
 		this.renderTarget = new WebGLRenderTarget(1, 1, {
-			minFilter: NearestFilter,
-			magFilter: NearestFilter,
+			minFilter: LinearFilter,
+			magFilter: LinearFilter,
 			type: HalfFloatType,
 			depthBuffer: false
 		})
@@ -83,13 +83,8 @@ export class ReflectionsPass extends Pass {
 
 	setSize(width, height) {
 		this.renderTarget.setSize(width * this.ssrEffect.resolutionScale, height * this.ssrEffect.resolutionScale)
-		if (this.ssrEffect.resolutionScale < 0.5) {
-			this.renderTarget.texture.minFilter = LinearFilter
-			this.renderTarget.texture.magFilter = LinearFilter
-		} else {
-			this.renderTarget.texture.minFilter = NearestFilter
-			this.renderTarget.texture.magFilter = NearestFilter
-		}
+		this.renderTarget.texture.minFilter = LinearFilter
+		this.renderTarget.texture.magFilter = LinearFilter
 
 		this.gBuffersRenderTarget.setSize(width * this.ssrEffect.qualityScale, height * this.ssrEffect.qualityScale)
 		this.downsamplingPass.setSize(width * 0.5, height * 0.5)
