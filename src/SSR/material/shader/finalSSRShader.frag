@@ -6,7 +6,7 @@
 #define MODE_BLUR_MIX            5
 
 #define FLOAT_EPSILON            0.00001
-// #define USE_DIFFUSE
+#define USE_DIFFUSE
 
 uniform sampler2D diffuseTexture;
 uniform sampler2D reflectionsTexture;

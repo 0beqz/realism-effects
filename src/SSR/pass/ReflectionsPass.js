@@ -29,7 +29,7 @@ export class ReflectionsPass extends Pass {
 		this._scene = ssrEffect._scene
 		this._camera = ssrEffect._camera
 
-		this.renderDiffuse = false
+		this.useDiffuse = true
 
 		this.fullscreenMaterial = new ReflectionsMaterial()
 		if (ssrEffect._camera.isPerspectiveCamera) this.fullscreenMaterial.defines.PERSPECTIVE_CAMERA = ""
@@ -47,7 +47,7 @@ export class ReflectionsPass extends Pass {
 
 		if (this.isWebGL2) {
 			// buffers: normal, depth (2), roughness will be written to the alpha channel of the normal buffer
-			this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(1, 1, this.renderDiffuse ? 3 : 2, {
+			this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(1, 1, this.useDiffuse ? 3 : 2, {
 				minFilter: NearestFilter,
 				magFilter: NearestFilter
 			})
@@ -69,7 +69,7 @@ export class ReflectionsPass extends Pass {
 		}
 
 		this.downsamplingPass = new DownsamplingPass(this.depthTexture, this.normalTexture)
-		this.downsampling = true
+		this.downsampling = false
 
 		// set up uniforms
 		this.fullscreenMaterial.uniforms.normalTexture.value = this.normalTexture
@@ -78,7 +78,7 @@ export class ReflectionsPass extends Pass {
 		this.fullscreenMaterial.uniforms._projectionMatrix.value = this._camera.projectionMatrix
 		this.fullscreenMaterial.uniforms._inverseProjectionMatrix.value = this._camera.projectionMatrixInverse
 
-		if (this.renderDiffuse) this.fullscreenMaterial.uniforms.diffuseTexture.value = this.gBuffersRenderTarget.texture[2]
+		if (this.useDiffuse) this.fullscreenMaterial.uniforms.diffuseTexture.value = this.gBuffersRenderTarget.texture[2]
 	}
 
 	setSize(width, height) {
@@ -155,7 +155,7 @@ export class ReflectionsPass extends Pass {
 					mrtMaterial = new MRTMaterial()
 
 					if (this.isWebGL2) mrtMaterial.defines.isWebGL2 = ""
-					if (this.renderDiffuse) mrtMaterial.defines.renderDiffuse = ""
+					if (this.useDiffuse) mrtMaterial.defines.useDiffuse = ""
 
 					mrtMaterial.normalScale = originalMaterial.normalScale
 					mrtMaterial.uniforms.normalScale.value = originalMaterial.normalScale

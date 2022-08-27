@@ -128,7 +128,7 @@ void main() {
     float alpha = lastFrameAlpha;
 
     // this reduces the smearing on mirror-like or glossy surfaces when the camera moves
-    if (samples < 2. && spread < 0.5) alpha = min(lastFrameAlpha, spread * 0.25);
+    // if (samples < 2. && spread < 0.5) alpha = min(lastFrameAlpha, spread * 0.25);
 
     gl_FragColor = vec4(finalSSR, alpha);
 }
@@ -171,6 +171,11 @@ vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
         iblRadiance = getIBLRadiance(-viewDir, viewNormal, 0.) * fresnelFactor;
         iblRadiance = clamp(iblRadiance, vec3(0.0), vec3(1.0));
 
+#ifdef USE_DIFFUSE
+        vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.);
+        iblRadiance *= diffuseTexel.rgb;
+#endif
+
         return vec4(iblRadiance, lastFrameAlpha);
     }
 
@@ -183,22 +188,26 @@ vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     float reflectionDistance = distance(hitWorldPos, worldPos);
 
     float lod = min(8., log(reflectionDistance) * 10.0 * spread);
-    // lod = 0.;
 
     vec4 SSRTexel = textureLod(inputTexture, coords.xy, lod);
 
     vec4 SSRTexelReflected = textureLod(accumulatedTexture, coords.xy, lod);
 
+#ifdef USE_DIFFUSE
+    vec4 diffuseTexel = textureLod(diffuseTexture, coords.xy, lod);
+    SSRTexelReflected.rgb *= SSRTexelReflected.rgb;
+#endif
+
     vec3 SSR = SSRTexel.rgb + SSRTexelReflected.rgb;
     vec3 finalSSR = vec3(0.);
 
-    // if (reflectionIntensity > FLOAT_ONE_MINUS_EPSILON) {
-    //     finalSSR = SSR;
-    // } else {
-    //     iblRadiance = getIBLRadiance(-viewDir, viewNormal, spread) * fresnelFactor;
-    //     iblRadiance = clamp(iblRadiance, vec3(0.0), vec3(1.0));
-    //     finalSSR = mix(iblRadiance, SSR, reflectionIntensity);
-    // }
+    if (reflectionIntensity > FLOAT_ONE_MINUS_EPSILON) {
+        finalSSR = SSR;
+    } else {
+        iblRadiance = getIBLRadiance(-viewDir, viewNormal, spread) * fresnelFactor;
+        iblRadiance = clamp(iblRadiance, vec3(0.0), vec3(1.0));
+        finalSSR = mix(iblRadiance, SSR, reflectionIntensity);
+    }
 
     finalSSR = SSR;
 

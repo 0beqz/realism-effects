@@ -82,7 +82,7 @@ export class MRTMaterial extends ShaderMaterial {
                 #include <clipping_planes_pars_fragment>
                 #include <roughnessmap_pars_fragment>
 
-                #ifdef renderDiffuse
+                #ifdef useDiffuse
                 #include <map_pars_fragment>
                 #endif
                 
@@ -90,7 +90,7 @@ export class MRTMaterial extends ShaderMaterial {
                 layout(location = 0) out vec4 gNormal;
                 layout(location = 1) out vec4 gDepth;
 
-                #ifdef renderDiffuse
+                #ifdef useDiffuse
                 layout(location = 2) out vec4 gDiffuse;
                 #endif
                 
@@ -125,7 +125,7 @@ export class MRTMaterial extends ShaderMaterial {
                         gNormal = vec4( normalColor, roughnessFactor );
                         gDepth = depthColor;
 
-                        #ifdef renderDiffuse
+                        #ifdef useDiffuse
 
                         vec4 diffuseColor = vec4(color, 1.0);
                         #include <map_fragment>

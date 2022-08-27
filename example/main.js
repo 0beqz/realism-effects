@@ -109,7 +109,7 @@ controls.target.fromArray([-25.74478629167503, 14.14908331969509, -1.58295063610
 camera.position.set(0, 10, 24)
 controls.target.set(0, 9.95, 0)
 controls.maxPolarAngle = Math.PI / 2
-controls.maxDistance = 30
+// controls.maxDistance = 30
 window.controls = controls
 
 const composer = new POSTPROCESSING.EffectComposer(renderer)
@@ -148,7 +148,7 @@ pmremGenerator.compileEquirectangularShader()
 
 const gltflLoader = new GLTFLoader()
 
-const url = "brandenburger_tor.glb"
+const url = "lego.glb"
 
 gltflLoader.load(url, asset => {
 	scene.add(asset.scene)
@@ -162,7 +162,6 @@ gltflLoader.load(url, asset => {
 			// c.material.wireframe = true
 			c.material.envMapIntensity = 0
 			// c.material.roughness = 0.1
-			c.material.normalScale.setScalar(0)
 			c.castShadow = c.receiveShadow = true
 		}
 	})
@@ -212,8 +211,8 @@ gltflLoader.load(url, asset => {
 		})
 	}
 
-	const light = new DirectionalLight(0xffffff, 4.6)
-	light.position.set(-500, 207, 140)
+	const light = new DirectionalLight(0xffffff, 3)
+	light.position.set(217, 43, 76)
 	light.updateMatrixWorld()
 	light.castShadow = true
 	scene.add(light)
@@ -247,25 +246,24 @@ gltflLoader.load(url, asset => {
 	const options = {
 		...defaultSSROptions,
 		...{
-			maxDepthDifference: 20,
-			exponent: 1,
-			intensity: 3,
-			power: 1.5,
-			ior: 2.09,
-			blur: 1,
-			missedRays: false,
-			correctionRadius: 1,
+			maxDepthDifference: 1.2,
+			exponent: 1.15,
+			intensity: 3.25,
+			power: 1.55,
+			ior: 2.33,
+			blur: 0,
+			missedRays: true,
 			resolutionScale: 0.5,
-			qualityScale: 0.5,
-			distance: 20,
-			steps: 20,
-			spp: 10,
+			qualityScale: 1,
+			distance: 5.2,
+			steps: 45,
 			refineSteps: 7,
-			blend: 0.975,
-			jitter: 0.61,
+			spp: 12,
+			blend: 0.978,
+			jitter: 0.28,
 			jitterRoughness: 0,
 			correction: 0,
-			thickness: 11.96,
+			thickness: 2.72,
 			roughnessFade: 0
 		}
 	}

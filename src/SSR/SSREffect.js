@@ -56,8 +56,9 @@ export class SSREffect extends Effect {
 			dilation: true,
 			renderVelocity: false,
 			neighborhoodClamping: false,
-			logTransform: true,
-			generateMipmaps: true
+			logTransform: false,
+			generateMipmaps: true,
+			...options
 		}
 
 		options = { ...defaultSSROptions, ...options, ...trOptions }
@@ -304,7 +305,7 @@ export class SSREffect extends Effect {
 		// render reflections of current frame
 		this.reflectionsPass.render(renderer, inputBuffer)
 
-		if (this.reflectionsPass.renderDiffuse)
+		if (this.reflectionsPass.useDiffuse)
 			this.uniforms.get("diffuseTexture").value = this.reflectionsPass.gBuffersRenderTarget.texture[2]
 
 		// compose reflection of last and current frame into one reflection
