@@ -8,7 +8,7 @@ float m = blend;
 
 float s = alpha / alphaStep + 1.0;
 m = 1. - 1. / s;
-m = min(blend, m);
+// m = 0.;
 
 #ifdef neighborhoodClamping
 if (alpha <= 0.05) inputColor = boxBlurredColor;

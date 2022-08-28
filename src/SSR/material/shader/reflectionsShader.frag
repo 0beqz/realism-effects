@@ -139,7 +139,7 @@ vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     if (jitterRoughness != 0.0 || jitter != 0.0) {
         float ind = log(samples * float(spp) + sampleCount);
 
-        vec3 seed = 50.0 * ind * worldPos + ind;
+        vec3 seed = 1500.0 * ind * worldPos + ind;
 
         vec2 random = hash23(seed);
         float r1 = random.x;
