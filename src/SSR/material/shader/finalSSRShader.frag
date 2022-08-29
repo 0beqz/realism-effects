@@ -79,6 +79,12 @@ vec3 sirBirdDenoise(sampler2D imageTexture, vec3 sampleCenter, in vec2 uv, in ve
     return denoisedColor / influenceSum;
 }
 
+float czm_luminance(vec3 rgb) {
+    // Algorithm from Chapter 10 of Graphics Shaders.
+    const vec3 W = vec3(0.2125, 0.7154, 0.0721);
+    return dot(rgb, W);
+}
+
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
     vec4 reflectionsTexel = texture2D(reflectionsTexture, vUv);
     vec3 reflectionClr = reflectionsTexel.xyz;
@@ -93,12 +99,12 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 
     reflectionClr *= intensity;
 
+    if (power != 1.0) reflectionClr = pow(reflectionClr, vec3(power));
+
 #ifdef USE_DIFFUSE
     vec3 diffuseColor = LinearTosRGB(textureLod(diffuseTexture, vUv, 0.)).rgb;
-    reflectionClr *= diffuseColor;
+    reflectionClr *= diffuseColor + 0.25;
 #endif
-
-    if (power != 1.0) reflectionClr = pow(reflectionClr, vec3(power));
 
 #if RENDER_MODE == MODE_DEFAULT
     outputColor = vec4(inputColor.rgb + reflectionClr, 1.0);

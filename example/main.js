@@ -1,14 +1,22 @@
 import * as POSTPROCESSING from "postprocessing"
 import Stats from "stats.js"
 import * as THREE from "three"
-import { Color, DirectionalLight, HalfFloatType, LinearMipMapLinearFilter, MeshBasicMaterial, Vector3 } from "three"
-import { WebGLRenderTarget } from "three/build/three.module"
+import {
+	Color,
+	DirectionalLight,
+	DoubleSide,
+	HalfFloatType,
+	LinearMipMapLinearFilter,
+	MeshBasicMaterial,
+	Vector3
+} from "three"
+import { FogExp2, WebGLRenderTarget } from "three/build/three.module"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader"
 import { GroundProjectedEnv } from "three/examples/jsm/objects/GroundProjectedEnv"
+import { SSREffect } from "../src/SSR/index"
 import { TRAAEffect } from "../src/TRAAEffect"
-import { defaultSSROptions, SSREffect } from "../src/SSR/index"
 import { SSRDebugGUI } from "./SSRDebugGUI"
 import "./style.css"
 import { TRAADebugGUI } from "./TRAADebugGUI"
@@ -35,7 +43,7 @@ window.scene = scene
 const ambientLight = new THREE.AmbientLight(new Color().setScalar(0))
 scene.add(ambientLight)
 
-const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.01, 1000)
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.01, 250)
 
 scene.add(camera)
 scene.autoUpdate = false
@@ -66,7 +74,7 @@ window.renderer = renderer
 
 renderer.outputEncoding = THREE.sRGBEncoding
 renderer.toneMapping = THREE.ACESFilmicToneMapping
-renderer.toneMappingExposure = 1.4
+renderer.toneMappingExposure = 1
 renderer.setPixelRatio(window.devicePixelRatio)
 renderer.setSize(window.innerWidth, window.innerHeight)
 
@@ -146,7 +154,7 @@ pmremGenerator.compileEquirectangularShader()
 
 const gltflLoader = new GLTFLoader()
 
-const url = "lego.glb"
+const url = "scifi_girl.glb"
 
 gltflLoader.load(url, asset => {
 	scene.add(asset.scene)
@@ -184,32 +192,7 @@ gltflLoader.load(url, asset => {
 		plane.visible = false
 	}
 
-	const lightMesh = scene.getObjectByName("light")
-	if (lightMesh && lightMesh.material)
-		lightMesh.material = new MeshBasicMaterial({ color: new Color().setRGB(1, 0.5, 0.2) })
-
-	sphere = scene.getObjectByName("Sphere")
-	if (sphere) {
-		sphere.material.envMapIntensity = 0.25
-	}
-
-	if (scene.getObjectByName("Cube") && scene.getObjectByName("Cube").material) {
-		scene.getObjectByName("Cube").material = new MeshBasicMaterial({
-			map: scene.getObjectByName("Cube").material.map,
-			color: new Color().setScalar(10),
-			fog: true
-		})
-		scene.getObjectByName("Cube").castShadow = false
-		scene.getObjectByName("Cube").receiveShadow = true
-	}
-
-	if (scene.getObjectByName("Icosphere")) {
-		scene.getObjectByName("Icosphere").material = new MeshBasicMaterial({
-			color: scene.getObjectByName("Icosphere").material.color.clone().multiplyScalar(100)
-		})
-	}
-
-	const light = new DirectionalLight(0xffffff, 3)
+	const light = new DirectionalLight(0xffffff, 5)
 	light.position.set(217, 43, 76)
 	light.updateMatrixWorld()
 	light.castShadow = true
@@ -224,7 +207,7 @@ gltflLoader.load(url, asset => {
 	light.shadow.mapSize.width = 8192 // default
 	light.shadow.mapSize.height = 8192 // default
 	light.shadow.camera.near = 50 // default
-	light.shadow.camera.far = 1000 // default
+	light.shadow.camera.far = 500 // default
 	light.shadow.bias = -0.000001
 
 	const s = 100
@@ -242,29 +225,33 @@ gltflLoader.load(url, asset => {
 	// scene.add(velCatcher)
 
 	const options = {
-		...defaultSSROptions,
-		...{
-			maxDepthDifference: 43.5,
-			exponent: 1.15,
-			intensity: 3.25,
-			power: 1.55,
-			ior: 2.33,
-			blur: 0,
-			missedRays: false,
-			resolutionScale: 0.5,
-			qualityScale: 1,
-			distance: 9.2,
-			steps: 15,
-			refineSteps: 1,
-			spp: 12,
-			blend: 0.978,
-			jitter: 0.28,
-			jitterRoughness: 0,
-			correction: 0,
-			thickness: 2.72,
-			roughnessFade: 0
-		}
+		intensity: 14.669999999999996,
+		power: 0.8250000000000002,
+		exponent: 2.025,
+		distance: 13.000000000000004,
+		fade: 0,
+		roughnessFade: 0,
+		thickness: 47.83,
+		ior: 1.6499999999999997,
+		maxRoughness: 1,
+		maxDepthDifference: 413,
+		blend: 0.728,
+		correction: 0,
+		correctionRadius: 1,
+		blur: 0,
+		jitter: 0.08000000000000004,
+		jitterRoughness: 0.63,
+		steps: 31,
+		refineSteps: 1,
+		spp: 4,
+		missedRays: false,
+		useMap: true,
+		useNormalMap: true,
+		useRoughnessMap: true,
+		resolutionScale: 1,
+		qualityScale: 1
 	}
+
 	traaEffect = new TRAAEffect(scene, camera, params)
 
 	window.traaEffect = traaEffect
@@ -336,8 +323,6 @@ gltflLoader.load(url, asset => {
 		darkness: 0.6
 	})
 
-	// scene.fog = new FogExp2(0xffaa44, 0.001)
-
 	ssrEffect = new SSREffect(scene, camera, options)
 
 	new RGBELoader().load("lago_disola_2k.hdr", envMap => {
@@ -351,14 +336,14 @@ gltflLoader.load(url, asset => {
 		envMesh.height = 20
 		envMesh.scale.setScalar(100)
 		envMesh.updateMatrixWorld()
-		scene.add(envMesh)
-		envMesh.visible = false
+		// scene.add(envMesh)
 
 		createEnvMap()
 	})
 
 	scene.traverse(c => {
 		if (c.isMesh && c.material.isMeshStandardMaterial) {
+			c.material.side = DoubleSide
 			ssrEffect.selection.add(c)
 		}
 	})

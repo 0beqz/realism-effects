@@ -113,8 +113,8 @@ export class ReflectionsPass extends Pass {
 		this.velocityTexture = null
 	}
 
-	keepMaterialMapUpdated(mrtMaterial, originalMaterial, prop, define) {
-		if (this.ssrEffect[define]) {
+	keepMaterialMapUpdated(mrtMaterial, originalMaterial, prop, define, useKey) {
+		if (this.ssrEffect[useKey]) {
 			if (originalMaterial[prop] !== mrtMaterial[prop]) {
 				mrtMaterial[prop] = originalMaterial[prop]
 				mrtMaterial.uniforms[prop].value = originalMaterial[prop]
@@ -167,9 +167,15 @@ export class ReflectionsPass extends Pass {
 				}
 
 				// update the child's MRT material
-				this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "normalMap", "USE_NORMAL_MAP")
-				this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "roughnessMap", "USE_ROUGHNESS_MAP")
-				this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "map", "USE_MAP")
+				this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "normalMap", "USE_NORMAL_MAP", "useNormalMap")
+				this.keepMaterialMapUpdated(
+					mrtMaterial,
+					originalMaterial,
+					"roughnessMap",
+					"USE_ROUGHNESS_MAP",
+					"useRoughnessMap"
+				)
+				this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "map", "USE_MAP", "useMap")
 
 				if (originalMaterial.color) mrtMaterial.uniforms.color.value.copy(originalMaterial.color)
 

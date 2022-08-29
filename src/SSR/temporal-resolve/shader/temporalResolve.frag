@@ -171,9 +171,11 @@ void main() {
     boxBlurredColor /= colorCount;
 #endif
 
-    // depth
+// depth
+#ifdef dilation
     depth = maxDepth;
     lastDepth = lastMaxDepth;
+#endif
 
     // the reprojected UV coordinates are inside the view
     if (reprojectedUv.x >= 0.0 && reprojectedUv.x <= 1.0 && reprojectedUv.y >= 0.0 && reprojectedUv.y <= 1.0) {

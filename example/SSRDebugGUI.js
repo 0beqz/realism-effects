@@ -1,5 +1,6 @@
-﻿import { defaultSSROptions } from "screen-space-reflections"
+﻿import { defaultSSROptions } from "../src/SSR/SSROptions"
 import { Pane } from "tweakpane"
+import copy from "copy-to-clipboard"
 
 export class SSRDebugGUI {
 	constructor(ssrEffect, params = defaultSSROptions) {
@@ -15,10 +16,10 @@ export class SSRDebugGUI {
 		})
 
 		const generalFolder = pane.addFolder({ title: "General" })
-		generalFolder.addInput(params, "intensity", { min: 0, max: 20, step: 0.01 })
+		generalFolder.addInput(params, "intensity", { min: 0, max: 50, step: 0.01 })
 		generalFolder.addInput(params, "power", { min: 0.025, max: 5, step: 0.025 })
 		generalFolder.addInput(params, "exponent", { min: 0.025, max: 5, step: 0.025 })
-		generalFolder.addInput(params, "distance", { min: 0.001, max: 250, step: 0.1 })
+		generalFolder.addInput(params, "distance", { min: 0.001, max: 50, step: 0.1 })
 		generalFolder.addInput(params, "fade", {
 			min: 0,
 			max: 20,
@@ -36,7 +37,7 @@ export class SSRDebugGUI {
 		})
 		generalFolder.addInput(params, "ior", {
 			min: 1,
-			max: 2.33333,
+			max: 5,
 			step: 0.01
 		})
 
@@ -64,7 +65,7 @@ export class SSRDebugGUI {
 
 		const definesFolder = pane.addFolder({ title: "Tracing" })
 
-		definesFolder.addInput(params, "steps", { min: 1, max: 256, step: 1 })
+		definesFolder.addInput(params, "steps", { min: 0, max: 256, step: 1 })
 		definesFolder.addInput(params, "refineSteps", { min: 0, max: 16, step: 1 })
 		definesFolder.addInput(params, "spp", { min: 1, max: 32, step: 1 })
 		definesFolder.addInput(params, "missedRays")
@@ -72,5 +73,22 @@ export class SSRDebugGUI {
 		const resolutionFolder = pane.addFolder({ title: "Resolution", expanded: false })
 		resolutionFolder.addInput(params, "resolutionScale", { min: 0.125, max: 1, step: 0.125 })
 		resolutionFolder.addInput(params, "qualityScale", { min: 0.125, max: 1, step: 0.125 })
+
+		pane
+			.addButton({
+				title: "Copy to Clipboard"
+			})
+			.on("click", () => {
+				const json = {}
+
+				for (const prop of Object.keys(defaultSSROptions)) {
+					json[prop] = ssrEffect[prop]
+				}
+
+				console.log(json)
+
+				const output = JSON.stringify(json, null, 2)
+				copy(output)
+			})
 	}
 }

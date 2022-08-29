@@ -59,6 +59,20 @@ vec2 hash23(vec3 p3) {
     return fract((p3.xx + p3.yz) * p3.zy);
 }
 
+// source: https://github.com/CesiumGS/cesium/blob/main/Source/Shaders/Builtin/Functions/luminance.glsl
+float czm_luminance(vec3 rgb) {
+    // Algorithm from Chapter 10 of Graphics Shaders.
+    const vec3 W = vec3(0.2125, 0.7154, 0.0721);
+    return dot(rgb, W);
+}
+
+vec3 czm_saturation(vec3 rgb, float adjustment) {
+    // Algorithm from Chapter 16 of OpenGL Shading Language
+    const vec3 W = vec3(0.2125, 0.7154, 0.0721);
+    vec3 intensity = vec3(dot(rgb, W));
+    return mix(intensity, rgb, adjustment);
+}
+
 void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.0);
 
@@ -105,7 +119,9 @@ void main() {
 
     int iterations = (jitter == 0.0 && roughness < 0.05) ? 1 : spp;
 
-    if (lastFrameAlpha <= 0.05) iterations += 4;
+    // if (lastFrameAlpha <= 0.05) iterations += 4;
+
+    // if (lastFrameAlpha > FLOAT_ONE_MINUS_EPSILON) iterations = 1;
 
     float weight = 1.0 / float(iterations);
 
@@ -160,12 +176,30 @@ vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     // view-space reflected ray
     vec3 reflected = normalize(reflect(viewDir, viewNormal));
 
-    vec3 rayDir = reflected * -viewPos.z;
+    vec3 dir = reflected * -viewPos.z;
+    dir = normalize(dir);
+    dir *= rayDistance / float(steps);
 
     vec3 hitPos = viewPos;
     float rayHitDepthDifference;
 
-    vec2 coords = RayMarch(rayDir, hitPos, rayHitDepthDifference);
+#if steps == 0
+    hitPos += dir;
+
+    vec4 projectedCoord = _projectionMatrix * vec4(hitPos, 1.0);
+    projectedCoord.xy /= projectedCoord.w;
+    // [-1, 1] --> [0, 1] (NDC to screen position)
+    projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;
+
+    // the ray is outside the camera's frustum
+    if (projectedCoord.x < 0.0 || projectedCoord.x > 1.0 || projectedCoord.y < 0.0 || projectedCoord.y > 1.0) {
+        projectedCoord.xy = INVALID_RAY_COORDS;
+    }
+
+    vec2 coords = projectedCoord.xy;
+#else
+    vec2 coords = RayMarch(dir, hitPos, rayHitDepthDifference);
+#endif
 
     // invalid ray
     if (coords.x == -1.0) {
@@ -174,6 +208,9 @@ vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
 
 #ifdef USE_DIFFUSE
         vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.);
+        diffuseTexel.rgb = czm_saturation(diffuseTexel.rgb, 0.5);
+
+        iblRadiance *= diffuseTexel.rgb + 0.05;
 #endif
 
         return vec4(iblRadiance, lastFrameAlpha);
@@ -188,17 +225,17 @@ vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     float reflectionDistance = distance(hitWorldPos, worldPos);
 
     float lod = min(8., log(reflectionDistance) * 10.0 * spread);
-
     vec4 SSRTexel = textureLod(inputTexture, coords.xy, lod);
 
     vec4 SSRTexelReflected = textureLod(accumulatedTexture, coords.xy, lod);
 
 #ifdef USE_DIFFUSE
     vec4 diffuseTexel = textureLod(diffuseTexture, coords.xy, lod);
-    SSRTexel.rgb *= diffuseTexel.rgb;
+    SSRTexel.rgb *= diffuseTexel.rgb + 0.05;
 #endif
 
     vec3 SSR = SSRTexel.rgb + SSRTexelReflected.rgb;
+
     vec3 finalSSR = vec3(0.);
 
     if (reflectionIntensity > FLOAT_ONE_MINUS_EPSILON) {
@@ -226,12 +263,8 @@ vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
 }
 
 vec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {
-    dir = normalize(dir);
-    dir *= rayDistance / float(steps);
-
     float depth;
     vec4 projectedCoord;
-    vec4 lastProjectedCoord;
     float unpackedDepth;
     vec4 depthTexel;
 
@@ -258,8 +291,9 @@ vec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {
 
         if (rayHitDepthDifference >= 0.0 && rayHitDepthDifference < thickness) {
 #if refineSteps == 0
-            // filter out sky
-            if (dot(depthTexel.rgb, depthTexel.rgb) < FLOAT_EPSILON) return INVALID_RAY_COORDS;
+            rayHitDepthDifference = unpackedDepth;
+
+            return projectedCoord.xy;
 #else
             return BinarySearch(dir, hitPos, rayHitDepthDifference);
 #endif
@@ -269,8 +303,6 @@ vec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {
         if (hitPos.z > 0.0) {
             return INVALID_RAY_COORDS;
         }
-
-        lastProjectedCoord = projectedCoord;
     }
 
     // since hitPos isn't used anywhere we can use it to mark that this reflection would have been invalid

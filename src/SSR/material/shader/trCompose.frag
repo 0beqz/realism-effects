@@ -2,15 +2,13 @@
 
 alpha = didReproject && depthDiff <= maxNeighborDepthDifference ? (alpha + alphaStep) : 0.0;
 
-if (isMoving) alpha = min(alpha, alphaStep * 24.);
-
 float m = blend;
 
 float s = alpha / alphaStep + 1.0;
 m = 1. - 1. / s;
-// m = 0.;
+m = min(blend, m);
 
-#ifdef neighborhoodClamping
+#ifdef boxBlur
 if (alpha <= 0.05) inputColor = boxBlurredColor;
 #endif
 

@@ -52,7 +52,7 @@ export class SSREffect extends Effect {
 		this._camera = camera
 
 		const trOptions = {
-			boxBlur: true,
+			boxBlur: false,
 			dilation: true,
 			renderVelocity: false,
 			neighborhoodClamping: false,

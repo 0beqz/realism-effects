@@ -52,6 +52,7 @@ export const defaultSSROptions = {
 	refineSteps: 5,
 	spp: 1,
 	missedRays: true,
+	useMap: true,
 	useNormalMap: true,
 	useRoughnessMap: true,
 	resolutionScale: 1,

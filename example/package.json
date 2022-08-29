@@ -12,6 +12,7 @@
 		"vite-plugin-glsl": "^0.2.0"
 	},
 	"dependencies": {
+		"copy-to-clipboard": "^3.3.2",
 		"detect-gpu": "^4.0.32",
 		"postprocessing": "^6.28.5",
 		"screen-space-reflections": "^2.1.2",
