@@ -1,9 +1,17 @@
 ﻿import { DepthPass, Pass, RenderPass } from "postprocessing"
-import { HalfFloatType, LinearFilter, NearestFilter, WebGLMultipleRenderTargets, WebGLRenderTarget } from "three"
+import {
+	HalfFloatType,
+	LinearFilter,
+	LinearMipMapNearestFilter,
+	MeshBasicMaterial,
+	NearestFilter,
+	sRGBEncoding,
+	WebGLMultipleRenderTargets,
+	WebGLRenderTarget
+} from "three"
 import { MRTMaterial } from "../material/MRTMaterial.js"
 import { ReflectionsMaterial } from "../material/ReflectionsMaterial.js"
 import { getVisibleChildren } from "../utils/Utils.js"
-import { DownsamplingPass } from "./DownsamplingPass.js"
 
 // from https://github.com/mrdoob/three.js/blob/dev/examples/jsm/capabilities/WebGL.js#L18
 const isWebGL2Available = () => {
@@ -41,16 +49,28 @@ export class ReflectionsPass extends Pass {
 			depthBuffer: false
 		})
 
+		this.diffuseRenderTarget = new WebGLRenderTarget(1, 1, {
+			minFilter: LinearMipMapNearestFilter,
+			magFilter: LinearMipMapNearestFilter,
+			encoding: sRGBEncoding,
+			generateMipmaps: true
+		})
+
 		this.renderPass = new RenderPass(this._scene, this._camera)
 
 		this.isWebGL2 = isWebGL2Available()
 
 		if (this.isWebGL2) {
 			// buffers: normal, depth (2), roughness will be written to the alpha channel of the normal buffer
-			this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(1, 1, this.useDiffuse ? 3 : 2, {
-				minFilter: NearestFilter,
-				magFilter: NearestFilter
-			})
+			this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(
+				1,
+				1,
+				this.useDiffuse && this.ssrEffect.qualityScale === 1 ? 3 : 2,
+				{
+					minFilter: NearestFilter,
+					magFilter: NearestFilter
+				}
+			)
 
 			this.normalTexture = this.gBuffersRenderTarget.texture[0]
 			this.depthTexture = this.gBuffersRenderTarget.texture[1]
@@ -68,9 +88,6 @@ export class ReflectionsPass extends Pass {
 			this.depthTexture = this.webgl1DepthPass.texture
 		}
 
-		this.downsamplingPass = new DownsamplingPass(this.depthTexture, this.normalTexture)
-		this.downsampling = false
-
 		// set up uniforms
 		this.fullscreenMaterial.uniforms.normalTexture.value = this.normalTexture
 		this.fullscreenMaterial.uniforms.fullResDepthTexture.value = this.depthTexture
@@ -78,7 +95,7 @@ export class ReflectionsPass extends Pass {
 		this.fullscreenMaterial.uniforms._projectionMatrix.value = this._camera.projectionMatrix
 		this.fullscreenMaterial.uniforms._inverseProjectionMatrix.value = this._camera.projectionMatrixInverse
 
-		if (this.useDiffuse) this.fullscreenMaterial.uniforms.diffuseTexture.value = this.gBuffersRenderTarget.texture[2]
+		this.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
 	}
 
 	setSize(width, height) {
@@ -87,15 +104,18 @@ export class ReflectionsPass extends Pass {
 		this.renderTarget.texture.magFilter = LinearFilter
 
 		this.gBuffersRenderTarget.setSize(width * this.ssrEffect.qualityScale, height * this.ssrEffect.qualityScale)
-		this.downsamplingPass.setSize(width * 0.5, height * 0.5)
+		this.diffuseRenderTarget.setSize(width, height)
+
+		if (this.useDiffuse) {
+			this.diffuseTexture =
+				this.ssrEffect.qualityScale === 1 ? this.gBuffersRenderTarget.texture[2] : this.diffuseRenderTarget.texture
+
+			this.fullscreenMaterial.uniforms.diffuseTexture.value = this.diffuseTexture
+		}
 
 		this.fullscreenMaterial.uniforms.invTexSize.value.set(1 / width, 1 / height)
 
 		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.ssrEffect.temporalResolvePass.renderTarget.texture
-		this.fullscreenMaterial.uniforms.depthTexture.value =
-			this.downsampling && this.ssrEffect.qualityScale < 1
-				? this.downsamplingPass.renderTarget.texture[0]
-				: this.depthTexture
 
 		this.fullscreenMaterial.needsUpdate = true
 	}
@@ -142,7 +162,7 @@ export class ReflectionsPass extends Pass {
 			if (c.material) {
 				const originalMaterial = c.material
 
-				let [cachedOriginalMaterial, mrtMaterial] = this.cachedMaterials.get(c) || []
+				let [cachedOriginalMaterial, mrtMaterial, diffuseMaterial] = this.cachedMaterials.get(c) || []
 
 				if (originalMaterial !== cachedOriginalMaterial) {
 					if (mrtMaterial) mrtMaterial.dispose()
@@ -163,7 +183,11 @@ export class ReflectionsPass extends Pass {
 
 					if (map) mrtMaterial.uniforms.uvTransform.value = map.matrix
 
-					this.cachedMaterials.set(c, [originalMaterial, mrtMaterial])
+					diffuseMaterial = new MeshBasicMaterial({
+						toneMapped: false
+					})
+
+					this.cachedMaterials.set(c, [originalMaterial, mrtMaterial, diffuseMaterial])
 				}
 
 				// update the child's MRT material
@@ -175,9 +199,16 @@ export class ReflectionsPass extends Pass {
 					"USE_ROUGHNESS_MAP",
 					"useRoughnessMap"
 				)
-				this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "map", "USE_MAP", "useMap")
 
-				if (originalMaterial.color) mrtMaterial.uniforms.color.value.copy(originalMaterial.color)
+				if (this.ssrEffect.qualityScale === 1) {
+					this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "map", "USE_MAP", "useMap")
+					if (originalMaterial.color) mrtMaterial.uniforms.color.value.copy(originalMaterial.color)
+					mrtMaterial.visible = originalMaterial.visible
+				} else {
+					if (originalMaterial.map) diffuseMaterial.map = originalMaterial.map
+					if (originalMaterial.color) diffuseMaterial.color = originalMaterial.color
+					diffuseMaterial.visible = originalMaterial.visible
+				}
 
 				mrtMaterial.uniforms.roughness.value =
 					this.ssrEffect.selection.size === 0 || this.ssrEffect.selection.has(c)
@@ -191,8 +222,26 @@ export class ReflectionsPass extends Pass {
 
 	unsetMRTMaterialInScene() {
 		for (const c of this.visibleMeshes) {
-			if (c.material?.type === "MRTMaterial") {
-				c.visible = true
+			if (c.visible) {
+				// set material back to the original one
+				const [originalMaterial] = this.cachedMaterials.get(c)
+
+				c.material = originalMaterial
+			}
+		}
+	}
+
+	setDiffuseMaterialInScene() {
+		for (const c of this.visibleMeshes) {
+			if (c.material && c.material) {
+				c.material = this.cachedMaterials.get(c)[2]
+			}
+		}
+	}
+
+	unsetDiffuseMaterialInScene() {
+		for (const c of this.visibleMeshes) {
+			if (c.visible && c.material) {
 				// set material back to the original one
 				const [originalMaterial] = this.cachedMaterials.get(c)
 
@@ -204,15 +253,20 @@ export class ReflectionsPass extends Pass {
 	render(renderer, inputBuffer) {
 		this.setMRTMaterialInScene()
 
-		renderer.setRenderTarget(this.gBuffersRenderTarget)
 		this.renderPass.render(renderer, this.gBuffersRenderTarget)
 
 		this.unsetMRTMaterialInScene()
 
+		if (this.useDiffuse && this.ssrEffect.qualityScale < 1) {
+			this.setDiffuseMaterialInScene()
+
+			this.renderPass.render(renderer, this.diffuseRenderTarget)
+
+			this.unsetDiffuseMaterialInScene()
+		}
+
 		// render depth and velocity in seperate passes
 		if (!this.isWebGL2) this.webgl1DepthPass.renderPass.render(renderer, this.webgl1DepthPass.renderTarget)
-
-		if (this.downsampling && this.ssrEffect.qualityScale < 1) this.downsamplingPass.render(renderer, inputBuffer)
 
 		this.fullscreenMaterial.uniforms.inputTexture.value = inputBuffer.texture
 		this.fullscreenMaterial.uniforms.samples.value = this.ssrEffect.temporalResolvePass.samples

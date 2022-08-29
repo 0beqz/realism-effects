@@ -52,8 +52,8 @@ export class SSREffect extends Effect {
 		this._camera = camera
 
 		const trOptions = {
-			boxBlur: false,
-			dilation: true,
+			boxBlur: true,
+			dilation: false,
 			renderVelocity: false,
 			neighborhoodClamping: false,
 			logTransform: false,
@@ -70,6 +70,8 @@ export class SSREffect extends Effect {
 		this.temporalResolvePass.haltonIndex = ~~(this.temporalResolvePass.haltonSequence.length / 2)
 
 		this.uniforms.get("reflectionsTexture").value = this.temporalResolvePass.renderTarget.texture
+
+		this.qualityScale = options.qualityScale
 
 		// reflections pass
 		this.reflectionsPass = new ReflectionsPass(this)
@@ -295,23 +297,22 @@ export class SSREffect extends Effect {
 			}
 		}
 
-		// this.temporalResolvePass.unjitter()
+		if (this.qualityScale < 1) this.temporalResolvePass.unjitter()
 
 		if (!this.temporalResolvePass.checkCanUseSharedVelocityTexture())
 			this.temporalResolvePass.velocityPass.render(renderer)
 
-		// this.temporalResolvePass.jitter()
+		if (this.qualityScale < 1) this.temporalResolvePass.jitter()
 
 		// render reflections of current frame
 		this.reflectionsPass.render(renderer, inputBuffer)
 
-		if (this.reflectionsPass.useDiffuse)
-			this.uniforms.get("diffuseTexture").value = this.reflectionsPass.gBuffersRenderTarget.texture[2]
+		if (this.reflectionsPass.useDiffuse) this.uniforms.get("diffuseTexture").value = this.reflectionsPass.diffuseTexture
 
 		// compose reflection of last and current frame into one reflection
 		this.temporalResolvePass.render(renderer)
 
-		// this.temporalResolvePass.unjitter()
+		if (this.qualityScale < 1) this.temporalResolvePass.unjitter()
 	}
 
 	static patchDirectEnvIntensity(envMapIntensity = 0) {

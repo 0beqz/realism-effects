@@ -7,7 +7,7 @@ uniform sampler2D lastVelocityTexture;
 
 uniform float blend;
 uniform float correction;
-uniform float exponent;
+#define exponent 1.875
 uniform float samples;
 uniform vec2 invTexSize;
 
@@ -99,6 +99,8 @@ void main() {
     float lastNeighborDepth;
     float colorCount = 1.0;
 
+    bool doBoxBlur = alpha <= 0.05;
+
 #if defined(dilation) || defined(neighborhoodClamping) || defined(boxBlur)
     for (int x = -correctionRadius; x <= correctionRadius; x++) {
         for (int y = -correctionRadius; y <= correctionRadius; y++) {
@@ -139,7 +141,13 @@ void main() {
     #if defined(neighborhoodClamping) || defined(boxBlur)
 
                     // the neighbor pixel is invalid if it's too far away from this pixel
-                    if (abs(depth - neighborDepth) < maxNeighborDepthDifference) {
+
+                    if (
+        #if !defined(neighborhoodClamping) && defined(boxBlur)
+                        doBoxBlur &&
+        #endif
+                        abs(depth - neighborDepth) < maxNeighborDepthDifference) {
+
                         neighborTexel = textureLod(inputTexture, neighborUv, 0.0);
                         col = neighborTexel.xyz;
                         col = transformColor(col);

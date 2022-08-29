@@ -119,9 +119,10 @@ void main() {
 
     int iterations = (jitter == 0.0 && roughness < 0.05) ? 1 : spp;
 
-    // if (lastFrameAlpha <= 0.05) iterations += 4;
-
-    // if (lastFrameAlpha > FLOAT_ONE_MINUS_EPSILON) iterations = 1;
+    if (lastFrameAlpha <= 0.05)
+        iterations += 4;
+    else if (lastFrameAlpha > FLOAT_ONE_MINUS_EPSILON)
+        iterations = 1;
 
     float weight = 1.0 / float(iterations);
 

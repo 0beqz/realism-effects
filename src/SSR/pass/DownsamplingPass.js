@@ -130,9 +130,9 @@ export class DownsamplingPass extends Pass {
                     }
                 }
 
-                // int index = findBestDepth(d);
+                int index = findBestDepth(d);
 
-                gDepth = minT;
+                gDepth = t[index];
             }
             `,
 			uniforms: {

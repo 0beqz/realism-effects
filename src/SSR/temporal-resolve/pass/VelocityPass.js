@@ -1,4 +1,4 @@
-﻿import { Pass } from "postprocessing"
+﻿import { Pass, RenderPass } from "postprocessing"
 import {
 	Color,
 	DataTexture,
@@ -30,6 +30,8 @@ export class VelocityPass extends Pass {
 
 		this._scene = scene
 		this._camera = camera
+
+		this.renderPass = new RenderPass(this._scene, this._camera)
 
 		this.renderTarget = new WebGLRenderTarget(1, 1, {
 			minFilter: NearestFilter,
@@ -121,13 +123,11 @@ export class VelocityPass extends Pass {
 	}
 
 	renderVelocity(renderer) {
-		renderer.setRenderTarget(this.renderTarget)
-
 		const { background } = this._scene
 
 		this._scene.background = backgroundColor
 
-		renderer.render(this._scene, this._camera)
+		this.renderPass.render(renderer, this.renderTarget)
 
 		this._scene.background = background
 	}

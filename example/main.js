@@ -10,7 +10,7 @@ import {
 	MeshBasicMaterial,
 	Vector3
 } from "three"
-import { FogExp2, WebGLRenderTarget } from "three/build/three.module"
+import { WebGLRenderTarget } from "three/build/three.module"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader"
@@ -75,8 +75,10 @@ window.renderer = renderer
 renderer.outputEncoding = THREE.sRGBEncoding
 renderer.toneMapping = THREE.ACESFilmicToneMapping
 renderer.toneMappingExposure = 1
-renderer.setPixelRatio(window.devicePixelRatio)
-renderer.setSize(window.innerWidth, window.innerHeight)
+const dpr = window.devicePixelRatio || 1
+renderer.setPixelRatio(dpr)
+renderer.setSize(window.innerWidth * dpr, window.innerHeight * dpr)
+renderer.setViewport(0, 0, window.innerWidth * dpr, window.innerHeight * dpr)
 
 const setAA = value => {
 	composer.multisampling = 0
@@ -136,25 +138,9 @@ const params = {}
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
 pmremGenerator.compileEquirectangularShader()
 
-// const chessTexture = new TextureLoader().load("chess.jpg")
-
-// const transparentMesh = new THREE.Mesh(
-// 	new BoxBufferGeometry(4, 4),
-// 	new MeshBasicMaterial({
-// 		map: chessTexture,
-// 		alphaMap: chessTexture,
-// 		transparent: true
-// 	})
-// )
-
-// transparentMesh.position.set(-3, 3, 0)
-// transparentMesh.updateMatrixWorld()
-
-// scene.add(transparentMesh)
-
 const gltflLoader = new GLTFLoader()
 
-const url = "scifi_girl.glb"
+const url = "astronaut-low.glb"
 
 gltflLoader.load(url, asset => {
 	scene.add(asset.scene)
@@ -217,33 +203,26 @@ gltflLoader.load(url, asset => {
 	light.shadow.camera.right = s
 	light.shadow.camera.top = s
 
-	// const velCatcher = new THREE.Mesh(new THREE.PlaneBufferGeometry(512, 512))
-	// velCatcher.material.colorWrite = false
-	// velCatcher.material.depthWrite = false
-	// velCatcher.rotation.x = -Math.PI / 2
-	// velCatcher.updateMatrixWorld()
-	// scene.add(velCatcher)
-
 	const options = {
-		intensity: 14.669999999999996,
-		power: 0.8250000000000002,
-		exponent: 2.025,
-		distance: 13.000000000000004,
+		intensity: 7.0699999999999905,
+		power: 1.1500000000000006,
+		exponent: 1.875,
+		distance: 11.400000000000002,
 		fade: 0,
 		roughnessFade: 0,
 		thickness: 47.83,
 		ior: 1.6499999999999997,
 		maxRoughness: 1,
 		maxDepthDifference: 413,
-		blend: 0.728,
+		blend: 0.9460000000000001,
 		correction: 0,
 		correctionRadius: 1,
 		blur: 0,
-		jitter: 0.08000000000000004,
-		jitterRoughness: 0.63,
-		steps: 31,
-		refineSteps: 1,
-		spp: 4,
+		jitter: 0,
+		jitterRoughness: 0.34,
+		steps: 45,
+		refineSteps: 6,
+		spp: 1,
 		missedRays: false,
 		useMap: true,
 		useNormalMap: true,
@@ -325,7 +304,7 @@ gltflLoader.load(url, asset => {
 
 	ssrEffect = new SSREffect(scene, camera, options)
 
-	new RGBELoader().load("lago_disola_2k.hdr", envMap => {
+	new RGBELoader().load("hdr/dry_cracked_lake_4k.hdr", envMap => {
 		envMap.mapping = THREE.EquirectangularReflectionMapping
 
 		scene.environment = envMap
@@ -336,7 +315,7 @@ gltflLoader.load(url, asset => {
 		envMesh.height = 20
 		envMesh.scale.setScalar(100)
 		envMesh.updateMatrixWorld()
-		// scene.add(envMesh)
+		scene.add(envMesh)
 
 		createEnvMap()
 	})
@@ -350,6 +329,9 @@ gltflLoader.load(url, asset => {
 
 	const gui2 = new SSRDebugGUI(ssrEffect, options)
 	gui2.pane.containerElem_.style.left = "8px"
+
+	gui.pane.element.style.display = "none"
+	// gui2.pane.element.style.display = "none"
 
 	new POSTPROCESSING.LUT3dlLoader().load("room.3dl", lutTexture => {
 		const lutEffect = new POSTPROCESSING.LUTEffect(lutTexture)
@@ -367,7 +349,7 @@ gltflLoader.load(url, asset => {
 		}
 
 		traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
-		composer.addPass(traaPass)
+		// composer.addPass(traaPass)
 
 		composer.addPass(ssrPass)
 
