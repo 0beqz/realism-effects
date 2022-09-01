@@ -1,15 +1,8 @@
+import dragDrop from "drag-drop"
 import * as POSTPROCESSING from "postprocessing"
 import Stats from "stats.js"
 import * as THREE from "three"
-import {
-	Color,
-	DirectionalLight,
-	DoubleSide,
-	HalfFloatType,
-	LinearMipMapLinearFilter,
-	MeshBasicMaterial,
-	Vector3
-} from "three"
+import { Box3, Color, DirectionalLight, DoubleSide, HalfFloatType, LinearMipMapLinearFilter, Vector3 } from "three"
 import { WebGLRenderTarget } from "three/build/three.module"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
@@ -21,18 +14,14 @@ import { SSRDebugGUI } from "./SSRDebugGUI"
 import "./style.css"
 import { TRAADebugGUI } from "./TRAADebugGUI"
 
-SSREffect.patchDirectEnvIntensity()
-
 let traaEffect
 let traaPass
 let smaaPass
 let fxaaPass
 let ssrEffect
 let ssrPass
-let stats
 let gui
 let envMesh
-let sphere
 const guiParams = {
 	Method: "TRAA",
 	Background: false
@@ -65,16 +54,17 @@ const renderer = new THREE.WebGLRenderer({
 	canvas: rendererCanvas,
 	powerPreference: "high-performance",
 	premultipliedAlpha: false,
-	depth: true,
 	stencil: false,
 	antialias: true,
-	preserveDrawingBuffer: false
+	preserveDrawingBuffer: true
 })
-window.renderer = renderer
+
+renderer.autoClear = false
+renderer.autoClearColor = false
+renderer.autoClearDepth = false
+renderer.autoClearStencil = false
 
 renderer.outputEncoding = THREE.sRGBEncoding
-renderer.toneMapping = THREE.ACESFilmicToneMapping
-renderer.toneMappingExposure = 1
 const dpr = window.devicePixelRatio || 1
 renderer.setPixelRatio(dpr)
 renderer.setSize(window.innerWidth * dpr, window.innerHeight * dpr)
@@ -133,96 +123,132 @@ composer.inputBuffer = new WebGLRenderTarget(window.innerWidth, window.innerHeig
 	type: HalfFloatType
 })
 
+const light = new DirectionalLight(0xffffff, 5)
+light.position.set(217, 43, 76)
+light.updateMatrixWorld()
+light.castShadow = true
+scene.add(light)
+window.light = light
+
+renderer.shadowMap.enabled = true
+renderer.shadowMap.autoUpdate = false
+renderer.shadowMap.needsUpdate = true
+
+// Set up shadow properties for the light
+light.shadow.mapSize.width = 8192 // default
+light.shadow.mapSize.height = 8192 // default
+light.shadow.camera.near = 50 // default
+light.shadow.camera.far = 500 // default
+light.shadow.bias = -0.000001
+
+const s = 100
+
+light.shadow.camera.left = -s
+light.shadow.camera.bottom = -s
+light.shadow.camera.right = s
+light.shadow.camera.top = s
+
+const stats = new Stats()
+stats.showPanel(0)
+document.body.appendChild(stats.dom)
+
 const params = {}
 
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
 pmremGenerator.compileEquirectangularShader()
 
+new RGBELoader().load("hdr/irr_shudu_lake_2k.hdr", envMap => {
+	envMap.mapping = THREE.EquirectangularReflectionMapping
+
+	scene.environment = envMap
+	scene.background = envMap
+
+	envMesh = new GroundProjectedEnv(envMap)
+	envMesh.radius = 440
+	envMesh.height = 20
+	envMesh.scale.setScalar(100)
+	envMesh.updateMatrixWorld()
+
+	console.log(envMesh)
+	scene.add(envMesh)
+})
+
 const gltflLoader = new GLTFLoader()
 
 const url = "astronaut-low.glb"
 
+let lastScene
+
 gltflLoader.load(url, asset => {
-	scene.add(asset.scene)
-	asset.scene.scale.multiplyScalar(10)
-	scene.updateMatrixWorld()
+	setupAsset(asset)
+	initScene()
+})
 
-	window.mesh = asset.scene
+const loadingEl = document.querySelector("#loading")
 
-	asset.scene.traverse(c => {
-		if (c.isMesh) {
-			// c.material.wireframe = true
-			c.material.envMapIntensity = 0
-			// c.material.roughness = 0.1
-			c.castShadow = c.receiveShadow = true
-		}
-	})
+let loadedCount = 0
+const loadFiles = 3
+THREE.DefaultLoadingManager.onProgress = () => {
+	loadedCount++
 
-	// scene.getObjectByName("Wall_Floor2_0").material.color.setRGB(0, 1, 1)
-
-	const plane = scene.getObjectByName("Plane")
-	if (plane && plane.material) {
-		plane.material = new MeshBasicMaterial({
-			map: plane.material.map,
-			aoMap: plane.material.map,
-			aoMapIntensity: 2,
-			blending: 4,
-			depthWrite: false,
-			color: new Color().setScalar(10),
-			transparent: true
-		})
-
-		plane.position.y += 0.001
-		plane.updateMatrixWorld()
-
-		plane.visible = false
+	if (loadedCount === loadFiles) {
+		setTimeout(() => {
+			if (loadingEl) loadingEl.remove()
+		}, 150)
 	}
 
-	const light = new DirectionalLight(0xffffff, 5)
-	light.position.set(217, 43, 76)
+	const progress = Math.round((loadedCount / loadFiles) * 100)
+	if (loadingEl) loadingEl.textContent = progress + "%"
+}
+
+let mixer
+
+const lightParams = {
+	yaw: 51,
+	pitch: 34,
+	distance: 100
+}
+
+const toRad = Math.PI / 180
+
+const refreshLighting = () => {
+	light.position.x = Math.sin(lightParams.yaw * toRad) * lightParams.distance
+	light.position.y = Math.sin(lightParams.pitch * toRad) * lightParams.distance
+	light.position.z = Math.cos(lightParams.yaw * toRad) * lightParams.distance
 	light.updateMatrixWorld()
-	light.castShadow = true
-	scene.add(light)
-	window.light = light
 
-	renderer.shadowMap.enabled = true
-	renderer.shadowMap.autoUpdate = false
+	if (ssrEffect) {
+		ssrEffect.temporalResolvePass.samples = 1
+
+		ssrEffect.setSize(window.innerWidth, window.innerHeight, true)
+	}
+	if (traaEffect) traaEffect.temporalResolvePass.samples = 1
 	renderer.shadowMap.needsUpdate = true
+}
 
-	// Set up shadow properties for the light
-	light.shadow.mapSize.width = 8192 // default
-	light.shadow.mapSize.height = 8192 // default
-	light.shadow.camera.near = 50 // default
-	light.shadow.camera.far = 500 // default
-	light.shadow.bias = -0.000001
+const clock = new THREE.Clock()
 
-	const s = 100
-
-	light.shadow.camera.left = -s
-	light.shadow.camera.bottom = -s
-	light.shadow.camera.right = s
-	light.shadow.camera.top = s
-
+const initScene = () => {
 	const options = {
-		intensity: 7.0699999999999905,
-		power: 1.1500000000000006,
+		intensity: 7.6099999999999905,
+		power: 1.0000000000000004,
 		exponent: 1.875,
-		distance: 11.400000000000002,
+		distance: 6.000000000000002,
 		fade: 0,
 		roughnessFade: 0,
 		thickness: 47.83,
-		ior: 1.6499999999999997,
+		ior: 2.04,
 		maxRoughness: 1,
-		maxDepthDifference: 413,
-		blend: 0.9460000000000001,
+		maxDepthDifference: 260.9,
+		blend: 1,
 		correction: 0,
 		correctionRadius: 1,
 		blur: 0,
 		jitter: 0,
-		jitterRoughness: 0.34,
-		steps: 45,
-		refineSteps: 6,
-		spp: 1,
+		jitterRoughness: 1,
+		steps: 14,
+		refineSteps: 5,
+		spp: 4,
 		missedRays: false,
 		useMap: true,
 		useNormalMap: true,
@@ -255,46 +281,20 @@ gltflLoader.load(url, asset => {
 		})
 
 	const sceneFolder = gui.pane.addFolder({ title: "Scene", expanded: false })
-	sceneFolder.addInput(guiParams, "Background").on("change", ev => {
-		sphere.visible = !ev.value
-		envMesh.visible = ev.value
-	})
-	sceneFolder.addInput(light.position, "x", { min: -500, max: 500, step: 1 }).on("change", ev => {
-		ssrEffect.temporalResolvePass.samples = 1
-		traaEffect.temporalResolvePass.samples = 1
-		renderer.shadowMap.needsUpdate = true
-		light.updateMatrixWorld()
-		createEnvMap()
-	})
-	sceneFolder.addInput(light.position, "y", { min: -500, max: 500, step: 1 }).on("change", ev => {
-		ssrEffect.temporalResolvePass.samples = 1
-		traaEffect.temporalResolvePass.samples = 1
-		renderer.shadowMap.needsUpdate = true
-		light.updateMatrixWorld()
-		createEnvMap()
-	})
-	sceneFolder.addInput(light.position, "z", { min: -500, max: 500, step: 1 }).on("change", ev => {
-		ssrEffect.temporalResolvePass.samples = 1
-		traaEffect.temporalResolvePass.samples = 1
-		renderer.shadowMap.needsUpdate = true
-		light.updateMatrixWorld()
-		createEnvMap()
-	})
-	sceneFolder.addInput(light, "intensity", { min: 0, max: 10, step: 0.1 }).on("change", ev => {
-		ssrEffect.temporalResolvePass.samples = 1
-		traaEffect.temporalResolvePass.samples = 1
-		renderer.shadowMap.needsUpdate = true
-		createEnvMap()
-	})
-	stats = new Stats()
-	stats.showPanel(0)
-	document.body.appendChild(stats.dom)
+
+	sceneFolder.addInput(lightParams, "yaw", { min: 0, max: 360, step: 1 }).on("change", refreshLighting)
+
+	sceneFolder.addInput(lightParams, "pitch", { min: 0, max: 90, step: 1 }).on("change", refreshLighting)
+
+	sceneFolder.addInput(lightParams, "distance", { min: 0, max: 200, step: 1 }).on("change", refreshLighting)
+
+	sceneFolder.addInput(light, "intensity", { min: 0, max: 10, step: 0.1 }).on("change", refreshLighting)
 
 	const bloomEffect = new POSTPROCESSING.BloomEffect({
 		intensity: 1,
 		mipmapBlur: true,
 		luminanceSmoothing: 0.5,
-		luminanceThreshold: 0.6,
+		luminanceThreshold: 0.25,
 		kernelSize: POSTPROCESSING.KernelSize.HUGE
 	})
 
@@ -303,22 +303,6 @@ gltflLoader.load(url, asset => {
 	})
 
 	ssrEffect = new SSREffect(scene, camera, options)
-
-	new RGBELoader().load("hdr/dry_cracked_lake_4k.hdr", envMap => {
-		envMap.mapping = THREE.EquirectangularReflectionMapping
-
-		scene.environment = envMap
-		scene.background = envMap
-
-		envMesh = new GroundProjectedEnv(envMap)
-		envMesh.radius = 440
-		envMesh.height = 20
-		envMesh.scale.setScalar(100)
-		envMesh.updateMatrixWorld()
-		scene.add(envMesh)
-
-		createEnvMap()
-	})
 
 	scene.traverse(c => {
 		if (c.isMesh && c.material.isMeshStandardMaterial) {
@@ -330,30 +314,19 @@ gltflLoader.load(url, asset => {
 	const gui2 = new SSRDebugGUI(ssrEffect, options)
 	gui2.pane.containerElem_.style.left = "8px"
 
-	gui.pane.element.style.display = "none"
+	// gui.pane.element.style.display = "none"
 	// gui2.pane.element.style.display = "none"
 
 	new POSTPROCESSING.LUT3dlLoader().load("room.3dl", lutTexture => {
 		const lutEffect = new POSTPROCESSING.LUTEffect(lutTexture)
 
-		ssrPass = new POSTPROCESSING.EffectPass(camera, ssrEffect, lutEffect)
-
-		if (scene.getObjectByName("Court_Lines_Glow")) {
-			scene.getObjectByName("Court_Lines_Glow").material.color.setScalar(0)
-			scene.getObjectByName("Court_Lines_Glow").material.emissiveIntensity = 10
-			scene.getObjectByName("Court_Lines_Glow").material.emissive.setRGB(1, 0, 0)
-
-			scene.getObjectByName("Circle005").material.color.setScalar(0)
-			scene.getObjectByName("Circle005").material.emissiveIntensity = 10
-			scene.getObjectByName("Circle005").material.emissive.setRGB(0, 0.05, 0.5)
-		}
+		ssrPass = new POSTPROCESSING.EffectPass(camera, ssrEffect)
 
 		traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
 		// composer.addPass(traaPass)
 
 		composer.addPass(ssrPass)
-
-		composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, vignetteEffect))
+		// composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, vignetteEffect))
 
 		const smaaEffect = new POSTPROCESSING.SMAAEffect()
 
@@ -365,82 +338,15 @@ gltflLoader.load(url, asset => {
 
 		loop()
 	})
-})
-
-const createEnvMap = () => {
-	return
-	if (scene.getObjectByName("Object_2")) scene.getObjectByName("Object_2").visible = false
-	if (scene.getObjectByName("boxes")) scene.getObjectByName("boxes").visible = false
-
-	// const env = ssrEffect.generateBoxProjectedEnvMapFallback(
-	// 	renderer,
-	// 	new Vector3(0, 5, 0),
-	// 	new Vector3(64.6103 * 2, 150, 60.5753 * 2)
-	// )
-
-	const env = ssrEffect.generateBoxProjectedEnvMapFallback(
-		renderer,
-		new Vector3(0, 1, 0),
-		new Vector3(9.9 * 2, 19.9, 9.9 * 2)
-	)
-
-	if (scene.getObjectByName("Object_2")) scene.getObjectByName("Object_2").visible = true
-	if (scene.getObjectByName("boxes")) scene.getObjectByName("boxes").visible = true
-
-	scene.environment = env
-	ambientLight.intensity = 0
 }
-
-const loadingEl = document.querySelector("#loading")
-
-let loadedCount = 0
-const loadFiles = 3
-THREE.DefaultLoadingManager.onProgress = () => {
-	loadedCount++
-
-	if (loadedCount === loadFiles) {
-		setTimeout(() => {
-			if (loadingEl) loadingEl.remove()
-		}, 150)
-	}
-
-	const progress = Math.round((loadedCount / loadFiles) * 100)
-	if (loadingEl) loadingEl.textContent = progress + "%"
-}
-
-let skinMesh
-let mixer
-
-// gltflLoader.load("skin.glb", asset => {
-// 	skinMesh = asset.scene
-// 	skinMesh.scale.multiplyScalar(2.1 * 5)
-// 	skinMesh.position.set(2.5, 0, 0)
-// 	skinMesh.rotation.y += Math.PI / 2
-// 	skinMesh.updateMatrixWorld()
-// 	skinMesh.traverse(c => {
-// 		if (c.material) {
-// 			c.material.roughness = 0
-// 			c.material.metalness = 1
-// 		}
-// 	})
-// 	scene.add(asset.scene)
-// 	mixer = new THREE.AnimationMixer(skinMesh)
-// 	const clips = asset.animations
-
-// 	const action = mixer.clipAction(clips[0])
-// 	action.play()
-// })
-
-const clock = new THREE.Clock()
 
 const loop = () => {
 	if (stats) stats.begin()
 
 	const dt = clock.getDelta()
-	if (skinMesh) {
+	if (mixer) {
 		mixer.update(dt)
-		skinMesh.updateMatrixWorld()
-		// skinMesh = null
+		lastScene.updateMatrixWorld()
 	}
 
 	controls.update()
@@ -495,6 +401,14 @@ document.addEventListener("keydown", ev => {
 
 	if (ev.code === "KeyQ") {
 		ssrPass.enabled = !ssrPass.enabled
+
+		scene.traverse(c => {
+			if (c.material) {
+				c.material.envMapIntensity = ssrPass.enabled ? 0 : 1
+			}
+		})
+
+		refreshLighting()
 	}
 
 	if (ev.code === "ArrowLeft") {
@@ -524,3 +438,82 @@ document.addEventListener("keydown", ev => {
 		a.click() // Downloaded file
 	}
 })
+
+dragDrop("body", files => {
+	const file = files[0]
+
+	const reader = new FileReader()
+	reader.addEventListener("load", e => {
+		// e.target.result is an ArrayBuffer
+		const arr = new Uint8Array(e.target.result)
+		const { buffer } = arr
+
+		gltflLoader.parse(buffer, "", asset => {
+			if (lastScene) {
+				lastScene.removeFromParent()
+				lastScene.traverse(c => {
+					if (c.isMesh) {
+						c.geometry.dispose()
+						c.material.dispose()
+					}
+				})
+
+				mixer = null
+			}
+
+			setupAsset(asset)
+
+			const clips = asset.animations
+
+			if (clips.length) {
+				mixer = new THREE.AnimationMixer(asset.scene)
+
+				const action = mixer.clipAction(clips[0])
+
+				if (action) action.play()
+			}
+		})
+	})
+	reader.readAsArrayBuffer(file)
+})
+
+const setupAsset = asset => {
+	scene.add(asset.scene)
+	asset.scene.scale.setScalar(1)
+
+	asset.scene.traverse(c => {
+		if (c.isMesh) {
+			c.material.envMapIntensity = 0
+			c.castShadow = c.receiveShadow = true
+			c.material.depthWrite = true
+		}
+	})
+
+	const bb = new Box3()
+	bb.setFromObject(asset.scene)
+
+	const height = bb.max.y - bb.min.y
+	const targetHeight = 15
+
+	const scale = targetHeight / height
+
+	asset.scene.scale.multiplyScalar(scale)
+
+	asset.scene.updateMatrixWorld()
+
+	bb.setFromObject(asset.scene)
+
+	const center = new Vector3()
+	bb.getCenter(center)
+
+	center.y = bb.min.y
+	asset.scene.position.sub(center)
+
+	scene.updateMatrixWorld()
+
+	lastScene = asset.scene
+
+	refreshLighting()
+}
+
+window.gltflLoader = gltflLoader

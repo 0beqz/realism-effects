@@ -103,7 +103,7 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 
 #ifdef USE_DIFFUSE
     vec3 diffuseColor = LinearTosRGB(textureLod(diffuseTexture, vUv, 0.)).rgb;
-    reflectionClr *= diffuseColor + 0.25;
+    reflectionClr *= diffuseColor * 0.75 + 0.25;
 #endif
 
 #if RENDER_MODE == MODE_DEFAULT

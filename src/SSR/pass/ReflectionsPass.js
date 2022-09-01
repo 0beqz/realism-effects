@@ -159,94 +159,86 @@ export class ReflectionsPass extends Pass {
 		this.visibleMeshes = getVisibleChildren(this._scene)
 
 		for (const c of this.visibleMeshes) {
-			if (c.material) {
-				const originalMaterial = c.material
+			c.visible = c.material.visible && c.material.colorWrite
 
-				let [cachedOriginalMaterial, mrtMaterial, diffuseMaterial] = this.cachedMaterials.get(c) || []
+			const originalMaterial = c.material
 
-				if (originalMaterial !== cachedOriginalMaterial) {
-					if (mrtMaterial) mrtMaterial.dispose()
+			let [cachedOriginalMaterial, mrtMaterial, diffuseMaterial] = this.cachedMaterials.get(c) || []
 
-					mrtMaterial = new MRTMaterial()
+			if (originalMaterial !== cachedOriginalMaterial) {
+				if (mrtMaterial) mrtMaterial.dispose()
 
-					if (this.isWebGL2) mrtMaterial.defines.isWebGL2 = ""
-					if (this.useDiffuse) mrtMaterial.defines.useDiffuse = ""
+				mrtMaterial = new MRTMaterial()
 
-					mrtMaterial.normalScale = originalMaterial.normalScale
-					mrtMaterial.uniforms.normalScale.value = originalMaterial.normalScale
+				if (this.isWebGL2) mrtMaterial.defines.isWebGL2 = ""
+				if (this.useDiffuse) mrtMaterial.defines.useDiffuse = ""
 
-					const map =
-						originalMaterial.map ||
-						originalMaterial.normalMap ||
-						originalMaterial.roughnessMap ||
-						originalMaterial.metalnessMap
+				mrtMaterial.normalScale = originalMaterial.normalScale
+				mrtMaterial.uniforms.normalScale.value = originalMaterial.normalScale
 
-					if (map) mrtMaterial.uniforms.uvTransform.value = map.matrix
+				const map =
+					originalMaterial.map ||
+					originalMaterial.normalMap ||
+					originalMaterial.roughnessMap ||
+					originalMaterial.metalnessMap
 
-					diffuseMaterial = new MeshBasicMaterial({
-						toneMapped: false
-					})
+				if (map) mrtMaterial.uniforms.uvTransform.value = map.matrix
 
-					this.cachedMaterials.set(c, [originalMaterial, mrtMaterial, diffuseMaterial])
-				}
+				diffuseMaterial = new MeshBasicMaterial({
+					toneMapped: false
+				})
 
-				// update the child's MRT material
-				this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "normalMap", "USE_NORMAL_MAP", "useNormalMap")
-				this.keepMaterialMapUpdated(
-					mrtMaterial,
-					originalMaterial,
-					"roughnessMap",
-					"USE_ROUGHNESS_MAP",
-					"useRoughnessMap"
-				)
-
-				if (this.ssrEffect.qualityScale === 1) {
-					this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "map", "USE_MAP", "useMap")
-					if (originalMaterial.color) mrtMaterial.uniforms.color.value.copy(originalMaterial.color)
-					mrtMaterial.visible = originalMaterial.visible
-				} else {
-					if (originalMaterial.map) diffuseMaterial.map = originalMaterial.map
-					if (originalMaterial.color) diffuseMaterial.color = originalMaterial.color
-					diffuseMaterial.visible = originalMaterial.visible
-				}
-
-				mrtMaterial.uniforms.roughness.value =
-					this.ssrEffect.selection.size === 0 || this.ssrEffect.selection.has(c)
-						? originalMaterial.roughness || 0
-						: 10e10
-
-				c.material = mrtMaterial
+				this.cachedMaterials.set(c, [originalMaterial, mrtMaterial, diffuseMaterial])
 			}
+
+			// update the child's MRT material
+			this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "normalMap", "USE_NORMAL_MAP", "useNormalMap")
+			this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "roughnessMap", "USE_ROUGHNESS_MAP", "useRoughnessMap")
+
+			if (this.ssrEffect.qualityScale === 1) {
+				this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "map", "USE_MAP", "useMap")
+				if (originalMaterial.color) mrtMaterial.uniforms.color.value.copy(originalMaterial.color)
+				mrtMaterial.visible = originalMaterial.visible
+			} else {
+				if (originalMaterial.map) diffuseMaterial.map = originalMaterial.map
+				if (originalMaterial.color) diffuseMaterial.color = originalMaterial.color
+				diffuseMaterial.visible = originalMaterial.visible
+			}
+
+			mrtMaterial.uniforms.roughness.value =
+				this.ssrEffect.selection.size === 0 || this.ssrEffect.selection.has(c) ? originalMaterial.roughness || 0 : 10e10
+
+			c.material = mrtMaterial
 		}
 	}
 
 	unsetMRTMaterialInScene() {
 		for (const c of this.visibleMeshes) {
-			if (c.visible) {
-				// set material back to the original one
-				const [originalMaterial] = this.cachedMaterials.get(c)
+			// set material back to the original one
+			const [originalMaterial] = this.cachedMaterials.get(c)
 
-				c.material = originalMaterial
-			}
+			c.visible = true
+
+			c.material = originalMaterial
 		}
 	}
 
 	setDiffuseMaterialInScene() {
 		for (const c of this.visibleMeshes) {
-			if (c.material && c.material) {
-				c.material = this.cachedMaterials.get(c)[2]
-			}
+			c.visible = c.material.visible && c.material.colorWrite
+
+			c.material = this.cachedMaterials.get(c)[2]
 		}
 	}
 
 	unsetDiffuseMaterialInScene() {
 		for (const c of this.visibleMeshes) {
-			if (c.visible && c.material) {
-				// set material back to the original one
-				const [originalMaterial] = this.cachedMaterials.get(c)
+			// set material back to the original one
+			const [originalMaterial] = this.cachedMaterials.get(c)
 
-				c.material = originalMaterial
-			}
+			c.visible = true
+
+			c.material = originalMaterial
 		}
 	}
 

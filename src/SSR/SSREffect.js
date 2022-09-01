@@ -55,7 +55,7 @@ export class SSREffect extends Effect {
 			boxBlur: true,
 			dilation: false,
 			renderVelocity: false,
-			neighborhoodClamping: false,
+			neighborhoodClamping: true,
 			logTransform: false,
 			generateMipmaps: true,
 			...options
@@ -112,10 +112,6 @@ export class SSREffect extends Effect {
 					}
 
 					switch (key) {
-						case "intensity":
-							this.uniforms.get("intensity").value = value
-							break
-
 						case "resolutionScale":
 							this.setSize(this.lastSize.width, this.lastSize.height)
 							break
@@ -125,23 +121,17 @@ export class SSREffect extends Effect {
 							this.setSize(this.lastSize.width, this.lastSize.height, true)
 							break
 
+						case "intensity":
+						case "power":
 						case "blur":
-							this.uniforms.get("blur").value = value
+							this.uniforms.get(key).value = value
 							break
 
 						// defines
 						case "steps":
-							this.reflectionsPass.fullscreenMaterial.defines.steps = parseInt(value)
-							this.reflectionsPass.fullscreenMaterial.needsUpdate = needsUpdate
-							break
-
 						case "refineSteps":
-							this.reflectionsPass.fullscreenMaterial.defines.refineSteps = parseInt(value)
-							this.reflectionsPass.fullscreenMaterial.needsUpdate = needsUpdate
-							break
-
 						case "spp":
-							this.reflectionsPass.fullscreenMaterial.defines.spp = parseInt(value)
+							this.reflectionsPass.fullscreenMaterial.defines[key] = parseInt(value)
 							this.reflectionsPass.fullscreenMaterial.needsUpdate = needsUpdate
 							break
 
@@ -162,22 +152,13 @@ export class SSREffect extends Effect {
 							break
 
 						case "blend":
-							this.temporalResolvePass.fullscreenMaterial.uniforms.blend.value = value
-							break
-
 						case "correction":
-							this.temporalResolvePass.fullscreenMaterial.uniforms.correction.value = value
+						case "exponent":
+							this.temporalResolvePass.fullscreenMaterial.uniforms[key].value = value
 							break
 
 						case "distance":
 							reflectionPassFullscreenMaterialUniforms.rayDistance.value = value
-
-						case "exponent":
-							this.temporalResolvePass.fullscreenMaterial.uniforms.exponent.value = value
-							break
-
-						case "power":
-							this.uniforms.get("power").value = value
 							break
 
 						// must be a uniform

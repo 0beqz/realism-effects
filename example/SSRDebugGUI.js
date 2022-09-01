@@ -37,7 +37,7 @@ export class SSRDebugGUI {
 		})
 		generalFolder.addInput(params, "ior", {
 			min: 1,
-			max: 5,
+			max: 3,
 			step: 0.01
 		})
 

@@ -10,6 +10,11 @@
     "estree-walker" "^2.0.1"
     "picomatch" "^2.2.2"
 
+"blob-to-buffer@^1.2.9":
+  "integrity" "sha512-BF033y5fN6OCofD3vgHmNtwZWRcq9NLyyxyILx9hfMy1sXYy4ojFl765hJ2lP0YaN2fuxPaLO2Vzzoxy0FLFFA=="
+  "resolved" "https://registry.npmjs.org/blob-to-buffer/-/blob-to-buffer-1.2.9.tgz"
+  "version" "1.2.9"
+
 "copy-to-clipboard@^3.3.2":
   "integrity" "sha512-Vme1Z6RUDzrb6xAI7EZlVZ5uvOk2F//GaxKUxajDqm9LhOVM1inxNAD2vy+UZDYsd0uyA9s7b3/FVZPSxqrCfg=="
   "resolved" "https://registry.npmjs.org/copy-to-clipboard/-/copy-to-clipboard-3.3.2.tgz"
@@ -23,6 +28,14 @@
   "version" "4.0.32"
   dependencies:
     "webgl-constants" "^1.1.1"
+
+"drag-drop@^7.2.0":
+  "integrity" "sha512-cvCWy7I7zmKd82bpW5a6DivZ8BV02XtZRdC9+94kFhu2SzzOtzt7VXWmLClaqvJbkWNYc+onRilNxazao473Pw=="
+  "resolved" "https://registry.npmjs.org/drag-drop/-/drag-drop-7.2.0.tgz"
+  "version" "7.2.0"
+  dependencies:
+    "blob-to-buffer" "^1.2.9"
+    "run-parallel" "^1.2.0"
 
 "esbuild-windows-64@0.14.48":
   "integrity" "sha512-YmpXjdT1q0b8ictSdGwH3M8VCoqPpK1/UArze3X199w6u8hUx3V8BhAi1WjbsfDYRBanVVtduAhh2sirImtAvA=="
@@ -113,6 +126,11 @@
   "resolved" "https://registry.npmjs.org/postprocessing/-/postprocessing-6.28.5.tgz"
   "version" "6.28.5"
 
+"queue-microtask@^1.2.2":
+  "integrity" "sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A=="
+  "resolved" "https://registry.npmjs.org/queue-microtask/-/queue-microtask-1.2.3.tgz"
+  "version" "1.2.3"
+
 "resolve@^1.22.1":
   "integrity" "sha512-nBpuuYuY5jFsli/JIs1oldw6fOQCBioohqWZg/2hiaOybXOft4lonv85uDOKXdf8rhyK159cxU5cDcK/NKk8zw=="
   "resolved" "https://registry.npmjs.org/resolve/-/resolve-1.22.1.tgz"
@@ -128,6 +146,13 @@
   "version" "2.75.7"
   optionalDependencies:
     "fsevents" "~2.3.2"
+
+"run-parallel@^1.2.0":
+  "integrity" "sha512-5l4VyZR86LZ/lDxZTR6jqL8AFE2S0IFLMP26AbjsLVADxHdhB/c0GUsH+y39UfCi3dzz8OlQuPmnaJOMoDHQBA=="
+  "resolved" "https://registry.npmjs.org/run-parallel/-/run-parallel-1.2.0.tgz"
+  "version" "1.2.0"
+  dependencies:
+    "queue-microtask" "^1.2.2"
 
 "screen-space-reflections@^2.1.2":
   "integrity" "sha512-lGLy58EqkQvQyA2srM8wqJ2Zt0sq7hqGXTBZsLzQQ8axx5zZzRI3g2Nxd920s8wyrUIJ7snvu7iEnEGz0xDBlg=="

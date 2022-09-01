@@ -1,8 +1,4 @@
-﻿const float alphaStep = 0.01;
-
-alpha = didReproject && depthDiff <= maxNeighborDepthDifference ? (alpha + alphaStep) : 0.0;
-
-float m = blend;
+﻿float m = blend;
 
 float s = alpha / alphaStep + 1.0;
 m = 1. - 1. / s;

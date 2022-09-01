@@ -7,7 +7,7 @@ uniform sampler2D lastVelocityTexture;
 
 uniform float blend;
 uniform float correction;
-#define exponent 1.875
+uniform float exponent;
 uniform float samples;
 uniform vec2 invTexSize;
 
@@ -21,8 +21,9 @@ varying vec2 vUv;
 #define FLOAT_EPSILON           0.00001
 #define FLOAT_ONE_MINUS_EPSILON 0.99999
 
-vec3 transformExponent = vec3(1.);
-vec3 undoColorTransformExponent = vec3(1.);
+const float alphaStep = 0.01;
+vec3 transformExponent;
+vec3 undoColorTransformExponent;
 
 // credits for transforming screen position to world position: https://discourse.threejs.org/t/reconstruct-world-position-in-screen-space-from-depth-buffer/5532/2
 vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth, mat4 inverseProjectionMatrix, mat4 cameraMatrixWorld) {
@@ -185,8 +186,12 @@ void main() {
     lastDepth = lastMaxDepth;
 #endif
 
+    float depthDiff = abs(depth - lastDepth);
+
     // the reprojected UV coordinates are inside the view
     if (reprojectedUv.x >= 0.0 && reprojectedUv.x <= 1.0 && reprojectedUv.y >= 0.0 && reprojectedUv.y <= 1.0) {
+        didReproject = true;
+
         accumulatedTexel = textureLod(accumulatedTexture, reprojectedUv, 0.0);
 
         // check if this pixel belongs to the background and isn't within 1px close to a mesh (need to check for that too due to anti-aliasing)
@@ -198,13 +203,16 @@ void main() {
         alpha = min(alpha, accumulatedTexel.a);
         accumulatedColor = transformColor(accumulatedTexel.rgb);
 
-#ifdef neighborhoodClamping
-        vec3 clampedColor = clamp(accumulatedColor, minNeighborColor, maxNeighborColor);
+        alpha = didReproject && depthDiff <= maxNeighborDepthDifference ? (alpha + alphaStep) : 0.0;
 
-        accumulatedColor = mix(accumulatedColor, clampedColor, correction);
+#ifdef neighborhoodClamping
+        if (alpha == 0.0) {
+            vec3 clampedColor = clamp(accumulatedColor, minNeighborColor, maxNeighborColor);
+
+            accumulatedColor = mix(accumulatedColor, clampedColor, correction);
+        }
 #endif
 
-        didReproject = true;
     } else {
         // reprojected UV coordinates are outside of screen
 #ifdef boxBlur
@@ -216,7 +224,6 @@ void main() {
 
     vec3 outputColor = inputColor;
 
-    float depthDiff = abs(depth - lastDepth);
     bool isMoving = dot(velocity.xy, velocity.xy) > 0.0;
 
 // the user's shader to compose a final outputColor from the inputTexel and accumulatedTexel

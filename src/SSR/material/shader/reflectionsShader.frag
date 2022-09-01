@@ -35,7 +35,9 @@ uniform float jitterRoughness;
 #define EARLY_OUT_COLOR         vec4(0.0, 0.0, 0.0, 1.0)
 #define FLOAT_EPSILON           0.00001
 #define FLOAT_ONE_MINUS_EPSILON 0.99999
+#define M_PI                    3.1415926535897932384626433832795
 #define TWO_PI                  6.283185307179586
+
 #define USE_DIFFUSE
 
 float nearMinusFar;
@@ -127,8 +129,7 @@ void main() {
     float weight = 1.0 / float(iterations);
 
     float spread = jitter + roughness * jitterRoughness;
-    spread *= 2.;
-    // spread = min(1.0, spread);
+    spread = min(1.0, spread);
 
     for (int s = 0; s <= iterations; s++) {
         float sF = float(s);
@@ -149,6 +150,32 @@ void main() {
     // if (samples < 2. && spread < 0.5) alpha = min(lastFrameAlpha, spread * 0.25);
 
     gl_FragColor = vec4(finalSSR, alpha);
+}
+
+float colorToLuminance(vec3 color) {
+    // https://en.wikipedia.org/wiki/Relative_luminance
+    return 0.2126 * color.r + 0.7152 * color.g + 0.0722 * color.b;
+}
+
+// ray sampling x and z are swapped to align with expected background view
+vec2 equirectDirectionToUv(vec3 direction) {
+    // from Spherical.setFromCartesianCoords
+    vec2 uv = vec2(atan(direction.z, direction.x), acos(direction.y));
+    uv /= vec2(2.0 * M_PI, M_PI);
+    // apply adjustments to get values in range [0, 1] and y right side up
+    uv.x += 0.5;
+    uv.y = 1.0 - uv.y;
+    return uv;
+}
+
+float envMapDirectionPdf(vec3 direction) {
+    vec2 uv = equirectDirectionToUv(direction);
+    float theta = uv.y * M_PI;
+    float sinTheta = sin(theta);
+    if (sinTheta == 0.0) {
+        return 0.0;
+    }
+    return 1.0 / (2.0 * M_PI * M_PI * sinTheta);
 }
 
 vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float lastFrameAlpha, float sampleCount, vec3 worldPos, float spread) {
@@ -202,17 +229,27 @@ vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     vec2 coords = RayMarch(dir, hitPos, rayHitDepthDifference);
 #endif
 
-    // invalid ray
+    // invalid ray, use environment lighting as fallback
     if (coords.x == -1.0) {
         iblRadiance = getIBLRadiance(-viewDir, viewNormal, 0.) * fresnelFactor;
         iblRadiance = clamp(iblRadiance, vec3(0.0), vec3(1.0));
 
 #ifdef USE_DIFFUSE
         vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.);
-        diffuseTexel.rgb = czm_saturation(diffuseTexel.rgb, 0.5);
 
-        iblRadiance *= diffuseTexel.rgb + 0.05;
+        iblRadiance *= diffuseTexel.rgb * 0.9 + 0.1;
 #endif
+
+        vec4 SSRTexelReflected = textureLod(accumulatedTexture, vUv, 0.);
+
+        float lum = colorToLuminance(iblRadiance);
+        float totalLum = colorToLuminance(SSRTexelReflected.rgb);
+        if (totalLum < FLOAT_EPSILON) totalLum = 1.;
+        float pdf = lum / totalLum;
+        float dirPdf = envMapDirectionPdf(dir);
+        float totalPdf = pdf * dirPdf;
+
+        iblRadiance *= totalPdf;
 
         return vec4(iblRadiance, lastFrameAlpha);
     }
@@ -226,13 +263,14 @@ vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     float reflectionDistance = distance(hitWorldPos, worldPos);
 
     float lod = min(8., log(reflectionDistance) * 10.0 * spread);
+    // lod = 0.;
     vec4 SSRTexel = textureLod(inputTexture, coords.xy, lod);
 
     vec4 SSRTexelReflected = textureLod(accumulatedTexture, coords.xy, lod);
 
 #ifdef USE_DIFFUSE
     vec4 diffuseTexel = textureLod(diffuseTexture, coords.xy, lod);
-    SSRTexel.rgb *= diffuseTexel.rgb + 0.05;
+    SSRTexel.rgb *= diffuseTexel.rgb;
 #endif
 
     vec3 SSR = SSRTexel.rgb + SSRTexelReflected.rgb;
