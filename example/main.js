@@ -2,7 +2,16 @@ import dragDrop from "drag-drop"
 import * as POSTPROCESSING from "postprocessing"
 import Stats from "stats.js"
 import * as THREE from "three"
-import { Box3, Color, DirectionalLight, DoubleSide, HalfFloatType, LinearMipMapLinearFilter, Vector3 } from "three"
+import {
+	ACESFilmicToneMapping,
+	Box3,
+	Color,
+	DirectionalLight,
+	DoubleSide,
+	HalfFloatType,
+	LinearMipMapLinearFilter,
+	Vector3
+} from "three"
 import { WebGLRenderTarget } from "three/build/three.module"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
@@ -64,6 +73,7 @@ renderer.autoClearColor = false
 renderer.autoClearDepth = false
 renderer.autoClearStencil = false
 
+renderer.toneMapping = ACESFilmicToneMapping
 renderer.outputEncoding = THREE.sRGBEncoding
 const dpr = window.devicePixelRatio || 1
 renderer.setPixelRatio(dpr)
@@ -157,7 +167,7 @@ const params = {}
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
 pmremGenerator.compileEquirectangularShader()
 
-new RGBELoader().load("hdr/irr_shudu_lake_2k.hdr", envMap => {
+new RGBELoader().load("hdr/dry_cracked_lake_4k.hdr", envMap => {
 	envMap.mapping = THREE.EquirectangularReflectionMapping
 
 	scene.environment = envMap
@@ -230,14 +240,15 @@ const clock = new THREE.Clock()
 
 const initScene = () => {
 	const options = {
-		intensity: 7.6099999999999905,
-		power: 1.0000000000000004,
-		exponent: 1.875,
+		intensity: 11.96,
+		power: 1.3250000000000006,
+		exponent: 1.475,
 		distance: 6.000000000000002,
 		fade: 0,
 		roughnessFade: 0,
-		thickness: 47.83,
+		thickness: 7.609999999999998,
 		ior: 2.04,
+		mip: 1,
 		maxRoughness: 1,
 		maxDepthDifference: 260.9,
 		blend: 1,
@@ -245,16 +256,16 @@ const initScene = () => {
 		correctionRadius: 1,
 		blur: 0,
 		jitter: 0,
-		jitterRoughness: 1,
-		steps: 14,
+		jitterRoughness: 0.07999999999999999,
+		steps: 22,
 		refineSteps: 5,
 		spp: 4,
 		missedRays: false,
 		useMap: true,
 		useNormalMap: true,
 		useRoughnessMap: true,
-		resolutionScale: 1,
-		qualityScale: 1
+		resolutionScale: 0.5,
+		qualityScale: 0.5
 	}
 
 	traaEffect = new TRAAEffect(scene, camera, params)
@@ -284,7 +295,7 @@ const initScene = () => {
 
 	sceneFolder.addInput(lightParams, "yaw", { min: 0, max: 360, step: 1 }).on("change", refreshLighting)
 
-	sceneFolder.addInput(lightParams, "pitch", { min: 0, max: 90, step: 1 }).on("change", refreshLighting)
+	sceneFolder.addInput(lightParams, "pitch", { min: -90, max: 90, step: 1 }).on("change", refreshLighting)
 
 	sceneFolder.addInput(lightParams, "distance", { min: 0, max: 200, step: 1 }).on("change", refreshLighting)
 
@@ -318,7 +329,7 @@ const initScene = () => {
 	// gui2.pane.element.style.display = "none"
 
 	new POSTPROCESSING.LUT3dlLoader().load("room.3dl", lutTexture => {
-		const lutEffect = new POSTPROCESSING.LUTEffect(lutTexture)
+		// const lutEffect = new POSTPROCESSING.LUTEffect(lutTexture)
 
 		ssrPass = new POSTPROCESSING.EffectPass(camera, ssrEffect)
 
@@ -326,7 +337,7 @@ const initScene = () => {
 		// composer.addPass(traaPass)
 
 		composer.addPass(ssrPass)
-		// composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, vignetteEffect))
+		composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, vignetteEffect))
 
 		const smaaEffect = new POSTPROCESSING.SMAAEffect()
 
@@ -347,6 +358,7 @@ const loop = () => {
 	if (mixer) {
 		mixer.update(dt)
 		lastScene.updateMatrixWorld()
+		refreshLighting()
 	}
 
 	controls.update()
@@ -487,6 +499,8 @@ const setupAsset = asset => {
 			c.castShadow = c.receiveShadow = true
 			c.material.depthWrite = true
 		}
+
+		c.frustumCulled = false
 	})
 
 	const bb = new Box3()

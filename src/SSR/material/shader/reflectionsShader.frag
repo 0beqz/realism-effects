@@ -7,7 +7,6 @@ uniform sampler2D accumulatedTexture;
 uniform sampler2D normalTexture;
 uniform sampler2D depthTexture;
 uniform sampler2D diffuseTexture;
-uniform sampler2D fullResDepthTexture;
 uniform sampler2D envMap;
 
 uniform mat4 _projectionMatrix;
@@ -23,6 +22,7 @@ uniform float maxRoughness;
 uniform float fade;
 uniform float thickness;
 uniform float ior;
+uniform float mip;
 uniform vec2 invTexSize;
 
 uniform float samples;
@@ -48,6 +48,10 @@ float farMinusNear;
 
 // helper functions
 #include <helperFunctions>
+
+vec4 tosRGB(in vec4 value) {
+    return vec4(mix(pow(value.rgb, vec3(0.41666)) * 1.055 - vec3(0.055), value.rgb * 12.92, vec3(lessThanEqual(value.rgb, vec3(0.0031308)))), value.a);
+}
 
 vec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
 vec2 BinarySearch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
@@ -128,7 +132,7 @@ void main() {
 
     float weight = 1.0 / float(iterations);
 
-    float spread = jitter + roughness * jitterRoughness;
+    float spread = jitter + roughness * roughness * jitterRoughness;
     spread = min(1.0, spread);
 
     for (int s = 0; s <= iterations; s++) {
@@ -229,6 +233,8 @@ vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     vec2 coords = RayMarch(dir, hitPos, rayHitDepthDifference);
 #endif
 
+    float diffuseFactor = 0.875;
+
     // invalid ray, use environment lighting as fallback
     if (coords.x == -1.0) {
         iblRadiance = getIBLRadiance(-viewDir, viewNormal, 0.) * fresnelFactor;
@@ -237,7 +243,7 @@ vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
 #ifdef USE_DIFFUSE
         vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.);
 
-        iblRadiance *= diffuseTexel.rgb * 0.9 + 0.1;
+        iblRadiance *= diffuseTexel.rgb * diffuseFactor + (1. - diffuseFactor);
 #endif
 
         vec4 SSRTexelReflected = textureLod(accumulatedTexture, vUv, 0.);
@@ -248,6 +254,8 @@ vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
         float pdf = lum / totalLum;
         float dirPdf = envMapDirectionPdf(dir);
         float totalPdf = pdf * dirPdf;
+
+        if (totalPdf > 1.) totalPdf = 1.;
 
         iblRadiance *= totalPdf;
 
@@ -262,15 +270,15 @@ vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     // distance from the reflection point to what it's reflecting
     float reflectionDistance = distance(hitWorldPos, worldPos);
 
-    float lod = min(8., log(reflectionDistance) * 10.0 * spread);
-    // lod = 0.;
+    float lod = mip * reflectionDistance * reflectionDistance * spread * 5.;
+
     vec4 SSRTexel = textureLod(inputTexture, coords.xy, lod);
 
     vec4 SSRTexelReflected = textureLod(accumulatedTexture, coords.xy, lod);
 
 #ifdef USE_DIFFUSE
     vec4 diffuseTexel = textureLod(diffuseTexture, coords.xy, lod);
-    SSRTexel.rgb *= diffuseTexel.rgb;
+    SSRTexel.rgb *= diffuseTexel.rgb * diffuseFactor + (1. - diffuseFactor);
 #endif
 
     vec3 SSR = SSRTexel.rgb + SSRTexelReflected.rgb;
@@ -296,7 +304,7 @@ vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     finalSSR *= fresnelFactor;
     finalSSR = min(vec3(1.0), finalSSR);
 
-    // finalSSR = vec3(floor(lod) / 8.);
+    // finalSSR = vec3(lod / 12.);
 
     return vec4(finalSSR, SSRTexelReflected.a);
 }
@@ -368,7 +376,7 @@ vec2 BinarySearch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDiffere
         projectedCoord.xy /= projectedCoord.w;
         projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;
 
-        depthTexel = textureLod(fullResDepthTexture, projectedCoord.xy, 0.0);
+        depthTexel = textureLod(depthTexture, projectedCoord.xy, 0.0);
 
         unpackedDepth = unpackRGBAToDepth(depthTexel);
         depth = fastGetViewZ(unpackedDepth);

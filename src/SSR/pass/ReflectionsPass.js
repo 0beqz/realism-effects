@@ -11,17 +11,7 @@ import {
 } from "three"
 import { MRTMaterial } from "../material/MRTMaterial.js"
 import { ReflectionsMaterial } from "../material/ReflectionsMaterial.js"
-import { getVisibleChildren } from "../utils/Utils.js"
-
-// from https://github.com/mrdoob/three.js/blob/dev/examples/jsm/capabilities/WebGL.js#L18
-const isWebGL2Available = () => {
-	try {
-		const canvas = document.createElement("canvas")
-		return !!(window.WebGL2RenderingContext && canvas.getContext("webgl2"))
-	} catch (e) {
-		return false
-	}
-}
+import { getVisibleChildren, isWebGL2Available } from "../utils/Utils.js"
 
 export class ReflectionsPass extends Pass {
 	ssrEffect
@@ -49,31 +39,27 @@ export class ReflectionsPass extends Pass {
 			depthBuffer: false
 		})
 
-		this.diffuseRenderTarget = new WebGLRenderTarget(1, 1, {
-			minFilter: LinearMipMapNearestFilter,
-			magFilter: LinearMipMapNearestFilter,
-			encoding: sRGBEncoding,
-			generateMipmaps: true
-		})
-
 		this.renderPass = new RenderPass(this._scene, this._camera)
 
 		this.isWebGL2 = isWebGL2Available()
 
+		// set up basic uniforms that we don't have to update
+		this.fullscreenMaterial.uniforms.cameraMatrixWorld.value = this._camera.matrixWorld
+		this.fullscreenMaterial.uniforms._projectionMatrix.value = this._camera.projectionMatrix
+		this.fullscreenMaterial.uniforms._inverseProjectionMatrix.value = this._camera.projectionMatrixInverse
+	}
+
+	initMRTRenderTarget() {
+		if (this.gBuffersRenderTarget) this.gBuffersRenderTarget.dispose()
+		if (this.diffuseRenderTarget) this.diffuseRenderTarget.dispose()
+		if (this.webgl1DepthPass) this.webgl1DepthPass.dispose()
+
 		if (this.isWebGL2) {
 			// buffers: normal, depth (2), roughness will be written to the alpha channel of the normal buffer
-			this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(
-				1,
-				1,
-				this.useDiffuse && this.ssrEffect.qualityScale === 1 ? 3 : 2,
-				{
-					minFilter: NearestFilter,
-					magFilter: NearestFilter
-				}
-			)
-
-			this.normalTexture = this.gBuffersRenderTarget.texture[0]
-			this.depthTexture = this.gBuffersRenderTarget.texture[1]
+			this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(1, 1, 2, {
+				minFilter: NearestFilter,
+				magFilter: NearestFilter
+			})
 		} else {
 			// depth pass
 			this.webgl1DepthPass = new DepthPass(this._scene, this._camera)
@@ -88,30 +74,42 @@ export class ReflectionsPass extends Pass {
 			this.depthTexture = this.webgl1DepthPass.texture
 		}
 
-		// set up uniforms
+		this.normalTexture = this.gBuffersRenderTarget.texture[0]
+		this.depthTexture = this.gBuffersRenderTarget.texture[1]
+
 		this.fullscreenMaterial.uniforms.normalTexture.value = this.normalTexture
-		this.fullscreenMaterial.uniforms.fullResDepthTexture.value = this.depthTexture
-		this.fullscreenMaterial.uniforms.cameraMatrixWorld.value = this._camera.matrixWorld
-		this.fullscreenMaterial.uniforms._projectionMatrix.value = this._camera.projectionMatrix
-		this.fullscreenMaterial.uniforms._inverseProjectionMatrix.value = this._camera.projectionMatrixInverse
-
 		this.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
-	}
 
-	setSize(width, height) {
-		this.renderTarget.setSize(width * this.ssrEffect.resolutionScale, height * this.ssrEffect.resolutionScale)
-		this.renderTarget.texture.minFilter = LinearFilter
-		this.renderTarget.texture.magFilter = LinearFilter
-
-		this.gBuffersRenderTarget.setSize(width * this.ssrEffect.qualityScale, height * this.ssrEffect.qualityScale)
-		this.diffuseRenderTarget.setSize(width, height)
+		// diffuse texture
 
 		if (this.useDiffuse) {
-			this.diffuseTexture =
-				this.ssrEffect.qualityScale === 1 ? this.gBuffersRenderTarget.texture[2] : this.diffuseRenderTarget.texture
+			this.diffuseRenderTarget = new WebGLRenderTarget(1, 1, {
+				minFilter: LinearMipMapNearestFilter,
+				magFilter: LinearMipMapNearestFilter,
+				encoding: sRGBEncoding,
+				generateMipmaps: true
+			})
+
+			this.diffuseTexture = this.diffuseRenderTarget.texture
+
+			// set up uniforms
 
 			this.fullscreenMaterial.uniforms.diffuseTexture.value = this.diffuseTexture
 		}
+	}
+
+	canUseMRTDiffuseTexture() {
+		return false // this.isWebGL2 && this.ssrEffect.qualityScale === 1
+	}
+
+	setSize(width, height) {
+		this.initMRTRenderTarget()
+
+		this.renderTarget.setSize(width * this.ssrEffect.resolutionScale, height * this.ssrEffect.resolutionScale)
+		this.gBuffersRenderTarget.setSize(width * this.ssrEffect.qualityScale, height * this.ssrEffect.qualityScale)
+		this.diffuseRenderTarget.setSize(width, height)
+		if (this.webgl1DepthPass)
+			this.webgl1DepthPass.setSize(width * this.ssrEffect.qualityScale, height * this.ssrEffect.qualityScale)
 
 		this.fullscreenMaterial.uniforms.invTexSize.value.set(1 / width, 1 / height)
 
@@ -195,15 +193,9 @@ export class ReflectionsPass extends Pass {
 			this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "normalMap", "USE_NORMAL_MAP", "useNormalMap")
 			this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "roughnessMap", "USE_ROUGHNESS_MAP", "useRoughnessMap")
 
-			if (this.ssrEffect.qualityScale === 1) {
-				this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "map", "USE_MAP", "useMap")
-				if (originalMaterial.color) mrtMaterial.uniforms.color.value.copy(originalMaterial.color)
-				mrtMaterial.visible = originalMaterial.visible
-			} else {
-				if (originalMaterial.map) diffuseMaterial.map = originalMaterial.map
-				if (originalMaterial.color) diffuseMaterial.color = originalMaterial.color
-				diffuseMaterial.visible = originalMaterial.visible
-			}
+			if (originalMaterial.map) diffuseMaterial.map = originalMaterial.map
+			if (originalMaterial.color) diffuseMaterial.color = originalMaterial.color
+			diffuseMaterial.visible = originalMaterial.visible
 
 			mrtMaterial.uniforms.roughness.value =
 				this.ssrEffect.selection.size === 0 || this.ssrEffect.selection.has(c) ? originalMaterial.roughness || 0 : 10e10
@@ -249,13 +241,11 @@ export class ReflectionsPass extends Pass {
 
 		this.unsetMRTMaterialInScene()
 
-		if (this.useDiffuse && this.ssrEffect.qualityScale < 1) {
-			this.setDiffuseMaterialInScene()
+		this.setDiffuseMaterialInScene()
 
-			this.renderPass.render(renderer, this.diffuseRenderTarget)
+		this.renderPass.render(renderer, this.diffuseRenderTarget)
 
-			this.unsetDiffuseMaterialInScene()
-		}
+		this.unsetDiffuseMaterialInScene()
 
 		// render depth and velocity in seperate passes
 		if (!this.isWebGL2) this.webgl1DepthPass.renderPass.render(renderer, this.webgl1DepthPass.renderTarget)

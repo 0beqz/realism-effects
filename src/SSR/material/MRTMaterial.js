@@ -1,5 +1,4 @@
 ﻿import { GLSL3, Matrix3, ShaderMaterial, TangentSpaceNormalMap, Uniform, Vector2 } from "three"
-import { Color } from "three/build/three.module"
 
 // WebGL1: will render normals to RGB channel and roughness to A channel
 // WebGL2: will render normals to RGB channel of "gNormal" buffer, roughness to A channel of "gNormal" buffer, depth to RGBA channel of "gDepth" buffer
@@ -21,9 +20,7 @@ export class MRTMaterial extends ShaderMaterial {
 				normalScale: new Uniform(new Vector2(1, 1)),
 				uvTransform: new Uniform(new Matrix3()),
 				roughness: new Uniform(1),
-				roughnessMap: new Uniform(null),
-				map: new Uniform(null),
-				color: new Uniform(new Color())
+				roughnessMap: new Uniform(null)
 			},
 			vertexShader: /* glsl */ `
                 #ifdef isWebGL2
@@ -81,18 +78,10 @@ export class MRTMaterial extends ShaderMaterial {
                 #include <logdepthbuf_pars_fragment>
                 #include <clipping_planes_pars_fragment>
                 #include <roughnessmap_pars_fragment>
-
-                #ifdef useDiffuse
-                #include <map_pars_fragment>
-                #endif
                 
                 #ifdef isWebGL2
                 layout(location = 0) out vec4 gNormal;
                 layout(location = 1) out vec4 gDepth;
-
-                #ifdef useDiffuse
-                layout(location = 2) out vec4 gDiffuse;
-                #endif
                 
                 varying vec2 vHighPrecisionZW;
                 #endif
@@ -124,13 +113,6 @@ export class MRTMaterial extends ShaderMaterial {
                         vec4 depthColor = packDepthToRGBA( fragCoordZ );
                         gNormal = vec4( normalColor, roughnessFactor );
                         gDepth = depthColor;
-
-                        #ifdef useDiffuse
-
-                        vec4 diffuseColor = vec4(color, 1.0);
-                        #include <map_fragment>
-                        gDiffuse = diffuseColor;
-                        #endif
                     #else
                         gl_FragColor = vec4(normalColor, roughnessFactor);
                     #endif

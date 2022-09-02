@@ -121,10 +121,10 @@
     "picocolors" "^1.0.0"
     "source-map-js" "^1.0.2"
 
-"postprocessing@^6.28.5", "postprocessing@>=6.28.0":
-  "integrity" "sha512-e9aH6T720AiQpStdgqrQSsHzpddFQ7Q8v204sZx4iSTnUuYvkq7mFPOyzhVDlx5NrmXXbwz2PEK2XTq+qEYSMg=="
-  "resolved" "https://registry.npmjs.org/postprocessing/-/postprocessing-6.28.5.tgz"
-  "version" "6.28.5"
+"postprocessing@^6.28.7", "postprocessing@>=6.28.0":
+  "integrity" "sha512-norsBlNIhDoNG2R0nki9C0bNEARIunE/s5W/4qH/Ozlg3m0dOOmBoY8JZhnmPild/+Jvq/UFEeHQRBvTc11WUg=="
+  "resolved" "https://registry.npmjs.org/postprocessing/-/postprocessing-6.28.7.tgz"
+  "version" "6.28.7"
 
 "queue-microtask@^1.2.2":
   "integrity" "sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A=="
@@ -174,7 +174,7 @@
   "resolved" "https://registry.npmjs.org/supports-preserve-symlinks-flag/-/supports-preserve-symlinks-flag-1.0.0.tgz"
   "version" "1.0.0"
 
-"three@^0.143.0", "three@>= 0.107.0 < 0.144.0", "three@>=0.141.0":
+"three@^0.143.0", "three@>= 0.125.0 < 0.145.0", "three@>=0.141.0":
   "integrity" "sha512-oKcAGYHhJ46TGEuHjodo2n6TY2R6lbvrkp+feKZxqsUL/WkH7GKKaeu6RHeyb2Xjfk2dPLRKLsOP0KM2VgT8Zg=="
   "resolved" "https://registry.npmjs.org/three/-/three-0.143.0.tgz"
   "version" "0.143.0"

@@ -15,6 +15,8 @@ export class SSRDebugGUI {
 			ssrEffect[presetKey] = ev.value
 		})
 
+		params = { ...defaultSSROptions, ...params }
+
 		const generalFolder = pane.addFolder({ title: "General" })
 		generalFolder.addInput(params, "intensity", { min: 0, max: 50, step: 0.01 })
 		generalFolder.addInput(params, "power", { min: 0.025, max: 5, step: 0.025 })
@@ -38,6 +40,12 @@ export class SSRDebugGUI {
 		generalFolder.addInput(params, "ior", {
 			min: 1,
 			max: 3,
+			step: 0.01
+		})
+
+		generalFolder.addInput(params, "mip", {
+			min: 0,
+			max: 1,
 			step: 0.01
 		})
 

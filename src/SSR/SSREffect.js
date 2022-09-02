@@ -1,6 +1,7 @@
-﻿import { Effect, Selection } from "postprocessing"
+﻿import { Effect, Selection, BoxBlurPass } from "postprocessing"
 import {
 	CubeCamera,
+	HalfFloatType,
 	LinearFilter,
 	PMREMGenerator,
 	ShaderChunk,
@@ -8,7 +9,8 @@ import {
 	Texture,
 	Uniform,
 	Vector3,
-	WebGLCubeRenderTarget
+	WebGLCubeRenderTarget,
+	WebGLRenderTarget
 } from "three"
 import finalSSRShader from "./material/shader/finalSSRShader.frag"
 import helperFunctions from "./material/shader/helperFunctions.frag"
@@ -17,7 +19,7 @@ import { ReflectionsPass } from "./pass/ReflectionsPass.js"
 import { defaultSSROptions } from "./SSROptions"
 import { TemporalResolvePass } from "./temporal-resolve/TemporalResolvePass.js"
 import { useBoxProjectedEnvMap } from "./utils/useBoxProjectedEnvMap"
-import { setupEnvMap } from "./utils/Utils"
+import { getMaxMipLevel, setupEnvMap } from "./utils/Utils"
 
 const finalFragmentShader = finalSSRShader.replace("#include <helperFunctions>", helperFunctions)
 
@@ -41,6 +43,7 @@ export class SSREffect extends Effect {
 			uniforms: new Map([
 				["diffuseTexture", new Uniform(null)],
 				["reflectionsTexture", new Uniform(null)],
+				["boxBlurTexture", new Uniform(null)],
 				["intensity", new Uniform(1)],
 				["power", new Uniform(1)],
 				["blur", new Uniform(0)]
@@ -76,6 +79,21 @@ export class SSREffect extends Effect {
 		// reflections pass
 		this.reflectionsPass = new ReflectionsPass(this)
 		this.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = this.reflectionsPass.renderTarget.texture
+
+		this.boxBlurPass = new BoxBlurPass({
+			kernelSize: 3,
+			iterations: 1,
+			bilateral: true
+		})
+
+		this.boxBlurPass.renderTargetA.texture.type = HalfFloatType
+		this.boxBlurPass.renderTargetB.texture.type = HalfFloatType
+
+		this.boxBlurRenderTarget = new WebGLRenderTarget(1, 1, {
+			type: HalfFloatType
+		})
+
+		this.uniforms.get("boxBlurTexture").value = this.boxBlurRenderTarget.texture
 
 		this.lastSize = {
 			width: options.width,
@@ -161,6 +179,16 @@ export class SSREffect extends Effect {
 							reflectionPassFullscreenMaterialUniforms.rayDistance.value = value
 							break
 
+						case "mip":
+							const maxMipLevel = getMaxMipLevel(this.temporalResolvePass.width, this.temporalResolvePass.height)
+							const mip = value * maxMipLevel
+
+							console.log(reflectionPassFullscreenMaterialUniforms)
+
+							reflectionPassFullscreenMaterialUniforms[key].value = mip
+
+							break
+
 						// must be a uniform
 						default:
 							if (reflectionPassFullscreenMaterialUniformsKeys.includes(key)) {
@@ -189,6 +217,8 @@ export class SSREffect extends Effect {
 
 		this.temporalResolvePass.setSize(width, height)
 		this.reflectionsPass.setSize(width, height)
+		this.boxBlurPass.setSize(width, height)
+		this.boxBlurRenderTarget.setSize(width, height)
 
 		this.lastSize = {
 			width,
@@ -292,6 +322,9 @@ export class SSREffect extends Effect {
 
 		// compose reflection of last and current frame into one reflection
 		this.temporalResolvePass.render(renderer)
+
+		if (this.blur > 0)
+			this.boxBlurPass.render(renderer, this.temporalResolvePass.renderTarget, this.boxBlurRenderTarget)
 
 		if (this.qualityScale < 1) this.temporalResolvePass.unjitter()
 	}

@@ -1,5 +1,5 @@
 ﻿// source: https://observablehq.com/@jrus/halton
-const halton = function halton(index, base) {
+const halton = (index, base) => {
 	let fraction = 1
 	let result = 0
 	while (index > 0) {

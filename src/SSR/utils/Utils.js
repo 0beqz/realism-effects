@@ -40,3 +40,18 @@ export const setupEnvMap = (reflectionsMaterial, envMap, envMapCubeUVHeight) => 
 
 	reflectionsMaterial.needsUpdate = true
 }
+
+// ref: https://computergraphics.stackexchange.com/a/12735
+export const getMaxMipLevel = (width, height) => {
+	return ~~Math.log2(Math.max(width, height)) + 1
+}
+
+// from https://github.com/mrdoob/three.js/blob/dev/examples/jsm/capabilities/WebGL.js#L18
+export const isWebGL2Available = () => {
+	try {
+		const canvas = document.createElement("canvas")
+		return !!(window.WebGL2RenderingContext && canvas.getContext("webgl2"))
+	} catch (e) {
+		return false
+	}
+}
