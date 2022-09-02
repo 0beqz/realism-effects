@@ -28,17 +28,17 @@ export const generateCubeUVSize = parameters => {
 	return { texelWidth, texelHeight, maxMip }
 }
 
-export const setupEnvMap = (reflectionsMaterial, envMap, envMapCubeUVHeight) => {
-	reflectionsMaterial.uniforms.envMap.value = envMap
+export const setupEnvMap = (ssgiMaterial, envMap, envMapCubeUVHeight) => {
+	ssgiMaterial.uniforms.envMap.value = envMap
 
 	const envMapCubeUVSize = generateCubeUVSize({ envMapCubeUVHeight })
 
-	reflectionsMaterial.defines.ENVMAP_TYPE_CUBE_UV = ""
-	reflectionsMaterial.defines.CUBEUV_TEXEL_WIDTH = envMapCubeUVSize.texelWidth
-	reflectionsMaterial.defines.CUBEUV_TEXEL_HEIGHT = envMapCubeUVSize.texelHeight
-	reflectionsMaterial.defines.CUBEUV_MAX_MIP = envMapCubeUVSize.maxMip + ".0"
+	ssgiMaterial.defines.ENVMAP_TYPE_CUBE_UV = ""
+	ssgiMaterial.defines.CUBEUV_TEXEL_WIDTH = envMapCubeUVSize.texelWidth
+	ssgiMaterial.defines.CUBEUV_TEXEL_HEIGHT = envMapCubeUVSize.texelHeight
+	ssgiMaterial.defines.CUBEUV_MAX_MIP = envMapCubeUVSize.maxMip + ".0"
 
-	reflectionsMaterial.needsUpdate = true
+	ssgiMaterial.needsUpdate = true
 }
 
 // ref: https://computergraphics.stackexchange.com/a/12735

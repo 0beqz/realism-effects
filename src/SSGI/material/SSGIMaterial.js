@@ -1,13 +1,13 @@
 ﻿import { Vector2 } from "three"
 import { Matrix4, ShaderMaterial, Uniform, Vector3 } from "three"
-import vertexShader from "./shader/basicVertexShader.vert"
-import helperFunctions from "./shader/helperFunctions.frag"
-import fragmentShader from "./shader/reflectionsShader.frag"
+import vertexShader from "../shader/basic.vert"
+import utils from "../shader/utils.frag"
+import fragmentShader from "../shader/ssgi.frag"
 
-export class ReflectionsMaterial extends ShaderMaterial {
+export class SSGIMaterial extends ShaderMaterial {
 	constructor() {
 		super({
-			type: "ReflectionsMaterial",
+			type: "SSGIMaterial",
 
 			uniforms: {
 				inputTexture: new Uniform(null),
@@ -48,7 +48,7 @@ export class ReflectionsMaterial extends ShaderMaterial {
 				vWorldPosition: "worldPos"
 			},
 
-			fragmentShader: fragmentShader.replace("#include <helperFunctions>", helperFunctions),
+			fragmentShader: fragmentShader.replace("#include <utils>", utils),
 			vertexShader,
 
 			toneMapped: false,

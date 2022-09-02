@@ -1,9 +1,9 @@
-﻿import { defaultSSROptions } from "../src/SSR/SSROptions"
+﻿import { defaultSSGIOptions } from "../src/SSGI/SSGIOptions"
 import { Pane } from "tweakpane"
 import copy from "copy-to-clipboard"
 
-export class SSRDebugGUI {
-	constructor(ssrEffect, params = defaultSSROptions) {
+export class SSGIDebugGUI {
+	constructor(ssgiEffect, params = defaultSSGIOptions) {
 		const pane = new Pane()
 		this.pane = pane
 		pane.containerElem_.style.userSelect = "none"
@@ -12,10 +12,10 @@ export class SSRDebugGUI {
 		pane.on("change", ev => {
 			const { presetKey } = ev
 
-			ssrEffect[presetKey] = ev.value
+			ssgiEffect[presetKey] = ev.value
 		})
 
-		params = { ...defaultSSROptions, ...params }
+		params = { ...defaultSSGIOptions, ...params }
 
 		const generalFolder = pane.addFolder({ title: "General" })
 		generalFolder.addInput(params, "intensity", { min: 0, max: 50, step: 0.01 })
@@ -89,8 +89,8 @@ export class SSRDebugGUI {
 			.on("click", () => {
 				const json = {}
 
-				for (const prop of Object.keys(defaultSSROptions)) {
-					json[prop] = ssrEffect[prop]
+				for (const prop of Object.keys(defaultSSGIOptions)) {
+					json[prop] = ssgiEffect[prop]
 				}
 
 				console.log(json)

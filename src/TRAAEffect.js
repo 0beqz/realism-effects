@@ -1,12 +1,12 @@
 ﻿import { Effect } from "postprocessing"
 import { Quaternion, Uniform, Vector3 } from "three"
-import finalTRAAShader from "./material/shader/finalTRAAShader.frag"
-import helperFunctions from "./material/shader/helperFunctions.frag"
-import trCompose from "./material/shader/trCompose.frag"
-import { TemporalResolvePass } from "../src/SSR/temporal-resolve/TemporalResolvePass.js"
+import compose from "./shader/compose.frag"
+import utils from "./shader/utils.frag"
+import trCompose from "./shader/trCompose.frag"
+import { TemporalResolvePass } from "../src/SSGI/temporal-resolve/TemporalResolvePass.js"
 import { generateHalton23Points } from "./utils/generateHalton23Points"
 
-const finalFragmentShader = finalTRAAShader.replace("#include <helperFunctions>", helperFunctions)
+const finalFragmentShader = compose.replace("#include <utils>", utils)
 
 export const defaultTRAAOptions = {
 	blend: 0.9,
@@ -143,7 +143,6 @@ export class TRAAEffect extends Effect {
 
 		this.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = inputBuffer.texture
 
-		// compose reflection of last and current frame into one reflection
 		this.temporalResolvePass.render(renderer)
 
 		this._scene.autoUpdate = autoUpdate

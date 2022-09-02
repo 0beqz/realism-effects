@@ -10,27 +10,27 @@ import {
 	WebGLRenderTarget
 } from "three"
 import { MRTMaterial } from "../material/MRTMaterial.js"
-import { ReflectionsMaterial } from "../material/ReflectionsMaterial.js"
+import { SSGIMaterial } from "../material/SSGIMaterial.js"
 import { getVisibleChildren, isWebGL2Available } from "../utils/Utils.js"
 
-export class ReflectionsPass extends Pass {
-	ssrEffect
+export class SSGIPass extends Pass {
+	ssgiEffect
 	cachedMaterials = new WeakMap()
 	isWebGL2 = false
 	webgl1DepthPass = null
 	visibleMeshes = []
 
-	constructor(ssrEffect) {
-		super("ReflectionsPass")
+	constructor(ssgiEffect) {
+		super("SSGIPass")
 
-		this.ssrEffect = ssrEffect
-		this._scene = ssrEffect._scene
-		this._camera = ssrEffect._camera
+		this.ssgiEffect = ssgiEffect
+		this._scene = ssgiEffect._scene
+		this._camera = ssgiEffect._camera
 
 		this.useDiffuse = true
 
-		this.fullscreenMaterial = new ReflectionsMaterial()
-		if (ssrEffect._camera.isPerspectiveCamera) this.fullscreenMaterial.defines.PERSPECTIVE_CAMERA = ""
+		this.fullscreenMaterial = new SSGIMaterial()
+		if (ssgiEffect._camera.isPerspectiveCamera) this.fullscreenMaterial.defines.PERSPECTIVE_CAMERA = ""
 
 		this.renderTarget = new WebGLRenderTarget(1, 1, {
 			minFilter: LinearFilter,
@@ -99,21 +99,21 @@ export class ReflectionsPass extends Pass {
 	}
 
 	canUseMRTDiffuseTexture() {
-		return false // this.isWebGL2 && this.ssrEffect.qualityScale === 1
+		return false // this.isWebGL2 && this.ssgiEffect.qualityScale === 1
 	}
 
 	setSize(width, height) {
 		this.initMRTRenderTarget()
 
-		this.renderTarget.setSize(width * this.ssrEffect.resolutionScale, height * this.ssrEffect.resolutionScale)
-		this.gBuffersRenderTarget.setSize(width * this.ssrEffect.qualityScale, height * this.ssrEffect.qualityScale)
+		this.renderTarget.setSize(width * this.ssgiEffect.resolutionScale, height * this.ssgiEffect.resolutionScale)
+		this.gBuffersRenderTarget.setSize(width * this.ssgiEffect.qualityScale, height * this.ssgiEffect.qualityScale)
 		this.diffuseRenderTarget.setSize(width, height)
 		if (this.webgl1DepthPass)
-			this.webgl1DepthPass.setSize(width * this.ssrEffect.qualityScale, height * this.ssrEffect.qualityScale)
+			this.webgl1DepthPass.setSize(width * this.ssgiEffect.qualityScale, height * this.ssgiEffect.qualityScale)
 
 		this.fullscreenMaterial.uniforms.invTexSize.value.set(1 / width, 1 / height)
 
-		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.ssrEffect.temporalResolvePass.renderTarget.texture
+		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.ssgiEffect.temporalResolvePass.renderTarget.texture
 
 		this.fullscreenMaterial.needsUpdate = true
 	}
@@ -132,7 +132,7 @@ export class ReflectionsPass extends Pass {
 	}
 
 	keepMaterialMapUpdated(mrtMaterial, originalMaterial, prop, define, useKey) {
-		if (this.ssrEffect[useKey]) {
+		if (this.ssgiEffect[useKey]) {
 			if (originalMaterial[prop] !== mrtMaterial[prop]) {
 				mrtMaterial[prop] = originalMaterial[prop]
 				mrtMaterial.uniforms[prop].value = originalMaterial[prop]
@@ -198,7 +198,9 @@ export class ReflectionsPass extends Pass {
 			diffuseMaterial.visible = originalMaterial.visible
 
 			mrtMaterial.uniforms.roughness.value =
-				this.ssrEffect.selection.size === 0 || this.ssrEffect.selection.has(c) ? originalMaterial.roughness || 0 : 10e10
+				this.ssgiEffect.selection.size === 0 || this.ssgiEffect.selection.has(c)
+					? originalMaterial.roughness || 0
+					: 10e10
 
 			c.material = mrtMaterial
 		}
@@ -251,7 +253,7 @@ export class ReflectionsPass extends Pass {
 		if (!this.isWebGL2) this.webgl1DepthPass.renderPass.render(renderer, this.webgl1DepthPass.renderTarget)
 
 		this.fullscreenMaterial.uniforms.inputTexture.value = inputBuffer.texture
-		this.fullscreenMaterial.uniforms.samples.value = this.ssrEffect.temporalResolvePass.samples
+		this.fullscreenMaterial.uniforms.samples.value = this.ssgiEffect.temporalResolvePass.samples
 		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
 		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far
 

@@ -47,7 +47,7 @@ float farMinusNear;
 #include <packing>
 
 // helper functions
-#include <helperFunctions>
+#include <utils>
 
 vec4 tosRGB(in vec4 value) {
     return vec4(mix(pow(value.rgb, vec3(0.41666)) * 1.055 - vec3(0.055), value.rgb * 12.92, vec3(lessThanEqual(value.rgb, vec3(0.0031308)))), value.a);
@@ -121,7 +121,7 @@ void main() {
         return;
     }
 
-    vec3 ssrCol;
+    vec3 ssgiCol;
 
     int iterations = (jitter == 0.0 && roughness < 0.05) ? 1 : spp;
 
@@ -137,23 +137,23 @@ void main() {
 
     for (int s = 0; s <= iterations; s++) {
         float sF = float(s);
-        vec4 SSR = doSample(viewPos, viewDir, viewNormal, roughness, lastFrameAlpha, sF, worldPos, spread);
+        vec4 SSGI = doSample(viewPos, viewDir, viewNormal, roughness, lastFrameAlpha, sF, worldPos, spread);
         float m = 1. / (sF + 1.);
 
-        ssrCol = mix(ssrCol, SSR.xyz, weight);
+        ssgiCol = mix(ssgiCol, SSGI.xyz, weight);
     }
 
     float roughnessFactor = mix(specular, 1.0, max(0.0, 1.0 - roughnessFade));
 
-    vec3 finalSSR = ssrCol * roughnessFactor;
-    finalSSR = clamp(finalSSR, vec3(0.0), vec3(1.0));
+    vec3 finalSSGI = ssgiCol * roughnessFactor;
+    finalSSGI = clamp(finalSSGI, vec3(0.0), vec3(1.0));
 
     float alpha = lastFrameAlpha;
 
     // this reduces the smearing on mirror-like or glossy surfaces when the camera moves
     // if (samples < 2. && spread < 0.5) alpha = min(lastFrameAlpha, spread * 0.25);
 
-    gl_FragColor = vec4(finalSSR, alpha);
+    gl_FragColor = vec4(finalSSGI, alpha);
 }
 
 float colorToLuminance(vec3 color) {
@@ -246,10 +246,10 @@ vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
         iblRadiance *= diffuseTexel.rgb * diffuseFactor + (1. - diffuseFactor);
 #endif
 
-        vec4 SSRTexelReflected = textureLod(accumulatedTexture, vUv, 0.);
+        vec4 SSGITexelReflected = textureLod(accumulatedTexture, vUv, 0.);
 
         float lum = colorToLuminance(iblRadiance);
-        float totalLum = colorToLuminance(SSRTexelReflected.rgb);
+        float totalLum = colorToLuminance(SSGITexelReflected.rgb);
         if (totalLum < FLOAT_EPSILON) totalLum = 1.;
         float pdf = lum / totalLum;
         float dirPdf = envMapDirectionPdf(dir);
@@ -263,50 +263,50 @@ vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     }
 
     vec2 dCoords = smoothstep(0.2, 0.6, abs(vec2(0.5, 0.5) - coords.xy));
-    float reflectionIntensity = clamp(1.0 - (dCoords.x + dCoords.y), 0.0, 1.0);
+    float ssgiIntensity = clamp(1.0 - (dCoords.x + dCoords.y), 0.0, 1.0);
 
     vec3 hitWorldPos = screenSpaceToWorldSpace(coords, rayHitDepthDifference);
 
-    // distance from the reflection point to what it's reflecting
-    float reflectionDistance = distance(hitWorldPos, worldPos);
+    // distance from the ssgi point to what it's reflecting
+    float ssgiDistance = distance(hitWorldPos, worldPos);
 
-    float lod = mip * reflectionDistance * reflectionDistance * spread * 5.;
+    float lod = mip * ssgiDistance * ssgiDistance * spread * 5.;
 
-    vec4 SSRTexel = textureLod(inputTexture, coords.xy, lod);
+    vec4 SSGITexel = textureLod(inputTexture, coords.xy, lod);
 
-    vec4 SSRTexelReflected = textureLod(accumulatedTexture, coords.xy, lod);
+    vec4 SSGITexelReflected = textureLod(accumulatedTexture, coords.xy, lod);
 
 #ifdef USE_DIFFUSE
     vec4 diffuseTexel = textureLod(diffuseTexture, coords.xy, lod);
-    SSRTexel.rgb *= diffuseTexel.rgb * diffuseFactor + (1. - diffuseFactor);
+    SSGITexel.rgb *= diffuseTexel.rgb * diffuseFactor + (1. - diffuseFactor);
 #endif
 
-    vec3 SSR = SSRTexel.rgb + SSRTexelReflected.rgb;
+    vec3 SSGI = SSGITexel.rgb + SSGITexelReflected.rgb;
 
-    vec3 finalSSR = vec3(0.);
+    vec3 finalSSGI = vec3(0.);
 
-    if (reflectionIntensity > FLOAT_ONE_MINUS_EPSILON) {
-        finalSSR = SSR;
+    if (ssgiIntensity > FLOAT_ONE_MINUS_EPSILON) {
+        finalSSGI = SSGI;
     } else {
         iblRadiance = getIBLRadiance(-viewDir, viewNormal, spread) * fresnelFactor;
         iblRadiance = clamp(iblRadiance, vec3(0.0), vec3(1.0));
-        finalSSR = mix(iblRadiance, SSR, reflectionIntensity);
+        finalSSGI = mix(iblRadiance, SSGI, ssgiIntensity);
     }
 
-    finalSSR = SSR;
+    finalSSGI = SSGI;
 
     if (fade != 0.0) {
-        float opacity = 1.0 / ((reflectionDistance + 1.0) * fade * 0.1);
+        float opacity = 1.0 / ((ssgiDistance + 1.0) * fade * 0.1);
         if (opacity > 1.0) opacity = 1.0;
-        finalSSR *= opacity;
+        finalSSGI *= opacity;
     }
 
-    finalSSR *= fresnelFactor;
-    finalSSR = min(vec3(1.0), finalSSR);
+    finalSSGI *= fresnelFactor;
+    finalSSGI = min(vec3(1.0), finalSSGI);
 
-    // finalSSR = vec3(lod / 12.);
+    // finalSSGI = vec3(lod / 12.);
 
-    return vec4(finalSSR, SSRTexelReflected.a);
+    return vec4(finalSSGI, SSGITexelReflected.a);
 }
 
 vec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {
@@ -352,7 +352,7 @@ vec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {
         }
     }
 
-    // since hitPos isn't used anywhere we can use it to mark that this reflection would have been invalid
+    // since hitPos isn't used anywhere we can use it to mark that this ssgi would have been invalid
     hitPos.z = 1.0;
 
 #ifndef missedRays
@@ -423,7 +423,7 @@ vec3 getIBLRadiance(const in vec3 viewDir, const in vec3 normal, const in float 
 #if defined(ENVMAP_TYPE_CUBE_UV)
     vec3 reflectVec = reflect(-viewDir, normal);
 
-    // Mixing the reflection with the normal is more accurate and keeps rough objects from gathering light from behind their tangent plane.
+    // Mixing the ssgi with the normal is more accurate and keeps rough objects from gathering light from behind their tangent plane.
     // reflectVec = normalize(mix(reflectVec, normal, roughness * roughness));
     reflectVec = inverseTransformDirection(reflectVec, viewMatrix);
 

@@ -9,7 +9,7 @@ lerna-debug.log*
 
 node_modules
 dist
-dist-ssr
+dist-ssgi
 *.local
 
 # Editor directories and files

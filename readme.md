@@ -22,7 +22,7 @@ const composer = new POSTPROCESSING.EffectComposer(renderer)
 
 const traaEffect = new TRAAEffect(scene, camera, options?)
 
-const ssrPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
+const ssgiPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
 
 composer.addPass(traaEffect)
 ```

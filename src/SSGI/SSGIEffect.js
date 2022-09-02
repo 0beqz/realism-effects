@@ -12,37 +12,37 @@ import {
 	WebGLCubeRenderTarget,
 	WebGLRenderTarget
 } from "three"
-import finalSSRShader from "./material/shader/finalSSRShader.frag"
-import helperFunctions from "./material/shader/helperFunctions.frag"
-import trCompose from "./material/shader/trCompose.frag"
-import { ReflectionsPass } from "./pass/ReflectionsPass.js"
-import { defaultSSROptions } from "./SSROptions"
+import compose from "./shader/compose.frag"
+import utils from "./shader/utils.frag"
+import trCompose from "./shader/trCompose.frag"
+import { SSGIPass } from "./pass/SSGIPass.js"
+import { defaultSSGIOptions } from "./SSGIOptions"
 import { TemporalResolvePass } from "./temporal-resolve/TemporalResolvePass.js"
 import { useBoxProjectedEnvMap } from "./utils/useBoxProjectedEnvMap"
 import { getMaxMipLevel, setupEnvMap } from "./utils/Utils"
 
-const finalFragmentShader = finalSSRShader.replace("#include <helperFunctions>", helperFunctions)
+const finalFragmentShader = compose.replace("#include <utils>", utils)
 
 const defaultCubeRenderTarget = new WebGLCubeRenderTarget(1)
 let pmremGenerator
 
-export class SSREffect extends Effect {
+export class SSGIEffect extends Effect {
 	selection = new Selection()
 	lastSize
 	cubeCamera = new CubeCamera(0.001, 1000, defaultCubeRenderTarget)
 	usingBoxProjectedEnvMap = false
 
 	/**
-	 * @param {THREE.Scene} scene The scene of the SSR effect
-	 * @param {THREE.Camera} camera The camera with which SSR is being rendered
-	 * @param {SSROptions} [options] The optional options for the SSR effect
+	 * @param {THREE.Scene} scene The scene of the SSGI effect
+	 * @param {THREE.Camera} camera The camera with which SSGI is being rendered
+	 * @param {SSGIOptions} [options] The optional options for the SSGI effect
 	 */
-	constructor(scene, camera, options = defaultSSROptions) {
-		super("SSREffect", finalFragmentShader, {
-			type: "FinalSSRMaterial",
+	constructor(scene, camera, options = defaultSSGIOptions) {
+		super("SSGIEffect", finalFragmentShader, {
+			type: "FinalSSGIMaterial",
 			uniforms: new Map([
 				["diffuseTexture", new Uniform(null)],
-				["reflectionsTexture", new Uniform(null)],
+				["ssgiTexture", new Uniform(null)],
 				["boxBlurTexture", new Uniform(null)],
 				["intensity", new Uniform(1)],
 				["power", new Uniform(1)],
@@ -64,7 +64,7 @@ export class SSREffect extends Effect {
 			...options
 		}
 
-		options = { ...defaultSSROptions, ...options, ...trOptions }
+		options = { ...defaultSSGIOptions, ...options, ...trOptions }
 
 		// set up passes
 
@@ -72,13 +72,13 @@ export class SSREffect extends Effect {
 		this.temporalResolvePass = new TemporalResolvePass(scene, camera, trCompose, options)
 		this.temporalResolvePass.haltonIndex = ~~(this.temporalResolvePass.haltonSequence.length / 2)
 
-		this.uniforms.get("reflectionsTexture").value = this.temporalResolvePass.renderTarget.texture
+		this.uniforms.get("ssgiTexture").value = this.temporalResolvePass.renderTarget.texture
 
 		this.qualityScale = options.qualityScale
 
-		// reflections pass
-		this.reflectionsPass = new ReflectionsPass(this)
-		this.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = this.reflectionsPass.renderTarget.texture
+		// ssgi pass
+		this.SSGIPass = new SSGIPass(this)
+		this.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = this.SSGIPass.renderTarget.texture
 
 		this.boxBlurPass = new BoxBlurPass({
 			kernelSize: 3,
@@ -110,8 +110,8 @@ export class SSREffect extends Effect {
 	makeOptionsReactive(options) {
 		let needsUpdate = false
 
-		const reflectionPassFullscreenMaterialUniforms = this.reflectionsPass.fullscreenMaterial.uniforms
-		const reflectionPassFullscreenMaterialUniformsKeys = Object.keys(reflectionPassFullscreenMaterialUniforms)
+		const ssgiPassFullscreenMaterialUniforms = this.SSGIPass.fullscreenMaterial.uniforms
+		const ssgiPassFullscreenMaterialUniformsKeys = Object.keys(ssgiPassFullscreenMaterialUniforms)
 
 		const noResetSamplesProperties = [...this.uniforms.keys()]
 
@@ -149,18 +149,18 @@ export class SSREffect extends Effect {
 						case "steps":
 						case "refineSteps":
 						case "spp":
-							this.reflectionsPass.fullscreenMaterial.defines[key] = parseInt(value)
-							this.reflectionsPass.fullscreenMaterial.needsUpdate = needsUpdate
+							this.SSGIPass.fullscreenMaterial.defines[key] = parseInt(value)
+							this.SSGIPass.fullscreenMaterial.needsUpdate = needsUpdate
 							break
 
 						case "missedRays":
 							if (value) {
-								this.reflectionsPass.fullscreenMaterial.defines.missedRays = ""
+								this.SSGIPass.fullscreenMaterial.defines.missedRays = ""
 							} else {
-								delete this.reflectionsPass.fullscreenMaterial.defines.missedRays
+								delete this.SSGIPass.fullscreenMaterial.defines.missedRays
 							}
 
-							this.reflectionsPass.fullscreenMaterial.needsUpdate = needsUpdate
+							this.SSGIPass.fullscreenMaterial.needsUpdate = needsUpdate
 							break
 
 						case "correctionRadius":
@@ -176,23 +176,23 @@ export class SSREffect extends Effect {
 							break
 
 						case "distance":
-							reflectionPassFullscreenMaterialUniforms.rayDistance.value = value
+							ssgiPassFullscreenMaterialUniforms.rayDistance.value = value
 							break
 
 						case "mip":
 							const maxMipLevel = getMaxMipLevel(this.temporalResolvePass.width, this.temporalResolvePass.height)
 							const mip = value * maxMipLevel
 
-							console.log(reflectionPassFullscreenMaterialUniforms)
+							console.log(ssgiPassFullscreenMaterialUniforms)
 
-							reflectionPassFullscreenMaterialUniforms[key].value = mip
+							ssgiPassFullscreenMaterialUniforms[key].value = mip
 
 							break
 
 						// must be a uniform
 						default:
-							if (reflectionPassFullscreenMaterialUniformsKeys.includes(key)) {
-								reflectionPassFullscreenMaterialUniforms[key].value = value
+							if (ssgiPassFullscreenMaterialUniformsKeys.includes(key)) {
+								ssgiPassFullscreenMaterialUniforms[key].value = value
 							}
 					}
 				}
@@ -216,7 +216,7 @@ export class SSREffect extends Effect {
 			return
 
 		this.temporalResolvePass.setSize(width, height)
-		this.reflectionsPass.setSize(width, height)
+		this.SSGIPass.setSize(width, height)
 		this.boxBlurPass.setSize(width, height)
 		this.boxBlurRenderTarget.setSize(width, height)
 
@@ -252,17 +252,17 @@ export class SSREffect extends Effect {
 		envMap.magFilter = LinearFilter
 		envMap.generateMipmaps = false
 
-		const reflectionsMaterial = this.reflectionsPass.fullscreenMaterial
+		const ssgiMaterial = this.SSGIPass.fullscreenMaterial
 
-		useBoxProjectedEnvMap(reflectionsMaterial, position, size)
-		reflectionsMaterial.fragmentShader = reflectionsMaterial.fragmentShader
+		useBoxProjectedEnvMap(ssgiMaterial, position, size)
+		ssgiMaterial.fragmentShader = ssgiMaterial.fragmentShader
 			.replace("vec3 worldPos = ", "worldPos = ")
 			.replace("varying vec3 vWorldPosition;", "vec3 worldPos;")
 
-		reflectionsMaterial.uniforms.envMapPosition.value.copy(position)
-		reflectionsMaterial.uniforms.envMapSize.value.copy(size)
+		ssgiMaterial.uniforms.envMapPosition.value.copy(position)
+		ssgiMaterial.uniforms.envMapSize.value.copy(size)
 
-		setupEnvMap(reflectionsMaterial, envMap, envMapSize)
+		setupEnvMap(ssgiMaterial, envMap, envMapSize)
 
 		this.usingBoxProjectedEnvMap = true
 
@@ -270,12 +270,12 @@ export class SSREffect extends Effect {
 	}
 
 	deleteBoxProjectedEnvMapFallback() {
-		const reflectionsMaterial = this.reflectionsPass.fullscreenMaterial
-		reflectionsMaterial.uniforms.envMap.value = null
-		reflectionsMaterial.fragmentShader = reflectionsMaterial.fragmentShader.replace("worldPos = ", "vec3 worldPos = ")
-		delete reflectionsMaterial.defines.BOX_PROJECTED_ENV_MAP
+		const ssgiMaterial = this.SSGIPass.fullscreenMaterial
+		ssgiMaterial.uniforms.envMap.value = null
+		ssgiMaterial.fragmentShader = ssgiMaterial.fragmentShader.replace("worldPos = ", "vec3 worldPos = ")
+		delete ssgiMaterial.defines.BOX_PROJECTED_ENV_MAP
 
-		reflectionsMaterial.needsUpdate = true
+		ssgiMaterial.needsUpdate = true
 
 		this.usingBoxProjectedEnvMap = false
 	}
@@ -283,13 +283,13 @@ export class SSREffect extends Effect {
 	dispose() {
 		super.dispose()
 
-		this.reflectionsPass.dispose()
+		this.SSGIPass.dispose()
 		this.temporalResolvePass.dispose()
 	}
 
 	update(renderer, inputBuffer) {
 		if (!this.usingBoxProjectedEnvMap && this._scene.environment) {
-			const reflectionsMaterial = this.reflectionsPass.fullscreenMaterial
+			const ssgiMaterial = this.SSGIPass.fullscreenMaterial
 
 			let envMap = null
 
@@ -304,7 +304,7 @@ export class SSREffect extends Effect {
 
 			if (envMap) {
 				const envMapCubeUVHeight = this._scene.environment.image.height
-				setupEnvMap(reflectionsMaterial, envMap, envMapCubeUVHeight)
+				setupEnvMap(ssgiMaterial, envMap, envMapCubeUVHeight)
 			}
 		}
 
@@ -315,12 +315,12 @@ export class SSREffect extends Effect {
 
 		if (this.qualityScale < 1) this.temporalResolvePass.jitter()
 
-		// render reflections of current frame
-		this.reflectionsPass.render(renderer, inputBuffer)
+		// render ssgi of current frame
+		this.SSGIPass.render(renderer, inputBuffer)
 
-		if (this.reflectionsPass.useDiffuse) this.uniforms.get("diffuseTexture").value = this.reflectionsPass.diffuseTexture
+		if (this.SSGIPass.useDiffuse) this.uniforms.get("diffuseTexture").value = this.SSGIPass.diffuseTexture
 
-		// compose reflection of last and current frame into one reflection
+		// compose ssgi of last and current frame into one ssgi
 		this.temporalResolvePass.render(renderer)
 
 		if (this.blur > 0)

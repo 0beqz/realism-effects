@@ -17,9 +17,9 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader"
 import { GroundProjectedEnv } from "three/examples/jsm/objects/GroundProjectedEnv"
-import { SSREffect } from "../src/SSR/index"
+import { SSGIEffect } from "../src/SSGI/index"
 import { TRAAEffect } from "../src/TRAAEffect"
-import { SSRDebugGUI } from "./SSRDebugGUI"
+import { SSGIDebugGUI } from "./SSGIDebugGUI"
 import "./style.css"
 import { TRAADebugGUI } from "./TRAADebugGUI"
 
@@ -27,8 +27,8 @@ let traaEffect
 let traaPass
 let smaaPass
 let fxaaPass
-let ssrEffect
-let ssrPass
+let ssgiEffect
+let ssgiPass
 let gui
 let envMesh
 const guiParams = {
@@ -227,10 +227,10 @@ const refreshLighting = () => {
 	light.position.z = Math.cos(lightParams.yaw * toRad) * lightParams.distance
 	light.updateMatrixWorld()
 
-	if (ssrEffect) {
-		ssrEffect.temporalResolvePass.samples = 1
+	if (ssgiEffect) {
+		ssgiEffect.temporalResolvePass.samples = 1
 
-		ssrEffect.setSize(window.innerWidth, window.innerHeight, true)
+		ssgiEffect.setSize(window.innerWidth, window.innerHeight, true)
 	}
 	if (traaEffect) traaEffect.temporalResolvePass.samples = 1
 	renderer.shadowMap.needsUpdate = true
@@ -264,7 +264,7 @@ const initScene = () => {
 		useMap: true,
 		useNormalMap: true,
 		useRoughnessMap: true,
-		resolutionScale: 0.5,
+		resolutionScale: 1,
 		qualityScale: 0.5
 	}
 
@@ -313,16 +313,16 @@ const initScene = () => {
 		darkness: 0.6
 	})
 
-	ssrEffect = new SSREffect(scene, camera, options)
+	ssgiEffect = new SSGIEffect(scene, camera, options)
 
 	scene.traverse(c => {
 		if (c.isMesh && c.material.isMeshStandardMaterial) {
 			c.material.side = DoubleSide
-			ssrEffect.selection.add(c)
+			ssgiEffect.selection.add(c)
 		}
 	})
 
-	const gui2 = new SSRDebugGUI(ssrEffect, options)
+	const gui2 = new SSGIDebugGUI(ssgiEffect, options)
 	gui2.pane.containerElem_.style.left = "8px"
 
 	// gui.pane.element.style.display = "none"
@@ -331,12 +331,12 @@ const initScene = () => {
 	new POSTPROCESSING.LUT3dlLoader().load("room.3dl", lutTexture => {
 		// const lutEffect = new POSTPROCESSING.LUTEffect(lutTexture)
 
-		ssrPass = new POSTPROCESSING.EffectPass(camera, ssrEffect)
+		ssgiPass = new POSTPROCESSING.EffectPass(camera, ssgiEffect)
 
 		traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
 		// composer.addPass(traaPass)
 
-		composer.addPass(ssrPass)
+		composer.addPass(ssgiPass)
 		composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, vignetteEffect))
 
 		const smaaEffect = new POSTPROCESSING.SMAAEffect()
@@ -382,6 +382,7 @@ window.addEventListener("resize", () => {
 
 	renderer.setSize(window.innerWidth, window.innerHeight)
 	if (traaEffect) traaEffect.setSize(window.innerWidth, window.innerHeight)
+	if (ssgiEffect) ssgiEffect.setSize(window.innerWidth, window.innerHeight)
 })
 
 // source: https://stackoverflow.com/a/2117523/7626841
@@ -412,11 +413,11 @@ document.addEventListener("keydown", ev => {
 	}
 
 	if (ev.code === "KeyQ") {
-		ssrPass.enabled = !ssrPass.enabled
+		ssgiPass.enabled = !ssgiPass.enabled
 
 		scene.traverse(c => {
 			if (c.material) {
-				c.material.envMapIntensity = ssrPass.enabled ? 0 : 1
+				c.material.envMapIntensity = ssgiPass.enabled ? 0 : 1
 			}
 		})
 

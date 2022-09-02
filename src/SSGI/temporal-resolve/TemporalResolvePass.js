@@ -227,7 +227,6 @@ export class TemporalResolvePass extends Pass {
 
 		const { width, height } = this.renderTarget
 
-		// jittering the view offset each frame reduces aliasing for the reflection
 		if (this._camera.setViewOffset) {
 			this._camera.setViewOffset(width, height, x * this.jitterScale, y * this.jitterScale, width, height)
 		}
