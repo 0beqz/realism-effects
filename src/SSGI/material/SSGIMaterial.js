@@ -27,6 +27,8 @@ export class SSGIMaterial extends ShaderMaterial {
 				thickness: new Uniform(0),
 				ior: new Uniform(0),
 				mip: new Uniform(0),
+				power: new Uniform(0),
+				intensity: new Uniform(0),
 				maxDepthDifference: new Uniform(0),
 				jitter: new Uniform(0),
 				jitterRoughness: new Uniform(0),

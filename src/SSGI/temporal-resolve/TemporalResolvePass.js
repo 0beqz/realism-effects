@@ -38,7 +38,6 @@ export class TemporalResolvePass extends Pass {
 	constructor(
 		scene,
 		camera,
-		customComposeShader,
 		options = {
 			renderVelocity: true,
 			dilation: false,
@@ -46,7 +45,8 @@ export class TemporalResolvePass extends Pass {
 			maxNeighborDepthDifference: 1,
 			logTransform: false,
 			neighborhoodClamping: false,
-			generateMipmaps: false
+			generateMipmaps: false,
+			customComposeShader: null
 		}
 	) {
 		super("TemporalResolvePass")
@@ -65,7 +65,9 @@ export class TemporalResolvePass extends Pass {
 		if (options.renderVelocity !== undefined) this.renderVelocity = options.renderVelocity
 		this.velocityPass = new VelocityPass(scene, camera)
 
-		this.fullscreenMaterial = new TemporalResolveMaterial(customComposeShader)
+		this.fullscreenMaterial = new TemporalResolveMaterial()
+		if (typeof customComposeShader === "string")
+			this.fullscreenMaterial.defines.customComposeShader = options.customComposeShader
 
 		this.fullscreenMaterial.defines.correctionRadius =
 			options.correctionRadius === undefined ? 1 : options.correctionRadius

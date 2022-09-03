@@ -2,15 +2,14 @@
 
 float s = alpha / alphaStep + 1.0;
 m = 1. - 1. / s;
-m = min(blend, m);
+m = min(m, blend);
 
 #ifdef boxBlur
+boxBlurredColor += inputColor;
 if (alpha <= 0.05) inputColor = boxBlurredColor;
 #endif
 
-outputColor = mix(accumulatedColor, inputColor, 1.0 - m);
-
-// outputColor = vec3(alpha);
+outputColor = mix(inputColor, accumulatedColor, m);
 
 // if (alpha < 0.1)
 //     outputColor = vec3(0., 1., 0.);

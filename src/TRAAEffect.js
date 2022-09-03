@@ -2,7 +2,6 @@
 import { Quaternion, Uniform, Vector3 } from "three"
 import compose from "./shader/compose.frag"
 import utils from "./shader/utils.frag"
-import trCompose from "./shader/trCompose.frag"
 import { TemporalResolvePass } from "../src/SSGI/temporal-resolve/TemporalResolvePass.js"
 import { generateHalton23Points } from "./utils/generateHalton23Points"
 
@@ -18,7 +17,7 @@ export const defaultTRAAOptions = {
 	neighborhoodClamping: false,
 	boxBlur: false,
 	dilation: true,
-	rendervelocity: false
+	renderVelocity: false
 }
 
 export class TRAAEffect extends Effect {
@@ -47,10 +46,7 @@ export class TRAAEffect extends Effect {
 		this.#lastCameraTransform.position.copy(camera.position)
 		this.#lastCameraTransform.quaternion.copy(camera.quaternion)
 
-		this.temporalResolvePass = new TemporalResolvePass(scene, camera, trCompose, options)
-		this.temporalResolvePass.jitterScale = 1
-
-		this.temporalResolvePass.fullscreenMaterial.needsUpdate = true
+		this.temporalResolvePass = new TemporalResolvePass(scene, camera, options)
 
 		this.uniforms.get("accumulatedTexture").value = this.temporalResolvePass.renderTarget.texture
 

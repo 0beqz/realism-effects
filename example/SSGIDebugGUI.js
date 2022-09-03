@@ -18,8 +18,8 @@ export class SSGIDebugGUI {
 		params = { ...defaultSSGIOptions, ...params }
 
 		const generalFolder = pane.addFolder({ title: "General" })
-		generalFolder.addInput(params, "intensity", { min: 0, max: 50, step: 0.01 })
-		generalFolder.addInput(params, "power", { min: 0.025, max: 5, step: 0.025 })
+		generalFolder.addInput(params, "intensity", { min: 0, max: 5, step: 0.01 })
+		generalFolder.addInput(params, "power", { min: 0.025, max: 4, step: 0.025 })
 		generalFolder.addInput(params, "exponent", { min: 0.025, max: 5, step: 0.025 })
 		generalFolder.addInput(params, "distance", { min: 0.001, max: 50, step: 0.1 })
 		generalFolder.addInput(params, "fade", {

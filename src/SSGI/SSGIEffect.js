@@ -1,4 +1,4 @@
-﻿import { Effect, Selection, BoxBlurPass } from "postprocessing"
+﻿import { BoxBlurPass, Effect, Selection } from "postprocessing"
 import {
 	CubeCamera,
 	HalfFloatType,
@@ -12,10 +12,10 @@ import {
 	WebGLCubeRenderTarget,
 	WebGLRenderTarget
 } from "three"
-import compose from "./shader/compose.frag"
-import utils from "./shader/utils.frag"
-import trCompose from "./shader/trCompose.frag"
 import { SSGIPass } from "./pass/SSGIPass.js"
+import compose from "./shader/compose.frag"
+import trCompose from "./shader/trCompose.frag"
+import utils from "./shader/utils.frag"
 import { defaultSSGIOptions } from "./SSGIOptions"
 import { TemporalResolvePass } from "./temporal-resolve/TemporalResolvePass.js"
 import { useBoxProjectedEnvMap } from "./utils/useBoxProjectedEnvMap"
@@ -43,9 +43,6 @@ export class SSGIEffect extends Effect {
 			uniforms: new Map([
 				["diffuseTexture", new Uniform(null)],
 				["ssgiTexture", new Uniform(null)],
-				["boxBlurTexture", new Uniform(null)],
-				["intensity", new Uniform(1)],
-				["power", new Uniform(1)],
 				["blur", new Uniform(0)]
 			]),
 			defines: new Map([["RENDER_MODE", "0"]])
@@ -55,12 +52,13 @@ export class SSGIEffect extends Effect {
 		this._camera = camera
 
 		const trOptions = {
-			boxBlur: true,
-			dilation: false,
+			boxBlur: false,
+			dilation: true,
 			renderVelocity: false,
-			neighborhoodClamping: true,
-			logTransform: false,
+			neighborhoodClamping: false,
+			logTransform: true,
 			generateMipmaps: true,
+			customComposeShader: trCompose,
 			...options
 		}
 
@@ -69,7 +67,7 @@ export class SSGIEffect extends Effect {
 		// set up passes
 
 		// temporal resolve pass
-		this.temporalResolvePass = new TemporalResolvePass(scene, camera, trCompose, options)
+		this.temporalResolvePass = new TemporalResolvePass(scene, camera, options)
 		this.temporalResolvePass.haltonIndex = ~~(this.temporalResolvePass.haltonSequence.length / 2)
 
 		this.uniforms.get("ssgiTexture").value = this.temporalResolvePass.renderTarget.texture
@@ -77,14 +75,16 @@ export class SSGIEffect extends Effect {
 		this.qualityScale = options.qualityScale
 
 		// ssgi pass
-		this.SSGIPass = new SSGIPass(this)
-		this.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = this.SSGIPass.renderTarget.texture
+		this.ssgiPass = new SSGIPass(this)
+		this.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = this.ssgiPass.renderTarget.texture
 
 		this.boxBlurPass = new BoxBlurPass({
 			kernelSize: 3,
-			iterations: 1,
+			iterations: 2,
 			bilateral: true
 		})
+
+		this.boxBlurPass.blurMaterial.copyCameraSettings(camera)
 
 		this.boxBlurPass.renderTargetA.texture.type = HalfFloatType
 		this.boxBlurPass.renderTargetB.texture.type = HalfFloatType
@@ -93,7 +93,7 @@ export class SSGIEffect extends Effect {
 			type: HalfFloatType
 		})
 
-		this.uniforms.get("boxBlurTexture").value = this.boxBlurRenderTarget.texture
+		this.temporalResolvePass.fullscreenMaterial.uniforms.boxBlurTexture.value = this.boxBlurRenderTarget.texture
 
 		this.lastSize = {
 			width: options.width,
@@ -110,7 +110,7 @@ export class SSGIEffect extends Effect {
 	makeOptionsReactive(options) {
 		let needsUpdate = false
 
-		const ssgiPassFullscreenMaterialUniforms = this.SSGIPass.fullscreenMaterial.uniforms
+		const ssgiPassFullscreenMaterialUniforms = this.ssgiPass.fullscreenMaterial.uniforms
 		const ssgiPassFullscreenMaterialUniformsKeys = Object.keys(ssgiPassFullscreenMaterialUniforms)
 
 		const noResetSamplesProperties = [...this.uniforms.keys()]
@@ -139,28 +139,26 @@ export class SSGIEffect extends Effect {
 							this.setSize(this.lastSize.width, this.lastSize.height, true)
 							break
 
-						case "intensity":
-						case "power":
 						case "blur":
-							this.uniforms.get(key).value = value
+							this.temporalResolvePass.fullscreenMaterial.uniforms.blur.value = value
 							break
 
 						// defines
 						case "steps":
 						case "refineSteps":
 						case "spp":
-							this.SSGIPass.fullscreenMaterial.defines[key] = parseInt(value)
-							this.SSGIPass.fullscreenMaterial.needsUpdate = needsUpdate
+							this.ssgiPass.fullscreenMaterial.defines[key] = parseInt(value)
+							this.ssgiPass.fullscreenMaterial.needsUpdate = needsUpdate
 							break
 
 						case "missedRays":
 							if (value) {
-								this.SSGIPass.fullscreenMaterial.defines.missedRays = ""
+								this.ssgiPass.fullscreenMaterial.defines.missedRays = ""
 							} else {
-								delete this.SSGIPass.fullscreenMaterial.defines.missedRays
+								delete this.ssgiPass.fullscreenMaterial.defines.missedRays
 							}
 
-							this.SSGIPass.fullscreenMaterial.needsUpdate = needsUpdate
+							this.ssgiPass.fullscreenMaterial.needsUpdate = needsUpdate
 							break
 
 						case "correctionRadius":
@@ -216,9 +214,11 @@ export class SSGIEffect extends Effect {
 			return
 
 		this.temporalResolvePass.setSize(width, height)
-		this.SSGIPass.setSize(width, height)
+		this.ssgiPass.setSize(width, height)
 		this.boxBlurPass.setSize(width, height)
 		this.boxBlurRenderTarget.setSize(width, height)
+
+		this.temporalResolvePass.jitterScale = 1
 
 		this.lastSize = {
 			width,
@@ -252,7 +252,7 @@ export class SSGIEffect extends Effect {
 		envMap.magFilter = LinearFilter
 		envMap.generateMipmaps = false
 
-		const ssgiMaterial = this.SSGIPass.fullscreenMaterial
+		const ssgiMaterial = this.ssgiPass.fullscreenMaterial
 
 		useBoxProjectedEnvMap(ssgiMaterial, position, size)
 		ssgiMaterial.fragmentShader = ssgiMaterial.fragmentShader
@@ -270,7 +270,7 @@ export class SSGIEffect extends Effect {
 	}
 
 	deleteBoxProjectedEnvMapFallback() {
-		const ssgiMaterial = this.SSGIPass.fullscreenMaterial
+		const ssgiMaterial = this.ssgiPass.fullscreenMaterial
 		ssgiMaterial.uniforms.envMap.value = null
 		ssgiMaterial.fragmentShader = ssgiMaterial.fragmentShader.replace("worldPos = ", "vec3 worldPos = ")
 		delete ssgiMaterial.defines.BOX_PROJECTED_ENV_MAP
@@ -283,13 +283,13 @@ export class SSGIEffect extends Effect {
 	dispose() {
 		super.dispose()
 
-		this.SSGIPass.dispose()
+		this.ssgiPass.dispose()
 		this.temporalResolvePass.dispose()
 	}
 
 	update(renderer, inputBuffer) {
 		if (!this.usingBoxProjectedEnvMap && this._scene.environment) {
-			const ssgiMaterial = this.SSGIPass.fullscreenMaterial
+			const ssgiMaterial = this.ssgiPass.fullscreenMaterial
 
 			let envMap = null
 
@@ -308,25 +308,26 @@ export class SSGIEffect extends Effect {
 			}
 		}
 
-		if (this.qualityScale < 1) this.temporalResolvePass.unjitter()
+		this.temporalResolvePass.fullscreenMaterial.uniforms.sceneTexture.value = inputBuffer.texture
+
+		if (this.temporalResolvePass.jitterScale > 0) this.temporalResolvePass.unjitter()
 
 		if (!this.temporalResolvePass.checkCanUseSharedVelocityTexture())
 			this.temporalResolvePass.velocityPass.render(renderer)
 
-		if (this.qualityScale < 1) this.temporalResolvePass.jitter()
+		if (this.temporalResolvePass.jitterScale > 0) this.temporalResolvePass.jitter()
 
 		// render ssgi of current frame
-		this.SSGIPass.render(renderer, inputBuffer)
+		this.ssgiPass.render(renderer, inputBuffer)
 
-		if (this.SSGIPass.useDiffuse) this.uniforms.get("diffuseTexture").value = this.SSGIPass.diffuseTexture
+		if (this.blur > 0) this.boxBlurPass.render(renderer, this.ssgiPass.renderTarget, this.boxBlurRenderTarget)
 
 		// compose ssgi of last and current frame into one ssgi
 		this.temporalResolvePass.render(renderer)
 
-		if (this.blur > 0)
-			this.boxBlurPass.render(renderer, this.temporalResolvePass.renderTarget, this.boxBlurRenderTarget)
+		if (this.ssgiPass.useDiffuse) this.uniforms.get("diffuseTexture").value = this.ssgiPass.diffuseTexture
 
-		if (this.qualityScale < 1) this.temporalResolvePass.unjitter()
+		// if (this.temporalResolvePass.jitterScale > 0) this.temporalResolvePass.unjitter()
 	}
 
 	static patchDirectEnvIntensity(envMapIntensity = 0) {

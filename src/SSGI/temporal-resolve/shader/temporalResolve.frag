@@ -1,7 +1,9 @@
 ﻿// a basic shader to implement temporal resolving
 
 uniform sampler2D inputTexture;
+uniform sampler2D boxBlurTexture;
 uniform sampler2D accumulatedTexture;
+uniform sampler2D sceneTexture;
 uniform sampler2D velocityTexture;
 uniform sampler2D lastVelocityTexture;
 
@@ -10,6 +12,8 @@ uniform float correction;
 uniform float exponent;
 uniform float samples;
 uniform vec2 invTexSize;
+
+uniform float blur;
 
 uniform mat4 curInverseProjectionMatrix;
 uniform mat4 curCameraMatrixWorld;
@@ -58,6 +62,19 @@ vec3 undoColorTransform(vec3 color) {
 
 void main() {
     vec4 inputTexel = textureLod(inputTexture, vUv, 0.0);
+
+    if (blur > 0. && inputTexel.a < 0.5) {
+        float intensity = 0.5 - inputTexel.a;
+
+        vec3 blurredReflectionsColor = textureLod(boxBlurTexture, vUv, 0.).rgb;
+
+        inputTexel.rgb = mix(inputTexel.rgb, blurredReflectionsColor, blur * intensity);
+    }
+
+    vec4 sceneTexel = textureLod(sceneTexture, vUv, 0.0);
+
+    const float directIndirectFactor = 1.0;
+    inputTexel.rgb = sceneTexel.rgb * directIndirectFactor + inputTexel.rgb / directIndirectFactor;
 
     transformExponent = vec3(1.0 / exponent);
     undoColorTransformExponent = vec3(exponent);
@@ -196,21 +213,20 @@ void main() {
 
         // check if this pixel belongs to the background and isn't within 1px close to a mesh (need to check for that too due to anti-aliasing)
         if (maxDepth == 1. && minDepth == 1.) {
-            gl_FragColor = mix(inputTexel, accumulatedTexel, 0.625);
+            gl_FragColor = inputTexel;
             return;
         }
 
         alpha = min(alpha, accumulatedTexel.a);
+        alpha = min(alpha, blend);
         accumulatedColor = transformColor(accumulatedTexel.rgb);
 
         alpha = didReproject && depthDiff <= maxNeighborDepthDifference ? (alpha + alphaStep) : 0.0;
 
 #ifdef neighborhoodClamping
-        if (alpha == 0.0) {
-            vec3 clampedColor = clamp(accumulatedColor, minNeighborColor, maxNeighborColor);
+        vec3 clampedColor = clamp(accumulatedColor, minNeighborColor, maxNeighborColor);
 
-            accumulatedColor = mix(accumulatedColor, clampedColor, correction);
-        }
+        accumulatedColor = mix(accumulatedColor, clampedColor, correction);
 #endif
 
     } else {
@@ -227,7 +243,15 @@ void main() {
     bool isMoving = dot(velocity.xy, velocity.xy) > 0.0;
 
 // the user's shader to compose a final outputColor from the inputTexel and accumulatedTexel
-#include <custom_compose_shader>
+#ifdef customComposeShader
+    customComposeShader
+#else
+    float s = alpha / alphaStep + 1.0;
+    float m = 1. - 1. / s;
+    m = min(m, blend);
 
-    gl_FragColor = vec4(undoColorTransform(outputColor), alpha);
+    outputColor = mix(inputColor, accumulatedColor, m);
+#endif
+
+        gl_FragColor = vec4(undoColorTransform(outputColor), alpha);
 }

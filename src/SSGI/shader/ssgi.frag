@@ -23,6 +23,8 @@ uniform float fade;
 uniform float thickness;
 uniform float ior;
 uniform float mip;
+uniform float power;
+uniform float intensity;
 uniform vec2 invTexSize;
 
 uniform float samples;
@@ -48,10 +50,6 @@ float farMinusNear;
 
 // helper functions
 #include <utils>
-
-vec4 tosRGB(in vec4 value) {
-    return vec4(mix(pow(value.rgb, vec3(0.41666)) * 1.055 - vec3(0.055), value.rgb * 12.92, vec3(lessThanEqual(value.rgb, vec3(0.0031308)))), value.a);
-}
 
 vec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
 vec2 BinarySearch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
@@ -92,6 +90,7 @@ void main() {
 
     vec4 normalTexel = textureLod(normalTexture, vUv, 0.0);
     float roughness = normalTexel.a;
+    roughness *= roughness;
 
     float specular = 1.0 - roughness;
 
@@ -152,6 +151,16 @@ void main() {
 
     // this reduces the smearing on mirror-like or glossy surfaces when the camera moves
     // if (samples < 2. && spread < 0.5) alpha = min(lastFrameAlpha, spread * 0.25);
+
+    // finalSSGI *= intensity;
+
+    if (power != 1.0) finalSSGI = pow(finalSSGI, vec3(power));
+
+#ifdef USE_DIFFUSE
+    float diffuseFactor = 0.8;
+    vec3 diffuseColor = textureLod(diffuseTexture, vUv, 0.).rgb;
+    finalSSGI *= diffuseColor * diffuseFactor + (1. - diffuseFactor);
+#endif
 
     gl_FragColor = vec4(finalSSGI, alpha);
 }
@@ -233,7 +242,7 @@ vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     vec2 coords = RayMarch(dir, hitPos, rayHitDepthDifference);
 #endif
 
-    float diffuseFactor = 0.875;
+    float diffuseFactor = 0.825;
 
     // invalid ray, use environment lighting as fallback
     if (coords.x == -1.0) {
@@ -252,14 +261,14 @@ vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
         float totalLum = colorToLuminance(SSGITexelReflected.rgb);
         if (totalLum < FLOAT_EPSILON) totalLum = 1.;
         float pdf = lum / totalLum;
-        float dirPdf = envMapDirectionPdf(dir);
-        float totalPdf = pdf * dirPdf;
 
-        if (totalPdf > 1.) totalPdf = 1.;
+        // float dirPdf = envMapDirectionPdf(dir);
+        // float totalPdf = pdf * dirPdf;
+        // if (totalPdf > 1.) totalPdf = 1.;
 
-        iblRadiance *= totalPdf;
+        iblRadiance *= pdf;
 
-        return vec4(iblRadiance, lastFrameAlpha);
+        return vec4(iblRadiance * intensity, lastFrameAlpha);
     }
 
     vec2 dCoords = smoothstep(0.2, 0.6, abs(vec2(0.5, 0.5) - coords.xy));
@@ -276,12 +285,9 @@ vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
 
     vec4 SSGITexelReflected = textureLod(accumulatedTexture, coords.xy, lod);
 
-#ifdef USE_DIFFUSE
-    vec4 diffuseTexel = textureLod(diffuseTexture, coords.xy, lod);
-    SSGITexel.rgb *= diffuseTexel.rgb * diffuseFactor + (1. - diffuseFactor);
-#endif
-
     vec3 SSGI = SSGITexel.rgb + SSGITexelReflected.rgb;
+
+    SSGI *= intensity;
 
     vec3 finalSSGI = vec3(0.);
 

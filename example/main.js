@@ -73,7 +73,7 @@ renderer.autoClearColor = false
 renderer.autoClearDepth = false
 renderer.autoClearStencil = false
 
-renderer.toneMapping = ACESFilmicToneMapping
+// renderer.toneMapping = ACESFilmicToneMapping
 renderer.outputEncoding = THREE.sRGBEncoding
 const dpr = window.devicePixelRatio || 1
 renderer.setPixelRatio(dpr)
@@ -185,7 +185,7 @@ new RGBELoader().load("hdr/dry_cracked_lake_4k.hdr", envMap => {
 
 const gltflLoader = new GLTFLoader()
 
-const url = "astronaut-low.glb"
+const url = "mp5_submachinegun.glb"
 
 let lastScene
 
@@ -214,57 +214,61 @@ THREE.DefaultLoadingManager.onProgress = () => {
 let mixer
 
 const lightParams = {
-	yaw: 51,
-	pitch: 34,
-	distance: 100
+	yaw: 52,
+	pitch: 48
 }
 
 const toRad = Math.PI / 180
 
+let rAF
+
 const refreshLighting = () => {
-	light.position.x = Math.sin(lightParams.yaw * toRad) * lightParams.distance
-	light.position.y = Math.sin(lightParams.pitch * toRad) * lightParams.distance
-	light.position.z = Math.cos(lightParams.yaw * toRad) * lightParams.distance
+	light.position.x = Math.sin(lightParams.yaw * toRad) * Math.cos(lightParams.pitch * toRad)
+	light.position.y = Math.sin(lightParams.pitch * toRad)
+	light.position.z = Math.cos(lightParams.yaw * toRad) * Math.cos(lightParams.pitch * toRad)
+
+	light.position.normalize().multiplyScalar(75)
 	light.updateMatrixWorld()
+	renderer.shadowMap.needsUpdate = true
 
 	if (ssgiEffect) {
-		ssgiEffect.temporalResolvePass.samples = 1
+		const { blend } = ssgiEffect
+		ssgiEffect.blend = 0
 
-		ssgiEffect.setSize(window.innerWidth, window.innerHeight, true)
+		cancelAnimationFrame(rAF)
+		rAF = requestAnimationFrame(() => (ssgiEffect.blend = blend))
 	}
-	if (traaEffect) traaEffect.temporalResolvePass.samples = 1
-	renderer.shadowMap.needsUpdate = true
 }
 
 const clock = new THREE.Clock()
 
 const initScene = () => {
 	const options = {
-		intensity: 11.96,
-		power: 1.3250000000000006,
-		exponent: 1.475,
+		intensity: 3.21,
+		power: 1.0250000000000006,
+		exponent: 1.8,
 		distance: 6.000000000000002,
 		fade: 0,
 		roughnessFade: 0,
-		thickness: 7.609999999999998,
+		thickness: 5.429999999999997,
 		ior: 2.04,
 		mip: 1,
 		maxRoughness: 1,
 		maxDepthDifference: 260.9,
-		blend: 1,
+		blend: 0.925,
 		correction: 0,
 		correctionRadius: 1,
-		blur: 0,
+		blur: 1,
 		jitter: 0,
-		jitterRoughness: 0.07999999999999999,
-		steps: 22,
-		refineSteps: 5,
+		jitterRoughness: 0.24999999999999997,
+		steps: 20,
+		refineSteps: 6,
 		spp: 4,
 		missedRays: false,
 		useMap: true,
 		useNormalMap: true,
 		useRoughnessMap: true,
-		resolutionScale: 1,
+		resolutionScale: 0.5,
 		qualityScale: 0.5
 	}
 
@@ -297,15 +301,13 @@ const initScene = () => {
 
 	sceneFolder.addInput(lightParams, "pitch", { min: -90, max: 90, step: 1 }).on("change", refreshLighting)
 
-	sceneFolder.addInput(lightParams, "distance", { min: 0, max: 200, step: 1 }).on("change", refreshLighting)
-
 	sceneFolder.addInput(light, "intensity", { min: 0, max: 10, step: 0.1 }).on("change", refreshLighting)
 
 	const bloomEffect = new POSTPROCESSING.BloomEffect({
-		intensity: 1,
+		intensity: 2,
 		mipmapBlur: true,
 		luminanceSmoothing: 0.5,
-		luminanceThreshold: 0.25,
+		luminanceThreshold: 1,
 		kernelSize: POSTPROCESSING.KernelSize.HUGE
 	})
 
@@ -528,7 +530,7 @@ const setupAsset = asset => {
 
 	lastScene = asset.scene
 
-	refreshLighting()
+	requestAnimationFrame(refreshLighting)
 }
 
 window.gltflLoader = gltflLoader
