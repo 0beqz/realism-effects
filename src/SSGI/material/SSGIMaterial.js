@@ -10,7 +10,6 @@ export class SSGIMaterial extends ShaderMaterial {
 			type: "SSGIMaterial",
 
 			uniforms: {
-				inputTexture: new Uniform(null),
 				accumulatedTexture: new Uniform(null),
 				normalTexture: new Uniform(null),
 				diffuseTexture: new Uniform(null),
@@ -29,6 +28,7 @@ export class SSGIMaterial extends ShaderMaterial {
 				mip: new Uniform(0),
 				power: new Uniform(0),
 				intensity: new Uniform(0),
+				diffuseIntensity: new Uniform(0),
 				maxDepthDifference: new Uniform(0),
 				jitter: new Uniform(0),
 				jitterRoughness: new Uniform(0),

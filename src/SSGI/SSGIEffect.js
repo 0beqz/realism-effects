@@ -3,6 +3,7 @@ import {
 	CubeCamera,
 	HalfFloatType,
 	LinearFilter,
+	LinearMipMapLinearFilter,
 	PMREMGenerator,
 	ShaderChunk,
 	sRGBEncoding,
@@ -53,7 +54,7 @@ export class SSGIEffect extends Effect {
 
 		const trOptions = {
 			boxBlur: false,
-			dilation: true,
+			dilation: false,
 			renderVelocity: false,
 			neighborhoodClamping: false,
 			logTransform: true,
@@ -288,7 +289,7 @@ export class SSGIEffect extends Effect {
 	}
 
 	update(renderer, inputBuffer) {
-		if (!this.usingBoxProjectedEnvMap && this._scene.environment) {
+		if (!this.usingBoxProjectedEnvMap && this._scene.environment && !this._scene.environment.generateMipmaps) {
 			const ssgiMaterial = this.ssgiPass.fullscreenMaterial
 
 			let envMap = null
@@ -304,7 +305,12 @@ export class SSGIEffect extends Effect {
 
 			if (envMap) {
 				const envMapCubeUVHeight = this._scene.environment.image.height
-				setupEnvMap(ssgiMaterial, envMap, envMapCubeUVHeight)
+				setupEnvMap(ssgiMaterial, this._scene.environment, envMapCubeUVHeight)
+
+				this._scene.environment.generateMipmaps = true
+				this._scene.environment.minFilter = LinearMipMapLinearFilter
+				this._scene.environment.magFilter = LinearMipMapLinearFilter
+				this._scene.environment.needsUpdate = true
 			}
 		}
 

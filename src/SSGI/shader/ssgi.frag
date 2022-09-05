@@ -2,7 +2,6 @@
 
 // precision lowp float;
 
-uniform sampler2D inputTexture;
 uniform sampler2D accumulatedTexture;
 uniform sampler2D normalTexture;
 uniform sampler2D depthTexture;
@@ -22,6 +21,7 @@ uniform float maxRoughness;
 uniform float fade;
 uniform float thickness;
 uniform float ior;
+uniform float diffuseIntensity;
 uniform float mip;
 uniform float power;
 uniform float intensity;
@@ -54,8 +54,31 @@ float farMinusNear;
 vec2 RayMarch(vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
 vec2 BinarySearch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
 float fastGetViewZ(const in float depth);
-vec3 getIBLRadiance(const in vec3 viewDir, const in vec3 normal, const in float roughness);
 vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float lastFrameAlpha, float sampleCount, vec3 worldPos, float spread);
+
+// ray sampling x and z are swapped to align with expected background view
+vec2 _equirectDirectionToUv(vec3 direction) {
+    // from Spherical.setFromCartesianCoords
+    vec2 uv = vec2(atan(direction.z, direction.x), acos(direction.y));
+    uv /= vec2(2.0 * M_PI, M_PI);
+    // apply adjustments to get values in range [0, 1] and y right side up
+    uv.x += 0.5;
+    uv.y = 1.0 - uv.y;
+    return uv;
+}
+
+vec3 sampleEquirectEnvMapColor(vec3 direction, sampler2D map, float lod) {
+    return textureLod(map, _equirectDirectionToUv(direction), lod).rgb;
+}
+
+vec2 viewSpaceToClipSpace(vec3 position) {
+    vec4 projectedCoord = _projectionMatrix * vec4(position, 1.0);
+    projectedCoord.xy /= projectedCoord.w;
+    // [-1, 1] --> [0, 1] (NDC to screen position)
+    projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;
+
+    return projectedCoord.xy;
+}
 
 vec2 hash23(vec3 p3) {
     p3 = fract(p3 * vec3(.1031, .1030, .0973));
@@ -90,7 +113,6 @@ void main() {
 
     vec4 normalTexel = textureLod(normalTexture, vUv, 0.0);
     float roughness = normalTexel.a;
-    roughness *= roughness;
 
     float specular = 1.0 - roughness;
 
@@ -112,13 +134,13 @@ void main() {
     vec3 viewDir = normalize(viewPos);
     vec3 viewNormal = normalTexel.xyz;
 
-    if (roughness > maxRoughness || (roughness > 1.0 - FLOAT_EPSILON && roughnessFade > 1.0 - FLOAT_EPSILON)) {
-        float fresnelFactor = fresnel_dielectric(viewDir, viewNormal, ior);
-        vec3 iblRadiance = getIBLRadiance(-viewDir, viewNormal, roughness) * fresnelFactor;
-        iblRadiance = clamp(iblRadiance, vec3(0.0), vec3(1.0));
-        gl_FragColor = vec4(iblRadiance, lastFrameAlpha);
-        return;
-    }
+    // if (roughness > maxRoughness || (roughness > 1.0 - FLOAT_EPSILON && roughnessFade > 1.0 - FLOAT_EPSILON)) {
+    //     float fresnelFactor = fresnel_dielectric(viewDir, viewNormal, ior);
+    //     vec3 iblRadiance = getIBLRadiance(-viewDir, viewNormal, roughness) * fresnelFactor;
+    //     iblRadiance = clamp(iblRadiance, vec3(0.0), vec3(1.0));
+    //     gl_FragColor = vec4(iblRadiance, lastFrameAlpha);
+    //     return;
+    // }
 
     vec3 ssgiCol;
 
@@ -157,9 +179,8 @@ void main() {
     if (power != 1.0) finalSSGI = pow(finalSSGI, vec3(power));
 
 #ifdef USE_DIFFUSE
-    float diffuseFactor = 0.8;
     vec3 diffuseColor = textureLod(diffuseTexture, vUv, 0.).rgb;
-    finalSSGI *= diffuseColor * diffuseFactor + (1. - diffuseFactor);
+    finalSSGI *= diffuseColor * diffuseIntensity + (1. - diffuseIntensity);
 #endif
 
     gl_FragColor = vec4(finalSSGI, alpha);
@@ -242,31 +263,31 @@ vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     vec2 coords = RayMarch(dir, hitPos, rayHitDepthDifference);
 #endif
 
-    float diffuseFactor = 0.825;
-
     // invalid ray, use environment lighting as fallback
     if (coords.x == -1.0) {
-        iblRadiance = getIBLRadiance(-viewDir, viewNormal, 0.) * fresnelFactor;
-        iblRadiance = clamp(iblRadiance, vec3(0.0), vec3(1.0));
+        vec4 reflectedWS = inverse(cameraMatrixWorld) * vec4(reflected, 1.);
 
-#ifdef USE_DIFFUSE
-        vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.);
-
-        iblRadiance *= diffuseTexel.rgb * diffuseFactor + (1. - diffuseFactor);
-#endif
+        float lod = mip * 8.0;
+        iblRadiance = sampleEquirectEnvMapColor(reflectedWS.xyz, envMap, lod);
 
         vec4 SSGITexelReflected = textureLod(accumulatedTexture, vUv, 0.);
 
-        float lum = colorToLuminance(iblRadiance);
         float totalLum = colorToLuminance(SSGITexelReflected.rgb);
+
         if (totalLum < FLOAT_EPSILON) totalLum = 1.;
+
+#ifdef USE_DIFFUSE
+        float diffuseInfluence = diffuseIntensity;
+
+        vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.);
+
+        iblRadiance *= czm_saturation(diffuseTexel.rgb, 0.5) * diffuseInfluence + (1. - diffuseInfluence);
+#endif
+
+        float lum = colorToLuminance(iblRadiance);
         float pdf = lum / totalLum;
 
-        // float dirPdf = envMapDirectionPdf(dir);
-        // float totalPdf = pdf * dirPdf;
-        // if (totalPdf > 1.) totalPdf = 1.;
-
-        iblRadiance *= pdf;
+        // iblRadiance *= pdf;
 
         return vec4(iblRadiance * intensity, lastFrameAlpha);
     }
@@ -279,24 +300,21 @@ vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     // distance from the ssgi point to what it's reflecting
     float ssgiDistance = distance(hitWorldPos, worldPos);
 
-    float lod = mip * ssgiDistance * ssgiDistance * spread * 5.;
-
-    vec4 SSGITexel = textureLod(inputTexture, coords.xy, lod);
+    float lod = mip * ssgiDistance * ssgiDistance * spread;
 
     vec4 SSGITexelReflected = textureLod(accumulatedTexture, coords.xy, lod);
 
-    vec3 SSGI = SSGITexel.rgb + SSGITexelReflected.rgb;
-
-    SSGI *= intensity;
+    vec3 SSGI = SSGITexelReflected.rgb;
+    SSGI *= 1.0 + intensity;
 
     vec3 finalSSGI = vec3(0.);
 
     if (ssgiIntensity > FLOAT_ONE_MINUS_EPSILON) {
         finalSSGI = SSGI;
     } else {
-        iblRadiance = getIBLRadiance(-viewDir, viewNormal, spread) * fresnelFactor;
-        iblRadiance = clamp(iblRadiance, vec3(0.0), vec3(1.0));
-        finalSSGI = mix(iblRadiance, SSGI, ssgiIntensity);
+        // iblRadiance = getIBLRadiance(-viewDir, viewNormal, spread) * fresnelFactor;
+        // iblRadiance = clamp(iblRadiance, vec3(0.0), vec3(1.0));
+        // finalSSGI = mix(iblRadiance, SSGI, ssgiIntensity);
     }
 
     finalSSGI = SSGI;
@@ -418,24 +436,5 @@ float fastGetViewZ(const in float depth) {
     return nearMulFar / (farMinusNear * depth - cameraFar);
 #else
     return depth * nearMinusFar - cameraNear;
-#endif
-}
-
-#include <common>
-#include <cube_uv_reflection_fragment>
-
-// from: https://github.com/mrdoob/three.js/blob/d5b82d2ca410e2e24ca2f7320212dfbee0fe8e89/src/renderers/shaders/ShaderChunk/envmap_physical_pars_fragment.glsl.js#L22
-vec3 getIBLRadiance(const in vec3 viewDir, const in vec3 normal, const in float roughness) {
-#if defined(ENVMAP_TYPE_CUBE_UV)
-    vec3 reflectVec = reflect(-viewDir, normal);
-
-    // Mixing the ssgi with the normal is more accurate and keeps rough objects from gathering light from behind their tangent plane.
-    // reflectVec = normalize(mix(reflectVec, normal, roughness * roughness));
-    reflectVec = inverseTransformDirection(reflectVec, viewMatrix);
-
-    vec4 envMapColor = textureCubeUV(envMap, reflectVec, min(0.2, roughness));
-    return envMapColor.rgb;
-#else
-    return vec3(0.0);
 #endif
 }

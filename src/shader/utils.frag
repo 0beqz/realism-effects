@@ -29,6 +29,15 @@ vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth) {
     return view.xyz;
 }
 
+// vec2 viewSpaceToScreenSpace(vec3 position) {
+//     mat4 projectedCoord = _projectionMatrix * vec4(position, 1.0);
+//     projectedCoord.xy /= projectedCoord.w;
+//     // [-1, 1] --> [0, 1] (NDC to screen position)
+//     projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;
+
+//     return projectedCoord.xy;
+// }
+
 // vec2 worldSpaceToScreenSpace(vec3 worldPos){
 //     vec4 ssPos = _projectionMatrix * inverse(cameraMatrixWorld) * vec4(worldPos, 1.0);
 //     ssPos.xy /= ssPos.w;
@@ -38,7 +47,7 @@ vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth) {
 // }
 
 #define Scale (vec3(0.8, 0.8, 0.8))
-#define K (19.19)
+#define K     (19.19)
 
 vec3 hash(vec3 a) {
     a = fract(a * Scale);

@@ -8,7 +8,8 @@
  * @property {Number} [fade] how much ssgi will fade out by distance
  * @property {Number} [roughnessFade] how intense ssgi should be on rough spots; a higher value will make ssgi fade out quicker on rough spots
  * @property {Number} [thickness] maximum depth difference between a ray and the particular depth at its screen position before refining with binary search; higher values will result in better performance
- * @property {Number} [ior] Index of Refraction, used for calculating fresnel; ssgi tend to be more intense the steeper the angle between them and the viewer is, the ior parameter sets how much the intensity varies
+ * @property {Number} [ior] Index of Refraction, used for calculating fresnel; reflections tend to be more intense the steeper the angle between them and the viewer is, the ior parameter sets how much the intensity varies
+ * @property {Number} [diffuseIntensity] how much the diffuse texture of a material influences SSGI
  * @property {Number} [mip] The maximum mip map level to use. A value of 0 will make SSGI always use the original input texture. A value of 1 will make SSGI use all mipmaps from the highest to the lowest possible.
  * @property {Number} [maxRoughness] maximum roughness a texel can have to have ssgi calculated for it
  * @property {Number} [maxDepthDifference] maximum depth difference between a ray and the particular depth at its screen position after refining with binary search; higher values will result in better performance
@@ -41,6 +42,7 @@ export const defaultSSGIOptions = {
 	roughnessFade: 1,
 	thickness: 10,
 	ior: 1.45,
+	diffuseIntensity: 0.8,
 	mip: 0,
 	maxRoughness: 1,
 	maxDepthDifference: 10,

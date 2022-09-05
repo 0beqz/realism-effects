@@ -252,7 +252,6 @@ export class SSGIPass extends Pass {
 		// render depth and velocity in seperate passes
 		if (!this.isWebGL2) this.webgl1DepthPass.renderPass.render(renderer, this.webgl1DepthPass.renderTarget)
 
-		this.fullscreenMaterial.uniforms.inputTexture.value = inputBuffer.texture
 		this.fullscreenMaterial.uniforms.samples.value = this.ssgiEffect.temporalResolvePass.samples
 		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
 		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far

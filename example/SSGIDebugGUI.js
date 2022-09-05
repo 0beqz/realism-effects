@@ -37,9 +37,15 @@ export class SSGIDebugGUI {
 			max: 100,
 			step: 0.01
 		})
+		generalFolder.addInput(params, "diffuseIntensity", {
+			min: 0,
+			max: 1,
+			step: 0.001
+		})
+
 		generalFolder.addInput(params, "ior", {
 			min: 1,
-			max: 3,
+			max: 2.33,
 			step: 0.01
 		})
 

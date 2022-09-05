@@ -2,16 +2,7 @@ import dragDrop from "drag-drop"
 import * as POSTPROCESSING from "postprocessing"
 import Stats from "stats.js"
 import * as THREE from "three"
-import {
-	ACESFilmicToneMapping,
-	Box3,
-	Color,
-	DirectionalLight,
-	DoubleSide,
-	HalfFloatType,
-	LinearMipMapLinearFilter,
-	Vector3
-} from "three"
+import { Box3, Color, DirectionalLight, DoubleSide, HalfFloatType, LinearMipMapLinearFilter, Vector3 } from "three"
 import { WebGLRenderTarget } from "three/build/three.module"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
@@ -30,6 +21,7 @@ let fxaaPass
 let ssgiEffect
 let ssgiPass
 let gui
+let gui2
 let envMesh
 const guiParams = {
 	Method: "TRAA",
@@ -114,7 +106,7 @@ const setAA = value => {
 // since using "rendererCanvas" doesn't work when using an offscreen canvas
 const controls = new OrbitControls(camera, document.querySelector("#orbitControlsDomElem"))
 
-camera.position.set(0, 10, 24)
+camera.position.fromArray([29.907091288074792, 22.04353881796979, 9.882389116324575])
 controls.target.set(0, 8, 0)
 controls.maxPolarAngle = Math.PI / 2
 // controls.maxDistance = 30
@@ -171,7 +163,7 @@ new RGBELoader().load("hdr/dry_cracked_lake_4k.hdr", envMap => {
 	envMap.mapping = THREE.EquirectangularReflectionMapping
 
 	scene.environment = envMap
-	scene.background = envMap
+	// scene.background = envMap
 
 	envMesh = new GroundProjectedEnv(envMap)
 	envMesh.radius = 440
@@ -179,13 +171,12 @@ new RGBELoader().load("hdr/dry_cracked_lake_4k.hdr", envMap => {
 	envMesh.scale.setScalar(100)
 	envMesh.updateMatrixWorld()
 
-	console.log(envMesh)
-	scene.add(envMesh)
+	renderer.setClearColor(0xffffff)
 })
 
 const gltflLoader = new GLTFLoader()
 
-const url = "mp5_submachinegun.glb"
+const url = "MP5.glb"
 
 let lastScene
 
@@ -214,8 +205,8 @@ THREE.DefaultLoadingManager.onProgress = () => {
 let mixer
 
 const lightParams = {
-	yaw: 52,
-	pitch: 48
+	yaw: 121,
+	pitch: 53
 }
 
 const toRad = Math.PI / 180
@@ -244,21 +235,22 @@ const clock = new THREE.Clock()
 
 const initScene = () => {
 	const options = {
-		intensity: 3.21,
-		power: 1.0250000000000006,
+		intensity: 4.02,
+		power: 1.2750000000000006,
 		exponent: 1.8,
-		distance: 6.000000000000002,
+		distance: 8.700000000000003,
 		fade: 0,
 		roughnessFade: 0,
 		thickness: 5.429999999999997,
-		ior: 2.04,
-		mip: 1,
+		ior: 1.75,
+		diffuseIntensity: 0.8,
+		mip: 0.5399999999999999,
 		maxRoughness: 1,
 		maxDepthDifference: 260.9,
 		blend: 0.925,
 		correction: 0,
 		correctionRadius: 1,
-		blur: 1,
+		blur: 0,
 		jitter: 0,
 		jitterRoughness: 0.24999999999999997,
 		steps: 20,
@@ -271,6 +263,37 @@ const initScene = () => {
 		resolutionScale: 0.5,
 		qualityScale: 0.5
 	}
+
+	// ACR properties
+	// options = {
+	// 	"intensity": 3.3699999999999997,
+	// 	"power": 1.2000000000000006,
+	// 	"exponent": 1.8,
+	// 	"distance": 21.700000000000003,
+	// 	"fade": 0,
+	// 	"roughnessFade": 0,
+	// 	"thickness": 5.429999999999997,
+	// 	"ior": 1.75,
+	// 	"diffuseIntensity": 0.804,
+	// 	"mip": 0,
+	// 	"maxRoughness": 1,
+	// 	"maxDepthDifference": 260.9,
+	// 	"blend": 0.925,
+	// 	"correction": 0,
+	// 	"correctionRadius": 1,
+	// 	"blur": 0,
+	// 	"jitter": 0,
+	// 	"jitterRoughness": 0.36999999999999994,
+	// 	"steps": 67,
+	// 	"refineSteps": 6,
+	// 	"spp": 4,
+	// 	"missedRays": false,
+	// 	"useMap": true,
+	// 	"useNormalMap": true,
+	// 	"useRoughnessMap": true,
+	// 	"resolutionScale": 0.5,
+	// 	"qualityScale": 0.5
+	//   }
 
 	traaEffect = new TRAAEffect(scene, camera, params)
 
@@ -312,7 +335,8 @@ const initScene = () => {
 	})
 
 	const vignetteEffect = new POSTPROCESSING.VignetteEffect({
-		darkness: 0.6
+		darkness: 0.8,
+		offset: 0.3
 	})
 
 	ssgiEffect = new SSGIEffect(scene, camera, options)
@@ -324,14 +348,11 @@ const initScene = () => {
 		}
 	})
 
-	const gui2 = new SSGIDebugGUI(ssgiEffect, options)
+	gui2 = new SSGIDebugGUI(ssgiEffect, options)
 	gui2.pane.containerElem_.style.left = "8px"
 
-	// gui.pane.element.style.display = "none"
-	// gui2.pane.element.style.display = "none"
-
-	new POSTPROCESSING.LUT3dlLoader().load("room.3dl", lutTexture => {
-		// const lutEffect = new POSTPROCESSING.LUTEffect(lutTexture)
+	new POSTPROCESSING.LUT3dlLoader().load("weapon.3dl", lutTexture => {
+		const lutEffect = new POSTPROCESSING.LUTEffect(lutTexture)
 
 		ssgiPass = new POSTPROCESSING.EffectPass(camera, ssgiEffect)
 
@@ -339,7 +360,7 @@ const initScene = () => {
 		// composer.addPass(traaPass)
 
 		composer.addPass(ssgiPass)
-		composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, vignetteEffect))
+		composer.addPass(new POSTPROCESSING.EffectPass(camera, lutEffect, bloomEffect, vignetteEffect))
 
 		const smaaEffect = new POSTPROCESSING.SMAAEffect()
 
@@ -406,12 +427,14 @@ const aaOptions = {
 const aaValues = Object.values(aaOptions)
 
 document.addEventListener("keydown", ev => {
-	const value = aaOptions[ev.key]
+	if (document.activeElement.tagName !== "INPUT") {
+		const value = aaOptions[ev.key]
 
-	if (value) setAA(value)
+		if (value) setAA(value)
 
-	if (ev.code === "Space" || ev.code === "Enter" || ev.code === "NumpadEnter") {
-		setAA(guiParams.Method === "TRAA" ? "Disabled" : "TRAA")
+		if (ev.code === "Space" || ev.code === "Enter" || ev.code === "NumpadEnter") {
+			setAA(guiParams.Method === "TRAA" ? "Disabled" : "TRAA")
+		}
 	}
 
 	if (ev.code === "KeyQ") {
@@ -424,6 +447,16 @@ document.addEventListener("keydown", ev => {
 		})
 
 		refreshLighting()
+	}
+
+	if (ev.code === "Tab") {
+		ev.preventDefault()
+
+		const display = gui.pane.element.style.display === "none" ? "block" : "none"
+
+		gui.pane.element.style.display = display
+		gui2.pane.element.style.display = display
+		stats.dom.style.display = display
 	}
 
 	if (ev.code === "ArrowLeft") {
