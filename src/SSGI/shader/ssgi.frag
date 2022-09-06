@@ -57,18 +57,29 @@ float fastGetViewZ(const in float depth);
 vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float lastFrameAlpha, float sampleCount, vec3 worldPos, float spread);
 
 // ray sampling x and z are swapped to align with expected background view
-vec2 _equirectDirectionToUv(vec3 direction) {
+vec2 equirectDirectionToUv(vec3 direction) {
     // from Spherical.setFromCartesianCoords
     vec2 uv = vec2(atan(direction.z, direction.x), acos(direction.y));
     uv /= vec2(2.0 * M_PI, M_PI);
     // apply adjustments to get values in range [0, 1] and y right side up
     uv.x += 0.5;
     uv.y = 1.0 - uv.y;
+
     return uv;
 }
 
+float envMapDirectionPdf(vec3 direction) {
+    vec2 uv = equirectDirectionToUv(direction);
+    float theta = uv.y * M_PI;
+    float sinTheta = sin(theta);
+    if (sinTheta == 0.0) {
+        return 0.0;
+    }
+    return 1.0 / (2.0 * M_PI * M_PI * sinTheta);
+}
+
 vec3 sampleEquirectEnvMapColor(vec3 direction, sampler2D map, float lod) {
-    return textureLod(map, _equirectDirectionToUv(direction), lod).rgb;
+    return textureLod(map, equirectDirectionToUv(direction), lod).rgb;
 }
 
 vec2 viewSpaceToClipSpace(vec3 position) {
@@ -142,19 +153,24 @@ void main() {
     //     return;
     // }
 
-    vec3 ssgiCol;
-
-    int iterations = (jitter == 0.0 && roughness < 0.05) ? 1 : spp;
-
-    if (lastFrameAlpha <= 0.05)
-        iterations += 4;
-    else if (lastFrameAlpha > FLOAT_ONE_MINUS_EPSILON)
-        iterations = 1;
-
-    float weight = 1.0 / float(iterations);
-
     float spread = jitter + roughness * roughness * jitterRoughness;
     spread = min(1.0, spread);
+
+    vec3 ssgiCol;
+
+    int iterations = spp;
+
+    if (spread < 0.05) {
+        iterations = 1;
+    } else if (spread > 0.95 && lastFrameAlpha == 1.0) {
+        iterations = 1;
+    } else if (lastFrameAlpha <= 0.05)
+        iterations += 4;
+    else if (lastFrameAlpha > FLOAT_ONE_MINUS_EPSILON) {
+        iterations = 1;
+    }
+
+    float weight = 1.0 / float(iterations);
 
     for (int s = 0; s <= iterations; s++) {
         float sF = float(s);
@@ -167,23 +183,13 @@ void main() {
     float roughnessFactor = mix(specular, 1.0, max(0.0, 1.0 - roughnessFade));
 
     vec3 finalSSGI = ssgiCol * roughnessFactor;
-    finalSSGI = clamp(finalSSGI, vec3(0.0), vec3(1.0));
-
-    float alpha = lastFrameAlpha;
+    if (power != 1.0) finalSSGI = pow(finalSSGI, vec3(power));
+    finalSSGI *= intensity;
 
     // this reduces the smearing on mirror-like or glossy surfaces when the camera moves
     // if (samples < 2. && spread < 0.5) alpha = min(lastFrameAlpha, spread * 0.25);
 
-    // finalSSGI *= intensity;
-
-    if (power != 1.0) finalSSGI = pow(finalSSGI, vec3(power));
-
-#ifdef USE_DIFFUSE
-    vec3 diffuseColor = textureLod(diffuseTexture, vUv, 0.).rgb;
-    finalSSGI *= diffuseColor * diffuseIntensity + (1. - diffuseIntensity);
-#endif
-
-    gl_FragColor = vec4(finalSSGI, alpha);
+    gl_FragColor = vec4(finalSSGI, lastFrameAlpha);
 }
 
 float colorToLuminance(vec3 color) {
@@ -191,28 +197,9 @@ float colorToLuminance(vec3 color) {
     return 0.2126 * color.r + 0.7152 * color.g + 0.0722 * color.b;
 }
 
-// ray sampling x and z are swapped to align with expected background view
-vec2 equirectDirectionToUv(vec3 direction) {
-    // from Spherical.setFromCartesianCoords
-    vec2 uv = vec2(atan(direction.z, direction.x), acos(direction.y));
-    uv /= vec2(2.0 * M_PI, M_PI);
-    // apply adjustments to get values in range [0, 1] and y right side up
-    uv.x += 0.5;
-    uv.y = 1.0 - uv.y;
-    return uv;
-}
-
-float envMapDirectionPdf(vec3 direction) {
-    vec2 uv = equirectDirectionToUv(direction);
-    float theta = uv.y * M_PI;
-    float sinTheta = sin(theta);
-    if (sinTheta == 0.0) {
-        return 0.0;
-    }
-    return 1.0 / (2.0 * M_PI * M_PI * sinTheta);
-}
-
 vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float lastFrameAlpha, float sampleCount, vec3 worldPos, float spread) {
+    float envMapLod = spread * mip * 8.0;
+
     // jittering
     if (jitterRoughness != 0.0 || jitter != 0.0) {
         float ind = log(samples * float(spp) + sampleCount);
@@ -265,31 +252,31 @@ vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
 
     // invalid ray, use environment lighting as fallback
     if (coords.x == -1.0) {
-        vec4 reflectedWS = inverse(cameraMatrixWorld) * vec4(reflected, 1.);
+        vec4 reflectedWS = vec4(reflected, 1.) * inverse(cameraMatrixWorld);
+        reflectedWS.xyz = normalize(reflectedWS.xyz);
 
-        float lod = mip * 8.0;
-        iblRadiance = sampleEquirectEnvMapColor(reflectedWS.xyz, envMap, lod);
+        iblRadiance = sampleEquirectEnvMapColor(reflectedWS.xyz, envMap, envMapLod);
 
-        vec4 SSGITexelReflected = textureLod(accumulatedTexture, vUv, 0.);
-
-        float totalLum = colorToLuminance(SSGITexelReflected.rgb);
-
-        if (totalLum < FLOAT_EPSILON) totalLum = 1.;
+        if (length(iblRadiance) > 1.7) iblRadiance = vec3(0.);
 
 #ifdef USE_DIFFUSE
         float diffuseInfluence = diffuseIntensity;
 
-        vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.);
+        vec3 diffuseColor = textureLod(diffuseTexture, vUv, 0.).rgb;
 
-        iblRadiance *= czm_saturation(diffuseTexel.rgb, 0.5) * diffuseInfluence + (1. - diffuseInfluence);
+        iblRadiance *= czm_saturation(diffuseColor, 0.675) * diffuseInfluence + (1. - diffuseInfluence);
 #endif
 
-        float lum = colorToLuminance(iblRadiance);
-        float pdf = lum / totalLum;
+        // vec4 SSGITexelReflected = textureLod(accumulatedTexture, vUv, 0.);
+        // float totalLum = colorToLuminance(SSGITexelReflected.rgb);
+        // if (totalLum < FLOAT_EPSILON) totalLum = 1.;
+        // float lum = colorToLuminance(iblRadiance);
+        // float pdf = lum / totalLum;
+        // if (pdf > 1.) pdf = 1.;
+        // float dirPdf = envMapDirectionPdf(reflectedWS.xyz);
+        // iblRadiance *= dirPdf * pdf * 10.;
 
-        // iblRadiance *= pdf;
-
-        return vec4(iblRadiance * intensity, lastFrameAlpha);
+        return vec4(iblRadiance, lastFrameAlpha);
     }
 
     vec2 dCoords = smoothstep(0.2, 0.6, abs(vec2(0.5, 0.5) - coords.xy));
@@ -300,12 +287,10 @@ vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     // distance from the ssgi point to what it's reflecting
     float ssgiDistance = distance(hitWorldPos, worldPos);
 
-    float lod = mip * ssgiDistance * ssgiDistance * spread;
+    float lod = 0.25 * mip * ssgiDistance * ssgiDistance * spread;
 
     vec4 SSGITexelReflected = textureLod(accumulatedTexture, coords.xy, lod);
-
     vec3 SSGI = SSGITexelReflected.rgb;
-    SSGI *= 1.0 + intensity;
 
     vec3 finalSSGI = vec3(0.);
 
@@ -318,6 +303,12 @@ vec4 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     }
 
     finalSSGI = SSGI;
+
+#ifdef USE_DIFFUSE
+    vec3 diffuseColor = textureLod(diffuseTexture, vUv, 0.).rgb;
+
+    finalSSGI *= czm_saturation(diffuseColor, 0.675) * diffuseIntensity + (1. - diffuseIntensity);
+#endif
 
     if (fade != 0.0) {
         float opacity = 1.0 / ((ssgiDistance + 1.0) * fade * 0.1);

@@ -197,6 +197,8 @@ export class SSGIPass extends Pass {
 			if (originalMaterial.color) diffuseMaterial.color = originalMaterial.color
 			diffuseMaterial.visible = originalMaterial.visible
 
+			mrtMaterial.uniforms.roughnessMap.value = originalMaterial.roughnessMap
+
 			mrtMaterial.uniforms.roughness.value =
 				this.ssgiEffect.selection.size === 0 || this.ssgiEffect.selection.has(c)
 					? originalMaterial.roughness || 0

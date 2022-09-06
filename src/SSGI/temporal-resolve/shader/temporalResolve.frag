@@ -25,7 +25,7 @@ varying vec2 vUv;
 #define FLOAT_EPSILON           0.00001
 #define FLOAT_ONE_MINUS_EPSILON 0.99999
 
-const float alphaStep = 0.01;
+const float alphaStep = 0.001;
 vec3 transformExponent;
 vec3 undoColorTransformExponent;
 
@@ -89,7 +89,7 @@ void main() {
     bool didReproject = false;
 
 #ifdef boxBlur
-    vec3 boxBlurredColor = inputTexel.rgb;
+    vec3 boxBlurredColor;
 #endif
 
     vec4 velocity = textureLod(velocityTexture, vUv, 0.0);
@@ -167,12 +167,15 @@ void main() {
                         abs(depth - neighborDepth) < maxNeighborDepthDifference) {
 
                         neighborTexel = textureLod(inputTexture, neighborUv, 0.0);
-                        col = neighborTexel.xyz;
+
+                        col = neighborTexel.rgb;
                         col = transformColor(col);
 
         #ifdef boxBlur
                         if (absX <= 3 && absY <= 3) {
                             boxBlurredColor += col;
+                            boxBlurredColor = vec3(0., 1., 0.);
+
                             colorCount += 1.0;
                         }
         #endif
@@ -194,7 +197,13 @@ void main() {
 
     // box blur
 #ifdef boxBlur
-    boxBlurredColor /= colorCount;
+    if (dot(boxBlurredColor, boxBlurredColor) == 0.) {
+        boxBlurredColor = inputColor;
+    } else {
+        boxBlurredColor /= colorCount;
+    }
+
+    boxBlurredColor = transformColor(boxBlurredColor);
 #endif
 
 // depth
@@ -242,16 +251,16 @@ void main() {
 
     bool isMoving = dot(velocity.xy, velocity.xy) > 0.0;
 
+    float s = alpha / alphaStep + 1.0;
+    float temporalResolveMix = 1. - 1. / s;
+    temporalResolveMix = min(temporalResolveMix, blend);
+
 // the user's shader to compose a final outputColor from the inputTexel and accumulatedTexel
 #ifdef customComposeShader
-    customComposeShader
+    #include <customComposeShader>
 #else
-    float s = alpha / alphaStep + 1.0;
-    float m = 1. - 1. / s;
-    m = min(m, blend);
-
-    outputColor = mix(inputColor, accumulatedColor, m);
+    outputColor = mix(inputColor, accumulatedColor, temporalResolveMix);
 #endif
 
-        gl_FragColor = vec4(undoColorTransform(outputColor), alpha);
+    gl_FragColor = vec4(undoColorTransform(outputColor), alpha);
 }

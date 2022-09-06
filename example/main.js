@@ -106,8 +106,8 @@ const setAA = value => {
 // since using "rendererCanvas" doesn't work when using an offscreen canvas
 const controls = new OrbitControls(camera, document.querySelector("#orbitControlsDomElem"))
 
-camera.position.fromArray([29.907091288074792, 22.04353881796979, 9.882389116324575])
-controls.target.set(0, 8, 0)
+camera.position.fromArray([4.814341256818513, 11, 12.125877019662724])
+controls.target.set(0, 11, 0)
 controls.maxPolarAngle = Math.PI / 2
 // controls.maxDistance = 30
 window.controls = controls
@@ -125,7 +125,7 @@ composer.inputBuffer = new WebGLRenderTarget(window.innerWidth, window.innerHeig
 	type: HalfFloatType
 })
 
-const light = new DirectionalLight(0xffffff, 5)
+const light = new DirectionalLight(0xffffff, 1.2)
 light.position.set(217, 43, 76)
 light.updateMatrixWorld()
 light.castShadow = true
@@ -159,7 +159,7 @@ const params = {}
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
 pmremGenerator.compileEquirectangularShader()
 
-new RGBELoader().load("hdr/dry_cracked_lake_4k.hdr", envMap => {
+new RGBELoader().load("hdr/quarry_02_4k.hdr", envMap => {
 	envMap.mapping = THREE.EquirectangularReflectionMapping
 
 	scene.environment = envMap
@@ -170,13 +170,14 @@ new RGBELoader().load("hdr/dry_cracked_lake_4k.hdr", envMap => {
 	envMesh.height = 20
 	envMesh.scale.setScalar(100)
 	envMesh.updateMatrixWorld()
+	scene.add(envMesh)
 
 	renderer.setClearColor(0xffffff)
 })
 
 const gltflLoader = new GLTFLoader()
 
-const url = "MP5.glb"
+const url = "streetwear.glb"
 
 let lastScene
 
@@ -205,13 +206,13 @@ THREE.DefaultLoadingManager.onProgress = () => {
 let mixer
 
 const lightParams = {
-	yaw: 121,
-	pitch: 53
+	yaw: 31,
+	pitch: 84
 }
 
 const toRad = Math.PI / 180
 
-let rAF
+// let rAF
 
 const refreshLighting = () => {
 	light.position.x = Math.sin(lightParams.yaw * toRad) * Math.cos(lightParams.pitch * toRad)
@@ -222,78 +223,47 @@ const refreshLighting = () => {
 	light.updateMatrixWorld()
 	renderer.shadowMap.needsUpdate = true
 
-	if (ssgiEffect) {
-		const { blend } = ssgiEffect
-		ssgiEffect.blend = 0
+	// if (ssgiEffect) {
+	// 	const { blend } = ssgiEffect
+	// 	ssgiEffect.blend = 0
 
-		cancelAnimationFrame(rAF)
-		rAF = requestAnimationFrame(() => (ssgiEffect.blend = blend))
-	}
+	// 	cancelAnimationFrame(rAF)
+	// 	rAF = requestAnimationFrame(() => (ssgiEffect.blend = blend))
+	// }
 }
 
 const clock = new THREE.Clock()
 
 const initScene = () => {
 	const options = {
-		intensity: 4.02,
-		power: 1.2750000000000006,
+		intensity: 1.8499999999999994,
+		power: 1.225,
 		exponent: 1.8,
-		distance: 8.700000000000003,
+		distance: 16.800000000000004,
 		fade: 0,
 		roughnessFade: 0,
 		thickness: 5.429999999999997,
-		ior: 1.75,
-		diffuseIntensity: 0.8,
-		mip: 0.5399999999999999,
+		ior: 1.49,
+		diffuseIntensity: 0.88,
+		mip: 0,
 		maxRoughness: 1,
 		maxDepthDifference: 260.9,
-		blend: 0.925,
+		blend: 0.9,
 		correction: 0,
 		correctionRadius: 1,
 		blur: 0,
 		jitter: 0,
-		jitterRoughness: 0.24999999999999997,
-		steps: 20,
-		refineSteps: 6,
-		spp: 4,
+		jitterRoughness: 1,
+		steps: 117,
+		refineSteps: 9,
+		spp: 2,
 		missedRays: false,
 		useMap: true,
 		useNormalMap: true,
 		useRoughnessMap: true,
-		resolutionScale: 0.5,
-		qualityScale: 0.5
+		resolutionScale: 1,
+		qualityScale: 1
 	}
-
-	// ACR properties
-	// options = {
-	// 	"intensity": 3.3699999999999997,
-	// 	"power": 1.2000000000000006,
-	// 	"exponent": 1.8,
-	// 	"distance": 21.700000000000003,
-	// 	"fade": 0,
-	// 	"roughnessFade": 0,
-	// 	"thickness": 5.429999999999997,
-	// 	"ior": 1.75,
-	// 	"diffuseIntensity": 0.804,
-	// 	"mip": 0,
-	// 	"maxRoughness": 1,
-	// 	"maxDepthDifference": 260.9,
-	// 	"blend": 0.925,
-	// 	"correction": 0,
-	// 	"correctionRadius": 1,
-	// 	"blur": 0,
-	// 	"jitter": 0,
-	// 	"jitterRoughness": 0.36999999999999994,
-	// 	"steps": 67,
-	// 	"refineSteps": 6,
-	// 	"spp": 4,
-	// 	"missedRays": false,
-	// 	"useMap": true,
-	// 	"useNormalMap": true,
-	// 	"useRoughnessMap": true,
-	// 	"resolutionScale": 0.5,
-	// 	"qualityScale": 0.5
-	//   }
 
 	traaEffect = new TRAAEffect(scene, camera, params)
 
@@ -327,10 +297,10 @@ const initScene = () => {
 	sceneFolder.addInput(light, "intensity", { min: 0, max: 10, step: 0.1 }).on("change", refreshLighting)
 
 	const bloomEffect = new POSTPROCESSING.BloomEffect({
-		intensity: 2,
+		intensity: 1,
 		mipmapBlur: true,
 		luminanceSmoothing: 0.5,
-		luminanceThreshold: 1,
+		luminanceThreshold: 0.25,
 		kernelSize: POSTPROCESSING.KernelSize.HUGE
 	})
 
@@ -344,7 +314,6 @@ const initScene = () => {
 	scene.traverse(c => {
 		if (c.isMesh && c.material.isMeshStandardMaterial) {
 			c.material.side = DoubleSide
-			ssgiEffect.selection.add(c)
 		}
 	})
 

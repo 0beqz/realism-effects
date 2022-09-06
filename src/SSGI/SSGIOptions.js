@@ -42,7 +42,7 @@ export const defaultSSGIOptions = {
 	roughnessFade: 1,
 	thickness: 10,
 	ior: 1.45,
-	diffuseIntensity: 0.8,
+	diffuseIntensity: 0.85,
 	mip: 0,
 	maxRoughness: 1,
 	maxDepthDifference: 10,

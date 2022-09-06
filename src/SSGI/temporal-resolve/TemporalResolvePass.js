@@ -66,8 +66,14 @@ export class TemporalResolvePass extends Pass {
 		this.velocityPass = new VelocityPass(scene, camera)
 
 		this.fullscreenMaterial = new TemporalResolveMaterial()
-		if (typeof customComposeShader === "string")
-			this.fullscreenMaterial.defines.customComposeShader = options.customComposeShader
+		if (typeof options.customComposeShader === "string") {
+			this.fullscreenMaterial.defines.customComposeShader = ""
+
+			this.fullscreenMaterial.fragmentShader = this.fullscreenMaterial.fragmentShader.replace(
+				"#include <customComposeShader>",
+				options.customComposeShader
+			)
+		}
 
 		this.fullscreenMaterial.defines.correctionRadius =
 			options.correctionRadius === undefined ? 1 : options.correctionRadius
