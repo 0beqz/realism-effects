@@ -1,8 +1,10 @@
-﻿vec4 directLightTexel = textureLod(directLightTexture, vUv, 0.0);
+﻿#define TRANSFORM_FACTOR 0.1
+
+vec4 directLightTexel = textureLod(directLightTexture, vUv, 0.0);
 
 // if this texel belongs to the background
 if (isBackground) {
-    inputTexel = directLightTexel;
+    inputTexel = directLightTexel * TRANSFORM_FACTOR;
 } else {
 #ifdef reflectionsOnly
     inputTexel.rgb *= directLightTexel.rgb;
@@ -22,5 +24,7 @@ if (isBackground) {
 
 #endif
 
-    inputTexel.rgb += directLightTexel.rgb;
+    inputTexel.rgb += directLightTexel.rgb * TRANSFORM_FACTOR;
+
+    inputTexel.rgb = min(inputTexel.rgb, vec3(1.));
 }

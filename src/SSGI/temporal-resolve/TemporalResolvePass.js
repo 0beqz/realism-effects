@@ -7,6 +7,7 @@ import {
 	NearestFilter,
 	Quaternion,
 	RGBAFormat,
+	sRGBEncoding,
 	Vector2,
 	Vector3,
 	WebGLRenderTarget
@@ -32,10 +33,9 @@ export class TemporalResolvePass extends Pass {
 		options = {
 			renderVelocity: true,
 			dilation: false,
-			boxBlur: true,
 			maxNeighborDepthDifference: 1,
 			logTransform: false,
-			neighborhoodClamping: false,
+			neighborhoodClamping: true,
 			customComposeShader: null
 		}
 	) {
@@ -48,6 +48,7 @@ export class TemporalResolvePass extends Pass {
 			minFilter: LinearFilter,
 			magFilter: LinearFilter,
 			type: HalfFloatType,
+			encoding: sRGBEncoding,
 			depthBuffer: false
 		})
 
@@ -68,7 +69,6 @@ export class TemporalResolvePass extends Pass {
 			options.correctionRadius === undefined ? 1 : options.correctionRadius
 
 		if (options.dilation) this.fullscreenMaterial.defines.dilation = ""
-		if (options.boxBlur) this.fullscreenMaterial.defines.boxBlur = ""
 		if (options.logTransform) this.fullscreenMaterial.defines.logTransform = ""
 		if (options.neighborhoodClamping) this.fullscreenMaterial.defines.neighborhoodClamping = ""
 

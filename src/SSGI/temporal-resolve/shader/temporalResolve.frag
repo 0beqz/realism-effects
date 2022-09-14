@@ -51,10 +51,6 @@ void main() {
 
     bool didReproject = false;
 
-#ifdef boxBlur
-    vec3 boxBlurredColor;
-#endif
-
     vec4 velocity = textureLod(velocityTexture, vUv, 0.0);
 
     vec3 minNeighborColor = inputColor;
@@ -80,9 +76,7 @@ void main() {
     float lastNeighborDepth;
     float colorCount = 1.0;
 
-    bool doBoxBlur = alpha <= 0.05;
-
-#if defined(dilation) || defined(neighborhoodClamping) || defined(boxBlur)
+#if defined(dilation) || defined(neighborhoodClamping)
     for (int x = -correctionRadius; x <= correctionRadius; x++) {
         for (int y = -correctionRadius; y <= correctionRadius; y++) {
             if (x != 0 || y != 0) {
@@ -98,6 +92,10 @@ void main() {
 
                     if (absX <= 1 && absY <= 1) {
     #ifdef dilation
+
+                        // prevents the flickering at the edges of geometries due to treating background pixels differently
+                        if (neighborDepth <= 0.9999) isBackground = false;
+
                         if (neighborDepth < minDepth) {
                             velocity = neigborVelocity;
                             minDepth = neighborDepth;
@@ -119,28 +117,14 @@ void main() {
     #endif
                     }
 
-    #if defined(neighborhoodClamping) || defined(boxBlur)
-
+    #ifdef neighborhoodClamping
                     // the neighbor pixel is invalid if it's too far away from this pixel
 
-                    if (
-        #if !defined(neighborhoodClamping) && defined(boxBlur)
-                        doBoxBlur &&
-        #endif
-                        abs(depth - neighborDepth) < maxNeighborDepthDifference) {
-
+                    if (abs(depth - neighborDepth) < maxNeighborDepthDifference) {
                         neighborTexel = textureLod(inputTexture, neighborUv, 0.0);
 
                         col = neighborTexel.rgb;
                         col = transformColor(col);
-
-        #ifdef boxBlur
-                        if (absX <= 3 && absY <= 3) {
-                            boxBlurredColor += col;
-
-                            colorCount += 1.0;
-                        }
-        #endif
 
                         minNeighborColor = min(col, minNeighborColor);
                         maxNeighborColor = max(col, maxNeighborColor);
@@ -156,19 +140,6 @@ void main() {
 
     // velocity
     reprojectedUv = vUv - velocity.xy;
-
-    // box blur
-#ifdef boxBlur
-    if (dot(boxBlurredColor, boxBlurredColor) == 0.) {
-        boxBlurredColor = inputColor;
-    } else {
-        boxBlurredColor /= colorCount;
-
-        boxBlurredColor.rgb *= diffuseFactor;
-    }
-
-    boxBlurredColor = transformColor(boxBlurredColor);
-#endif
 
 // depth
 #ifdef dilation
@@ -197,12 +168,7 @@ void main() {
 #endif
 
     } else {
-        // reprojected UV coordinates are outside of screen
-#ifdef boxBlur
-        accumulatedColor = boxBlurredColor;
-#else
         accumulatedColor = inputColor;
-#endif
     }
 
     vec3 outputColor = inputColor;
@@ -211,7 +177,7 @@ void main() {
     float temporalResolveMix = 1. - 1. / s;
     temporalResolveMix = min(temporalResolveMix, blend);
 
-    if (isBackground) temporalResolveMix = min(temporalResolveMix, 0.675);
+    if (isBackground) temporalResolveMix = 0.0;
 
 // the user's shader to compose a final outputColor from the inputTexel and accumulatedTexel
 #ifdef useCustomComposeShader

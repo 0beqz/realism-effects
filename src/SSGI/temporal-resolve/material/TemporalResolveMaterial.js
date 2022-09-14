@@ -24,7 +24,7 @@ export class TemporalResolveMaterial extends ShaderMaterial {
 				prevCameraMatrixWorld: { value: new Matrix4() }
 			},
 			defines: {
-				maxNeighborDepthDifference: "0.00001",
+				maxNeighborDepthDifference: "0.000005",
 				correctionRadius: 1
 			},
 			vertexShader,

@@ -33,6 +33,7 @@ export class SSGIPass extends Pass {
 			minFilter: NearestFilter,
 			magFilter: NearestFilter,
 			type: HalfFloatType,
+			encoding: sRGBEncoding,
 			depthBuffer: false
 		})
 

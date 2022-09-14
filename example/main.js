@@ -228,8 +228,8 @@ const clock = new THREE.Clock()
 
 const initScene = () => {
 	const options = {
-		intensity: 0.649999999999999,
-		power: 1.105,
+		intensity: 0.999999999999999,
+		power: 1.005,
 		distance: 2.6600000000000037,
 		fade: 4.874572967494828e-16,
 		roughnessFade: 0,
@@ -237,11 +237,11 @@ const initScene = () => {
 		ior: 2.33,
 		mip: 1.734723475976807e-18,
 		maxRoughness: 1,
-		blend: 0.9,
-		correction: 0,
+		blend: 0.9500000000000001,
+		correction: 1,
 		correctionRadius: 1,
 		blur: 0,
-		jitter: 0.19999999999999998,
+		jitter: 0.7100000000000001,
 		jitterRoughness: 1,
 		steps: 10,
 		refineSteps: 2,
@@ -328,6 +328,12 @@ const initScene = () => {
 	fxaaPass = new POSTPROCESSING.EffectPass(camera, fxaaEffect)
 
 	loop()
+
+	const display = gui2.pane.element.style.display === "none" ? "block" : "none"
+
+	gui.pane.element.style.display = display
+	gui2.pane.element.style.display = display
+	// stats.dom.style.display = display
 }
 
 const loop = () => {

@@ -38,8 +38,7 @@ export class SSGIEffect extends Effect {
 		this._camera = camera
 
 		const trOptions = {
-			boxBlur: false,
-			dilation: false,
+			dilation: true,
 			renderVelocity: false,
 			neighborhoodClamping: false,
 			logTransform: false,

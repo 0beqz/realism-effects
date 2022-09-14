@@ -33,6 +33,7 @@ uniform float jitterRoughness;
 #define INVALID_RAY_COORDS vec2(-1.0);
 #define EARLY_OUT_COLOR    vec4(0.0, 0.0, 0.0, 1.0)
 #define FLOAT_EPSILON      0.00001
+#define TRANSFORM_FACTOR   0.1
 
 float nearMinusFar;
 float nearMulFar;
@@ -148,8 +149,6 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     float curIor = mix(ior, 2.33, spread);
     float fresnelFactor = fresnel_dielectric(viewDir, jitteredNormal, curIor);
 
-    vec3 iblRadiance = vec3(0.);
-
     // view-space reflected ray
     vec3 reflected = normalize(reflect(viewDir, jitteredNormal));
 
@@ -167,31 +166,36 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     vec2 coords = RayMarch(dir, hitPos, rayHitDepthDifference);
 #endif
 
-    // invalid ray, use environment lighting as fallback
-    if (coords.x == -1.0) {
+    bool isAllowedMissedRay = rayHitDepthDifference == -1.0;
+    bool isInvalidRay = coords.x == -1.0;
+
+    vec3 envMapSample = vec3(0.);
+
 #ifdef USE_ENVMAP
+    // invalid ray, use environment lighting as fallback
+    if (isInvalidRay || isAllowedMissedRay) {
         // world-space reflected ray
         vec4 reflectedWS = vec4(reflected, 1.) * inverse(cameraMatrixWorld);
         reflectedWS.xyz = normalize(reflectedWS.xyz);
 
         vec3 sampleDir = reflectedWS.xyz;
-        iblRadiance = sampleEquirectEnvMapColor(sampleDir, envMap, lod);
+        envMapSample = sampleEquirectEnvMapColor(sampleDir, envMap, lod);
 
         // we won't deal with calculating direct sun light from the env map as it takes too long to compute and is too noisy
-        if (dot(iblRadiance, iblRadiance) > 3.0) iblRadiance = vec3(1.);
+        if (dot(envMapSample, envMapSample) > 3.0) envMapSample = vec3(1.);
 
-        return iblRadiance * pdf * fresnelFactor;
-#else
-        return vec3(0.);
-#endif
+        envMapSample *= pdf * fresnelFactor * TRANSFORM_FACTOR;
+
+        if (!isAllowedMissedRay) return envMapSample;
     }
+#endif
 
     vec2 dCoords = smoothstep(0.2, 0.6, abs(vec2(0.5, 0.5) - coords.xy));
     float ssgiIntensity = clamp(1.0 - (dCoords.x + dCoords.y), 0.0, 1.0);
 
     vec3 SSGI = textureLod(accumulatedTexture, coords.xy, 0.).rgb * ssgiIntensity * fresnelFactor;
 
-    if (fade != 0.0) {
+    if (fade != 0.0 && !isAllowedMissedRay) {
         vec3 hitWorldPos = screenSpaceToWorldSpace(coords, rayHitDepthDifference);
 
         // distance from the ssgi point to what it's reflecting
@@ -203,9 +207,16 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     }
 
     SSGI = min(vec3(1.), SSGI);
+    SSGI *= pdf * TRANSFORM_FACTOR;
 
-    // @TODO: fix very bright spots due to infinite bounces so that we can remove the 0.5 factor
-    return SSGI * pdf * 0.5;
+    if (isAllowedMissedRay) {
+        float ssgiLum = czm_luminance(SSGI);
+        float envLum = czm_luminance(envMapSample);
+
+        if (envLum > ssgiLum) SSGI = envMapSample;
+    }
+
+    return SSGI;
 }
 
 vec2 RayMarch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {
@@ -238,7 +249,7 @@ vec2 RayMarch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference)
     return INVALID_RAY_COORDS;
 #endif
 
-    rayHitDepthDifference = unpackedDepth;
+    rayHitDepthDifference = -1.0;
 
     return uv;
 }

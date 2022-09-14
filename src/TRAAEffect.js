@@ -14,7 +14,6 @@ export const defaultTRAAOptions = {
 	logTransform: true,
 	qualityScale: 1,
 	neighborhoodClamping: false,
-	boxBlur: false,
 	dilation: true,
 	renderVelocity: false
 }
@@ -83,7 +82,6 @@ export class TRAAEffect extends Effect {
 							break
 
 						case "dilation":
-						case "boxBlur":
 						case "logTransform":
 						case "neighborhoodClamping":
 							if (value) {
