@@ -105,8 +105,8 @@ const setAA = value => {
 // since using "rendererCanvas" doesn't work when using an offscreen canvas
 const controls = new OrbitControls(camera, document.querySelector("#orbitControlsDomElem"))
 
-camera.position.fromArray([4.814341256818513, 11, 12.125877019662724])
-controls.target.set(0, 11, 0)
+camera.position.fromArray([-0.5999257784165805, 8.75, 25.4251889687681])
+controls.target.set(0, 8.75, 0)
 controls.maxPolarAngle = Math.PI / 2
 controls.minDistance = 7.5
 // controls.maxDistance = 30
@@ -120,9 +120,9 @@ const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
 composer.addPass(renderPass)
 
 const lightParams = {
-	yaw: 59,
-	pitch: 80,
-	intensity: 3
+	yaw: 98,
+	pitch: 31,
+	intensity: 5.3
 }
 
 const light = new DirectionalLight(0xffffff, lightParams.intensity)
@@ -164,7 +164,7 @@ const params = {}
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
 pmremGenerator.compileEquirectangularShader()
 
-new RGBELoader().load("hdr/quarry_02_4k.hdr", envMap => {
+new RGBELoader().load("quarry_02_4k.hdr", envMap => {
 	envMap.mapping = THREE.EquirectangularReflectionMapping
 
 	scene.environment = envMap
@@ -182,7 +182,7 @@ new RGBELoader().load("hdr/quarry_02_4k.hdr", envMap => {
 
 const gltflLoader = new GLTFLoader()
 
-const url = "squid_game_overall.glb"
+const url = "squid_game__pinksoldier.glb"
 
 let lastScene
 
@@ -228,23 +228,23 @@ const clock = new THREE.Clock()
 
 const initScene = () => {
 	const options = {
-		intensity: 1.2699999999999991,
-		power: 1.005,
-		distance: 6.6300000000000034,
+		intensity: 0.649999999999999,
+		power: 1.105,
+		distance: 2.6600000000000037,
 		fade: 4.874572967494828e-16,
 		roughnessFade: 0,
-		thickness: 4.019999999999997,
+		thickness: 1.089999999999997,
 		ior: 2.33,
-		mip: 0.53,
+		mip: 1.734723475976807e-18,
 		maxRoughness: 1,
 		blend: 0.9,
 		correction: 0,
 		correctionRadius: 1,
 		blur: 0,
-		jitter: 0.02999999999999995,
+		jitter: 0.19999999999999998,
 		jitterRoughness: 1,
-		steps: 12,
-		refineSteps: 4,
+		steps: 10,
+		refineSteps: 2,
 		spp: 2,
 		missedRays: false,
 		useMap: true,
@@ -262,7 +262,7 @@ const initScene = () => {
 
 	gui = new TRAADebugGUI(traaEffect, params)
 
-	const aaFolder = gui.pane.addFolder({ title: "Anti-aliasing" })
+	const aaFolder = gui.pane.addFolder({ title: "Anti-aliasing", expanded: false })
 
 	aaFolder
 		.addInput(guiParams, "Method", {
@@ -279,7 +279,7 @@ const initScene = () => {
 			setAA(ev.value)
 		})
 
-	const sceneFolder = gui.pane.addFolder({ title: "Scene", expanded: false })
+	const sceneFolder = gui.pane.addFolder({ title: "Scene" })
 
 	sceneFolder.addInput(lightParams, "yaw", { min: 0, max: 360, step: 1 }).on("change", refreshLighting)
 
@@ -311,27 +311,23 @@ const initScene = () => {
 	gui2 = new SSGIDebugGUI(ssgiEffect, options)
 	gui2.pane.containerElem_.style.left = "8px"
 
-	new POSTPROCESSING.LUT3dlLoader().load("low_poly.3dl", lutTexture => {
-		const lutEffect = new POSTPROCESSING.LUTEffect(lutTexture)
+	ssgiPass = new POSTPROCESSING.EffectPass(camera, ssgiEffect)
 
-		ssgiPass = new POSTPROCESSING.EffectPass(camera, ssgiEffect)
+	traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
+	// composer.addPass(traaPass)
 
-		traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
-		// composer.addPass(traaPass)
+	composer.addPass(ssgiPass)
+	composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, vignetteEffect))
 
-		composer.addPass(ssgiPass)
-		composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, vignetteEffect))
+	const smaaEffect = new POSTPROCESSING.SMAAEffect()
 
-		const smaaEffect = new POSTPROCESSING.SMAAEffect()
+	smaaPass = new POSTPROCESSING.EffectPass(camera, smaaEffect)
 
-		smaaPass = new POSTPROCESSING.EffectPass(camera, smaaEffect)
+	const fxaaEffect = new POSTPROCESSING.FXAAEffect()
 
-		const fxaaEffect = new POSTPROCESSING.FXAAEffect()
+	fxaaPass = new POSTPROCESSING.EffectPass(camera, fxaaEffect)
 
-		fxaaPass = new POSTPROCESSING.EffectPass(camera, fxaaEffect)
-
-		loop()
-	})
+	loop()
 }
 
 const loop = () => {
