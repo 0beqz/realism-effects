@@ -57,7 +57,8 @@ const renderer = new THREE.WebGLRenderer({
 	preserveDrawingBuffer: true
 })
 
-// window.renderer = renderer
+window.renderer = renderer
+
 // renderer.autoClear = false
 // renderer.autoClearColor = false
 // renderer.autoClearDepth = false
@@ -304,6 +305,7 @@ const initScene = () => {
 	})
 
 	ssgiEffect = new SSGIEffect(scene, camera, options)
+	window.ssgiEffect = ssgiEffect
 
 	scene.traverse(c => {
 		if (c.isMesh && c.material.isMeshStandardMaterial) {

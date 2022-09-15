@@ -1,5 +1,6 @@
-﻿import { Pass } from "postprocessing"
-import { Matrix4 } from "three"
+﻿import { CopyPass, Pass } from "postprocessing"
+import { BasicDepthPacking, DepthFormat, Matrix4, UnsignedIntType } from "three"
+import { DepthTexture } from "three"
 import {
 	FloatType,
 	FramebufferTexture,
@@ -59,6 +60,8 @@ export class TemporalResolvePass extends Pass {
 		if (options.renderVelocity !== undefined) this.renderVelocity = options.renderVelocity
 		this.velocityPass = new VelocityPass(scene, camera)
 
+		this.needsDepthTexture = true
+
 		this.fullscreenMaterial = new TemporalResolveMaterial()
 		if (typeof options.customComposeShader === "string") {
 			this.fullscreenMaterial.defines.useCustomComposeShader = ""
@@ -92,7 +95,23 @@ export class TemporalResolvePass extends Pass {
 			}
 		})
 
+		const copyRenderTarget = new WebGLRenderTarget(window.innerWidth, window.innerHeight, {
+			type: FloatType
+		})
+
+		this.copyPass = new CopyPass(copyRenderTarget)
+		this.fullscreenMaterial.uniforms.lastDepthTexture.value = copyRenderTarget.texture
+
+		const depthTexture = composer.depthTexture || composer.createDepthTexture()
+		this.setDepthTexture(depthTexture)
+
 		this.setupFramebuffers(1, 1)
+	}
+
+	setDepthTexture(depthTexture, depthPacking = BasicDepthPacking) {
+		this.depthTexture = depthTexture
+
+		this.fullscreenMaterial.uniforms.depthTexture.value = depthTexture
 	}
 
 	dispose() {
@@ -165,6 +184,8 @@ export class TemporalResolvePass extends Pass {
 
 		// save the render target's texture for use in next frame
 		renderer.copyFramebufferToTexture(zeroVec2, this.accumulatedTexture)
+
+		this.copyPass.render(renderer, { texture: this.depthTexture })
 
 		if (this.renderVelocity) this.saveLastVelocityTexture(renderer, this.velocityPass.renderTarget)
 	}

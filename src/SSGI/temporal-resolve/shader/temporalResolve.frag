@@ -4,6 +4,8 @@ uniform sampler2D inputTexture;
 uniform sampler2D accumulatedTexture;
 uniform sampler2D velocityTexture;
 uniform sampler2D lastVelocityTexture;
+uniform sampler2D depthTexture;
+uniform sampler2D lastDepthTexture;
 
 uniform float blend;
 uniform float correction;
@@ -35,6 +37,9 @@ vec3 undoColorTransform(vec3 color) {
 }
 
 void main() {
+    // gl_FragColor = abs(textureLod(depthTexture, vUv, 0.).rrrr - textureLod(lastDepthTexture, vUv, 0.).rrrr);
+    // return;
+
     vec4 inputTexel = textureLod(inputTexture, vUv, 0.0);
     bool isBackground = dot(inputTexel, inputTexel) == 1.;
 
@@ -59,8 +64,9 @@ void main() {
     vec2 reprojectedUv = vUv - velocity.xy;
     vec4 lastVelocity = textureLod(lastVelocityTexture, reprojectedUv, 0.0);
 
-    float depth = 1.0 - (velocity.b + velocity.a) / 1024.0;
-    float lastDepth = 1.0 - (lastVelocity.b + lastVelocity.a) / 1024.0;
+    float depth = textureLod(depthTexture, vUv, 0.).r;
+
+    float lastDepth = textureLod(lastDepthTexture, vUv, 0.).r;
 
     float maxDepth = 0.;
     float lastMaxDepth = 0.;

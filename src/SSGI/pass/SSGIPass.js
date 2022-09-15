@@ -1,5 +1,6 @@
 ﻿import { DepthPass, Pass, RenderPass } from "postprocessing"
 import {
+	FloatType,
 	HalfFloatType,
 	MeshBasicMaterial,
 	NearestFilter,

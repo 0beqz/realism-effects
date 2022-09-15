@@ -97,7 +97,7 @@ vec2 encodedDepth = vec2(
 	fract(scaledDepth)
 );
 
-gl_FragColor = vec4( vel, encodedDepth );
+gl_FragColor = vec4( vel, depth, 0.0 );
 #endif
 `
 
