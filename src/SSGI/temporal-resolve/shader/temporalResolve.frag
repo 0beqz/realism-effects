@@ -4,8 +4,6 @@ uniform sampler2D inputTexture;
 uniform sampler2D accumulatedTexture;
 uniform sampler2D velocityTexture;
 uniform sampler2D lastVelocityTexture;
-uniform sampler2D depthTexture;
-uniform sampler2D lastDepthTexture;
 
 uniform float blend;
 uniform float correction;
@@ -41,11 +39,7 @@ vec3 undoColorTransform(vec3 color) {
 void main() {
     vec4 inputTexel = textureLod(inputTexture, vUv, 0.0);
 
-    float depth = unpackRGBAToDepth(textureLod(depthTexture, vUv, 0.));
-    float lastDepth = unpackRGBAToDepth(textureLod(lastDepthTexture, vUv, 0.));
-
-    bool isBackground = depth > 0.9999;
-    isBackground = false;
+    bool isBackground = false;
 
     vec3 inputColor = transformColor(inputTexel.rgb);
     float alpha = inputTexel.a;
@@ -68,6 +62,9 @@ void main() {
     vec2 reprojectedUv = vUv - velocity.xy;
     vec4 lastVelocity = textureLod(lastVelocityTexture, reprojectedUv, 0.0);
 
+    float depth = 1. - velocity.b;
+    float lastDepth = 1. - lastVelocity.b;
+
     float maxDepth = 0.;
     float lastMaxDepth = 0.;
 
@@ -83,8 +80,8 @@ void main() {
                 neighborUv = vUv + offset;
 
                 if (neighborUv.x >= 0.0 && neighborUv.x <= 1.0 && neighborUv.y >= 0.0 && neighborUv.y <= 1.0) {
-                    vec4 neigborDepthTexel = textureLod(depthTexture, vUv + offset, 0.0);
-                    neighborDepth = unpackRGBAToDepth(neigborDepthTexel);
+                    vec4 neigborDepthTexel = textureLod(velocityTexture, vUv + offset, 0.0);
+                    neighborDepth = 1. - neigborDepthTexel.b;
 
                     int absX = abs(x);
                     int absY = abs(y);
@@ -99,8 +96,8 @@ void main() {
 
                         vec2 reprojectedNeighborUv = reprojectedUv + vec2(x, y) * invTexSize;
 
-                        vec4 lastNeigborDepthTexel = textureLod(lastDepthTexture, reprojectedNeighborUv, 0.0);
-                        lastNeighborDepth = unpackRGBAToDepth(lastNeigborDepthTexel);
+                        vec4 lastNeigborDepthTexel = textureLod(lastVelocityTexture, reprojectedNeighborUv, 0.0);
+                        lastNeighborDepth = 1. - lastNeigborDepthTexel.b;
 
                         if (lastNeighborDepth > lastMaxDepth) lastMaxDepth = lastNeighborDepth;
     #endif

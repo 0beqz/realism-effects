@@ -264,8 +264,6 @@ export class SSGIEffect extends Effect {
 	update(renderer, inputBuffer) {
 		this.keepEnvMapUpdated()
 
-		this.temporalResolvePass.unjitter()
-
 		this.temporalResolvePass.fullscreenMaterial.uniforms.velocityTexture.value =
 			this.ssgiPass.gBuffersRenderTarget.texture[0]
 
@@ -286,9 +284,7 @@ export class SSGIEffect extends Effect {
 		// compose ssgi of last and current frame into one ssgi
 		this.temporalResolvePass.render(renderer)
 
-		if (this.antialias) {
-			this.temporalResolvePass.jitter()
-		} else {
+		if (!this.antialias) {
 			this.temporalResolvePass.unjitter()
 		}
 	}

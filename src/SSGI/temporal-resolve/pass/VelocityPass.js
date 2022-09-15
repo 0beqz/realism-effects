@@ -106,13 +106,10 @@ export class VelocityPass extends Pass {
 	}
 
 	updateVelocityUniformsBeforeRender(c, projectionMatrix = this._camera.projectionMatrix) {
-		if (!c.material.lastMatrixWorld) c.material.lastMatrixWorld = new Matrix4()
-
 		c.material.uniforms.velocityMatrix.value.multiplyMatrices(projectionMatrix, c.modelViewMatrix)
 	}
 
 	updateVelocityUniformsAfterRender(c, projectionMatrix = this._camera.projectionMatrix) {
-		c.material.lastMatrixWorld.copy(c.matrixWorld)
 		c.material.uniforms.prevVelocityMatrix.value.multiplyMatrices(projectionMatrix, c.modelViewMatrix)
 
 		if (c.skeleton?.boneTexture) this.saveBoneTexture(c)

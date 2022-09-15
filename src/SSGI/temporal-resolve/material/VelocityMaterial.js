@@ -51,18 +51,14 @@ varying vec2 vHighPrecisionZW;
 // Returns the body of the vertex shader for the velocity buffer and
 // outputs the position of the current and last frame positions
 export const velocity_vertex_main = /* glsl */ `
-vec3 _transformed;
-
 // Get the current vertex position
-_transformed = vec3( position );
 ${ShaderChunk.skinning_vertex}
-newPosition = velocityMatrix * vec4( _transformed, 1.0 );
+newPosition = velocityMatrix * vec4( transformed, 1.0 );
 
 // Get the previous vertex position
-_transformed = vec3( position );
 ${ShaderChunk.skinbase_vertex.replace(/mat4 /g, "").replace(/getBoneMatrix/g, "getPrevBoneMatrix")}
 ${ShaderChunk.skinning_vertex.replace(/vec4 /g, "")}
-prevPosition = prevVelocityMatrix * vec4( _transformed, 1.0 );
+prevPosition = prevVelocityMatrix * vec4( transformed, 1.0 );
 
 // gl_Position = newPosition;
 
@@ -77,25 +73,18 @@ varying vec2 vHighPrecisionZW;
 `
 
 export const velocity_fragment_main = /* glsl */ `
+float fragCoordZ = 0.5 * vHighPrecisionZW[0] / vHighPrecisionZW[1] + 0.5;
+
+float depth = 1.0 - fragCoordZ;
+
 #ifdef FULL_MOVEMENT
-gl_FragColor = vec4( 1., 1., 1. - gl_FragCoord.z, 0. );
+gl_FragColor = vec4( 1., 1., depth, 0. );
 #else
 
 vec2 pos0 = (prevPosition.xy / prevPosition.w) * 0.5 + 0.5;
 vec2 pos1 = (newPosition.xy / newPosition.w) * 0.5 + 0.5;
 
 vec2 vel = pos1 - pos0;
-
-float fragCoordZ = 0.5 * vHighPrecisionZW[0] / vHighPrecisionZW[1] + 0.5;
-
-float depth = 1.0 - fragCoordZ;
-
-float scaledDepth = depth * 1024.0;
-
-vec2 encodedDepth = vec2(
-	floor(scaledDepth),
-	fract(scaledDepth)
-);
 
 gl_FragColor = vec4( vel, depth, 0.0 );
 #endif

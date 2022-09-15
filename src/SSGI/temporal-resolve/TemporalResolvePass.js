@@ -1,8 +1,6 @@
 ﻿import { CopyPass, Pass } from "postprocessing"
-import { BasicDepthPacking, DepthFormat, Matrix4, UnsignedIntType } from "three"
-import { DepthTexture } from "three"
 import {
-	FloatType,
+	BasicDepthPacking,
 	FramebufferTexture,
 	HalfFloatType,
 	LinearFilter,
@@ -24,7 +22,6 @@ export class TemporalResolvePass extends Pass {
 	haltonSequence = []
 	haltonIndex = 0
 	samples = 1
-	originalProjectionMatrix = new Matrix4()
 	lastCameraTransform = {
 		position: new Vector3(),
 		quaternion: new Quaternion()
@@ -47,8 +44,6 @@ export class TemporalResolvePass extends Pass {
 		this._scene = scene
 		this._camera = camera
 
-		this.originalProjectionMatrix.copy(this._camera.projectionMatrix)
-
 		this.renderTarget = new WebGLRenderTarget(1, 1, {
 			minFilter: LinearFilter,
 			magFilter: LinearFilter,
@@ -59,8 +54,6 @@ export class TemporalResolvePass extends Pass {
 
 		if (options.renderVelocity !== undefined) this.renderVelocity = options.renderVelocity
 		this.velocityPass = new VelocityPass(scene, camera)
-
-		this.needsDepthTexture = true
 
 		this.fullscreenMaterial = new TemporalResolveMaterial()
 		if (typeof options.customComposeShader === "string") {
@@ -95,21 +88,7 @@ export class TemporalResolvePass extends Pass {
 			}
 		})
 
-		const copyRenderTarget = new WebGLRenderTarget(window.innerWidth, window.innerHeight, {
-			minFilter: NearestFilter,
-			magFilter: NearestFilter
-		})
-
-		this.copyPass = new CopyPass(copyRenderTarget)
-		this.fullscreenMaterial.uniforms.lastDepthTexture.value = copyRenderTarget.texture
-
 		this.setupFramebuffers(1, 1)
-	}
-
-	setDepthTexture(depthTexture, depthPacking = BasicDepthPacking) {
-		this.depthTexture = depthTexture
-
-		this.fullscreenMaterial.uniforms.depthTexture.value = depthTexture
 	}
 
 	dispose() {
@@ -144,10 +123,6 @@ export class TemporalResolvePass extends Pass {
 		this.lastVelocityTexture.minFilter = NearestFilter
 		this.lastVelocityTexture.magFilter = NearestFilter
 		this.lastVelocityTexture.type = HalfFloatType
-
-		this.lastDepthTexture = new FramebufferTexture(width * this.qualityScale, height * this.qualityScale, RGBAFormat)
-		this.lastDepthTexture.minFilter = NearestFilter
-		this.lastDepthTexture.magFilter = NearestFilter
 
 		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.accumulatedTexture
 		this.fullscreenMaterial.uniforms.lastVelocityTexture.value = this.lastVelocityTexture
@@ -185,13 +160,10 @@ export class TemporalResolvePass extends Pass {
 		// save the render target's texture for use in next frame
 		renderer.copyFramebufferToTexture(zeroVec2, this.accumulatedTexture)
 
-		this.copyPass.render(renderer, { texture: window.ssgiEffect.ssgiPass.depthTexture })
-
 		if (this.renderVelocity) this.saveLastVelocityTexture(renderer, this.velocityPass.renderTarget)
 	}
 
 	jitter(jitterScale = 1) {
-		// jitterScale = 40
 		if (this.haltonSequence.length === 0) this.haltonSequence = generateHalton23Points(1024)
 
 		// cheap trick to get rid of aliasing on the final buffer (technique known from TAA)
@@ -208,7 +180,5 @@ export class TemporalResolvePass extends Pass {
 
 	unjitter() {
 		this._camera.clearViewOffset()
-
-		this.originalProjectionMatrix.copy(this._camera.projectionMatrix)
 	}
 }

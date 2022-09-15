@@ -78,8 +78,6 @@ export class SSGIPass extends Pass {
 		this.fullscreenMaterial.uniforms.normalTexture.value = this.normalTexture
 		this.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
 
-		this.ssgiEffect.temporalResolvePass.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
-
 		// diffuse texture
 
 		if (this.useDiffuse) {
@@ -158,6 +156,8 @@ export class SSGIPass extends Pass {
 	}
 
 	setMRTMaterialInScene() {
+		this.ssgiEffect.temporalResolvePass.unjitter()
+
 		this.visibleMeshes = getVisibleChildren(this._scene)
 
 		for (const c of this.visibleMeshes) {
@@ -218,23 +218,25 @@ export class SSGIPass extends Pass {
 
 			c.material = mrtMaterial
 
-			const projectionMatrix = this.ssgiEffect.temporalResolvePass.originalProjectionMatrix
-
-			this.ssgiEffect.temporalResolvePass.velocityPass.updateVelocityUniformsBeforeRender(c, projectionMatrix)
+			this.ssgiEffect.temporalResolvePass.velocityPass.updateVelocityUniformsBeforeRender(c)
 		}
+
+		this.ssgiEffect.temporalResolvePass.jitter()
 	}
 
 	unsetMRTMaterialInScene() {
-		const projectionMatrix = this.ssgiEffect.temporalResolvePass.originalProjectionMatrix
+		this.ssgiEffect.temporalResolvePass.unjitter()
 
 		for (const c of this.visibleMeshes) {
-			this.ssgiEffect.temporalResolvePass.velocityPass.updateVelocityUniformsAfterRender(c, projectionMatrix)
+			this.ssgiEffect.temporalResolvePass.velocityPass.updateVelocityUniformsAfterRender(c)
 
 			// set material back to the original one
 			const [originalMaterial] = this.cachedMaterials.get(c)
 
 			c.material = originalMaterial
 		}
+
+		this.ssgiEffect.temporalResolvePass.jitter()
 	}
 
 	setDiffuseMaterialInScene() {
