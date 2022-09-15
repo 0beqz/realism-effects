@@ -67,8 +67,6 @@ void main() {
     float depth = 1.0 - velocity.b;
     float lastDepth = 1.0 - lastVelocity.b;
 
-    float minDepth = depth;
-    float lastMinDepth = lastVelocity.b;
     float maxDepth = 0.;
     float lastMaxDepth = 0.;
 
@@ -96,22 +94,12 @@ void main() {
                         // prevents the flickering at the edges of geometries due to treating background pixels differently
                         if (neighborDepth <= 0.9999) isBackground = false;
 
-                        if (neighborDepth < minDepth) {
-                            velocity = neigborVelocity;
-                            minDepth = neighborDepth;
-                        }
-
                         if (neighborDepth > maxDepth) maxDepth = neighborDepth;
 
                         vec2 reprojectedNeighborUv = reprojectedUv + vec2(x, y) * invTexSize;
 
                         vec4 lastNeighborVelocity = textureLod(lastVelocityTexture, reprojectedNeighborUv, 0.0);
                         lastNeighborDepth = 1.0 - lastNeighborVelocity.b;
-
-                        if (lastNeighborDepth < lastMinDepth) {
-                            lastVelocity = lastNeighborVelocity;
-                            lastMinDepth = lastNeighborDepth;
-                        }
 
                         if (lastNeighborDepth > lastMaxDepth) lastMaxDepth = lastNeighborDepth;
     #endif
@@ -177,7 +165,13 @@ void main() {
     float temporalResolveMix = 1. - 1. / s;
     temporalResolveMix = min(temporalResolveMix, blend);
 
-    if (isBackground) temporalResolveMix = 0.0;
+    if (isBackground) {
+#ifdef dilation
+        temporalResolveMix = 0.;
+#else
+        temporalResolveMix = min(temporalResolveMix, 0.675);
+#endif
+    }
 
 // the user's shader to compose a final outputColor from the inputTexel and accumulatedTexel
 #ifdef useCustomComposeShader

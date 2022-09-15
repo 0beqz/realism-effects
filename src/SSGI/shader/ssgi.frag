@@ -89,7 +89,7 @@ void main() {
     vec3 viewNormal = normalTexel.xyz;
 
     float spread = jitter + roughness * roughness * jitterRoughness;
-    spread = min(1.0, spread) * 2.0;
+    spread = min(1.0, spread);
 
     vec3 SSGI;
 
@@ -131,6 +131,9 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     // jittering
     vec3 jitteredNormal = viewNormal;
 
+    float thetaMax = spread * M_PI / 2.;
+    float cosThetaMax = cos(thetaMax);
+
     if (spread != 0.) {
         float ind = log(samples * float(spp) + sampleCount + 1.0);
 
@@ -138,13 +141,23 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
 
         vec2 random = hash23(seed);
 
-        jitteredNormal += spread * getHemisphereSample(viewNormal, random);
-        jitteredNormal = normalize(jitteredNormal);
+        // 16.6.3 DIRECTIONS IN A CONE in Raytracing Gems I
+
+        float cosTheta = (1. - random.x) + random.x * cosThetaMax;
+        float sinTheta = sqrt(1. - cosTheta * cosTheta);
+        float phi = random.y * 2. * M_PI;
+        float x = cos(phi) * sinTheta;
+        float y = sin(phi) * sinTheta;
+        float z = cosTheta;
+        vec3 hemisphereVector = vec3(x, y, z);
+
+        mat3 b = getBasisFromNormal(jitteredNormal);
+
+        jitteredNormal = normalize(b * hemisphereVector);
     }
 
     // source: https://computergraphics.stackexchange.com/a/4994
-    float pdf = dot(viewNormal, jitteredNormal) * M_PI;
-    if (isnan(pdf)) pdf = 0.0;
+    float pdf = 1. / (dot(viewNormal, jitteredNormal) * M_PI);
 
     float curIor = mix(ior, 2.33, spread);
     float fresnelFactor = fresnel_dielectric(viewDir, jitteredNormal, curIor);
@@ -184,9 +197,9 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
         // we won't deal with calculating direct sun light from the env map as it takes too long to compute and is too noisy
         if (dot(envMapSample, envMapSample) > 3.0) envMapSample = vec3(1.);
 
-        envMapSample *= pdf * fresnelFactor * TRANSFORM_FACTOR;
+        envMapSample *= fresnelFactor * TRANSFORM_FACTOR;
 
-        if (!isAllowedMissedRay) return envMapSample;
+        if (!isAllowedMissedRay) return envMapSample / pdf;
     }
 #endif
 
@@ -207,7 +220,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     }
 
     SSGI = min(vec3(1.), SSGI);
-    SSGI *= pdf * TRANSFORM_FACTOR;
+    SSGI *= TRANSFORM_FACTOR;
 
     if (isAllowedMissedRay) {
         float ssgiLum = czm_luminance(SSGI);
@@ -216,7 +229,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
         if (envLum > ssgiLum) SSGI = envMapSample;
     }
 
-    return SSGI;
+    return SSGI / pdf;
 }
 
 vec2 RayMarch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {
@@ -243,6 +256,8 @@ vec2 RayMarch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference)
             return BinarySearch(dir, hitPos, rayHitDepthDifference);
 #endif
         }
+
+        if (uv.x < 0. || uv.x > 1. || uv.y < 0. || uv.y > 1.) return INVALID_RAY_COORDS;
     }
 
 #ifndef missedRays

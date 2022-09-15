@@ -112,6 +112,9 @@ controls.minDistance = 7.5
 // controls.maxDistance = 30
 window.controls = controls
 
+// camera.position.fromArray([-5.621168238401456, 8.041024321610312, 15.689262542477858])
+// controls.target.fromArray([-1.989333417775655, 4.459812902527695, 2.152414887986504])
+
 const composer = new POSTPROCESSING.EffectComposer(renderer, {
 	frameBufferType: HalfFloatType
 })
@@ -241,7 +244,7 @@ const initScene = () => {
 		correction: 1,
 		correctionRadius: 1,
 		blur: 0,
-		jitter: 0.7100000000000001,
+		jitter: 0.32000000000000006,
 		jitterRoughness: 1,
 		steps: 10,
 		refineSteps: 2,
@@ -338,6 +341,8 @@ const initScene = () => {
 
 const loop = () => {
 	if (stats) stats.begin()
+
+	// if (ssgiEffect.temporalResolvePass.samples === 8) return
 
 	const dt = clock.getDelta()
 	if (mixer) {

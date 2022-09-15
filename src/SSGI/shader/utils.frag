@@ -122,3 +122,15 @@ vec3 getHemisphereSample(vec3 n, vec2 uv) {
     float y = r * sin(theta);
     return x * b1 + y * b2 + sqrt(1.0 - uv.x) * n;
 }
+
+mat3 getBasisFromNormal(vec3 normal) {
+    vec3 other;
+    if (abs(normal.x) > 0.5) {
+        other = vec3(0.0, 1.0, 0.0);
+    } else {
+        other = vec3(1.0, 0.0, 0.0);
+    }
+    vec3 ortho = normalize(cross(normal, other));
+    vec3 ortho2 = normalize(cross(normal, ortho));
+    return mat3(ortho2, ortho, normal);
+}
