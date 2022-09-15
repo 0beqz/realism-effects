@@ -240,7 +240,7 @@ const initScene = () => {
 		ior: 2.33,
 		mip: 1.734723475976807e-18,
 		maxRoughness: 1,
-		blend: 0.9500000000000001,
+		blend: 0.925,
 		correction: 1,
 		correctionRadius: 1,
 		blur: 0,
