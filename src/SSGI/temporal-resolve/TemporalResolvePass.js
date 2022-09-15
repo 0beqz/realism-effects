@@ -1,4 +1,5 @@
 ﻿import { Pass } from "postprocessing"
+import { Matrix4 } from "three"
 import {
 	FloatType,
 	FramebufferTexture,
@@ -22,6 +23,7 @@ export class TemporalResolvePass extends Pass {
 	haltonSequence = []
 	haltonIndex = 0
 	samples = 1
+	originalProjectionMatrix = new Matrix4()
 	lastCameraTransform = {
 		position: new Vector3(),
 		quaternion: new Quaternion()
@@ -43,6 +45,8 @@ export class TemporalResolvePass extends Pass {
 
 		this._scene = scene
 		this._camera = camera
+
+		this.originalProjectionMatrix.copy(this._camera.projectionMatrix)
 
 		this.renderTarget = new WebGLRenderTarget(1, 1, {
 			minFilter: LinearFilter,
@@ -124,49 +128,12 @@ export class TemporalResolvePass extends Pass {
 		this.lastVelocityTexture = new FramebufferTexture(width * this.qualityScale, height * this.qualityScale, RGBAFormat)
 		this.lastVelocityTexture.minFilter = NearestFilter
 		this.lastVelocityTexture.magFilter = NearestFilter
-		this.lastVelocityTexture.type = FloatType
+		this.lastVelocityTexture.type = HalfFloatType
 
 		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.accumulatedTexture
 		this.fullscreenMaterial.uniforms.lastVelocityTexture.value = this.lastVelocityTexture
 
 		this.fullscreenMaterial.needsUpdate = true
-
-		// since we disposed the old "lastVelocityTexture" we need to update the shared lastVelocityTexture if we do share it
-		if (this._scene.userData.velocityTexture === this.velocityPass.renderTarget.texture) {
-			this._scene.userData.lastVelocityTexture = this.lastVelocityTexture
-		}
-	}
-
-	checkCanUseSharedVelocityTexture() {
-		const now = Date.now()
-
-		const canUseSharedVelocityTexture =
-			this._scene.userData.velocityTexture &&
-			this.velocityPass.renderTarget.texture !== this._scene.userData.velocityTexture
-
-		if (canUseSharedVelocityTexture && now - this._scene.userData.lastVelocityTextureTime < 1000) {
-			// let's use the shared one instead
-			if (this.velocityPass.renderTarget.texture !== this.fullscreenMaterial.uniforms.velocityTexture.value) {
-				this.fullscreenMaterial.uniforms.velocityTexture.value = this._scene.userData.velocityTexture
-				this.fullscreenMaterial.uniforms.lastVelocityTexture.value = this._scene.userData.lastVelocityTexture
-				this.fullscreenMaterial.needsUpdate = true
-			}
-		} else {
-			// let's stop using the shared one (if used) and mark ours as the shared one instead
-			if (this.velocityPass.renderTarget.texture !== this.fullscreenMaterial.uniforms.velocityTexture.value) {
-				this.fullscreenMaterial.uniforms.velocityTexture.value = this.velocityPass.renderTarget.texture
-				this.fullscreenMaterial.uniforms.lastVelocityTexture.value = this.lastVelocityTexture
-				this.fullscreenMaterial.needsUpdate = true
-
-				if (!this._scene.userData.velocityTexture) {
-					this._scene.userData.velocityTexture = this.velocityPass.renderTarget.texture
-					this._scene.userData.lastVelocityTexture = this.lastVelocityTexture
-					this._scene.userData.lastVelocityTextureTime = now
-				}
-			}
-		}
-
-		return this.velocityPass.renderTarget.texture !== this.fullscreenMaterial.uniforms.velocityTexture.value
 	}
 
 	checkNeedsResample() {
@@ -181,21 +148,17 @@ export class TemporalResolvePass extends Pass {
 		}
 	}
 
+	saveLastVelocityTexture(renderer, renderTarget) {
+		renderer.setRenderTarget(renderTarget)
+		renderer.copyFramebufferToTexture(zeroVec2, this.lastVelocityTexture)
+	}
+
 	render(renderer) {
 		this.samples++
 		this.checkNeedsResample()
 		this.fullscreenMaterial.uniforms.samples.value = this.samples
 
-		this.fullscreenMaterial.uniforms.curInverseProjectionMatrix.value.copy(this._camera.projectionMatrixInverse)
-		this.fullscreenMaterial.uniforms.curCameraMatrixWorld.value.copy(this._camera.matrixWorld)
-
-		const isUsingSharedVelocityTexture = this.checkCanUseSharedVelocityTexture()
-		if (this.renderVelocity && !isUsingSharedVelocityTexture) this.velocityPass.render(renderer)
-
-		if (this._scene.userData.velocityTexture === this.fullscreenMaterial.uniforms.velocityTexture.value) {
-			const now = Date.now()
-			this._scene.userData.lastVelocityTextureTime = now
-		}
+		if (this.renderVelocity) this.velocityPass.render(renderer)
 
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)
@@ -203,13 +166,7 @@ export class TemporalResolvePass extends Pass {
 		// save the render target's texture for use in next frame
 		renderer.copyFramebufferToTexture(zeroVec2, this.accumulatedTexture)
 
-		if (!isUsingSharedVelocityTexture) {
-			renderer.setRenderTarget(this.velocityPass.renderTarget)
-			renderer.copyFramebufferToTexture(zeroVec2, this.lastVelocityTexture)
-		}
-
-		this.fullscreenMaterial.uniforms.prevInverseProjectionMatrix.value.copy(this._camera.projectionMatrixInverse)
-		this.fullscreenMaterial.uniforms.prevCameraMatrixWorld.value.copy(this._camera.matrixWorld)
+		if (this.renderVelocity) this.saveLastVelocityTexture(renderer, this.velocityPass.renderTarget)
 	}
 
 	jitter(jitterScale = 1) {
@@ -229,5 +186,7 @@ export class TemporalResolvePass extends Pass {
 
 	unjitter() {
 		this._camera.clearViewOffset()
+
+		this.originalProjectionMatrix.copy(this._camera.projectionMatrix)
 	}
 }

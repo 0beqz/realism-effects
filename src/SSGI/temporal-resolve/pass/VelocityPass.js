@@ -3,6 +3,7 @@ import {
 	Color,
 	DataTexture,
 	FloatType,
+	HalfFloatType,
 	Matrix4,
 	NearestFilter,
 	Quaternion,
@@ -36,7 +37,7 @@ export class VelocityPass extends Pass {
 		this.renderTarget = new WebGLRenderTarget(1, 1, {
 			minFilter: NearestFilter,
 			magFilter: NearestFilter,
-			type: FloatType
+			type: HalfFloatType
 		})
 	}
 
@@ -52,7 +53,6 @@ export class VelocityPass extends Pass {
 
 			if (originalMaterial !== cachedOriginalMaterial) {
 				velocityMaterial = new VelocityMaterial()
-				velocityMaterial.lastMatrixWorld = new Matrix4()
 
 				c.material = velocityMaterial
 
@@ -60,8 +60,6 @@ export class VelocityPass extends Pass {
 
 				this.cachedMaterials.set(c, [originalMaterial, velocityMaterial])
 			}
-
-			velocityMaterial.uniforms.velocityMatrix.value.multiplyMatrices(this._camera.projectionMatrix, c.modelViewMatrix)
 
 			if (c.userData.needsUpdatedReflections || originalMaterial.map instanceof VideoTexture) {
 				if (!("FULL_MOVEMENT" in velocityMaterial.defines)) velocityMaterial.needsUpdate = true
@@ -83,6 +81,8 @@ export class VelocityPass extends Pass {
 
 				velocityMaterial.uniforms.boneTexture.value = c.skeleton.boneTexture
 			}
+
+			this.updateVelocityUniformsBeforeRender(c)
 		}
 	}
 
@@ -105,16 +105,24 @@ export class VelocityPass extends Pass {
 		}
 	}
 
+	updateVelocityUniformsBeforeRender(c, projectionMatrix = this._camera.projectionMatrix) {
+		if (!c.material.lastMatrixWorld) c.material.lastMatrixWorld = new Matrix4()
+
+		c.material.uniforms.velocityMatrix.value.multiplyMatrices(projectionMatrix, c.modelViewMatrix)
+	}
+
+	updateVelocityUniformsAfterRender(c, projectionMatrix = this._camera.projectionMatrix) {
+		c.material.lastMatrixWorld.copy(c.matrixWorld)
+		c.material.uniforms.prevVelocityMatrix.value.multiplyMatrices(projectionMatrix, c.modelViewMatrix)
+
+		if (c.skeleton?.boneTexture) this.saveBoneTexture(c)
+	}
+
 	unsetVelocityMaterialInScene() {
 		for (const c of this.visibleMeshes) {
-			if (c.material.isVelocityMaterial) {
-				c.material.lastMatrixWorld.copy(c.matrixWorld)
-				c.material.uniforms.prevVelocityMatrix.value.multiplyMatrices(this._camera.projectionMatrix, c.modelViewMatrix)
+			this.updateVelocityUniformsAfterRender(c)
 
-				if (c.skeleton?.boneTexture) this.saveBoneTexture(c)
-
-				c.material = this.cachedMaterials.get(c)[0]
-			}
+			c.material = this.cachedMaterials.get(c)[0]
 		}
 	}
 

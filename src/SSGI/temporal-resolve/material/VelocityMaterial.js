@@ -1,6 +1,7 @@
 ﻿// this shader is from: https://github.com/gkjohnson/threejs-sandbox
 /* eslint-disable camelcase */
 
+import { UniformsUtils } from "three"
 import { Matrix4, ShaderChunk, ShaderMaterial } from "three"
 
 // Modified ShaderChunk.skinning_pars_vertex to handle
@@ -33,89 +34,103 @@ const prev_skinning_pars_vertex = /* glsl */ `
 		#endif
 `
 
+export const velocity_vertex_pars = /* glsl */ `
+#define MAX_BONES 1024
+                    
+${ShaderChunk.skinning_pars_vertex}
+${prev_skinning_pars_vertex}
+
+uniform mat4 velocityMatrix;
+uniform mat4 prevVelocityMatrix;
+uniform float interpolateGeometry;
+varying vec4 prevPosition;
+varying vec4 newPosition;
+varying vec2 vHighPrecisionZW;
+`
+
 // Returns the body of the vertex shader for the velocity buffer and
 // outputs the position of the current and last frame positions
-const velocity_vertex = /* glsl */ `
-		vec3 transformed;
+export const velocity_vertex_main = /* glsl */ `
+vec3 _transformed;
 
-		// Get the normal
-		${ShaderChunk.skinbase_vertex}
-		${ShaderChunk.beginnormal_vertex}
-		${ShaderChunk.skinnormal_vertex}
-		${ShaderChunk.defaultnormal_vertex}
+// Get the current vertex position
+_transformed = vec3( position );
+${ShaderChunk.skinning_vertex}
+newPosition = velocityMatrix * vec4( _transformed, 1.0 );
 
-		// Get the current vertex position
-		transformed = vec3( position );
-		${ShaderChunk.skinning_vertex}
-		newPosition = velocityMatrix * vec4( transformed, 1.0 );
+// Get the previous vertex position
+_transformed = vec3( position );
+${ShaderChunk.skinbase_vertex.replace(/mat4 /g, "").replace(/getBoneMatrix/g, "getPrevBoneMatrix")}
+${ShaderChunk.skinning_vertex.replace(/vec4 /g, "")}
+prevPosition = prevVelocityMatrix * vec4( _transformed, 1.0 );
 
-		// Get the previous vertex position
-		transformed = vec3( position );
-		${ShaderChunk.skinbase_vertex.replace(/mat4 /g, "").replace(/getBoneMatrix/g, "getPrevBoneMatrix")}
-		${ShaderChunk.skinning_vertex.replace(/vec4 /g, "")}
-		prevPosition = prevVelocityMatrix * vec4( transformed, 1.0 );
+gl_Position = newPosition;
 
-		gl_Position = newPosition;
+vHighPrecisionZW = gl_Position.zw;
 `
+
+export const velocity_fragment_pars = /* glsl */ `
+uniform float intensity;
+varying vec4 prevPosition;
+varying vec4 newPosition;
+varying vec2 vHighPrecisionZW;
+`
+
+export const velocity_fragment_main = /* glsl */ `
+#ifdef FULL_MOVEMENT
+gl_FragColor = vec4( 1., 1., 1. - gl_FragCoord.z, 0. );
+#else
+
+vec2 pos0 = (prevPosition.xy / prevPosition.w) * 0.5 + 0.5;
+vec2 pos1 = (newPosition.xy / newPosition.w) * 0.5 + 0.5;
+
+vec2 vel = pos1 - pos0;
+
+float fragCoordZ = 0.5 * vHighPrecisionZW[0] / vHighPrecisionZW[1] + 0.5;
+
+float depth = 1.0 - fragCoordZ;
+
+float scaledDepth = depth * 1024.0;
+
+vec2 encodedDepth = vec2(
+	floor(scaledDepth),
+	fract(scaledDepth)
+);
+
+gl_FragColor = vec4( vel, encodedDepth );
+#endif
+`
+
+export const velocity_uniforms = {
+	prevVelocityMatrix: { value: new Matrix4() },
+	velocityMatrix: { value: new Matrix4() },
+	prevBoneTexture: { value: null },
+	interpolateGeometry: { value: 0 },
+	intensity: { value: 1 },
+	boneTexture: { value: null },
+
+	alphaTest: { value: 0.0 },
+	map: { value: null },
+	alphaMap: { value: null },
+	opacity: { value: 1.0 }
+}
 
 export class VelocityMaterial extends ShaderMaterial {
 	constructor() {
 		super({
-			uniforms: {
-				prevVelocityMatrix: { value: new Matrix4() },
-				velocityMatrix: { value: new Matrix4() },
-				prevBoneTexture: { value: null },
-				interpolateGeometry: { value: 0 },
-				intensity: { value: 1 },
-				boneTexture: { value: null },
-
-				alphaTest: { value: 0.0 },
-				map: { value: null },
-				alphaMap: { value: null },
-				opacity: { value: 1.0 }
-			},
+			uniforms: UniformsUtils.clone(velocity_uniforms),
 
 			vertexShader: /* glsl */ `
-                    #define MAX_BONES 1024
-                    
-                    ${ShaderChunk.skinning_pars_vertex}
-                    ${prev_skinning_pars_vertex}
-        
-                    uniform mat4 velocityMatrix;
-                    uniform mat4 prevVelocityMatrix;
-                    uniform float interpolateGeometry;
-                    varying vec4 prevPosition;
-                    varying vec4 newPosition;
-					varying vec2 vHighPrecisionZW;
+                    ${velocity_vertex_pars}
         
                     void main() {
-        
-                        ${velocity_vertex}
-
-						vHighPrecisionZW = gl_Position.zw;
-        
+						${velocity_vertex_main}
                     }`,
 			fragmentShader: /* glsl */ `
-                    uniform float intensity;
-                    varying vec4 prevPosition;
-                    varying vec4 newPosition;
-					varying vec2 vHighPrecisionZW;
+					${velocity_fragment_pars}
         
                     void main() {
-						#ifdef FULL_MOVEMENT
-						gl_FragColor = vec4( 1., 1., 1. - gl_FragCoord.z, 0. );
-						return;
-						#endif
-
-                        vec2 pos0 = (prevPosition.xy / prevPosition.w) * 0.5 + 0.5;
-                        vec2 pos1 = (newPosition.xy / newPosition.w) * 0.5 + 0.5;
-        
-                        vec2 vel = pos1 - pos0;
-
-						float fragCoordZ = 0.5 * vHighPrecisionZW[0] / vHighPrecisionZW[1] + 0.5;
-                        
-                        gl_FragColor = vec4( vel, 1. - fragCoordZ, 0. );
-        
+						${velocity_fragment_main}
                     }`
 		})
 

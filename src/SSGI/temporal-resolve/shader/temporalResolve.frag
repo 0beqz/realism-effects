@@ -10,11 +10,6 @@ uniform float correction;
 uniform float samples;
 uniform vec2 invTexSize;
 
-uniform mat4 curInverseProjectionMatrix;
-uniform mat4 curCameraMatrixWorld;
-uniform mat4 prevInverseProjectionMatrix;
-uniform mat4 prevCameraMatrixWorld;
-
 varying vec2 vUv;
 
 #define FLOAT_EPSILON           0.00001
@@ -64,8 +59,8 @@ void main() {
     vec2 reprojectedUv = vUv - velocity.xy;
     vec4 lastVelocity = textureLod(lastVelocityTexture, reprojectedUv, 0.0);
 
-    float depth = 1.0 - velocity.b;
-    float lastDepth = 1.0 - lastVelocity.b;
+    float depth = 1.0 - (velocity.b + velocity.a) / 1024.0;
+    float lastDepth = 1.0 - (lastVelocity.b + lastVelocity.a) / 1024.0;
 
     float maxDepth = 0.;
     float lastMaxDepth = 0.;
@@ -181,4 +176,6 @@ void main() {
 #endif
 
         gl_FragColor = vec4(undoColorTransform(outputColor), alpha);
+
+    // if (depthDiff > maxNeighborDepthDifference) gl_FragColor.xyz = vec3(0., 1., 0.);
 }

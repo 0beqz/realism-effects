@@ -1,4 +1,14 @@
-﻿import { GLSL3, Matrix3, ShaderMaterial, TangentSpaceNormalMap, Uniform, Vector2 } from "three"
+﻿/* eslint-disable camelcase */
+import { UniformsUtils } from "three"
+import { Color } from "three"
+import { GLSL3, Matrix3, ShaderMaterial, TangentSpaceNormalMap, Uniform, Vector2 } from "three"
+import {
+	velocity_fragment_main,
+	velocity_fragment_pars,
+	velocity_uniforms,
+	velocity_vertex_main,
+	velocity_vertex_pars
+} from "../temporal-resolve/material/VelocityMaterial"
 
 // WebGL1: will render normals to RGB channel and roughness to A channel
 // WebGL2: will render normals to RGB channel of "gNormal" buffer, roughness to A channel of "gNormal" buffer, depth to RGBA channel of "gDepth" buffer
@@ -20,11 +30,14 @@ export class MRTMaterial extends ShaderMaterial {
 				normalScale: new Uniform(new Vector2(1, 1)),
 				uvTransform: new Uniform(new Matrix3()),
 				roughness: new Uniform(1),
-				roughnessMap: new Uniform(null)
+				roughnessMap: new Uniform(null),
+				map: new Uniform(null),
+				color: new Uniform(new Color()),
+				...UniformsUtils.clone(velocity_uniforms)
 			},
 			vertexShader: /* glsl */ `
                 #ifdef isWebGL2
-                 varying vec2 vHighPrecisionZW;
+                 ${velocity_vertex_pars}
                 #endif
                 #define NORMAL
                 #if defined( FLAT_SHADED ) || defined( USE_BUMPMAP ) || defined( TANGENTSPACE_NORMALMAP )
@@ -40,11 +53,13 @@ export class MRTMaterial extends ShaderMaterial {
                 #include <clipping_planes_pars_vertex>
                 void main() {
                     #include <uv_vertex>
-                    #include <beginnormal_vertex>
-                    #include <morphnormal_vertex>
+
                     #include <skinbase_vertex>
+                    #include <beginnormal_vertex>
                     #include <skinnormal_vertex>
                     #include <defaultnormal_vertex>
+
+                    #include <morphnormal_vertex>
                     #include <normal_vertex>
                     #include <begin_vertex>
                     #include <morphtarget_vertex>
@@ -56,12 +71,14 @@ export class MRTMaterial extends ShaderMaterial {
                     #if defined( FLAT_SHADED ) || defined( USE_BUMPMAP ) || defined( TANGENTSPACE_NORMALMAP )
                         vViewPosition = - mvPosition.xyz;
                     #endif
-                    #ifdef isWebGL2
-                        vHighPrecisionZW = gl_Position.zw;
-                    #endif 
+                
                     #ifdef USE_UV
                         vUv = ( uvTransform * vec3( uv, 1 ) ).xy;
                     #endif
+
+                    #ifdef isWebGL2
+                        ${velocity_vertex_main}
+                    #endif 
                 }
             `,
 
@@ -80,14 +97,18 @@ export class MRTMaterial extends ShaderMaterial {
                 #include <roughnessmap_pars_fragment>
                 
                 #ifdef isWebGL2
-                layout(location = 0) out vec4 gNormal;
+                layout(location = 0) out vec4 gVelocity;
                 layout(location = 1) out vec4 gDepth;
+                layout(location = 2) out vec4 gNormal;
+                layout(location = 3) out vec4 gDiffuse;
                 
-                varying vec2 vHighPrecisionZW;
+                ${velocity_fragment_pars}
+
+                uniform sampler2D map;
+                uniform vec3 color;
                 #endif
                 
                 uniform float roughness;
-                uniform vec3 color;
 
                 void main() {
                     #include <clipping_planes_fragment>
@@ -109,10 +130,22 @@ export class MRTMaterial extends ShaderMaterial {
 
                     vec3 normalColor = packNormalToRGB( normal );
                     #ifdef isWebGL2
-                        float fragCoordZ = 0.5 * vHighPrecisionZW[0] / vHighPrecisionZW[1] + 0.5;
-                        vec4 depthColor = packDepthToRGBA( fragCoordZ );
+                        
                         gNormal = vec4( normalColor, roughnessFactor );
+
+                        ${velocity_fragment_main.replaceAll("gl_FragColor", "gVelocity")}
+
+                        vec4 depthColor = packDepthToRGBA( fragCoordZ );
                         gDepth = depthColor;
+
+                        gDiffuse = vec4(0., 1., 0., 0.);
+
+                        vec4 diffuseColor = vec4(color, 1.);
+
+                        #include <map_fragment>
+
+                        gDiffuse = diffuseColor;
+
                     #else
                         gl_FragColor = vec4(normalColor, roughnessFactor);
                     #endif

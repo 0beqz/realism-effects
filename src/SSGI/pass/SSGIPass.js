@@ -50,13 +50,16 @@ export class SSGIPass extends Pass {
 		if (this.webgl1DepthPass) this.webgl1DepthPass.dispose()
 
 		if (isWebGL2) {
+			const bufferCount = this.useDiffuse ? 3 : 4
+
 			// buffers: normal, depth (2), roughness will be written to the alpha channel of the normal buffer
-			this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(1, 1, 2, {
+			this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(1, 1, bufferCount, {
 				minFilter: NearestFilter,
-				magFilter: NearestFilter
+				magFilter: NearestFilter,
+				type: HalfFloatType
 			})
 
-			this.normalTexture = this.gBuffersRenderTarget.texture[0]
+			this.normalTexture = this.gBuffersRenderTarget.texture[2]
 			this.depthTexture = this.gBuffersRenderTarget.texture[1]
 		} else {
 			// depth pass
@@ -85,11 +88,12 @@ export class SSGIPass extends Pass {
 			})
 
 			this.diffuseTexture = this.diffuseRenderTarget.texture
-
-			// set up uniforms
-
-			this.ssgiEffect.temporalResolvePass.fullscreenMaterial.uniforms.diffuseTexture.value = this.diffuseTexture
+		} else {
+			this.diffuseTexture = this.gBuffersRenderTarget.texture[3]
 		}
+
+		// set up uniforms
+		this.ssgiEffect.temporalResolvePass.fullscreenMaterial.uniforms.diffuseTexture.value = this.diffuseTexture
 	}
 
 	setSize(width, height) {
@@ -189,14 +193,22 @@ export class SSGIPass extends Pass {
 			// to ensure SSGI works as good as possible in the scene
 			originalMaterial.envMapIntensity = 0
 
+			this.ssgiEffect.useMap = true
+
 			// update the child's MRT material
 			this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "normalMap", "USE_NORMAL_MAP", "useNormalMap")
 			this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "roughnessMap", "USE_ROUGHNESS_MAP", "useRoughnessMap")
+			this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "map", "USE_MAP", "useMap")
 
-			mrtMaterial.uniforms.roughnessMap.value = originalMaterial.roughnessMap
+			if (originalMaterial.map) {
+				diffuseMaterial.map = originalMaterial.map
+			}
 
-			if (originalMaterial.map) diffuseMaterial.map = originalMaterial.map
-			if (originalMaterial.color) diffuseMaterial.color = originalMaterial.color
+			if (originalMaterial.color) {
+				diffuseMaterial.color = originalMaterial.color
+				mrtMaterial.uniforms.color.value = originalMaterial.color
+			}
+
 			diffuseMaterial.visible = originalMaterial.visible
 
 			mrtMaterial.uniforms.roughness.value =
@@ -205,15 +217,21 @@ export class SSGIPass extends Pass {
 					: 10e10
 
 			c.material = mrtMaterial
+
+			const projectionMatrix = this.ssgiEffect.temporalResolvePass.originalProjectionMatrix
+
+			this.ssgiEffect.temporalResolvePass.velocityPass.updateVelocityUniformsBeforeRender(c, projectionMatrix)
 		}
 	}
 
 	unsetMRTMaterialInScene() {
+		const projectionMatrix = this.ssgiEffect.temporalResolvePass.originalProjectionMatrix
+
 		for (const c of this.visibleMeshes) {
+			this.ssgiEffect.temporalResolvePass.velocityPass.updateVelocityUniformsAfterRender(c, projectionMatrix)
+
 			// set material back to the original one
 			const [originalMaterial] = this.cachedMaterials.get(c)
-
-			c.visible = true
 
 			c.material = originalMaterial
 		}
@@ -239,13 +257,15 @@ export class SSGIPass extends Pass {
 	}
 
 	get useDiffuse() {
-		return !this.ssgiEffect.reflectionsOnly
+		return false
 	}
 
 	render(renderer) {
 		this.setMRTMaterialInScene()
 
 		this.renderPass.render(renderer, this.gBuffersRenderTarget)
+
+		this.ssgiEffect.temporalResolvePass.saveLastVelocityTexture(renderer, this.gBuffersRenderTarget)
 
 		this.unsetMRTMaterialInScene()
 

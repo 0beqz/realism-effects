@@ -266,8 +266,11 @@ export class SSGIEffect extends Effect {
 
 		this.temporalResolvePass.unjitter()
 
-		if (!this.temporalResolvePass.checkCanUseSharedVelocityTexture())
-			this.temporalResolvePass.velocityPass.render(renderer)
+		this.temporalResolvePass.fullscreenMaterial.uniforms.velocityTexture.value =
+			this.ssgiPass.gBuffersRenderTarget.texture[0]
+
+		// if (!this.temporalResolvePass.checkCanUseSharedVelocityTexture())
+		// 	this.temporalResolvePass.velocityPass.render(renderer)
 
 		// set the jittering based on the resolution scale to reduce the pixelation of SSGI's buffer
 		const jitterScale = 1 / this.resolutionScale
