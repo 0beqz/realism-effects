@@ -96,14 +96,12 @@ export class TemporalResolvePass extends Pass {
 		})
 
 		const copyRenderTarget = new WebGLRenderTarget(window.innerWidth, window.innerHeight, {
-			type: FloatType
+			minFilter: NearestFilter,
+			magFilter: NearestFilter
 		})
 
 		this.copyPass = new CopyPass(copyRenderTarget)
 		this.fullscreenMaterial.uniforms.lastDepthTexture.value = copyRenderTarget.texture
-
-		const depthTexture = composer.depthTexture || composer.createDepthTexture()
-		this.setDepthTexture(depthTexture)
 
 		this.setupFramebuffers(1, 1)
 	}
@@ -140,14 +138,16 @@ export class TemporalResolvePass extends Pass {
 		if (this.lastVelocityTexture) this.lastVelocityTexture.dispose()
 
 		this.accumulatedTexture = new FramebufferTexture(width, height, RGBAFormat)
-		this.accumulatedTexture.minFilter = LinearFilter
-		this.accumulatedTexture.magFilter = LinearFilter
 		this.accumulatedTexture.type = HalfFloatType
 
 		this.lastVelocityTexture = new FramebufferTexture(width * this.qualityScale, height * this.qualityScale, RGBAFormat)
 		this.lastVelocityTexture.minFilter = NearestFilter
 		this.lastVelocityTexture.magFilter = NearestFilter
 		this.lastVelocityTexture.type = HalfFloatType
+
+		this.lastDepthTexture = new FramebufferTexture(width * this.qualityScale, height * this.qualityScale, RGBAFormat)
+		this.lastDepthTexture.minFilter = NearestFilter
+		this.lastDepthTexture.magFilter = NearestFilter
 
 		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.accumulatedTexture
 		this.fullscreenMaterial.uniforms.lastVelocityTexture.value = this.lastVelocityTexture
@@ -185,12 +185,13 @@ export class TemporalResolvePass extends Pass {
 		// save the render target's texture for use in next frame
 		renderer.copyFramebufferToTexture(zeroVec2, this.accumulatedTexture)
 
-		this.copyPass.render(renderer, { texture: this.depthTexture })
+		this.copyPass.render(renderer, { texture: window.ssgiEffect.ssgiPass.depthTexture })
 
 		if (this.renderVelocity) this.saveLastVelocityTexture(renderer, this.velocityPass.renderTarget)
 	}
 
 	jitter(jitterScale = 1) {
+		// jitterScale = 40
 		if (this.haltonSequence.length === 0) this.haltonSequence = generateHalton23Points(1024)
 
 		// cheap trick to get rid of aliasing on the final buffer (technique known from TAA)

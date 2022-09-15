@@ -1,4 +1,4 @@
-﻿import { BoxBlurPass, Effect, Pass, Selection } from "postprocessing"
+﻿import { BoxBlurPass, Effect, Selection } from "postprocessing"
 import {
 	EquirectangularReflectionMapping,
 	HalfFloatType,

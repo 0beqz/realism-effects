@@ -53,7 +53,6 @@ export class SSGIPass extends Pass {
 		if (isWebGL2) {
 			const bufferCount = this.useDiffuse ? 3 : 4
 
-			// buffers: normal, depth (2), roughness will be written to the alpha channel of the normal buffer
 			this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(1, 1, bufferCount, {
 				minFilter: NearestFilter,
 				magFilter: NearestFilter,
@@ -78,6 +77,8 @@ export class SSGIPass extends Pass {
 
 		this.fullscreenMaterial.uniforms.normalTexture.value = this.normalTexture
 		this.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
+
+		this.ssgiEffect.temporalResolvePass.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
 
 		// diffuse texture
 
@@ -135,7 +136,7 @@ export class SSGIPass extends Pass {
 	}
 
 	keepMaterialMapUpdated(mrtMaterial, originalMaterial, prop, define, useKey) {
-		if (this.ssgiEffect[useKey]) {
+		if (useKey === true || this.ssgiEffect[useKey]) {
 			if (originalMaterial[prop] !== mrtMaterial[prop]) {
 				mrtMaterial[prop] = originalMaterial[prop]
 				mrtMaterial.uniforms[prop].value = originalMaterial[prop]
@@ -194,12 +195,10 @@ export class SSGIPass extends Pass {
 			// to ensure SSGI works as good as possible in the scene
 			originalMaterial.envMapIntensity = 0
 
-			this.ssgiEffect.useMap = true
-
 			// update the child's MRT material
 			this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "normalMap", "USE_NORMAL_MAP", "useNormalMap")
 			this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "roughnessMap", "USE_ROUGHNESS_MAP", "useRoughnessMap")
-			this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "map", "USE_MAP", "useMap")
+			this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "map", "USE_MAP", true)
 
 			if (originalMaterial.map) {
 				diffuseMaterial.map = originalMaterial.map

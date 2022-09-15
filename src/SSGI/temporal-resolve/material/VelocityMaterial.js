@@ -64,7 +64,7 @@ ${ShaderChunk.skinbase_vertex.replace(/mat4 /g, "").replace(/getBoneMatrix/g, "g
 ${ShaderChunk.skinning_vertex.replace(/vec4 /g, "")}
 prevPosition = prevVelocityMatrix * vec4( _transformed, 1.0 );
 
-gl_Position = newPosition;
+// gl_Position = newPosition;
 
 vHighPrecisionZW = gl_Position.zw;
 `

@@ -19,6 +19,8 @@ varying vec2 vUv;
 
 const float alphaStep = 0.001;
 
+#include <packing>
+
 // idea from: https://www.elopezr.com/temporal-aa-and-the-quest-for-the-holy-trail/
 vec3 transformColor(vec3 color) {
 #ifdef logTransform
@@ -37,11 +39,13 @@ vec3 undoColorTransform(vec3 color) {
 }
 
 void main() {
-    // gl_FragColor = abs(textureLod(depthTexture, vUv, 0.).rrrr - textureLod(lastDepthTexture, vUv, 0.).rrrr);
-    // return;
-
     vec4 inputTexel = textureLod(inputTexture, vUv, 0.0);
-    bool isBackground = dot(inputTexel, inputTexel) == 1.;
+
+    float depth = unpackRGBAToDepth(textureLod(depthTexture, vUv, 0.));
+    float lastDepth = unpackRGBAToDepth(textureLod(lastDepthTexture, vUv, 0.));
+
+    bool isBackground = depth > 0.9999;
+    isBackground = false;
 
     vec3 inputColor = transformColor(inputTexel.rgb);
     float alpha = inputTexel.a;
@@ -64,10 +68,6 @@ void main() {
     vec2 reprojectedUv = vUv - velocity.xy;
     vec4 lastVelocity = textureLod(lastVelocityTexture, reprojectedUv, 0.0);
 
-    float depth = textureLod(depthTexture, vUv, 0.).r;
-
-    float lastDepth = textureLod(lastDepthTexture, vUv, 0.).r;
-
     float maxDepth = 0.;
     float lastMaxDepth = 0.;
 
@@ -83,8 +83,8 @@ void main() {
                 neighborUv = vUv + offset;
 
                 if (neighborUv.x >= 0.0 && neighborUv.x <= 1.0 && neighborUv.y >= 0.0 && neighborUv.y <= 1.0) {
-                    vec4 neigborVelocity = textureLod(velocityTexture, vUv + offset, 0.0);
-                    neighborDepth = 1.0 - neigborVelocity.b;
+                    vec4 neigborDepthTexel = textureLod(depthTexture, vUv + offset, 0.0);
+                    neighborDepth = unpackRGBAToDepth(neigborDepthTexel);
 
                     int absX = abs(x);
                     int absY = abs(y);
@@ -99,8 +99,8 @@ void main() {
 
                         vec2 reprojectedNeighborUv = reprojectedUv + vec2(x, y) * invTexSize;
 
-                        vec4 lastNeighborVelocity = textureLod(lastVelocityTexture, reprojectedNeighborUv, 0.0);
-                        lastNeighborDepth = 1.0 - lastNeighborVelocity.b;
+                        vec4 lastNeigborDepthTexel = textureLod(lastDepthTexture, reprojectedNeighborUv, 0.0);
+                        lastNeighborDepth = unpackRGBAToDepth(lastNeigborDepthTexel);
 
                         if (lastNeighborDepth > lastMaxDepth) lastMaxDepth = lastNeighborDepth;
     #endif
@@ -165,14 +165,6 @@ void main() {
     float s = alpha / alphaStep + 1.0;
     float temporalResolveMix = 1. - 1. / s;
     temporalResolveMix = min(temporalResolveMix, blend);
-
-    if (isBackground) {
-#ifdef dilation
-        temporalResolveMix = 0.;
-#else
-        temporalResolveMix = min(temporalResolveMix, 0.675);
-#endif
-    }
 
 // the user's shader to compose a final outputColor from the inputTexel and accumulatedTexel
 #ifdef useCustomComposeShader
