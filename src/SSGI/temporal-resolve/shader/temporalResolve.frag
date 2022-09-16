@@ -171,6 +171,4 @@ void main() {
 #endif
 
         gl_FragColor = vec4(undoColorTransform(outputColor), alpha);
-
-    // if (isBackground) gl_FragColor.xyz = vec3(0., 1., 0.);
 }

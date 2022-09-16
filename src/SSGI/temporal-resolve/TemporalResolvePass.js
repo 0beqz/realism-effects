@@ -1,6 +1,6 @@
-﻿import { CopyPass, Pass } from "postprocessing"
+﻿import { Pass } from "postprocessing"
+import { Matrix4 } from "three"
 import {
-	BasicDepthPacking,
 	FramebufferTexture,
 	HalfFloatType,
 	LinearFilter,
@@ -22,6 +22,7 @@ export class TemporalResolvePass extends Pass {
 	haltonSequence = []
 	haltonIndex = 0
 	samples = 1
+	unjitterCameraProjectionMatrix = new Matrix4()
 	lastCameraTransform = {
 		position: new Vector3(),
 		quaternion: new Quaternion()
@@ -43,6 +44,8 @@ export class TemporalResolvePass extends Pass {
 
 		this._scene = scene
 		this._camera = camera
+
+		this.unjitterCameraProjectionMatrix.copy(this._camera.projectionMatrix)
 
 		this.renderTarget = new WebGLRenderTarget(1, 1, {
 			minFilter: LinearFilter,
@@ -166,7 +169,9 @@ export class TemporalResolvePass extends Pass {
 	}
 
 	jitter(jitterScale = 1) {
-		if (this.haltonSequence.length === 0) this.haltonSequence = generateHalton23Points(1024)
+		this.unjitter()
+
+		if (this.haltonSequence.length === 0) this.haltonSequence = generateHalton23Points(16)
 
 		// cheap trick to get rid of aliasing on the final buffer (technique known from TAA)
 		this.haltonIndex = (this.haltonIndex + 1) % this.haltonSequence.length
@@ -182,5 +187,6 @@ export class TemporalResolvePass extends Pass {
 
 	unjitter() {
 		this._camera.clearViewOffset()
+		this.unjitterCameraProjectionMatrix.copy(this._camera.projectionMatrix)
 	}
 }

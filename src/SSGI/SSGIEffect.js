@@ -284,8 +284,8 @@ export class SSGIEffect extends Effect {
 		// compose ssgi of last and current frame into one ssgi
 		this.temporalResolvePass.render(renderer)
 
-		if (!this.antialias) {
-			this.temporalResolvePass.unjitter()
-		}
+		// if (!this.antialias) {
+		// 	this.temporalResolvePass.unjitter()
+		// }
 	}
 }

@@ -217,25 +217,27 @@ export class SSGIPass extends Pass {
 
 			c.material = mrtMaterial
 
-			this.ssgiEffect.temporalResolvePass.velocityPass.updateVelocityUniformsBeforeRender(c)
+			this.ssgiEffect.temporalResolvePass.velocityPass.updateVelocityUniformsBeforeRender(
+				c,
+				this.ssgiEffect.temporalResolvePass.unjitterCameraProjectionMatrix
+			)
 		}
 
 		this.ssgiEffect.temporalResolvePass.jitter()
 	}
 
 	unsetMRTMaterialInScene() {
-		this.ssgiEffect.temporalResolvePass.unjitter()
-
 		for (const c of this.visibleMeshes) {
-			this.ssgiEffect.temporalResolvePass.velocityPass.updateVelocityUniformsAfterRender(c)
+			this.ssgiEffect.temporalResolvePass.velocityPass.updateVelocityUniformsAfterRender(
+				c,
+				this.ssgiEffect.temporalResolvePass.unjitterCameraProjectionMatrix
+			)
 
 			// set material back to the original one
 			const [originalMaterial] = this.cachedMaterials.get(c)
 
 			c.material = originalMaterial
 		}
-
-		this.ssgiEffect.temporalResolvePass.jitter()
 	}
 
 	setDiffuseMaterialInScene() {
