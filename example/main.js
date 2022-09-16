@@ -292,7 +292,7 @@ const initScene = () => {
 	sceneFolder.addInput(light, "intensity", { min: 0, max: 10, step: 0.1 }).on("change", refreshLighting)
 
 	const bloomEffect = new POSTPROCESSING.BloomEffect({
-		intensity: 0,
+		intensity: 1,
 		mipmapBlur: true,
 		luminanceSmoothing: 0.5,
 		luminanceThreshold: 0.5,
