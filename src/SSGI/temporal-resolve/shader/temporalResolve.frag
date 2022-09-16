@@ -39,7 +39,7 @@ vec3 undoColorTransform(vec3 color) {
 void main() {
     vec4 inputTexel = textureLod(inputTexture, vUv, 0.0);
 
-    bool isBackground = false;
+    bool isBackground = dot(inputTexel, inputTexel) == 3.;
 
     vec3 inputColor = transformColor(inputTexel.rgb);
     float alpha = inputTexel.a;
@@ -90,7 +90,7 @@ void main() {
     #ifdef dilation
 
                         // prevents the flickering at the edges of geometries due to treating background pixels differently
-                        if (neighborDepth <= 0.9999) isBackground = false;
+                        if (neighborDepth > 0.) isBackground = false;
 
                         if (neighborDepth > maxDepth) maxDepth = neighborDepth;
 
@@ -172,5 +172,5 @@ void main() {
 
         gl_FragColor = vec4(undoColorTransform(outputColor), alpha);
 
-    // if (depthDiff > maxNeighborDepthDifference) gl_FragColor.xyz = vec3(0., 1., 0.);
+    // if (isBackground) gl_FragColor.xyz = vec3(0., 1., 0.);
 }

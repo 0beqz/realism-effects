@@ -272,7 +272,7 @@ export class SSGIEffect extends Effect {
 
 		// set the jittering based on the resolution scale to reduce the pixelation of SSGI's buffer
 		const jitterScale = 1 / this.resolutionScale
-		this.temporalResolvePass.jitter(jitterScale)
+		if (this.antialias) this.temporalResolvePass.jitter(jitterScale)
 
 		// render ssgi of current frame
 		this.ssgiPass.render(renderer, inputBuffer)

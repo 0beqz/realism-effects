@@ -4,7 +4,6 @@ import {
 	DataTexture,
 	FloatType,
 	HalfFloatType,
-	Matrix4,
 	NearestFilter,
 	Quaternion,
 	RGBAFormat,

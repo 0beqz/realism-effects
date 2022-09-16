@@ -54,7 +54,7 @@ void main() {
 
     float depthSize = dot(depthTexel.rgb, depthTexel.rgb);
 
-    // filter out sky
+    // filter out background
     if (depthSize == 0. || depthSize == 3.) {
         gl_FragColor = EARLY_OUT_COLOR;
         return;
