@@ -1,4 +1,5 @@
 ﻿import { DepthPass, Pass, RenderPass } from "postprocessing"
+import { RepeatWrapping, TextureLoader } from "three"
 import {
 	HalfFloatType,
 	MeshBasicMaterial,
@@ -43,6 +44,13 @@ export class SSGIPass extends Pass {
 		this.fullscreenMaterial.uniforms.cameraMatrixWorld.value = this._camera.matrixWorld
 		this.fullscreenMaterial.uniforms.projectionMatrix.value = this._camera.projectionMatrix
 		this.fullscreenMaterial.uniforms.inverseProjectionMatrix.value = this._camera.projectionMatrixInverse
+
+		const noiseTexture = new TextureLoader().load("./texture/blue_noise_rg.png")
+		this.fullscreenMaterial.uniforms.blueNoiseTexture.value = noiseTexture
+		noiseTexture.minFilter = NearestFilter
+		noiseTexture.magFilter = NearestFilter
+		noiseTexture.wrapS = RepeatWrapping
+		noiseTexture.wrapT = RepeatWrapping
 	}
 
 	initMRTRenderTarget() {
@@ -284,6 +292,7 @@ export class SSGIPass extends Pass {
 		if (!isWebGL2) this.webgl1DepthPass.renderPass.render(renderer, this.webgl1DepthPass.renderTarget)
 
 		this.fullscreenMaterial.uniforms.samples.value = this.ssgiEffect.temporalResolvePass.samples
+		this.fullscreenMaterial.uniforms.time.value = performance.now()
 		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
 		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far
 

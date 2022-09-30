@@ -5,7 +5,7 @@
 uniform sampler2D accumulatedTexture;
 uniform sampler2D normalTexture;
 uniform sampler2D depthTexture;
-uniform sampler2D diffuseTexture;
+uniform sampler2D blueNoiseTexture;
 uniform sampler2D envMap;
 
 uniform mat4 projectionMatrix;
@@ -26,6 +26,7 @@ uniform float intensity;
 uniform vec2 invTexSize;
 
 uniform float samples;
+uniform float time;
 
 uniform float jitter;
 uniform float jitterRoughness;
@@ -135,14 +136,13 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     float cosThetaMax = cos(thetaMax);
 
     if (spread != 0.) {
-        float ind = log(samples * float(spp) + sampleCount + 1.0);
+        float seed = time * 0.01;
+        vec2 startOffset = vec2(sampleCount / float(spp));
 
-        vec3 seed = 1500.0 * ind * worldPos + ind;
-
-        vec2 random = hash23(seed);
+        vec2 blueNoiseUv = (vUv + startOffset + seed) * 2.0;
+        vec2 random = textureLod(blueNoiseTexture, blueNoiseUv, 0.).rg;
 
         // 16.6.3 DIRECTIONS IN A CONE in Raytracing Gems I
-
         float cosTheta = (1. - random.x) + random.x * cosThetaMax;
         float sinTheta = sqrt(1. - cosTheta * cosTheta);
         float phi = random.y * 2. * M_PI;
@@ -151,9 +151,9 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
         float z = cosTheta;
         vec3 hemisphereVector = vec3(x, y, z);
 
-        mat3 b = getBasisFromNormal(jitteredNormal);
+        mat3 normalBasis = getBasisFromNormal(jitteredNormal);
 
-        jitteredNormal = normalize(b * hemisphereVector);
+        jitteredNormal = normalize(normalBasis * hemisphereVector);
     }
 
     // source: https://computergraphics.stackexchange.com/a/4994
@@ -195,7 +195,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
         envMapSample = sampleEquirectEnvMapColor(sampleDir, envMap, lod);
 
         // we won't deal with calculating direct sun light from the env map as it takes too long to compute and is too noisy
-        if (dot(envMapSample, envMapSample) > 3.0) envMapSample = vec3(1.);
+        if (dot(envMapSample, envMapSample) > 3.) envMapSample = vec3(1.);
 
         envMapSample *= fresnelFactor * TRANSFORM_FACTOR;
 
@@ -229,7 +229,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
         if (envLum > ssgiLum) SSGI = envMapSample;
     }
 
-    return SSGI / pdf;
+    return M_PI * SSGI / pdf;
 }
 
 vec2 RayMarch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {

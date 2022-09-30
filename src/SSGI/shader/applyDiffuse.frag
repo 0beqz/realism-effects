@@ -15,10 +15,10 @@ if (isBackground) {
         float intensity = 0.5 - inputTexel.a;
         vec3 blurredReflectionsColor = textureLod(boxBlurTexture, vUv, 0.).rgb;
 
-        inputTexel.rgb = mix(inputTexel.rgb, blurredReflectionsColor, blur * intensity);
+        inputTexel.rgb = mix(inputTexel.rgb, blurredReflectionsColor, blur);
     }
 
-    const float diffuseInfluence = 0.975;
+    const float diffuseInfluence = 0.95;
 
     vec3 diffuseColor = diffuseTexel.rgb * diffuseInfluence + (1. - diffuseInfluence);
     inputTexel.rgb *= diffuseColor;
