@@ -34,8 +34,7 @@ export class VelocityPass extends Pass {
 
 		this.renderTarget = new WebGLRenderTarget(1, 1, {
 			minFilter: NearestFilter,
-			magFilter: NearestFilter,
-			type: FloatType
+			magFilter: NearestFilter
 		})
 	}
 
@@ -96,7 +95,7 @@ export class VelocityPass extends Pass {
 		}
 	}
 
-	updateVelocityUniformsBeforeRender(c, projectionMatrix = this._camera.projectionMatrix) {
+	updateVelocityUniformsBeforeRender(c) {
 		if (c.skeleton?.boneTexture) {
 			c.material.defines.USE_SKINNING = ""
 			c.material.defines.BONE_TEXTURE = ""
@@ -104,11 +103,11 @@ export class VelocityPass extends Pass {
 			c.material.uniforms.boneTexture.value = c.skeleton.boneTexture
 		}
 
-		c.material.uniforms.velocityMatrix.value.multiplyMatrices(projectionMatrix, c.modelViewMatrix)
+		c.material.uniforms.velocityMatrix.value.multiplyMatrices(this._camera.projectionMatrix, c.modelViewMatrix)
 	}
 
-	updateVelocityUniformsAfterRender(c, projectionMatrix = this._camera.projectionMatrix) {
-		c.material.uniforms.prevVelocityMatrix.value.multiplyMatrices(projectionMatrix, c.modelViewMatrix)
+	updateVelocityUniformsAfterRender(c) {
+		c.material.uniforms.prevVelocityMatrix.value.multiplyMatrices(this._camera.projectionMatrix, c.modelViewMatrix)
 
 		if (c.skeleton?.boneTexture) this.saveBoneTexture(c)
 	}

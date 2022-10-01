@@ -44,6 +44,7 @@ uniform mat4 velocityMatrix;
 uniform mat4 prevVelocityMatrix;
 varying vec4 prevPosition;
 varying vec4 newPosition;
+varying vec2 vHighPrecisionZW;
 `
 
 // Returns the body of the vertex shader for the velocity buffer
@@ -59,12 +60,15 @@ ${ShaderChunk.skinbase_vertex.replace(/mat4 /g, "").replace(/getBoneMatrix/g, "g
 ${ShaderChunk.skinning_vertex.replace(/vec4 /g, "")}
 prevPosition = prevVelocityMatrix * vec4( transformed, 1.0 );
 
-// gl_Position = newPosition;
+gl_Position = newPosition;
+
+vHighPrecisionZW = gl_Position.zw;
 `
 
 export const velocity_fragment_pars = /* glsl */ `
 varying vec4 prevPosition;
 varying vec4 newPosition;
+varying vec2 vHighPrecisionZW;
 `
 
 export const velocity_fragment_main = /* glsl */ `
@@ -79,7 +83,10 @@ vec2 pos1 = (newPosition.xy / newPosition.w) * 0.5 + 0.5;
 vec2 vel = pos1 - pos0;
 vel = 0.5 * vel + 0.5;
 
+float fragCoordZ = 0.5 * vHighPrecisionZW[0] / vHighPrecisionZW[1] + 0.5;
+
 gl_FragColor = pack2HalfToRGBA(vel);
+// if(gl_FragCoord.z > 0.9999) gl_FragColor.a = gl_FragCoord.z;
 #endif
 `
 

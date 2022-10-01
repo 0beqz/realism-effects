@@ -250,23 +250,21 @@ export class SSGIEffect extends Effect {
 	update(renderer, inputBuffer) {
 		this.keepEnvMapUpdated()
 
+		this.temporalResolvePass.unjitter()
+
+		this.temporalResolvePass.velocityPass.render(renderer)
+
 		this.temporalResolvePass.fullscreenMaterial.uniforms.velocityTexture.value =
-			this.ssgiPass.gBuffersRenderTarget.texture[0]
+			this.temporalResolvePass.velocityPass.renderTarget.texture
 
 		if (this.antialias) this.temporalResolvePass.jitter()
 
-		// render ssgi of current frame
 		this.ssgiPass.render(renderer, inputBuffer)
 
 		if (this.blur > 0) this.boxBlurPass.render(renderer, this.ssgiPass.renderTarget, this.boxBlurRenderTarget)
 
 		this.temporalResolvePass.fullscreenMaterial.uniforms.directLightTexture.value = inputBuffer.texture
 
-		// compose ssgi of last and current frame into one ssgi
 		this.temporalResolvePass.render(renderer)
-
-		// if (!this.antialias) {
-		// 	this.temporalResolvePass.unjitter()
-		// }
 	}
 }

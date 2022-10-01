@@ -68,6 +68,9 @@ void main() {
     vec4 lastVelocity = textureLod(lastVelocityTexture, reprojectedUv, 0.0);
     lastVelocity.xy = unpackRGBATo2Half(lastVelocity) * 2. - 1.;
 
+    // gl_FragColor.xy = velocity.xy - lastVelocity.xy;
+    // return;
+
     float depth = unpackRGBAToDepth(textureLod(depthTexture, vUv, 0.));
     float lastDepth = unpackRGBAToDepth(textureLod(lastDepthTexture, reprojectedUv, 0.));
 
@@ -86,28 +89,28 @@ void main() {
                 neighborUv = vUv + offset;
 
                 if (neighborUv.x >= 0.0 && neighborUv.x <= 1.0 && neighborUv.y >= 0.0 && neighborUv.y <= 1.0) {
-                    //                 vec4 neigborDepthTexel = textureLod(velocityTexture, vUv + offset, 0.0);
-                    //                 neighborDepth = 1. - neigborDepthTexel.b;
+                    vec4 neigborDepthTexel = textureLod(velocityTexture, vUv + offset, 0.0);
+                    neighborDepth = 1. - neigborDepthTexel.b;
 
-                    //                 int absX = abs(x);
-                    //                 int absY = abs(y);
+                    int absX = abs(x);
+                    int absY = abs(y);
 
-                    //                 if (absX <= 1 && absY <= 1) {
-                    // #ifdef dilation
+                    if (absX <= 1 && absY <= 1) {
+    #ifdef dilation
 
-                    //                     // prevents the flickering at the edges of geometries due to treating background pixels differently
-                    //                     if (neighborDepth > 0.) isBackground = false;
+                        // prevents the flickering at the edges of geometries due to treating background pixels differently
+                        if (neighborDepth > 0.) isBackground = false;
 
-                    //                     if (neighborDepth > maxDepth) maxDepth = neighborDepth;
+                        if (neighborDepth > maxDepth) maxDepth = neighborDepth;
 
-                    //                     vec2 reprojectedNeighborUv = reprojectedUv + vec2(x, y) * invTexSize;
+                        vec2 reprojectedNeighborUv = reprojectedUv + vec2(x, y) * invTexSize;
 
-                    //                     vec4 lastNeigborDepthTexel = textureLod(lastVelocityTexture, reprojectedNeighborUv, 0.0);
-                    //                     lastNeighborDepth = 1. - lastNeigborDepthTexel.b;
+                        vec4 lastNeigborDepthTexel = textureLod(lastVelocityTexture, reprojectedNeighborUv, 0.0);
+                        lastNeighborDepth = 1. - lastNeigborDepthTexel.b;
 
-                    //                     if (lastNeighborDepth > lastMaxDepth) lastMaxDepth = lastNeighborDepth;
-                    // #endif
-                    //                 }
+                        if (lastNeighborDepth > lastMaxDepth) lastMaxDepth = lastNeighborDepth;
+    #endif
+                    }
 
     #ifdef neighborhoodClamping
                     // the neighbor pixel is invalid if it's too far away from this pixel
@@ -134,10 +137,10 @@ void main() {
     reprojectedUv = vUv - velocity.xy;
 
     // depth
-    // #ifdef dilation
-    //     depth = maxDepth;
-    //     lastDepth = lastMaxDepth;
-    // #endif
+#ifdef dilation
+    depth = maxDepth;
+    lastDepth = lastMaxDepth;
+#endif
 
     float depthDiff = abs(depth - lastDepth);
 

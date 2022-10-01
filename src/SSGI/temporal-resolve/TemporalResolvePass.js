@@ -1,9 +1,9 @@
 ﻿import { Pass } from "postprocessing"
 import {
+	FloatType,
 	FramebufferTexture,
 	HalfFloatType,
 	LinearFilter,
-	Matrix4,
 	NearestFilter,
 	Quaternion,
 	RGBAFormat,
@@ -23,7 +23,6 @@ export class TemporalResolvePass extends Pass {
 	haltonSequence = []
 	haltonIndex = 0
 	samples = 1
-	unjitterCameraProjectionMatrix = new Matrix4()
 	lastCameraTransform = {
 		position: new Vector3(),
 		quaternion: new Quaternion()
@@ -45,8 +44,6 @@ export class TemporalResolvePass extends Pass {
 
 		this._scene = scene
 		this._camera = camera
-
-		this.unjitterCameraProjectionMatrix.copy(this._camera.projectionMatrix)
 
 		this.renderTarget = new WebGLRenderTarget(1, 1, {
 			minFilter: LinearFilter,
@@ -151,11 +148,6 @@ export class TemporalResolvePass extends Pass {
 		}
 	}
 
-	saveLastVelocityTexture(renderer, renderTarget) {
-		renderer.setRenderTarget(renderTarget)
-		renderer.copyFramebufferToTexture(zeroVec2, this.lastVelocityTexture)
-	}
-
 	render(renderer) {
 		this.samples++
 		this.checkNeedsResample()
@@ -169,14 +161,15 @@ export class TemporalResolvePass extends Pass {
 		// save the render target's texture for use in next frame
 		renderer.copyFramebufferToTexture(zeroVec2, this.accumulatedTexture)
 
-		if (this.renderVelocity) this.saveLastVelocityTexture(renderer, this.velocityPass.renderTarget)
-
 		this.copyDepthPass.fullscreenMaterial.uniforms.copyTexture.value = window.ssgiEffect.ssgiPass.depthTexture
 
 		this.copyDepthPass.render(renderer)
 
 		this.fullscreenMaterial.uniforms.depthTexture.value = window.ssgiEffect.ssgiPass.depthTexture
 		this.fullscreenMaterial.uniforms.lastDepthTexture.value = this.copyDepthPass.renderTarget.texture
+
+		renderer.setRenderTarget(this.velocityPass.renderTarget)
+		renderer.copyFramebufferToTexture(zeroVec2, this.lastVelocityTexture)
 	}
 
 	jitter(jitterScale = 1) {
@@ -197,6 +190,5 @@ export class TemporalResolvePass extends Pass {
 
 	unjitter() {
 		if (this._camera.clearViewOffset) this._camera.clearViewOffset()
-		this.unjitterCameraProjectionMatrix.copy(this._camera.projectionMatrix)
 	}
 }

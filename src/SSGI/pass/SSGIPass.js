@@ -60,15 +60,15 @@ export class SSGIPass extends Pass {
 		if (this.webgl1DepthPass) this.webgl1DepthPass.dispose()
 
 		if (isWebGL2) {
-			const bufferCount = this.useDiffuse ? 3 : 4
+			const bufferCount = this.useDiffuse ? 2 : 3
 
 			this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(1, 1, bufferCount, {
 				minFilter: NearestFilter,
 				magFilter: NearestFilter
 			})
 
-			this.normalTexture = this.gBuffersRenderTarget.texture[2]
-			this.depthTexture = this.gBuffersRenderTarget.texture[1]
+			this.normalTexture = this.gBuffersRenderTarget.texture[1]
+			this.depthTexture = this.gBuffersRenderTarget.texture[0]
 		} else {
 			// depth pass
 			this.webgl1DepthPass = new DepthPass(this._scene, this._camera)
@@ -97,7 +97,7 @@ export class SSGIPass extends Pass {
 
 			this.diffuseTexture = this.diffuseRenderTarget.texture
 		} else {
-			this.diffuseTexture = this.gBuffersRenderTarget.texture[3]
+			this.diffuseTexture = this.gBuffersRenderTarget.texture[2]
 		}
 
 		// set up uniforms
@@ -137,7 +137,6 @@ export class SSGIPass extends Pass {
 
 		this.normalTexture = null
 		this.depthTexture = null
-		this.velocityTexture = null
 		this.diffuseTexture = null
 	}
 
@@ -223,21 +222,11 @@ export class SSGIPass extends Pass {
 					: 10e10
 
 			c.material = mrtMaterial
-
-			this.ssgiEffect.temporalResolvePass.velocityPass.updateVelocityUniformsBeforeRender(
-				c,
-				this.ssgiEffect.temporalResolvePass.unjitterCameraProjectionMatrix
-			)
 		}
 	}
 
 	unsetMRTMaterialInScene() {
 		for (const c of this.visibleMeshes) {
-			this.ssgiEffect.temporalResolvePass.velocityPass.updateVelocityUniformsAfterRender(
-				c,
-				this.ssgiEffect.temporalResolvePass.unjitterCameraProjectionMatrix
-			)
-
 			// set material back to the original one
 			const [originalMaterial] = this.cachedMaterials.get(c)
 
@@ -275,8 +264,6 @@ export class SSGIPass extends Pass {
 		this.setMRTMaterialInScene()
 
 		this.renderPass.render(renderer, this.gBuffersRenderTarget)
-
-		this.ssgiEffect.temporalResolvePass.saveLastVelocityTexture(renderer, this.gBuffersRenderTarget)
 
 		this.unsetMRTMaterialInScene()
 
