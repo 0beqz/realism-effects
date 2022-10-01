@@ -2,6 +2,7 @@ import dragDrop from "drag-drop"
 import * as POSTPROCESSING from "postprocessing"
 import Stats from "stats.js"
 import * as THREE from "three"
+import { FogExp2 } from "three"
 import { ACESFilmicToneMapping, Box3, DirectionalLight, DoubleSide, HalfFloatType, Vector3 } from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
@@ -38,14 +39,14 @@ window.camera = camera
 
 const canvas = document.querySelector(".webgl")
 
-let rendererCanvas = canvas
+const rendererCanvas = canvas
 
 // use an offscreen canvas if available
-if (window.OffscreenCanvas) {
-	rendererCanvas = canvas.transferControlToOffscreen()
-	rendererCanvas.style = canvas.style
-	rendererCanvas.toDataURL = canvas.toDataURL.bind(canvas)
-}
+// if (window.OffscreenCanvas) {
+// 	rendererCanvas = canvas.transferControlToOffscreen()
+// 	rendererCanvas.style = canvas.style
+// 	rendererCanvas.toDataURL = canvas.toDataURL.bind(canvas)
+// }
 
 // Renderer
 const renderer = new THREE.WebGLRenderer({
@@ -110,22 +111,16 @@ camera.position.fromArray([-0.5999257784165805, 8.75, 25.4251889687681])
 controls.target.set(0, 8.75, 0)
 controls.maxPolarAngle = Math.PI / 2
 controls.minDistance = 7.5
-// controls.maxDistance = 30
 window.controls = controls
 
-// camera.position.fromArray([-5.621168238401456, 8.041024321610312, 15.689262542477858])
-// controls.target.fromArray([-1.989333417775655, 4.459812902527695, 2.152414887986504])
-
-const composer = new POSTPROCESSING.EffectComposer(renderer, {
-	frameBufferType: HalfFloatType
-})
+const composer = new POSTPROCESSING.EffectComposer(renderer)
 window.composer = composer
 const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
 composer.addPass(renderPass)
 
 const lightParams = {
-	yaw: 98,
-	pitch: 31,
+	yaw: 70,
+	pitch: 50,
 	intensity: 5.3
 }
 
@@ -180,8 +175,6 @@ new RGBELoader().load("quarry_02_4k.hdr", envMap => {
 	envMesh.scale.setScalar(100)
 	envMesh.updateMatrixWorld()
 	scene.add(envMesh)
-
-	renderer.setClearColor(0xffffff)
 })
 
 const gltflLoader = new GLTFLoader()
@@ -231,13 +224,42 @@ const refreshLighting = () => {
 const clock = new THREE.Clock()
 
 const initScene = () => {
+	// const options = {
+	// 	intensity: 0.999999999999999,
+	// 	power: 1.005,
+	// 	distance: 2.6600000000000037,
+	// 	fade: 4.874572967494828e-16,
+	// 	roughnessFade: 0,
+	// 	thickness: 1.089999999999997,
+	// 	ior: 2.33,
+	// 	mip: 1.734723475976807e-18,
+	// 	maxRoughness: 1,
+	// 	blend: 0.925,
+	// 	correction: 1,
+	// 	correctionRadius: 1,
+	// 	blur: 0,
+	// 	jitter: 0.32000000000000006,
+	// 	jitterRoughness: 1,
+	// 	steps: 10,
+	// 	refineSteps: 2,
+	// 	spp: 2,
+	// 	missedRays: false,
+	// 	useMap: true,
+	// 	useNormalMap: true,
+	// 	useRoughnessMap: true,
+	// 	resolutionScale: 1,
+	// 	qualityScale: 1,
+	// 	antialias: true,
+	// 	reflectionsOnly: false
+	// }
+
 	const options = {
 		intensity: 0.999999999999999,
 		power: 1.005,
-		distance: 2.6600000000000037,
+		distance: 16.740000000000006,
 		fade: 4.874572967494828e-16,
 		roughnessFade: 0,
-		thickness: 1.089999999999997,
+		thickness: 2.4999999999999973,
 		ior: 2.33,
 		mip: 1.734723475976807e-18,
 		maxRoughness: 1,
@@ -245,9 +267,9 @@ const initScene = () => {
 		correction: 1,
 		correctionRadius: 1,
 		blur: 0,
-		jitter: 0.32000000000000006,
+		jitter: 5.551115123125783e-17,
 		jitterRoughness: 1,
-		steps: 10,
+		steps: 20,
 		refineSteps: 2,
 		spp: 2,
 		missedRays: false,
@@ -292,7 +314,7 @@ const initScene = () => {
 	sceneFolder.addInput(light, "intensity", { min: 0, max: 10, step: 0.1 }).on("change", refreshLighting)
 
 	const bloomEffect = new POSTPROCESSING.BloomEffect({
-		intensity: 1,
+		intensity: 2,
 		mipmapBlur: true,
 		luminanceSmoothing: 0.5,
 		luminanceThreshold: 0.5,
@@ -321,24 +343,28 @@ const initScene = () => {
 	traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
 	// composer.addPass(traaPass)
 
-	composer.addPass(ssgiPass)
-	composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, vignetteEffect))
+	new POSTPROCESSING.LUTCubeLoader().load("lut.cube").then(lutTexture => {
+		const lutEffect = new POSTPROCESSING.LUT3DEffect(lutTexture)
 
-	const smaaEffect = new POSTPROCESSING.SMAAEffect()
+		composer.addPass(ssgiPass)
+		composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, vignetteEffect, lutEffect))
 
-	smaaPass = new POSTPROCESSING.EffectPass(camera, smaaEffect)
+		const smaaEffect = new POSTPROCESSING.SMAAEffect()
 
-	const fxaaEffect = new POSTPROCESSING.FXAAEffect()
+		smaaPass = new POSTPROCESSING.EffectPass(camera, smaaEffect)
 
-	fxaaPass = new POSTPROCESSING.EffectPass(camera, fxaaEffect)
+		const fxaaEffect = new POSTPROCESSING.FXAAEffect()
 
-	loop()
+		fxaaPass = new POSTPROCESSING.EffectPass(camera, fxaaEffect)
 
-	const display = gui2.pane.element.style.display === "none" ? "block" : "none"
+		loop()
 
-	gui.pane.element.style.display = display
-	gui2.pane.element.style.display = display
-	// stats.dom.style.display = display
+		const display = gui2.pane.element.style.display === "none" ? "block" : "none"
+
+		gui.pane.element.style.display = display
+		gui2.pane.element.style.display = display
+		// stats.dom.style.display = display
+	})
 }
 
 const loop = () => {
@@ -513,7 +539,7 @@ const setupAsset = asset => {
 	const height = bb.max.y - bb.min.y
 	const width = Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z)
 	const targetHeight = 15
-	const targetWidth = 45
+	const targetWidth = 45 * 2
 
 	const scaleWidth = targetWidth / width
 	const scaleHeight = targetHeight / height

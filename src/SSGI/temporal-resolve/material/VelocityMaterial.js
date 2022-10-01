@@ -5,7 +5,7 @@ import { UniformsUtils } from "three"
 import { Matrix4, ShaderChunk, ShaderMaterial } from "three"
 
 // Modified ShaderChunk.skinning_pars_vertex to handle
-// a second set of bone information from the previou frame
+// a second set of bone information from the previous frame
 const prev_skinning_pars_vertex = /* glsl */ `
 		#ifdef USE_SKINNING
 		#ifdef BONE_TEXTURE
@@ -35,58 +35,51 @@ const prev_skinning_pars_vertex = /* glsl */ `
 `
 
 export const velocity_vertex_pars = /* glsl */ `
-#define MAX_BONES 1024
+#define MAX_BONES 64
                     
 ${ShaderChunk.skinning_pars_vertex}
 ${prev_skinning_pars_vertex}
 
 uniform mat4 velocityMatrix;
 uniform mat4 prevVelocityMatrix;
-uniform float interpolateGeometry;
 varying vec4 prevPosition;
 varying vec4 newPosition;
-varying vec2 vHighPrecisionZW;
 `
 
-// Returns the body of the vertex shader for the velocity buffer and
-// outputs the position of the current and last frame positions
+// Returns the body of the vertex shader for the velocity buffer
 export const velocity_vertex_main = /* glsl */ `
 // Get the current vertex position
+transformed = vec3( position );
 ${ShaderChunk.skinning_vertex}
 newPosition = velocityMatrix * vec4( transformed, 1.0 );
 
 // Get the previous vertex position
+transformed = vec3( position );
 ${ShaderChunk.skinbase_vertex.replace(/mat4 /g, "").replace(/getBoneMatrix/g, "getPrevBoneMatrix")}
 ${ShaderChunk.skinning_vertex.replace(/vec4 /g, "")}
 prevPosition = prevVelocityMatrix * vec4( transformed, 1.0 );
 
 // gl_Position = newPosition;
-
-vHighPrecisionZW = gl_Position.zw;
 `
 
 export const velocity_fragment_pars = /* glsl */ `
-uniform float intensity;
 varying vec4 prevPosition;
 varying vec4 newPosition;
-varying vec2 vHighPrecisionZW;
 `
 
 export const velocity_fragment_main = /* glsl */ `
-float fragCoordZ = 0.5 * vHighPrecisionZW[0] / vHighPrecisionZW[1] + 0.5;
-
-float depth = 1.0 - fragCoordZ;
-
 #ifdef FULL_MOVEMENT
-gl_FragColor = vec4( 1., 1., depth, 0. );
+gl_FragColor = vec4( 1.);
+return;
 #else
 
 vec2 pos0 = (prevPosition.xy / prevPosition.w) * 0.5 + 0.5;
 vec2 pos1 = (newPosition.xy / newPosition.w) * 0.5 + 0.5;
 
 vec2 vel = pos1 - pos0;
+vel = 0.5 * vel + 0.5;
 
-gl_FragColor = vec4( vel, depth, 0.0 );
+gl_FragColor = pack2HalfToRGBA(vel);
 #endif
 `
 
@@ -94,14 +87,7 @@ export const velocity_uniforms = {
 	prevVelocityMatrix: { value: new Matrix4() },
 	velocityMatrix: { value: new Matrix4() },
 	prevBoneTexture: { value: null },
-	interpolateGeometry: { value: 0 },
-	intensity: { value: 1 },
-	boneTexture: { value: null },
-
-	alphaTest: { value: 0.0 },
-	map: { value: null },
-	alphaMap: { value: null },
-	opacity: { value: 1.0 }
+	boneTexture: { value: null }
 }
 
 export class VelocityMaterial extends ShaderMaterial {
@@ -113,10 +99,12 @@ export class VelocityMaterial extends ShaderMaterial {
                     ${velocity_vertex_pars}
         
                     void main() {
+						vec3 transformed;
 						${velocity_vertex_main}
                     }`,
 			fragmentShader: /* glsl */ `
 					${velocity_fragment_pars}
+					#include <packing>
         
                     void main() {
 						${velocity_fragment_main}

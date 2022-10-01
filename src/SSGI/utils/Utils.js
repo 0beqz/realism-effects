@@ -41,11 +41,6 @@ export const setupEnvMap = (ssgiMaterial, envMap, envMapCubeUVHeight) => {
 	ssgiMaterial.needsUpdate = true
 }
 
-// ref: https://computergraphics.stackexchange.com/a/12735
-export const getMaxMipLevel = (width, height) => {
-	return ~~Math.log2(Math.max(width, height)) + 1
-}
-
 // from https://github.com/mrdoob/three.js/blob/dev/examples/jsm/capabilities/WebGL.js#L18
 export const isWebGL2Available = () => {
 	try {

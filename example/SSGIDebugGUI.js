@@ -21,11 +21,6 @@ export class SSGIDebugGUI {
 		generalFolder.addInput(params, "intensity", { min: 0, max: 3, step: 0.01 })
 		generalFolder.addInput(params, "power", { min: 0.025, max: 3, step: 0.01 })
 		generalFolder.addInput(params, "distance", { min: 0.001, max: 20, step: 0.01 })
-		generalFolder.addInput(params, "fade", {
-			min: 0,
-			max: 20,
-			step: 0.01
-		})
 		generalFolder.addInput(params, "roughnessFade", {
 			min: 0,
 			max: 1,
@@ -40,12 +35,6 @@ export class SSGIDebugGUI {
 		generalFolder.addInput(params, "ior", {
 			min: 1,
 			max: 2.33,
-			step: 0.01
-		})
-
-		generalFolder.addInput(params, "mip", {
-			min: 0,
-			max: 1,
 			step: 0.01
 		})
 

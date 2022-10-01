@@ -1,10 +1,12 @@
 ﻿import { DepthPass, Pass, RenderPass } from "postprocessing"
-import { RepeatWrapping, TextureLoader } from "three"
 import {
+	Color,
 	HalfFloatType,
 	MeshBasicMaterial,
 	NearestFilter,
+	RepeatWrapping,
 	sRGBEncoding,
+	TextureLoader,
 	WebGLMultipleRenderTargets,
 	WebGLRenderTarget
 } from "three"
@@ -13,6 +15,7 @@ import { SSGIMaterial } from "../material/SSGIMaterial.js"
 import { getVisibleChildren, isWebGL2Available } from "../utils/Utils.js"
 
 const isWebGL2 = isWebGL2Available()
+const rendererClearColor = new Color()
 
 export class SSGIPass extends Pass {
 	ssgiEffect
@@ -34,7 +37,6 @@ export class SSGIPass extends Pass {
 			minFilter: NearestFilter,
 			magFilter: NearestFilter,
 			type: HalfFloatType,
-			encoding: sRGBEncoding,
 			depthBuffer: false
 		})
 
@@ -62,8 +64,7 @@ export class SSGIPass extends Pass {
 
 			this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(1, 1, bufferCount, {
 				minFilter: NearestFilter,
-				magFilter: NearestFilter,
-				type: HalfFloatType
+				magFilter: NearestFilter
 			})
 
 			this.normalTexture = this.gBuffersRenderTarget.texture[2]
@@ -163,8 +164,6 @@ export class SSGIPass extends Pass {
 	}
 
 	setMRTMaterialInScene() {
-		this.ssgiEffect.temporalResolvePass.unjitter()
-
 		this.visibleMeshes = getVisibleChildren(this._scene)
 
 		for (const c of this.visibleMeshes) {
@@ -230,8 +229,6 @@ export class SSGIPass extends Pass {
 				this.ssgiEffect.temporalResolvePass.unjitterCameraProjectionMatrix
 			)
 		}
-
-		this.ssgiEffect.temporalResolvePass.jitter()
 	}
 
 	unsetMRTMaterialInScene() {
@@ -272,6 +269,9 @@ export class SSGIPass extends Pass {
 	}
 
 	render(renderer) {
+		renderer.getClearColor(rendererClearColor)
+		renderer.setClearColor(0xffffff)
+
 		this.setMRTMaterialInScene()
 
 		this.renderPass.render(renderer, this.gBuffersRenderTarget)
@@ -292,7 +292,7 @@ export class SSGIPass extends Pass {
 		if (!isWebGL2) this.webgl1DepthPass.renderPass.render(renderer, this.webgl1DepthPass.renderTarget)
 
 		this.fullscreenMaterial.uniforms.samples.value = this.ssgiEffect.temporalResolvePass.samples
-		this.fullscreenMaterial.uniforms.time.value = performance.now()
+		this.fullscreenMaterial.uniforms.time.value = performance.now() % (10 * 60 * 1000)
 		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
 		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far
 
@@ -300,5 +300,7 @@ export class SSGIPass extends Pass {
 
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)
+
+		renderer.setClearColor(rendererClearColor)
 	}
 }

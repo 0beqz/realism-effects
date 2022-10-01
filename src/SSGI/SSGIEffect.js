@@ -1,18 +1,11 @@
 ﻿import { BoxBlurPass, Effect, Selection } from "postprocessing"
-import {
-	EquirectangularReflectionMapping,
-	HalfFloatType,
-	LinearMipMapLinearFilter,
-	Uniform,
-	WebGLRenderTarget
-} from "three"
+import { EquirectangularReflectionMapping, HalfFloatType, Uniform, WebGLRenderTarget } from "three"
 import { SSGIPass } from "./pass/SSGIPass.js"
 import applyDiffuse from "./shader/applyDiffuse.frag"
 import compose from "./shader/compose.frag"
 import utils from "./shader/utils.frag"
 import { defaultSSGIOptions } from "./SSGIOptions"
 import { TemporalResolvePass } from "./temporal-resolve/TemporalResolvePass.js"
-import { getMaxMipLevel } from "./utils/Utils"
 
 const finalFragmentShader = compose.replace("#include <utils>", utils)
 
@@ -83,7 +76,7 @@ export class SSGIEffect extends Effect {
 
 		this.boxBlurPass = new BoxBlurPass({
 			kernelSize: 3,
-			iterations: 2,
+			iterations: 3,
 			bilateral: true
 		})
 
@@ -108,6 +101,10 @@ export class SSGIEffect extends Effect {
 		this.setSize(options.width, options.height)
 
 		this.makeOptionsReactive(options)
+
+		this.temporalResolvePass.depthTexture = this.ssgiPass.depthTexture
+
+		window.ssgiEffect = this
 	}
 
 	makeOptionsReactive(options) {
@@ -183,14 +180,6 @@ export class SSGIEffect extends Effect {
 							ssgiPassFullscreenMaterialUniforms.rayDistance.value = value
 							break
 
-						case "mip":
-							const maxMipLevel = getMaxMipLevel(this.temporalResolvePass.width, this.temporalResolvePass.height)
-							const mip = value * maxMipLevel
-
-							ssgiPassFullscreenMaterialUniforms[key].value = mip
-
-							break
-
 						// must be a uniform
 						default:
 							if (ssgiPassFullscreenMaterialUniformsKeys.includes(key)) {
@@ -220,7 +209,10 @@ export class SSGIEffect extends Effect {
 		this.temporalResolvePass.setSize(width, height)
 		this.ssgiPass.setSize(width, height)
 		this.boxBlurPass.setSize(width, height)
-		this.boxBlurRenderTarget.setSize(width, height)
+		this.boxBlurRenderTarget.setSize(width * this.resolutionScale, height * this.resolutionScale)
+		this.boxBlurPass.renderTargetA.setSize(width * this.resolutionScale, height * this.resolutionScale)
+		this.boxBlurPass.renderTargetB.setSize(width * this.resolutionScale, height * this.resolutionScale)
+		this.boxBlurPass.blurMaterial.setSize(width * this.resolutionScale, height * this.resolutionScale)
 
 		this.lastSize = {
 			width,
@@ -244,12 +236,6 @@ export class SSGIEffect extends Effect {
 
 		if (ssgiMaterial.uniforms.envMap.value !== this._scene.environment) {
 			if (this._scene.environment?.mapping === EquirectangularReflectionMapping) {
-				this._scene.environment.minFilter = LinearMipMapLinearFilter
-				this._scene.environment.magFilter = LinearMipMapLinearFilter
-
-				this._scene.environment.generateMipmaps = true
-				this._scene.environment.needsUpdate = true
-
 				ssgiMaterial.uniforms.envMap.value = this._scene.environment
 				ssgiMaterial.defines.USE_ENVMAP = ""
 			} else {
@@ -267,12 +253,7 @@ export class SSGIEffect extends Effect {
 		this.temporalResolvePass.fullscreenMaterial.uniforms.velocityTexture.value =
 			this.ssgiPass.gBuffersRenderTarget.texture[0]
 
-		// if (!this.temporalResolvePass.checkCanUseSharedVelocityTexture())
-		// 	this.temporalResolvePass.velocityPass.render(renderer)
-
-		// set the jittering based on the resolution scale to reduce the pixelation of SSGI's buffer
-		const jitterScale = 1 / this.resolutionScale
-		if (this.antialias) this.temporalResolvePass.jitter(jitterScale)
+		if (this.antialias) this.temporalResolvePass.jitter()
 
 		// render ssgi of current frame
 		this.ssgiPass.render(renderer, inputBuffer)

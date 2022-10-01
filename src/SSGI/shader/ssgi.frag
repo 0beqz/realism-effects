@@ -1,7 +1,5 @@
 ﻿varying vec2 vUv;
 
-// precision lowp float;
-
 uniform sampler2D accumulatedTexture;
 uniform sampler2D normalTexture;
 uniform sampler2D depthTexture;
@@ -17,10 +15,8 @@ uniform float cameraFar;
 uniform float rayDistance;
 uniform float roughnessFade;
 uniform float maxRoughness;
-uniform float fade;
 uniform float thickness;
 uniform float ior;
-uniform float mip;
 uniform float power;
 uniform float intensity;
 uniform vec2 invTexSize;
@@ -39,6 +35,7 @@ uniform float jitterRoughness;
 float nearMinusFar;
 float nearMulFar;
 float farMinusNear;
+vec2 blueNoiseRepeat;
 
 #include <packing>
 
@@ -48,7 +45,7 @@ float farMinusNear;
 vec2 RayMarch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
 vec2 BinarySearch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
 float fastGetViewZ(const in float depth);
-vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float lastFrameAlpha, float sampleCount, vec3 worldPos, float spread, float lod);
+vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float sampleCount, float spread);
 
 void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.0);
@@ -76,6 +73,10 @@ void main() {
     nearMulFar = cameraNear * cameraFar;
     farMinusNear = cameraFar - cameraNear;
 
+    vec2 screenSize = vec2(textureSize(accumulatedTexture, 0));
+    vec2 blueNoiseSize = vec2(textureSize(blueNoiseTexture, 0));
+    blueNoiseRepeat = screenSize / blueNoiseSize;
+
     normalTexel.rgb = unpackRGBToNormal(normalTexel.rgb);
 
     // view-space depth
@@ -89,7 +90,7 @@ void main() {
     vec3 viewDir = normalize(viewPos);
     vec3 viewNormal = normalTexel.xyz;
 
-    float spread = jitter + roughness * roughness * jitterRoughness;
+    float spread = jitter + roughness * jitterRoughness;
     spread = min(1.0, spread);
 
     vec3 SSGI;
@@ -106,14 +107,9 @@ void main() {
         iterations = 1;
     }
 
-    vec2 envMapSize = vec2(textureSize(envMap, 0));
-    float maxEnvMapSize = max(envMapSize.x, envMapSize.y);
-    float maxEnvMapMip = log2(maxEnvMapSize) + 1.0;
-    float lod = mip * maxEnvMapMip;
-
     for (int s = 0; s < iterations; s++) {
         float sF = float(s);
-        vec3 sampledSSGI = doSample(viewPos, viewDir, viewNormal, roughness, lastFrameAlpha, sF, worldPos, spread, lod);
+        vec3 sampledSSGI = doSample(viewPos, viewDir, viewNormal, roughness, sF, spread);
 
         float m = 1. / (sF + 1.0);
 
@@ -128,7 +124,7 @@ void main() {
     gl_FragColor = vec4(SSGI, lastFrameAlpha);
 }
 
-vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float lastFrameAlpha, float sampleCount, vec3 worldPos, float spread, float lod) {
+vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float sampleCount, float spread) {
     // jittering
     vec3 jitteredNormal = viewNormal;
 
@@ -139,7 +135,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
         float seed = time * 0.01;
         vec2 startOffset = vec2(sampleCount / float(spp));
 
-        vec2 blueNoiseUv = (vUv + startOffset + seed) * 2.0;
+        vec2 blueNoiseUv = (vUv + startOffset + seed) * blueNoiseRepeat;
         vec2 random = textureLod(blueNoiseTexture, blueNoiseUv, 0.).rg;
 
         // 16.6.3 DIRECTIONS IN A CONE in Raytracing Gems I
@@ -158,6 +154,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
 
     // source: https://computergraphics.stackexchange.com/a/4994
     float pdf = 1. / (dot(viewNormal, jitteredNormal) * M_PI);
+    if (pdf < 0.1) pdf = 0.1;
 
     float curIor = mix(ior, 2.33, spread);
     float fresnelFactor = fresnel_dielectric(viewDir, jitteredNormal, curIor);
@@ -169,7 +166,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     dir *= rayDistance / float(steps);
 
     vec3 hitPos = viewPos;
-    float rayHitDepthDifference;
+    float rayHitDepthDifference = 0.;
 
 #if steps == 0
     hitPos += dir;
@@ -192,10 +189,10 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
         reflectedWS.xyz = normalize(reflectedWS.xyz);
 
         vec3 sampleDir = reflectedWS.xyz;
-        envMapSample = sampleEquirectEnvMapColor(sampleDir, envMap, lod);
+        envMapSample = sampleEquirectEnvMapColor(sampleDir, envMap, 0.);
 
         // we won't deal with calculating direct sun light from the env map as it takes too long to compute and is too noisy
-        if (dot(envMapSample, envMapSample) > 3.) envMapSample = vec3(1.);
+        if (dot(envMapSample, envMapSample) > 3.) envMapSample = vec3(0.);
 
         envMapSample *= fresnelFactor * TRANSFORM_FACTOR;
 
@@ -208,22 +205,18 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
 
     vec3 SSGI = textureLod(accumulatedTexture, coords.xy, 0.).rgb * ssgiIntensity * fresnelFactor;
 
-    if (fade != 0.0 && !isAllowedMissedRay) {
-        vec3 hitWorldPos = screenSpaceToWorldSpace(coords, rayHitDepthDifference);
-
-        // distance from the ssgi point to what it's reflecting
-        float ssgiDistance = distance(hitWorldPos, worldPos);
-
-        float opacity = 1.0 / ((ssgiDistance + 1.0) * fade * 0.1);
-        if (opacity > 1.0) opacity = 1.0;
-        SSGI *= opacity;
+    // highlight reflections of brighter spots more (e.g. if the direct light is being reflected)
+    float ssgiLum = czm_luminance(SSGI);
+    float brightnessDiff = ssgiLum - 0.375 * TRANSFORM_FACTOR;
+    if (brightnessDiff > 0. && distance(vUv, coords.xy) > 0.01) {
+        brightnessDiff /= TRANSFORM_FACTOR / (1. - 0.375);
+        SSGI = mix(SSGI, 10.0 * SSGI, brightnessDiff);
     }
 
     SSGI = min(vec3(1.), SSGI);
     SSGI *= TRANSFORM_FACTOR;
 
     if (isAllowedMissedRay) {
-        float ssgiLum = czm_luminance(SSGI);
         float envLum = czm_luminance(envMapSample);
 
         if (envLum > ssgiLum) SSGI = envMapSample;

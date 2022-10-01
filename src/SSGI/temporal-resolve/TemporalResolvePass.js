@@ -1,9 +1,9 @@
 ﻿import { Pass } from "postprocessing"
-import { Matrix4 } from "three"
 import {
 	FramebufferTexture,
 	HalfFloatType,
 	LinearFilter,
+	Matrix4,
 	NearestFilter,
 	Quaternion,
 	RGBAFormat,
@@ -12,6 +12,7 @@ import {
 	Vector3,
 	WebGLRenderTarget
 } from "three"
+import { CopyDepthPass } from "../pass/CopyDepthPass"
 import { TemporalResolveMaterial } from "./material/TemporalResolveMaterial"
 import { VelocityPass } from "./pass/VelocityPass"
 import { generateHalton23Points } from "./utils/generateHalton23Points"
@@ -92,6 +93,8 @@ export class TemporalResolvePass extends Pass {
 		})
 
 		this.setupFramebuffers(1, 1)
+
+		this.copyDepthPass = new CopyDepthPass()
 	}
 
 	dispose() {
@@ -104,11 +107,13 @@ export class TemporalResolvePass extends Pass {
 		this.accumulatedTexture.dispose()
 		this.fullscreenMaterial.dispose()
 		this.velocityPass.dispose()
+		this.copyDepthPass.dispose()
 	}
 
 	setSize(width, height) {
 		this.renderTarget.setSize(width, height)
 		this.velocityPass.setSize(width * this.qualityScale, height * this.qualityScale)
+		this.copyDepthPass.setSize(width * this.qualityScale, height * this.qualityScale)
 		this.velocityPass.renderTarget.texture.needsUpdate = true
 
 		this.fullscreenMaterial.uniforms.invTexSize.value.set(1 / width, 1 / height)
@@ -127,7 +132,6 @@ export class TemporalResolvePass extends Pass {
 		this.lastVelocityTexture = new FramebufferTexture(width * this.qualityScale, height * this.qualityScale, RGBAFormat)
 		this.lastVelocityTexture.minFilter = NearestFilter
 		this.lastVelocityTexture.magFilter = NearestFilter
-		this.lastVelocityTexture.type = HalfFloatType
 
 		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.accumulatedTexture
 		this.fullscreenMaterial.uniforms.lastVelocityTexture.value = this.lastVelocityTexture
@@ -157,7 +161,7 @@ export class TemporalResolvePass extends Pass {
 		this.checkNeedsResample()
 		this.fullscreenMaterial.uniforms.samples.value = this.samples
 
-		if (this.renderVelocity) this.velocityPass.render(renderer)
+		this.velocityPass.render(renderer)
 
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)
@@ -166,6 +170,13 @@ export class TemporalResolvePass extends Pass {
 		renderer.copyFramebufferToTexture(zeroVec2, this.accumulatedTexture)
 
 		if (this.renderVelocity) this.saveLastVelocityTexture(renderer, this.velocityPass.renderTarget)
+
+		this.copyDepthPass.fullscreenMaterial.uniforms.copyTexture.value = window.ssgiEffect.ssgiPass.depthTexture
+
+		this.copyDepthPass.render(renderer)
+
+		this.fullscreenMaterial.uniforms.depthTexture.value = window.ssgiEffect.ssgiPass.depthTexture
+		this.fullscreenMaterial.uniforms.lastDepthTexture.value = this.copyDepthPass.renderTarget.texture
 	}
 
 	jitter(jitterScale = 1) {
@@ -180,13 +191,12 @@ export class TemporalResolvePass extends Pass {
 
 		const { width, height } = this.renderTarget
 
-		if (this._camera.setViewOffset) {
+		if (this._camera.setViewOffset)
 			this._camera.setViewOffset(width, height, x * jitterScale, y * jitterScale, width, height)
-		}
 	}
 
 	unjitter() {
-		this._camera.clearViewOffset()
+		if (this._camera.clearViewOffset) this._camera.clearViewOffset()
 		this.unjitterCameraProjectionMatrix.copy(this._camera.projectionMatrix)
 	}
 }

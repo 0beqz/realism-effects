@@ -3,7 +3,6 @@ import {
 	Color,
 	DataTexture,
 	FloatType,
-	HalfFloatType,
 	NearestFilter,
 	Quaternion,
 	RGBAFormat,
@@ -36,7 +35,7 @@ export class VelocityPass extends Pass {
 		this.renderTarget = new WebGLRenderTarget(1, 1, {
 			minFilter: NearestFilter,
 			magFilter: NearestFilter,
-			type: HalfFloatType
+			type: FloatType
 		})
 	}
 
@@ -74,13 +73,6 @@ export class VelocityPass extends Pass {
 
 			for (const prop of updateProperties) velocityMaterial[prop] = originalMaterial[prop]
 
-			if (c.skeleton?.boneTexture) {
-				velocityMaterial.defines.USE_SKINNING = ""
-				velocityMaterial.defines.BONE_TEXTURE = ""
-
-				velocityMaterial.uniforms.boneTexture.value = c.skeleton.boneTexture
-			}
-
 			this.updateVelocityUniformsBeforeRender(c)
 		}
 	}
@@ -105,6 +97,13 @@ export class VelocityPass extends Pass {
 	}
 
 	updateVelocityUniformsBeforeRender(c, projectionMatrix = this._camera.projectionMatrix) {
+		if (c.skeleton?.boneTexture) {
+			c.material.defines.USE_SKINNING = ""
+			c.material.defines.BONE_TEXTURE = ""
+
+			c.material.uniforms.boneTexture.value = c.skeleton.boneTexture
+		}
+
 		c.material.uniforms.velocityMatrix.value.multiplyMatrices(projectionMatrix, c.modelViewMatrix)
 	}
 
