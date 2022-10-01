@@ -161,7 +161,7 @@ export class TemporalResolvePass extends Pass {
 		this.checkNeedsResample()
 		this.fullscreenMaterial.uniforms.samples.value = this.samples
 
-		this.velocityPass.render(renderer)
+		if (this.renderVelocity) this.velocityPass.render(renderer)
 
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)
