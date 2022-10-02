@@ -12,9 +12,15 @@ if (isBackground) {
     vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.0);
 
     if (blur > 0.) {
-        vec3 blurredReflectionsColor = textureLod(boxBlurTexture, vUv, 0.).rgb;
+        // allow blur for up to 16 frames for "new" pixels
+        float maxFrames = alphaStep * 16.0;
+        float intensity = (maxFrames - inputTexel.a) / maxFrames;
 
-        inputTexel.rgb = mix(inputTexel.rgb, blurredReflectionsColor, blur);
+        if (intensity > 0.) {
+            vec3 blurredReflectionsColor = textureLod(boxBlurTexture, vUv, 0.).rgb;
+
+            inputTexel.rgb = mix(inputTexel.rgb, blurredReflectionsColor, blur * intensity);
+        }
     }
 
     const float diffuseInfluence = 0.95;

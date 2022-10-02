@@ -1,6 +1,5 @@
 ﻿import { Pass } from "postprocessing"
 import {
-	FloatType,
 	FramebufferTexture,
 	HalfFloatType,
 	LinearFilter,
@@ -89,9 +88,15 @@ export class TemporalResolvePass extends Pass {
 			}
 		})
 
-		this.setupFramebuffers(1, 1)
+		this.fullscreenMaterial.uniforms.velocityTexture.value = this.velocityPass.renderTarget.texture[0]
+		this.fullscreenMaterial.uniforms.depthTexture.value = this.velocityPass.renderTarget.texture[1]
 
 		this.copyDepthPass = new CopyDepthPass()
+
+		this.copyDepthPass.fullscreenMaterial.uniforms.copyTexture.value = this.velocityPass.renderTarget.texture[1]
+		this.fullscreenMaterial.uniforms.lastDepthTexture.value = this.copyDepthPass.renderTarget.texture
+
+		this.setupFramebuffers(1, 1)
 	}
 
 	dispose() {
@@ -161,12 +166,7 @@ export class TemporalResolvePass extends Pass {
 		// save the render target's texture for use in next frame
 		renderer.copyFramebufferToTexture(zeroVec2, this.accumulatedTexture)
 
-		this.copyDepthPass.fullscreenMaterial.uniforms.copyTexture.value = window.ssgiEffect.ssgiPass.depthTexture
-
 		this.copyDepthPass.render(renderer)
-
-		this.fullscreenMaterial.uniforms.depthTexture.value = window.ssgiEffect.ssgiPass.depthTexture
-		this.fullscreenMaterial.uniforms.lastDepthTexture.value = this.copyDepthPass.renderTarget.texture
 
 		renderer.setRenderTarget(this.velocityPass.renderTarget)
 		renderer.copyFramebufferToTexture(zeroVec2, this.lastVelocityTexture)

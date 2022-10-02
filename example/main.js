@@ -118,9 +118,9 @@ const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
 composer.addPass(renderPass)
 
 const lightParams = {
-	yaw: 70,
-	pitch: 50,
-	intensity: 5.3
+	yaw: 74,
+	pitch: 61,
+	intensity: 2.5
 }
 
 const light = new DirectionalLight(0xffffff, lightParams.intensity)
@@ -139,12 +139,11 @@ renderer.shadowMap.enabled = true
 renderer.shadowMap.autoUpdate = false
 renderer.shadowMap.needsUpdate = true
 
-// Set up shadow properties for the light
-light.shadow.mapSize.width = 8192 // default
-light.shadow.mapSize.height = 8192 // default
-light.shadow.camera.near = 50 // default
-light.shadow.camera.far = 500 // default
-light.shadow.bias = -0.000001
+light.shadow.mapSize.width = 8192
+light.shadow.mapSize.height = 8192
+light.shadow.camera.near = 50
+light.shadow.camera.far = 500
+light.shadow.bias = -0.0001
 
 const s = 100
 

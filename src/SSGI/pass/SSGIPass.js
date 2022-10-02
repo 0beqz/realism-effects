@@ -60,7 +60,7 @@ export class SSGIPass extends Pass {
 		if (this.webgl1DepthPass) this.webgl1DepthPass.dispose()
 
 		if (isWebGL2) {
-			const bufferCount = this.useDiffuse ? 2 : 3
+			const bufferCount = 3
 
 			this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(1, 1, bufferCount, {
 				minFilter: NearestFilter,
@@ -83,22 +83,15 @@ export class SSGIPass extends Pass {
 			this.depthTexture = this.webgl1DepthPass.texture
 		}
 
+		if (window.composer.depthTexture === null) {
+			window.composer.createDepthTexture()
+		}
+		// this.depthTexture = window.composer.depthTexture
+
 		this.fullscreenMaterial.uniforms.normalTexture.value = this.normalTexture
 		this.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
 
-		// diffuse texture
-
-		if (this.useDiffuse) {
-			this.diffuseRenderTarget = new WebGLRenderTarget(1, 1, {
-				minFilter: NearestFilter,
-				magFilter: NearestFilter,
-				encoding: sRGBEncoding
-			})
-
-			this.diffuseTexture = this.diffuseRenderTarget.texture
-		} else {
-			this.diffuseTexture = this.gBuffersRenderTarget.texture[2]
-		}
+		this.diffuseTexture = this.gBuffersRenderTarget.texture[2]
 
 		// set up uniforms
 		this.ssgiEffect.temporalResolvePass.fullscreenMaterial.uniforms.diffuseTexture.value = this.diffuseTexture
@@ -109,7 +102,6 @@ export class SSGIPass extends Pass {
 
 		this.renderTarget.setSize(width * this.ssgiEffect.resolutionScale, height * this.ssgiEffect.resolutionScale)
 		this.gBuffersRenderTarget.setSize(width * this.ssgiEffect.qualityScale, height * this.ssgiEffect.qualityScale)
-		if (this.useDiffuse) this.diffuseRenderTarget.setSize(width, height)
 
 		// setting the size for the webgl1DepthPass currently causes a stack overflow due to recursive calling
 		if (!isWebGL2) {
@@ -131,7 +123,6 @@ export class SSGIPass extends Pass {
 		this.gBuffersRenderTarget.dispose()
 		this.renderPass.dispose()
 		if (!isWebGL2) this.webgl1DepthPass.dispose()
-		if (this.useDiffuse) this.diffuseRenderTarget.dispose()
 
 		this.fullscreenMaterial.dispose()
 
@@ -253,10 +244,6 @@ export class SSGIPass extends Pass {
 		}
 	}
 
-	get useDiffuse() {
-		return false
-	}
-
 	render(renderer) {
 		renderer.getClearColor(rendererClearColor)
 		renderer.setClearColor(0xffffff)
@@ -266,14 +253,6 @@ export class SSGIPass extends Pass {
 		this.renderPass.render(renderer, this.gBuffersRenderTarget)
 
 		this.unsetMRTMaterialInScene()
-
-		if (this.useDiffuse) {
-			this.setDiffuseMaterialInScene()
-
-			this.renderPass.render(renderer, this.diffuseRenderTarget)
-
-			this.unsetDiffuseMaterialInScene()
-		}
 
 		// render depth and velocity in seperate passes
 		if (!isWebGL2) this.webgl1DepthPass.renderPass.render(renderer, this.webgl1DepthPass.renderTarget)

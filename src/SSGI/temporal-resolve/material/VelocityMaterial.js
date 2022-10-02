@@ -1,7 +1,7 @@
 ﻿// this shader is from: https://github.com/gkjohnson/threejs-sandbox
 /* eslint-disable camelcase */
 
-import { UniformsUtils } from "three"
+import { GLSL3, UniformsUtils } from "three"
 import { Matrix4, ShaderChunk, ShaderMaterial } from "three"
 
 // Modified ShaderChunk.skinning_pars_vertex to handle
@@ -110,13 +110,20 @@ export class VelocityMaterial extends ShaderMaterial {
 						${velocity_vertex_main}
                     }`,
 			fragmentShader: /* glsl */ `
+					layout(location = 0) out vec4 gVelocity;
+					layout(location = 1) out vec4 gDepth;
+
 					${velocity_fragment_pars}
 					#include <packing>
         
                     void main() {
-						${velocity_fragment_main}
+						${velocity_fragment_main.replaceAll("gl_FragColor", "gVelocity")}
+
+						gDepth = packDepthToRGBA(fragCoordZ);
                     }`
 		})
+
+		this.glslVersion = GLSL3
 
 		this.isVelocityMaterial = true
 	}

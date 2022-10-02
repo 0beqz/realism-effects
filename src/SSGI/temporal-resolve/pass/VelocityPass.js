@@ -8,7 +8,7 @@ import {
 	RGBAFormat,
 	Vector3,
 	VideoTexture,
-	WebGLRenderTarget
+	WebGLMultipleRenderTargets
 } from "three"
 import { getVisibleChildren } from "../../utils/Utils.js"
 import { VelocityMaterial } from "../material/VelocityMaterial.js"
@@ -32,7 +32,7 @@ export class VelocityPass extends Pass {
 
 		this.renderPass = new RenderPass(this._scene, this._camera)
 
-		this.renderTarget = new WebGLRenderTarget(1, 1, {
+		this.renderTarget = new WebGLMultipleRenderTargets(1, 1, 2, {
 			minFilter: NearestFilter,
 			magFilter: NearestFilter
 		})
@@ -72,7 +72,14 @@ export class VelocityPass extends Pass {
 
 			for (const prop of updateProperties) velocityMaterial[prop] = originalMaterial[prop]
 
-			this.updateVelocityUniformsBeforeRender(c)
+			if (c.skeleton?.boneTexture) {
+				c.material.defines.USE_SKINNING = ""
+				c.material.defines.BONE_TEXTURE = ""
+
+				c.material.uniforms.boneTexture.value = c.skeleton.boneTexture
+			}
+
+			c.material.uniforms.velocityMatrix.value.multiplyMatrices(this._camera.projectionMatrix, c.modelViewMatrix)
 		}
 	}
 
@@ -95,26 +102,11 @@ export class VelocityPass extends Pass {
 		}
 	}
 
-	updateVelocityUniformsBeforeRender(c) {
-		if (c.skeleton?.boneTexture) {
-			c.material.defines.USE_SKINNING = ""
-			c.material.defines.BONE_TEXTURE = ""
-
-			c.material.uniforms.boneTexture.value = c.skeleton.boneTexture
-		}
-
-		c.material.uniforms.velocityMatrix.value.multiplyMatrices(this._camera.projectionMatrix, c.modelViewMatrix)
-	}
-
-	updateVelocityUniformsAfterRender(c) {
-		c.material.uniforms.prevVelocityMatrix.value.multiplyMatrices(this._camera.projectionMatrix, c.modelViewMatrix)
-
-		if (c.skeleton?.boneTexture) this.saveBoneTexture(c)
-	}
-
 	unsetVelocityMaterialInScene() {
 		for (const c of this.visibleMeshes) {
-			this.updateVelocityUniformsAfterRender(c)
+			c.material.uniforms.prevVelocityMatrix.value.multiplyMatrices(this._camera.projectionMatrix, c.modelViewMatrix)
+
+			if (c.skeleton?.boneTexture) this.saveBoneTexture(c)
 
 			c.material = this.cachedMaterials.get(c)[0]
 		}

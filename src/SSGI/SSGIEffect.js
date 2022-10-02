@@ -72,11 +72,12 @@ export class SSGIEffect extends Effect {
 
 		// ssgi pass
 		this.ssgiPass = new SSGIPass(this)
+
 		this.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = this.ssgiPass.renderTarget.texture
 
 		this.boxBlurPass = new BoxBlurPass({
 			kernelSize: 3,
-			iterations: 3,
+			iterations: 5,
 			bilateral: true
 		})
 
@@ -101,10 +102,6 @@ export class SSGIEffect extends Effect {
 		this.setSize(options.width, options.height)
 
 		this.makeOptionsReactive(options)
-
-		this.temporalResolvePass.depthTexture = this.ssgiPass.depthTexture
-
-		window.ssgiEffect = this
 	}
 
 	makeOptionsReactive(options) {
@@ -208,6 +205,7 @@ export class SSGIEffect extends Effect {
 
 		this.temporalResolvePass.setSize(width, height)
 		this.ssgiPass.setSize(width, height)
+
 		this.boxBlurPass.setSize(width, height)
 		this.boxBlurRenderTarget.setSize(width * this.resolutionScale, height * this.resolutionScale)
 		this.boxBlurPass.renderTargetA.setSize(width * this.resolutionScale, height * this.resolutionScale)
@@ -250,12 +248,9 @@ export class SSGIEffect extends Effect {
 	update(renderer, inputBuffer) {
 		this.keepEnvMapUpdated()
 
-		this.temporalResolvePass.unjitter()
+		if (this.antialias) this.temporalResolvePass.unjitter()
 
 		this.temporalResolvePass.velocityPass.render(renderer)
-
-		this.temporalResolvePass.fullscreenMaterial.uniforms.velocityTexture.value =
-			this.temporalResolvePass.velocityPass.renderTarget.texture
 
 		if (this.antialias) this.temporalResolvePass.jitter()
 
