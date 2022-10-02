@@ -235,7 +235,7 @@ const initScene = () => {
 	// 	blend: 0.925,
 	// 	correction: 1,
 	// 	correctionRadius: 1,
-	// 	blur: 0,
+	// 	blurKernel: 0,
 	// 	jitter: 0.32000000000000006,
 	// 	jitterRoughness: 1,
 	// 	steps: 10,
@@ -264,12 +264,12 @@ const initScene = () => {
 		blend: 0.925,
 		correction: 1,
 		correctionRadius: 1,
-		blur: 0,
+		blurKernel: 3,
 		jitter: 5.551115123125783e-17,
 		jitterRoughness: 1,
 		steps: 20,
 		refineSteps: 2,
-		spp: 2,
+		spp: 8,
 		missedRays: false,
 		useMap: true,
 		useNormalMap: true,
@@ -278,7 +278,7 @@ const initScene = () => {
 		qualityScale: 1,
 		antialias: true,
 		reflectionsOnly: false,
-		sharpness: 100
+		sharpness: 32
 	}
 
 	traaEffect = new TRAAEffect(scene, camera, params)

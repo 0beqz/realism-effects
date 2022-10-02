@@ -86,7 +86,7 @@ void main() {
                 offset = vec2(x, y) * invTexSize;
                 neighborUv = vUv + offset;
 
-                if (neighborUv.x >= 0.0 && neighborUv.x <= 1.0 && neighborUv.y >= 0.0 && neighborUv.y <= 1.0) {
+                if (all(greaterThanEqual(neighborUv, vec2(0.))) && all(lessThanEqual(neighborUv, vec2(1.)))) {
                     //                 vec4 neigborDepthTexel = textureLod(velocityTexture, vUv + offset, 0.0);
                     //                 neighborDepth = 1. - neigborDepthTexel.b;
 

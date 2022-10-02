@@ -1,5 +1,5 @@
-﻿import { BoxBlurPass, Effect, Selection } from "postprocessing"
-import { EquirectangularReflectionMapping, HalfFloatType, Uniform, WebGLRenderTarget } from "three"
+﻿import { Effect, Selection } from "postprocessing"
+import { EquirectangularReflectionMapping, Uniform } from "three"
 import { SSGIPass } from "./pass/SSGIPass.js"
 import applyDiffuse from "./shader/applyDiffuse.frag"
 import compose from "./shader/compose.frag"
@@ -20,10 +20,7 @@ export class SSGIEffect extends Effect {
 	constructor(scene, camera, options = defaultSSGIOptions) {
 		super("SSGIEffect", finalFragmentShader, {
 			type: "FinalSSGIMaterial",
-			uniforms: new Map([
-				["inputTexture", new Uniform(null)],
-				["blur", new Uniform(0)]
-			]),
+			uniforms: new Map([["inputTexture", new Uniform(null)]]),
 			defines: new Map([["RENDER_MODE", "0"]])
 		})
 
@@ -46,10 +43,8 @@ export class SSGIEffect extends Effect {
 		this.temporalResolvePass = new TemporalResolvePass(scene, camera, options)
 		this.temporalResolvePass.fullscreenMaterial.fragmentShader =
 			/* glsl */ `
-		uniform sampler2D boxBlurTexture;
 		uniform sampler2D diffuseTexture;
 		uniform sampler2D directLightTexture;
-		uniform float blur;
 		` +
 			this.temporalResolvePass.fullscreenMaterial.fragmentShader.replace(
 				"vec3 inputColor",
@@ -59,10 +54,8 @@ export class SSGIEffect extends Effect {
 		this.temporalResolvePass.fullscreenMaterial.uniforms = {
 			...this.temporalResolvePass.fullscreenMaterial.uniforms,
 			...{
-				boxBlurTexture: new Uniform(null),
 				diffuseTexture: new Uniform(null),
-				directLightTexture: new Uniform(null),
-				blur: new Uniform(0)
+				directLightTexture: new Uniform(null)
 			}
 		}
 
@@ -74,20 +67,6 @@ export class SSGIEffect extends Effect {
 		this.ssgiPass = new SSGIPass(this)
 
 		this.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = this.ssgiPass.renderTarget.texture
-
-		this.boxBlurPass = new BoxBlurPass({
-			kernelSize: 3,
-			iterations: 5,
-			bilateral: true
-		})
-
-		this.boxBlurPass.blurMaterial.copyCameraSettings(camera)
-
-		this.boxBlurRenderTarget = new WebGLRenderTarget(1, 1, {
-			type: HalfFloatType
-		})
-
-		this.temporalResolvePass.fullscreenMaterial.uniforms.boxBlurTexture.value = this.boxBlurRenderTarget.texture
 
 		this.lastSize = {
 			width: options.width,
@@ -141,6 +120,9 @@ export class SSGIEffect extends Effect {
 							this.temporalResolvePass.fullscreenMaterial.uniforms.blur.value = value
 							break
 
+						case "blurKernel":
+							this.ssgiPass.closestSurfacePass.fullscreenMaterial.uniforms.blurKernel.value = value
+							break
 						case "sharpness":
 							this.ssgiPass.closestSurfacePass.fullscreenMaterial.uniforms.sharpness.value = value
 							break
@@ -207,12 +189,6 @@ export class SSGIEffect extends Effect {
 		this.temporalResolvePass.setSize(width, height)
 		this.ssgiPass.setSize(width, height)
 
-		this.boxBlurPass.setSize(width, height)
-		this.boxBlurRenderTarget.setSize(width * this.resolutionScale, height * this.resolutionScale)
-		this.boxBlurPass.renderTargetA.setSize(width * this.resolutionScale, height * this.resolutionScale)
-		this.boxBlurPass.renderTargetB.setSize(width * this.resolutionScale, height * this.resolutionScale)
-		this.boxBlurPass.blurMaterial.setSize(width * this.resolutionScale, height * this.resolutionScale)
-
 		this.lastSize = {
 			width,
 			height,
@@ -226,8 +202,6 @@ export class SSGIEffect extends Effect {
 
 		this.ssgiPass.dispose()
 		this.temporalResolvePass.dispose()
-		this.boxBlurRenderTarget.dispose()
-		this.boxBlurPass.dispose()
 	}
 
 	keepEnvMapUpdated() {
@@ -256,8 +230,6 @@ export class SSGIEffect extends Effect {
 		if (this.antialias) this.temporalResolvePass.jitter()
 
 		this.ssgiPass.render(renderer, inputBuffer)
-
-		if (this.blur > 0) this.boxBlurPass.render(renderer, this.ssgiPass.renderTarget, this.boxBlurRenderTarget)
 
 		this.temporalResolvePass.fullscreenMaterial.uniforms.directLightTexture.value = inputBuffer.texture
 		this.ssgiPass.fullscreenMaterial.uniforms.directLightTexture.value = inputBuffer.texture

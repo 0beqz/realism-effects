@@ -14,6 +14,7 @@ export class ClosestSurfacePass extends Pass {
             uniform sampler2D depthTexture;
             uniform vec2 invTexSize;
             uniform float sharpness;
+            uniform float blurKernel;
 
             #include <packing>
 
@@ -25,32 +26,33 @@ export class ClosestSurfacePass extends Pass {
                 float totalWeight = 1.;
                 float maxDepth = depth;
 
-                const float maxDepthDifference = 0.00005;
+                const float maxDepthDifference = 0.0000025;
 
                 vec4 inputTexel = textureLod(inputTexture, vUv, 0.);
                 vec3 color = inputTexel.rgb;
 
-                const float neighborPixels = 3.;
-
-                for(float x = -neighborPixels; x <= neighborPixels; x++){
-                    for(float y = -neighborPixels; y <= neighborPixels; y++){
+                for(float x = -blurKernel; x <= blurKernel; x++){
+                    for(float y = -blurKernel; y <= blurKernel; y++){
                         if(x != 0. || y != 0.){
                             vec2 neighborUv = vUv + vec2(x, y) * invTexSize;
-                            float neighborDepth = unpackRGBAToDepth(textureLod(depthTexture, neighborUv, 0.));
 
-                            float depthDiff = abs(depth - neighborDepth);
-                            depthDiff /= maxDepthDifference;
-                            if(depthDiff > 1.) depthDiff = 1.;
+                            if (all(greaterThanEqual(neighborUv, vec2(0.))) && all(lessThanEqual(neighborUv, vec2(1.)))) {
+                                float neighborDepth = unpackRGBAToDepth(textureLod(depthTexture, neighborUv, 0.));
 
-                            float weight = 1. - depthDiff;
-                            weight = pow(weight, sharpness);
-                            
-                            if(weight > 0.){
-                                bestUv += neighborUv * weight;
-                                totalWeight += weight;
-                                maxDepth = max(maxDepth, neighborDepth);
+                                float depthDiff = abs(depth - neighborDepth);
+                                depthDiff /= maxDepthDifference;
+                                if(depthDiff > 1.) depthDiff = 1.;
 
-                                color += textureLod(inputTexture, neighborUv, 0.).rgb * weight;
+                                float weight = 1. - depthDiff;
+                                weight = pow(weight, sharpness);
+
+                                if(weight > 0.){
+                                    bestUv += neighborUv * weight;
+                                    totalWeight += weight;
+                                    maxDepth = max(maxDepth, neighborDepth);
+
+                                    color += textureLod(inputTexture, neighborUv, 0.).rgb * weight;
+                                }
                             }
                         }
                     }
@@ -80,7 +82,8 @@ export class ClosestSurfacePass extends Pass {
 				inputTexture: new Uniform(null),
 				depthTexture: new Uniform(null),
 				invTexSize: new Uniform(new Vector2()),
-				sharpness: new Uniform(8)
+				blurKernel: new Uniform(3),
+				sharpness: new Uniform(32)
 			}
 		})
 
