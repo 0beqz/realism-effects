@@ -2,7 +2,6 @@
 import {
 	Color,
 	HalfFloatType,
-	LinearFilter,
 	MeshBasicMaterial,
 	NearestFilter,
 	RepeatWrapping,
@@ -13,6 +12,7 @@ import {
 import { MRTMaterial } from "../material/MRTMaterial.js"
 import { SSGIMaterial } from "../material/SSGIMaterial.js"
 import { getVisibleChildren, isWebGL2Available } from "../utils/Utils.js"
+import { ClosestSurfacePass } from "./ClosestSurfacePass.js"
 
 const isWebGL2 = isWebGL2Available()
 const rendererClearColor = new Color()
@@ -34,8 +34,8 @@ export class SSGIPass extends Pass {
 		if (ssgiEffect._camera.isPerspectiveCamera) this.fullscreenMaterial.defines.PERSPECTIVE_CAMERA = ""
 
 		this.renderTarget = new WebGLRenderTarget(1, 1, {
-			minFilter: LinearFilter,
-			magFilter: LinearFilter,
+			minFilter: NearestFilter,
+			magFilter: NearestFilter,
 			type: HalfFloatType,
 			depthBuffer: false
 		})
@@ -49,13 +49,14 @@ export class SSGIPass extends Pass {
 		this.fullscreenMaterial.uniforms.velocityTexture.value =
 			this.ssgiEffect.temporalResolvePass.velocityPass.renderTarget.texture[0]
 
-		console.log(this.ssgiEffect.temporalResolvePass.velocityPass.renderTarget.texture)
 		const noiseTexture = new TextureLoader().load("./texture/blue_noise_rg.png")
 		this.fullscreenMaterial.uniforms.blueNoiseTexture.value = noiseTexture
 		noiseTexture.minFilter = NearestFilter
 		noiseTexture.magFilter = NearestFilter
 		noiseTexture.wrapS = RepeatWrapping
 		noiseTexture.wrapT = RepeatWrapping
+
+		this.closestSurfacePass = new ClosestSurfacePass()
 	}
 
 	initMRTRenderTarget() {
@@ -87,11 +88,6 @@ export class SSGIPass extends Pass {
 			this.depthTexture = this.webgl1DepthPass.texture
 		}
 
-		if (window.composer.depthTexture === null) {
-			window.composer.createDepthTexture()
-		}
-		// this.depthTexture = window.composer.depthTexture
-
 		this.fullscreenMaterial.uniforms.normalTexture.value = this.normalTexture
 		this.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
 
@@ -99,6 +95,9 @@ export class SSGIPass extends Pass {
 
 		// set up uniforms
 		this.ssgiEffect.temporalResolvePass.fullscreenMaterial.uniforms.diffuseTexture.value = this.diffuseTexture
+
+		this.closestSurfacePass.fullscreenMaterial.uniforms.inputTexture.value = this.renderTarget.texture
+		this.closestSurfacePass.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
 	}
 
 	setSize(width, height) {
@@ -106,6 +105,12 @@ export class SSGIPass extends Pass {
 
 		this.renderTarget.setSize(width * this.ssgiEffect.resolutionScale, height * this.ssgiEffect.resolutionScale)
 		this.gBuffersRenderTarget.setSize(width * this.ssgiEffect.qualityScale, height * this.ssgiEffect.qualityScale)
+
+		this.closestSurfacePass.setSize(width * this.ssgiEffect.qualityScale, height * this.ssgiEffect.qualityScale)
+		this.closestSurfacePass.fullscreenMaterial.uniforms.invTexSize.value.set(
+			1 / this.gBuffersRenderTarget.width,
+			1 / this.gBuffersRenderTarget.height
+		)
 
 		// setting the size for the webgl1DepthPass currently causes a stack overflow due to recursive calling
 		if (!isWebGL2) {
@@ -272,5 +277,11 @@ export class SSGIPass extends Pass {
 		renderer.render(this.scene, this.camera)
 
 		renderer.setClearColor(rendererClearColor)
+
+		this.closestSurfacePass.render(renderer)
+
+		// this.ssgiEffect.uniforms.get("inputTexture").value = this.closestSurfacePass.renderTarget.texture
+		this.ssgiEffect.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value =
+			this.closestSurfacePass.renderTarget.texture
 	}
 }

@@ -137,10 +137,11 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
         float seed = time * 0.01;
         vec2 startOffset = vec2(sampleCount / float(spp));
 
+        // seed = 0.;
+
         vec2 blueNoiseUv = (vUv + startOffset + seed) * blueNoiseRepeat;
         vec2 random = textureLod(blueNoiseTexture, blueNoiseUv, 0.).rg;
 
-        // 16.6.3 DIRECTIONS IN A CONE in Raytracing Gems I
         float cosTheta = (1. - random.x) + random.x * cosThetaMax;
         float sinTheta = sqrt(1. - cosTheta * cosTheta);
         float phi = random.y * 2. * M_PI;

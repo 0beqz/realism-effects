@@ -38,6 +38,12 @@ export class SSGIDebugGUI {
 			step: 0.01
 		})
 
+		generalFolder.addInput(params, "sharpness", {
+			min: 1,
+			max: 100,
+			step: 1
+		})
+
 		generalFolder.addInput(params, "maxRoughness", { min: 0, max: 1, step: 0.01 })
 
 		const temporalResolveFolder = pane.addFolder({ title: "Temporal Resolve" })

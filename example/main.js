@@ -274,10 +274,11 @@ const initScene = () => {
 		useMap: true,
 		useNormalMap: true,
 		useRoughnessMap: true,
-		resolutionScale: 1,
+		resolutionScale: 0.5,
 		qualityScale: 1,
 		antialias: true,
-		reflectionsOnly: false
+		reflectionsOnly: false,
+		sharpness: 100
 	}
 
 	traaEffect = new TRAAEffect(scene, camera, params)

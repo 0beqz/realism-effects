@@ -141,6 +141,10 @@ export class SSGIEffect extends Effect {
 							this.temporalResolvePass.fullscreenMaterial.uniforms.blur.value = value
 							break
 
+						case "sharpness":
+							this.ssgiPass.closestSurfacePass.fullscreenMaterial.uniforms.sharpness.value = value
+							break
+
 						// defines
 						case "steps":
 						case "refineSteps":
