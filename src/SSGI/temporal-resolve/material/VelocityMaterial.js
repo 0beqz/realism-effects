@@ -81,12 +81,11 @@ vec2 pos0 = (prevPosition.xy / prevPosition.w) * 0.5 + 0.5;
 vec2 pos1 = (newPosition.xy / newPosition.w) * 0.5 + 0.5;
 
 vec2 vel = pos1 - pos0;
-vel = 0.5 * vel + 0.5;
+vel = 0.5 * vel + 0.5; // as pack2HalfToRGBA doesn't support negative numbers
 
 float fragCoordZ = 0.5 * vHighPrecisionZW[0] / vHighPrecisionZW[1] + 0.5;
 
 gl_FragColor = pack2HalfToRGBA(vel);
-// if(gl_FragCoord.z > 0.9999) gl_FragColor.a = gl_FragCoord.z;
 #endif
 `
 

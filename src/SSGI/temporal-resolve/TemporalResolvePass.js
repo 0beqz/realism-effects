@@ -6,7 +6,6 @@ import {
 	NearestFilter,
 	Quaternion,
 	RGBAFormat,
-	sRGBEncoding,
 	Vector2,
 	Vector3,
 	WebGLRenderTarget
@@ -45,10 +44,9 @@ export class TemporalResolvePass extends Pass {
 		this._camera = camera
 
 		this.renderTarget = new WebGLRenderTarget(1, 1, {
-			minFilter: LinearFilter,
-			magFilter: LinearFilter,
+			minFilter: NearestFilter,
+			magFilter: NearestFilter,
 			type: HalfFloatType,
-			encoding: sRGBEncoding,
 			depthBuffer: false
 		})
 
@@ -127,7 +125,7 @@ export class TemporalResolvePass extends Pass {
 		if (this.lastVelocityTexture) this.lastVelocityTexture.dispose()
 
 		this.accumulatedTexture = new FramebufferTexture(width, height, RGBAFormat)
-		this.accumulatedTexture.minFilter = LinearFilter
+		this.accumulatedTexture.minFilter = LinearFilter // we need to use LinearFilter here otherwise we get distortions when reprojecting
 		this.accumulatedTexture.magFilter = LinearFilter
 		this.accumulatedTexture.type = HalfFloatType
 
@@ -137,8 +135,6 @@ export class TemporalResolvePass extends Pass {
 
 		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.accumulatedTexture
 		this.fullscreenMaterial.uniforms.lastVelocityTexture.value = this.lastVelocityTexture
-
-		this.fullscreenMaterial.needsUpdate = true
 	}
 
 	checkNeedsResample() {

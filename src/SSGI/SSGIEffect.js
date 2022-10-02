@@ -83,9 +83,6 @@ export class SSGIEffect extends Effect {
 
 		this.boxBlurPass.blurMaterial.copyCameraSettings(camera)
 
-		this.boxBlurPass.renderTargetA.texture.type = HalfFloatType
-		this.boxBlurPass.renderTargetB.texture.type = HalfFloatType
-
 		this.boxBlurRenderTarget = new WebGLRenderTarget(1, 1, {
 			type: HalfFloatType
 		})
@@ -259,6 +256,7 @@ export class SSGIEffect extends Effect {
 		if (this.blur > 0) this.boxBlurPass.render(renderer, this.ssgiPass.renderTarget, this.boxBlurRenderTarget)
 
 		this.temporalResolvePass.fullscreenMaterial.uniforms.directLightTexture.value = inputBuffer.texture
+		this.ssgiPass.fullscreenMaterial.uniforms.directLightTexture.value = inputBuffer.texture
 
 		this.temporalResolvePass.render(renderer)
 	}

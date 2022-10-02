@@ -2,10 +2,10 @@
 import {
 	Color,
 	HalfFloatType,
+	LinearFilter,
 	MeshBasicMaterial,
 	NearestFilter,
 	RepeatWrapping,
-	sRGBEncoding,
 	TextureLoader,
 	WebGLMultipleRenderTargets,
 	WebGLRenderTarget
@@ -34,8 +34,8 @@ export class SSGIPass extends Pass {
 		if (ssgiEffect._camera.isPerspectiveCamera) this.fullscreenMaterial.defines.PERSPECTIVE_CAMERA = ""
 
 		this.renderTarget = new WebGLRenderTarget(1, 1, {
-			minFilter: NearestFilter,
-			magFilter: NearestFilter,
+			minFilter: LinearFilter,
+			magFilter: LinearFilter,
 			type: HalfFloatType,
 			depthBuffer: false
 		})
@@ -46,7 +46,10 @@ export class SSGIPass extends Pass {
 		this.fullscreenMaterial.uniforms.cameraMatrixWorld.value = this._camera.matrixWorld
 		this.fullscreenMaterial.uniforms.projectionMatrix.value = this._camera.projectionMatrix
 		this.fullscreenMaterial.uniforms.inverseProjectionMatrix.value = this._camera.projectionMatrixInverse
+		this.fullscreenMaterial.uniforms.velocityTexture.value =
+			this.ssgiEffect.temporalResolvePass.velocityPass.renderTarget.texture[0]
 
+		console.log(this.ssgiEffect.temporalResolvePass.velocityPass.renderTarget.texture)
 		const noiseTexture = new TextureLoader().load("./texture/blue_noise_rg.png")
 		this.fullscreenMaterial.uniforms.blueNoiseTexture.value = noiseTexture
 		noiseTexture.minFilter = NearestFilter
@@ -64,7 +67,8 @@ export class SSGIPass extends Pass {
 
 			this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(1, 1, bufferCount, {
 				minFilter: NearestFilter,
-				magFilter: NearestFilter
+				magFilter: NearestFilter,
+				generateMipmaps: false
 			})
 
 			this.normalTexture = this.gBuffersRenderTarget.texture[1]
@@ -246,7 +250,7 @@ export class SSGIPass extends Pass {
 
 	render(renderer) {
 		renderer.getClearColor(rendererClearColor)
-		renderer.setClearColor(0xffffff)
+		renderer.setClearColor(0)
 
 		this.setMRTMaterialInScene()
 

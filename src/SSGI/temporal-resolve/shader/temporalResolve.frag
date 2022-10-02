@@ -143,7 +143,7 @@ void main() {
     float depthDiff = abs(depth - lastDepth);
 
     // the reprojected UV coordinates are inside the view
-    if (reprojectedUv.x >= 0.0 && reprojectedUv.x <= 1.0 && reprojectedUv.y >= 0.0 && reprojectedUv.y <= 1.0) {
+    if (all(greaterThanEqual(reprojectedUv, vec2(0.))) && all(lessThanEqual(reprojectedUv, vec2(1.)))) {
         didReproject = true;
 
         accumulatedTexel = textureLod(accumulatedTexture, reprojectedUv, 0.0);
@@ -152,7 +152,7 @@ void main() {
         alpha = min(alpha, blend);
         accumulatedColor = transformColor(accumulatedTexel.rgb);
 
-        alpha = didReproject && depthDiff <= maxNeighborDepthDifference ? (alpha + alphaStep) : 0.0;
+        alpha = didReproject && depthDiff < maxNeighborDepthDifference ? (alpha + alphaStep) : 0.0;
 
 #ifdef neighborhoodClamping
         vec3 clampedColor = clamp(accumulatedColor, minNeighborColor, maxNeighborColor);
@@ -178,4 +178,6 @@ void main() {
 #endif
 
         gl_FragColor = vec4(undoColorTransform(outputColor), alpha);
+
+    // if (depthDiff > maxNeighborDepthDifference) gl_FragColor = vec4(0., 1., 0., 1.);
 }

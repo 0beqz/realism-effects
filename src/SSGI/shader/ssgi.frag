@@ -1,9 +1,11 @@
 ﻿varying vec2 vUv;
 
+uniform sampler2D directLightTexture;
 uniform sampler2D accumulatedTexture;
 uniform sampler2D normalTexture;
 uniform sampler2D depthTexture;
 uniform sampler2D blueNoiseTexture;
+uniform sampler2D velocityTexture;
 uniform sampler2D envMap;
 
 uniform mat4 projectionMatrix;
@@ -53,7 +55,7 @@ void main() {
     float depthSize = dot(depthTexel.rgb, depthTexel.rgb);
 
     // filter out background
-    if (depthSize == 0. || depthSize == 3.) {
+    if (depthSize == 0.) {
         gl_FragColor = EARLY_OUT_COLOR;
         return;
     }
@@ -203,7 +205,22 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     vec2 dCoords = smoothstep(0.2, 0.6, abs(vec2(0.5, 0.5) - coords.xy));
     float ssgiIntensity = clamp(1.0 - (dCoords.x + dCoords.y), 0.0, 1.0);
 
-    vec3 SSGI = textureLod(accumulatedTexture, coords.xy, 0.).rgb * ssgiIntensity * fresnelFactor;
+    // reproject the coords from the last frame
+    vec4 velocity = textureLod(velocityTexture, coords.xy, 0.0);
+    velocity.xy = unpackRGBATo2Half(velocity) * 2. - 1.;
+
+    vec2 reprojectedUv = coords.xy - velocity.xy;
+
+    vec3 SSGI;
+
+    // check if the reprojected coordinates are within the screen
+    if (all(greaterThanEqual(reprojectedUv, vec2(0.))) && all(lessThanEqual(reprojectedUv, vec2(1.)))) {
+        SSGI = textureLod(accumulatedTexture, reprojectedUv, 0.).rgb;
+    } else {
+        SSGI = textureLod(directLightTexture, vUv, 0.).rgb;
+    }
+
+    SSGI *= ssgiIntensity * fresnelFactor;
 
     // highlight reflections of brighter spots more (e.g. if the direct light is being reflected)
     float ssgiLum = czm_luminance(SSGI);
@@ -213,7 +230,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
         SSGI = mix(SSGI, 10.0 * SSGI, brightnessDiff);
     }
 
-    SSGI = min(vec3(1.), SSGI);
+    SSGI = min(vec3(1.0, 1.0, 1.0), SSGI);
     SSGI *= TRANSFORM_FACTOR;
 
     if (isAllowedMissedRay) {
