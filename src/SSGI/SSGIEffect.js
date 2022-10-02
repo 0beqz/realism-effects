@@ -121,10 +121,13 @@ export class SSGIEffect extends Effect {
 							break
 
 						case "blurKernel":
-							this.ssgiPass.closestSurfacePass.fullscreenMaterial.uniforms.blurKernel.value = value
+							this.ssgiPass.upscalePass.fullscreenMaterial.uniforms.blurKernel.value = value
+							this.ssgiPass.upscalePass2.fullscreenMaterial.uniforms.blurKernel.value = value
 							break
+
 						case "sharpness":
-							this.ssgiPass.closestSurfacePass.fullscreenMaterial.uniforms.sharpness.value = value
+							this.ssgiPass.upscalePass.fullscreenMaterial.uniforms.sharpness.value = value
+							this.ssgiPass.upscalePass2.fullscreenMaterial.uniforms.sharpness.value = value
 							break
 
 						// defines

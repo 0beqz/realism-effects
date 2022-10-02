@@ -12,7 +12,7 @@ import {
 import { MRTMaterial } from "../material/MRTMaterial.js"
 import { SSGIMaterial } from "../material/SSGIMaterial.js"
 import { getVisibleChildren, isWebGL2Available } from "../utils/Utils.js"
-import { ClosestSurfacePass } from "./ClosestSurfacePass.js"
+import { UpscalePass } from "./UpscalePass.js"
 
 const isWebGL2 = isWebGL2Available()
 const rendererClearColor = new Color()
@@ -56,7 +56,10 @@ export class SSGIPass extends Pass {
 		noiseTexture.wrapS = RepeatWrapping
 		noiseTexture.wrapT = RepeatWrapping
 
-		this.closestSurfacePass = new ClosestSurfacePass()
+		this.upscalePass = new UpscalePass()
+		this.upscalePass2 = new UpscalePass({ horizontal: false })
+
+		this.upscalePass2.fullscreenMaterial.uniforms.inputTexture.value = this.upscalePass.renderTarget.texture
 	}
 
 	initMRTRenderTarget() {
@@ -96,8 +99,9 @@ export class SSGIPass extends Pass {
 		// set up uniforms
 		this.ssgiEffect.temporalResolvePass.fullscreenMaterial.uniforms.diffuseTexture.value = this.diffuseTexture
 
-		this.closestSurfacePass.fullscreenMaterial.uniforms.inputTexture.value = this.renderTarget.texture
-		this.closestSurfacePass.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
+		this.upscalePass.fullscreenMaterial.uniforms.inputTexture.value = this.renderTarget.texture
+		this.upscalePass.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
+		this.upscalePass2.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
 	}
 
 	setSize(width, height) {
@@ -106,8 +110,13 @@ export class SSGIPass extends Pass {
 		this.renderTarget.setSize(width * this.ssgiEffect.resolutionScale, height * this.ssgiEffect.resolutionScale)
 		this.gBuffersRenderTarget.setSize(width * this.ssgiEffect.qualityScale, height * this.ssgiEffect.qualityScale)
 
-		this.closestSurfacePass.setSize(width * this.ssgiEffect.qualityScale, height * this.ssgiEffect.qualityScale)
-		this.closestSurfacePass.fullscreenMaterial.uniforms.invTexSize.value.set(
+		this.upscalePass.setSize(width * this.ssgiEffect.qualityScale, height * this.ssgiEffect.qualityScale)
+		this.upscalePass.fullscreenMaterial.uniforms.invTexSize.value.set(
+			1 / this.gBuffersRenderTarget.width,
+			1 / this.gBuffersRenderTarget.height
+		)
+		this.upscalePass2.setSize(width * this.ssgiEffect.qualityScale, height * this.ssgiEffect.qualityScale)
+		this.upscalePass2.fullscreenMaterial.uniforms.invTexSize.value.set(
 			1 / this.gBuffersRenderTarget.width,
 			1 / this.gBuffersRenderTarget.height
 		)
@@ -278,10 +287,11 @@ export class SSGIPass extends Pass {
 
 		renderer.setClearColor(rendererClearColor)
 
-		this.closestSurfacePass.render(renderer)
+		this.upscalePass.render(renderer)
+		this.upscalePass2.render(renderer)
 
-		// this.ssgiEffect.uniforms.get("inputTexture").value = this.closestSurfacePass.renderTarget.texture
+		// this.ssgiEffect.uniforms.get("inputTexture").value = this.upscalePass.renderTarget.texture
 		this.ssgiEffect.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value =
-			this.closestSurfacePass.renderTarget.texture
+			this.upscalePass.renderTarget.texture
 	}
 }

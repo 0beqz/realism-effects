@@ -2,9 +2,9 @@
 import { HalfFloatType, NearestFilter, ShaderMaterial, Uniform, Vector2, WebGLRenderTarget } from "three"
 import basicVertexShader from "../shader/basic.vert"
 
-export class ClosestSurfacePass extends Pass {
-	constructor() {
-		super("ClosestSurfacePass")
+export class UpscalePass extends Pass {
+	constructor({ horizontal } = { horizontal: true }) {
+		super("UpscalePass")
 
 		this.fullscreenMaterial = new ShaderMaterial({
 			fragmentShader: /* glsl */ `
@@ -30,29 +30,32 @@ export class ClosestSurfacePass extends Pass {
 
                 vec4 inputTexel = textureLod(inputTexture, vUv, 0.);
                 vec3 color = inputTexel.rgb;
+                
+                for(float i = -blurKernel; i <= blurKernel; i++){
+                    if(i != 0.){
+                        #ifdef horizontal
+                        vec2 neighborVec = vec2(i, 0.);
+                        #else
+                        vec2 neighborVec = vec2(0., i);
+                        #endif
+                        vec2 neighborUv = vUv + neighborVec * invTexSize;
 
-                for(float x = -blurKernel; x <= blurKernel; x++){
-                    for(float y = -blurKernel; y <= blurKernel; y++){
-                        if(x != 0. || y != 0.){
-                            vec2 neighborUv = vUv + vec2(x, y) * invTexSize;
+                        if (all(greaterThanEqual(neighborUv, vec2(0.))) && all(lessThanEqual(neighborUv, vec2(1.)))) {
+                            float neighborDepth = unpackRGBAToDepth(textureLod(depthTexture, neighborUv, 0.));
 
-                            if (all(greaterThanEqual(neighborUv, vec2(0.))) && all(lessThanEqual(neighborUv, vec2(1.)))) {
-                                float neighborDepth = unpackRGBAToDepth(textureLod(depthTexture, neighborUv, 0.));
+                            float depthDiff = abs(depth - neighborDepth);
+                            depthDiff /= maxDepthDifference;
+                            if(depthDiff > 1.) depthDiff = 1.;
 
-                                float depthDiff = abs(depth - neighborDepth);
-                                depthDiff /= maxDepthDifference;
-                                if(depthDiff > 1.) depthDiff = 1.;
+                            float weight = 1. - depthDiff;
+                            weight = pow(weight, sharpness);
 
-                                float weight = 1. - depthDiff;
-                                weight = pow(weight, sharpness);
+                            if(weight > 0.){
+                                bestUv += neighborUv * weight;
+                                totalWeight += weight;
+                                maxDepth = max(maxDepth, neighborDepth);
 
-                                if(weight > 0.){
-                                    bestUv += neighborUv * weight;
-                                    totalWeight += weight;
-                                    maxDepth = max(maxDepth, neighborDepth);
-
-                                    color += textureLod(inputTexture, neighborUv, 0.).rgb * weight;
-                                }
+                                color += textureLod(inputTexture, neighborUv, 0.).rgb * weight;
                             }
                         }
                     }
@@ -86,6 +89,10 @@ export class ClosestSurfacePass extends Pass {
 				sharpness: new Uniform(32)
 			}
 		})
+
+		if (horizontal) {
+			this.fullscreenMaterial.defines.horizontal = ""
+		}
 
 		this.renderTarget = new WebGLRenderTarget(1, 1, {
 			minFilter: NearestFilter,
