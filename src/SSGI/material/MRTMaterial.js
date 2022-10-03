@@ -22,6 +22,7 @@ export class MRTMaterial extends ShaderMaterial {
 				uvTransform: new Uniform(new Matrix3()),
 				roughness: new Uniform(1),
 				roughnessMap: new Uniform(null),
+				boneTexture: new Uniform(null),
 				map: new Uniform(null),
 				color: new Uniform(new Color())
 			},
@@ -38,7 +39,7 @@ export class MRTMaterial extends ShaderMaterial {
                 #include <displacementmap_pars_vertex>
                 #include <normal_pars_vertex>
                 #include <morphtarget_pars_vertex>
-                // #include <skinning_pars_vertex>
+                #include <skinning_pars_vertex>
                 #include <logdepthbuf_pars_vertex>
                 #include <clipping_planes_pars_vertex>
                 void main() {
@@ -53,7 +54,7 @@ export class MRTMaterial extends ShaderMaterial {
                     #include <normal_vertex>
                     #include <begin_vertex>
                     #include <morphtarget_vertex>
-                    // #include <skinning_vertex>
+                    #include <skinning_vertex>
                     #include <displacementmap_vertex>
                     #include <project_vertex>
                     #include <logdepthbuf_vertex>

@@ -278,7 +278,7 @@ const initScene = () => {
 		qualityScale: 1,
 		antialias: true,
 		reflectionsOnly: false,
-		sharpness: 32
+		sharpness: 8
 	}
 
 	traaEffect = new TRAAEffect(scene, camera, params)

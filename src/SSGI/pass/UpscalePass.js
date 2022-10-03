@@ -1,5 +1,5 @@
 ﻿import { Pass } from "postprocessing"
-import { HalfFloatType, NearestFilter, ShaderMaterial, Uniform, Vector2, WebGLRenderTarget } from "three"
+import { HalfFloatType, LinearFilter, ShaderMaterial, Uniform, Vector2, WebGLRenderTarget } from "three"
 import basicVertexShader from "../shader/basic.vert"
 
 export class UpscalePass extends Pass {
@@ -12,26 +12,44 @@ export class UpscalePass extends Pass {
 
             uniform sampler2D inputTexture;
             uniform sampler2D depthTexture;
+            uniform sampler2D normalTexture;
             uniform vec2 invTexSize;
             uniform float sharpness;
             uniform float blurKernel;
+            uniform float jitter;
+            uniform float jitterRoughness;
 
             #include <packing>
 
             void main() {
                 vec4 depthTexel = textureLod(depthTexture, vUv, 0.);
+
+                // skip background
+                if(dot(depthTexel.rgb, depthTexel.rgb) == 0.){
+                    return;
+                }
+
                 float depth = unpackRGBAToDepth(depthTexel);
 
-                vec2 bestUv;
+                // vec2 bestUv;
                 float totalWeight = 1.;
-                float maxDepth = depth;
 
-                const float maxDepthDifference = 0.0000025;
+                // const float maxDepthDifference = 0.0000025;
+                const float maxDepthDifference = 0.00001;
 
                 vec4 inputTexel = textureLod(inputTexture, vUv, 0.);
                 vec3 color = inputTexel.rgb;
+
+                float roughness = textureLod(normalTexture, vUv, 0.).a;
+
+                float kernel = floor((blurKernel + 2.0) * (jitterRoughness * roughness + jitter));
+
+                if(kernel == 0.){
+                    gl_FragColor = vec4(color, inputTexel.a);
+                    return;
+                }
                 
-                for(float i = -blurKernel; i <= blurKernel; i++){
+                for(float i = -kernel; i <= kernel; i++){
                     if(i != 0.){
                         #ifdef horizontal
                         vec2 neighborVec = vec2(i, 0.);
@@ -51,28 +69,18 @@ export class UpscalePass extends Pass {
                             weight = pow(weight, sharpness);
 
                             if(weight > 0.){
-                                bestUv += neighborUv * weight;
+                                // bestUv += neighborUv * weight;
                                 totalWeight += weight;
-                                maxDepth = max(maxDepth, neighborDepth);
 
                                 color += textureLod(inputTexture, neighborUv, 0.).rgb * weight;
                             }
                         }
                     }
                 }
+                
+                color /= totalWeight;
 
-                // skip background
-                if(dot(depthTexel.rgb, depthTexel.rgb) == 0.){
-                    return;
-                }
-
-                if(totalWeight == 0.){
-                    color = textureLod(inputTexture, vUv, 0.).rgb;
-                }else{
-                    bestUv /= totalWeight;
-                    color /= totalWeight;
-                }
-
+                // bestUv /= totalWeight;
                 // bestUv -= vUv;
                 // bestUv *= 1000.;
                 // color = bestUv.xyx;
@@ -84,9 +92,12 @@ export class UpscalePass extends Pass {
 			uniforms: {
 				inputTexture: new Uniform(null),
 				depthTexture: new Uniform(null),
+				normalTexture: new Uniform(null),
 				invTexSize: new Uniform(new Vector2()),
 				blurKernel: new Uniform(3),
-				sharpness: new Uniform(32)
+				sharpness: new Uniform(8),
+				jitter: new Uniform(0),
+				jitterRoughness: new Uniform(0)
 			}
 		})
 
@@ -95,8 +106,8 @@ export class UpscalePass extends Pass {
 		}
 
 		this.renderTarget = new WebGLRenderTarget(1, 1, {
-			minFilter: NearestFilter,
-			magFilter: NearestFilter,
+			minFilter: LinearFilter,
+			magFilter: LinearFilter,
 			type: HalfFloatType,
 			depthBuffer: false
 		})

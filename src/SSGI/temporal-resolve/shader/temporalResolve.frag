@@ -41,6 +41,7 @@ vec3 undoColorTransform(vec3 color) {
 }
 
 void main() {
+    vec2 size = 1. / vec2(textureSize(inputTexture, 0));
     vec4 inputTexel = textureLod(inputTexture, vUv, 0.0);
 
     float depth = unpackRGBAToDepth(textureLod(depthTexture, vUv, 0.));

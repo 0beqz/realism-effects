@@ -163,6 +163,14 @@ export class SSGIEffect extends Effect {
 							ssgiPassFullscreenMaterialUniforms.rayDistance.value = value
 							break
 
+						case "jitter":
+						case "jitterRoughness":
+							ssgiPassFullscreenMaterialUniforms[key].value = value
+
+							this.ssgiPass.upscalePass.fullscreenMaterial.uniforms[key].value = value
+							this.ssgiPass.upscalePass2.fullscreenMaterial.uniforms[key].value = value
+							break
+
 						// must be a uniform
 						default:
 							if (ssgiPassFullscreenMaterialUniformsKeys.includes(key)) {

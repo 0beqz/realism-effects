@@ -106,6 +106,12 @@ export class VelocityMaterial extends ShaderMaterial {
         
                     void main() {
 						vec3 transformed;
+
+						#include <skinbase_vertex>
+						#include <beginnormal_vertex>
+						#include <skinnormal_vertex>
+						#include <defaultnormal_vertex>
+
 						${velocity_vertex_main}
                     }`,
 			fragmentShader: /* glsl */ `

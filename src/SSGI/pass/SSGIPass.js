@@ -2,6 +2,7 @@
 import {
 	Color,
 	HalfFloatType,
+	LinearFilter,
 	MeshBasicMaterial,
 	NearestFilter,
 	RepeatWrapping,
@@ -34,8 +35,8 @@ export class SSGIPass extends Pass {
 		if (ssgiEffect._camera.isPerspectiveCamera) this.fullscreenMaterial.defines.PERSPECTIVE_CAMERA = ""
 
 		this.renderTarget = new WebGLRenderTarget(1, 1, {
-			minFilter: NearestFilter,
-			magFilter: NearestFilter,
+			minFilter: LinearFilter,
+			magFilter: LinearFilter,
 			type: HalfFloatType,
 			depthBuffer: false
 		})
@@ -59,6 +60,8 @@ export class SSGIPass extends Pass {
 		this.upscalePass = new UpscalePass()
 		this.upscalePass2 = new UpscalePass({ horizontal: false })
 
+		// set the upscale passes' input textures
+		this.upscalePass.fullscreenMaterial.uniforms.inputTexture.value = this.renderTarget.texture
 		this.upscalePass2.fullscreenMaterial.uniforms.inputTexture.value = this.upscalePass.renderTarget.texture
 	}
 
@@ -99,9 +102,13 @@ export class SSGIPass extends Pass {
 		// set up uniforms
 		this.ssgiEffect.temporalResolvePass.fullscreenMaterial.uniforms.diffuseTexture.value = this.diffuseTexture
 
-		this.upscalePass.fullscreenMaterial.uniforms.inputTexture.value = this.renderTarget.texture
 		this.upscalePass.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
 		this.upscalePass2.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
+		this.upscalePass.fullscreenMaterial.uniforms.normalTexture.value = this.normalTexture
+		this.upscalePass2.fullscreenMaterial.uniforms.normalTexture.value = this.normalTexture
+
+		this.ssgiEffect.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value =
+			this.upscalePass2.renderTarget.texture
 	}
 
 	setSize(width, height) {
@@ -110,12 +117,12 @@ export class SSGIPass extends Pass {
 		this.renderTarget.setSize(width * this.ssgiEffect.resolutionScale, height * this.ssgiEffect.resolutionScale)
 		this.gBuffersRenderTarget.setSize(width * this.ssgiEffect.qualityScale, height * this.ssgiEffect.qualityScale)
 
-		this.upscalePass.setSize(width * this.ssgiEffect.qualityScale, height * this.ssgiEffect.qualityScale)
+		this.upscalePass.setSize(width * this.ssgiEffect.resolutionScale, height * this.ssgiEffect.resolutionScale)
 		this.upscalePass.fullscreenMaterial.uniforms.invTexSize.value.set(
 			1 / this.gBuffersRenderTarget.width,
 			1 / this.gBuffersRenderTarget.height
 		)
-		this.upscalePass2.setSize(width * this.ssgiEffect.qualityScale, height * this.ssgiEffect.qualityScale)
+		this.upscalePass2.setSize(width * this.ssgiEffect.resolutionScale, height * this.ssgiEffect.resolutionScale)
 		this.upscalePass2.fullscreenMaterial.uniforms.invTexSize.value.set(
 			1 / this.gBuffersRenderTarget.width,
 			1 / this.gBuffersRenderTarget.height
@@ -214,6 +221,13 @@ export class SSGIPass extends Pass {
 			this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "roughnessMap", "USE_ROUGHNESS_MAP", "useRoughnessMap")
 			this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "map", "USE_MAP", true)
 
+			if (c.skeleton?.boneTexture) {
+				mrtMaterial.defines.USE_SKINNING = ""
+				mrtMaterial.defines.BONE_TEXTURE = ""
+
+				mrtMaterial.uniforms.boneTexture.value = c.skeleton.boneTexture
+			}
+
 			if (originalMaterial.map) {
 				diffuseMaterial.map = originalMaterial.map
 			}
@@ -289,9 +303,5 @@ export class SSGIPass extends Pass {
 
 		this.upscalePass.render(renderer)
 		this.upscalePass2.render(renderer)
-
-		// this.ssgiEffect.uniforms.get("inputTexture").value = this.upscalePass.renderTarget.texture
-		this.ssgiEffect.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value =
-			this.upscalePass.renderTarget.texture
 	}
 }
