@@ -12,7 +12,6 @@ export const defaultTRAAOptions = {
 	correction: 1,
 	correctionRadius: 1,
 	logTransform: true,
-	qualityScale: 1,
 	neighborhoodClamping: false,
 	dilation: true,
 	renderVelocity: false
@@ -75,10 +74,6 @@ export class TRAAEffect extends Effect {
 						case "correctionRadius":
 							this.temporalResolvePass.fullscreenMaterial.defines.correctionRadius = Math.round(value)
 							this.temporalResolvePass.fullscreenMaterial.needsUpdate = true
-							break
-
-						case "qualityScale":
-							this.temporalResolvePass.qualityScale = value
 							break
 
 						case "dilation":

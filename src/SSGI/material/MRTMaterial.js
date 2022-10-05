@@ -90,7 +90,10 @@ export class MRTMaterial extends ShaderMaterial {
                 #ifdef isWebGL2
                 layout(location = 0) out vec4 gDepth;
                 layout(location = 1) out vec4 gNormal;
+
+                #ifdef renderDiffuse
                 layout(location = 2) out vec4 gDiffuse;
+                #endif
 
                 uniform sampler2D map;
                 uniform vec3 color;
@@ -127,11 +130,13 @@ export class MRTMaterial extends ShaderMaterial {
                         vec4 depthColor = packDepthToRGBA( fragCoordZ );
                         gDepth = depthColor;
 
+                        #ifdef renderDiffuse
                         vec4 diffuseColor = vec4(color, 1.);
 
                         #include <map_fragment>
 
                         gDiffuse = diffuseColor;
+                        #endif
 
                     #else
                         gl_FragColor = vec4(normalColor, roughnessFactor);

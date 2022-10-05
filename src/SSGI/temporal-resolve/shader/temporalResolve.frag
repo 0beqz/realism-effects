@@ -41,7 +41,6 @@ vec3 undoColorTransform(vec3 color) {
 }
 
 void main() {
-    vec2 size = 1. / vec2(textureSize(inputTexture, 0));
     vec4 inputTexel = textureLod(inputTexture, vUv, 0.0);
 
     float depth = unpackRGBAToDepth(textureLod(depthTexture, vUv, 0.));
@@ -54,10 +53,13 @@ void main() {
     vec4 accumulatedTexel;
     vec3 accumulatedColor;
 
-    bool didReproject = false;
-
     vec4 velocity = textureLod(velocityTexture, vUv, 0.0);
+
     velocity.xy = unpackRGBATo2Half(velocity) * 2. - 1.;
+
+    // gl_FragColor = vec4(velocity.xy * 100., 0., 0.);
+    // if (isBackground) gl_FragColor = vec4(0.);
+    // return;
 
     vec3 minNeighborColor = inputColor;
     vec3 maxNeighborColor = inputColor;
@@ -69,7 +71,6 @@ void main() {
 
     // reproject from the last frame
     vec2 reprojectedUv = vUv - velocity.xy;
-    float lastDepth = unpackRGBAToDepth(textureLod(lastDepthTexture, reprojectedUv, 0.));
     vec4 lastVelocity = textureLod(lastVelocityTexture, reprojectedUv, 0.0);
     lastVelocity.xy = unpackRGBATo2Half(lastVelocity) * 2. - 1.;
 
@@ -141,28 +142,36 @@ void main() {
     //     lastDepth = lastMaxDepth;
     // #endif
 
-    float depthDiff = abs(depth - lastDepth);
+    float depthDiff = 1.0;
 
     // the reprojected UV coordinates are inside the view
     if (all(greaterThanEqual(reprojectedUv, vec2(0.))) && all(lessThanEqual(reprojectedUv, vec2(1.)))) {
-        didReproject = true;
+        float lastDepth = unpackRGBAToDepth(textureLod(lastDepthTexture, reprojectedUv, 0.));
 
-        accumulatedTexel = textureLod(accumulatedTexture, reprojectedUv, 0.0);
+        depthDiff = abs(depth - lastDepth);
 
-        alpha = min(alpha, accumulatedTexel.a);
-        alpha = min(alpha, blend);
-        accumulatedColor = transformColor(accumulatedTexel.rgb);
+        // reproject the last frame if there was no disocclusion
+        if (depthDiff < maxNeighborDepthDifference) {
+            accumulatedTexel = textureLod(accumulatedTexture, reprojectedUv, 0.0);
 
-        alpha = didReproject && depthDiff < maxNeighborDepthDifference ? (alpha + alphaStep) : 0.0;
+            alpha = min(alpha, accumulatedTexel.a);
+            alpha = min(alpha, blend);
+            accumulatedColor = transformColor(accumulatedTexel.rgb);
+
+            alpha += alphaStep;
 
 #ifdef neighborhoodClamping
-        vec3 clampedColor = clamp(accumulatedColor, minNeighborColor, maxNeighborColor);
+            vec3 clampedColor = clamp(accumulatedColor, minNeighborColor, maxNeighborColor);
 
-        accumulatedColor = mix(accumulatedColor, clampedColor, correction);
+            accumulatedColor = mix(accumulatedColor, clampedColor, correction);
 #endif
-
+        } else {
+            accumulatedColor = inputColor;
+            alpha = 0.0;
+        }
     } else {
         accumulatedColor = inputColor;
+        alpha = 0.0;
     }
 
     vec3 outputColor = inputColor;
@@ -170,6 +179,10 @@ void main() {
     float s = alpha / alphaStep + 1.0;
     float temporalResolveMix = 1. - 1. / s;
     temporalResolveMix = min(temporalResolveMix, blend);
+
+    float movement = length(velocity.xy) * 100.;
+    if (movement > 1.) movement = 1.;
+        // temporalResolveMix -= 0.375 * movement;
 
 // the user's shader to compose a final outputColor from the inputTexel and accumulatedTexel
 #ifdef useCustomComposeShader
@@ -179,6 +192,8 @@ void main() {
 #endif
 
         gl_FragColor = vec4(undoColorTransform(outputColor), alpha);
+
+    // gl_FragColor = vec4(movement);
 
     // if (depthDiff > maxNeighborDepthDifference) gl_FragColor = vec4(0., 1., 0., 1.);
 }

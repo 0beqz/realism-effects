@@ -6,6 +6,7 @@ import {
 	MeshBasicMaterial,
 	NearestFilter,
 	RepeatWrapping,
+	sRGBEncoding,
 	TextureLoader,
 	WebGLMultipleRenderTargets,
 	WebGLRenderTarget
@@ -50,12 +51,13 @@ export class SSGIPass extends Pass {
 		this.fullscreenMaterial.uniforms.velocityTexture.value =
 			this.ssgiEffect.temporalResolvePass.velocityPass.renderTarget.texture[0]
 
-		const noiseTexture = new TextureLoader().load("./texture/blue_noise_rg.png")
-		this.fullscreenMaterial.uniforms.blueNoiseTexture.value = noiseTexture
-		noiseTexture.minFilter = NearestFilter
-		noiseTexture.magFilter = NearestFilter
-		noiseTexture.wrapS = RepeatWrapping
-		noiseTexture.wrapT = RepeatWrapping
+		const noiseTexture = new TextureLoader().load("./texture/blue_noise_rg.png", () => {
+			this.fullscreenMaterial.uniforms.blueNoiseTexture.value = noiseTexture
+			noiseTexture.minFilter = NearestFilter
+			noiseTexture.magFilter = NearestFilter
+			noiseTexture.wrapS = RepeatWrapping
+			noiseTexture.wrapT = RepeatWrapping
+		})
 
 		this.upscalePass = new UpscalePass()
 		this.upscalePass2 = new UpscalePass({ horizontal: false })
@@ -68,9 +70,12 @@ export class SSGIPass extends Pass {
 	initMRTRenderTarget() {
 		if (this.gBuffersRenderTarget) this.gBuffersRenderTarget.dispose()
 		if (this.webgl1DepthPass) this.webgl1DepthPass.dispose()
+		if (this.diffuseRenderTarget) this.diffuseRenderTarget.dispose()
+
+		this.renderDiffuseSeparate = this.ssgiEffect.resolutionScale < 1
 
 		if (isWebGL2) {
-			const bufferCount = 3
+			const bufferCount = this.renderDiffuseSeparate ? 2 : 3
 
 			this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(1, 1, bufferCount, {
 				minFilter: NearestFilter,
@@ -80,6 +85,8 @@ export class SSGIPass extends Pass {
 
 			this.normalTexture = this.gBuffersRenderTarget.texture[1]
 			this.depthTexture = this.gBuffersRenderTarget.texture[0]
+
+			if (bufferCount > 2) this.diffuseTexture = this.gBuffersRenderTarget.texture[2]
 		} else {
 			// depth pass
 			this.webgl1DepthPass = new DepthPass(this._scene, this._camera)
@@ -94,10 +101,20 @@ export class SSGIPass extends Pass {
 			this.depthTexture = this.webgl1DepthPass.texture
 		}
 
+		if (this.renderDiffuseSeparate) {
+			this.diffuseRenderTarget = new WebGLRenderTarget(1, 1, {
+				minFilter: NearestFilter,
+				magFilter: NearestFilter,
+				encoding: sRGBEncoding
+			})
+
+			this.diffuseTexture = this.diffuseRenderTarget.texture
+		} else {
+			this.diffuseRenderTarget = null
+		}
+
 		this.fullscreenMaterial.uniforms.normalTexture.value = this.normalTexture
 		this.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
-
-		this.diffuseTexture = this.gBuffersRenderTarget.texture[2]
 
 		// set up uniforms
 		this.ssgiEffect.temporalResolvePass.fullscreenMaterial.uniforms.diffuseTexture.value = this.diffuseTexture
@@ -115,14 +132,15 @@ export class SSGIPass extends Pass {
 		this.initMRTRenderTarget()
 
 		this.renderTarget.setSize(width * this.ssgiEffect.resolutionScale, height * this.ssgiEffect.resolutionScale)
-		this.gBuffersRenderTarget.setSize(width * this.ssgiEffect.qualityScale, height * this.ssgiEffect.qualityScale)
+		this.gBuffersRenderTarget.setSize(width * this.ssgiEffect.resolutionScale, height * this.ssgiEffect.resolutionScale)
+		if (this.diffuseRenderTarget) this.diffuseRenderTarget.setSize(width, height)
 
-		this.upscalePass.setSize(width * this.ssgiEffect.resolutionScale, height * this.ssgiEffect.resolutionScale)
+		this.upscalePass.setSize(width, height)
 		this.upscalePass.fullscreenMaterial.uniforms.invTexSize.value.set(
 			1 / this.gBuffersRenderTarget.width,
 			1 / this.gBuffersRenderTarget.height
 		)
-		this.upscalePass2.setSize(width * this.ssgiEffect.resolutionScale, height * this.ssgiEffect.resolutionScale)
+		this.upscalePass2.setSize(width, height)
 		this.upscalePass2.fullscreenMaterial.uniforms.invTexSize.value.set(
 			1 / this.gBuffersRenderTarget.width,
 			1 / this.gBuffersRenderTarget.height
@@ -131,8 +149,8 @@ export class SSGIPass extends Pass {
 		// setting the size for the webgl1DepthPass currently causes a stack overflow due to recursive calling
 		if (!isWebGL2) {
 			this.webgl1DepthPass.renderTarget.setSize(
-				width * this.ssgiEffect.qualityScale,
-				height * this.ssgiEffect.qualityScale
+				width * this.ssgiEffect.resolutionScale,
+				height * this.ssgiEffect.resolutionScale
 			)
 		}
 
@@ -221,6 +239,16 @@ export class SSGIPass extends Pass {
 			this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "roughnessMap", "USE_ROUGHNESS_MAP", "useRoughnessMap")
 			this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "map", "USE_MAP", true)
 
+			if ("renderDiffuse" in mrtMaterial.defines) {
+				if (this.renderDiffuseSeparate) {
+					delete mrtMaterial.defines.renderDiffuse
+					mrtMaterial.needsUpdate = true
+				}
+			} else if (!this.renderDiffuseSeparate) {
+				mrtMaterial.defines.renderDiffuse = ""
+				mrtMaterial.needsUpdate = true
+			}
+
 			if (c.skeleton?.boneTexture) {
 				mrtMaterial.defines.USE_SKINNING = ""
 				mrtMaterial.defines.BONE_TEXTURE = ""
@@ -286,15 +314,31 @@ export class SSGIPass extends Pass {
 
 		this.unsetMRTMaterialInScene()
 
+		if (this.renderDiffuseSeparate) {
+			this.setDiffuseMaterialInScene()
+			this.renderPass.render(renderer, this.diffuseRenderTarget)
+			this.unsetDiffuseMaterialInScene()
+		}
+
 		// render depth and velocity in seperate passes
 		if (!isWebGL2) this.webgl1DepthPass.renderPass.render(renderer, this.webgl1DepthPass.renderTarget)
 
 		this.fullscreenMaterial.uniforms.samples.value = this.ssgiEffect.temporalResolvePass.samples
-		this.fullscreenMaterial.uniforms.time.value = performance.now() % (10 * 60 * 1000)
+		this.fullscreenMaterial.uniforms.time.value = (performance.now() % (10 * 60 * 1000)) * 0.01
 		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
 		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far
 
 		this.fullscreenMaterial.uniforms.viewMatrix.value.copy(this._camera.matrixWorldInverse)
+
+		const noiseTexture = this.fullscreenMaterial.uniforms.blueNoiseTexture.value
+		if (noiseTexture) {
+			const { width, height } = noiseTexture.source.data
+
+			this.fullscreenMaterial.uniforms.blueNoiseRepeat.value.set(
+				this.ssgiEffect.temporalResolvePass.renderTarget.width / width,
+				this.ssgiEffect.temporalResolvePass.renderTarget.height / height
+			)
+		}
 
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)

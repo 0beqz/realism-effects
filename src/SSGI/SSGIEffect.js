@@ -1,6 +1,7 @@
 ﻿import { Effect, Selection } from "postprocessing"
 import { EquirectangularReflectionMapping, Uniform } from "three"
 import { SSGIPass } from "./pass/SSGIPass.js"
+import { upscaleFXAA } from "./pass/UpscalePass.js"
 import applyDiffuse from "./shader/applyDiffuse.frag"
 import compose from "./shader/compose.frag"
 import utils from "./shader/utils.frag"
@@ -41,15 +42,15 @@ export class SSGIEffect extends Effect {
 
 		// temporal resolve pass
 		this.temporalResolvePass = new TemporalResolvePass(scene, camera, options)
+
 		this.temporalResolvePass.fullscreenMaterial.fragmentShader =
 			/* glsl */ `
 		uniform sampler2D diffuseTexture;
 		uniform sampler2D directLightTexture;
 		` +
-			this.temporalResolvePass.fullscreenMaterial.fragmentShader.replace(
-				"vec3 inputColor",
-				applyDiffuse + "vec3 inputColor"
-			)
+			this.temporalResolvePass.fullscreenMaterial.fragmentShader
+				.replace("void main()", upscaleFXAA + "void main()")
+				.replace("vec3 inputColor", applyDiffuse + "vec3 inputColor")
 
 		this.temporalResolvePass.fullscreenMaterial.uniforms = {
 			...this.temporalResolvePass.fullscreenMaterial.uniforms,
@@ -61,8 +62,6 @@ export class SSGIEffect extends Effect {
 
 		this.uniforms.get("inputTexture").value = this.temporalResolvePass.renderTarget.texture
 
-		this.qualityScale = options.qualityScale
-
 		// ssgi pass
 		this.ssgiPass = new SSGIPass(this)
 
@@ -71,8 +70,7 @@ export class SSGIEffect extends Effect {
 		this.lastSize = {
 			width: options.width,
 			height: options.height,
-			resolutionScale: options.resolutionScale,
-			qualityScale: options.qualityScale
+			resolutionScale: options.resolutionScale
 		}
 
 		this.setSize(options.width, options.height)
@@ -109,11 +107,6 @@ export class SSGIEffect extends Effect {
 					switch (key) {
 						case "resolutionScale":
 							this.setSize(this.lastSize.width, this.lastSize.height)
-							break
-
-						case "qualityScale":
-							this.temporalResolvePass.qualityScale = value
-							this.setSize(this.lastSize.width, this.lastSize.height, true)
 							break
 
 						case "blur":
@@ -192,8 +185,7 @@ export class SSGIEffect extends Effect {
 			!force &&
 			width === this.lastSize.width &&
 			height === this.lastSize.height &&
-			this.resolutionScale === this.lastSize.resolutionScale &&
-			this.qualityScale === this.lastSize.qualityScale
+			this.resolutionScale === this.lastSize.resolutionScale
 		)
 			return
 
@@ -203,8 +195,7 @@ export class SSGIEffect extends Effect {
 		this.lastSize = {
 			width,
 			height,
-			resolutionScale: this.resolutionScale,
-			qualityScale: this.qualityScale
+			resolutionScale: this.resolutionScale
 		}
 	}
 

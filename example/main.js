@@ -7,6 +7,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader"
 import { GroundProjectedEnv } from "three/examples/jsm/objects/GroundProjectedEnv"
+import { MotionBlurEffect } from "../src/MotionBlurEffect"
 import { SSGIEffect } from "../src/SSGI/index"
 import { TRAAEffect } from "../src/TRAAEffect"
 import { SSGIDebugGUI } from "./SSGIDebugGUI"
@@ -108,6 +109,7 @@ const controls = new OrbitControls(camera, document.querySelector("#orbitControl
 
 camera.position.fromArray([-0.5999257784165805, 8.75, 25.4251889687681])
 controls.target.set(0, 8.75, 0)
+camera.position.multiplyScalar(0.3)
 controls.maxPolarAngle = Math.PI / 2
 controls.minDistance = 7.5
 window.controls = controls
@@ -275,10 +277,9 @@ const initScene = () => {
 		useNormalMap: true,
 		useRoughnessMap: true,
 		resolutionScale: 0.5,
-		qualityScale: 1,
 		antialias: true,
 		reflectionsOnly: false,
-		sharpness: 8
+		sharpness: 32
 	}
 
 	traaEffect = new TRAAEffect(scene, camera, params)
@@ -345,8 +346,10 @@ const initScene = () => {
 	new POSTPROCESSING.LUTCubeLoader().load("lut.cube").then(lutTexture => {
 		const lutEffect = new POSTPROCESSING.LUT3DEffect(lutTexture)
 
+		const motionBlurEffect = new MotionBlurEffect(ssgiEffect.temporalResolvePass, { jitter: 2.5 })
+
 		composer.addPass(ssgiPass)
-		composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, vignetteEffect, lutEffect))
+		composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect, bloomEffect, vignetteEffect, lutEffect))
 
 		const smaaEffect = new POSTPROCESSING.SMAAEffect()
 
@@ -377,6 +380,9 @@ const loop = () => {
 		lastScene.updateMatrixWorld()
 		refreshLighting()
 	}
+
+	// lastScene.rotation.y += 0.25
+	lastScene.updateMatrixWorld()
 
 	controls.update()
 

@@ -67,8 +67,7 @@ export class SSGIDebugGUI {
 		definesFolder.addInput(params, "missedRays")
 
 		const resolutionFolder = pane.addFolder({ title: "Resolution", expanded: false })
-		resolutionFolder.addInput(params, "resolutionScale", { min: 0.125, max: 1, step: 0.125 })
-		resolutionFolder.addInput(params, "qualityScale", { min: 0.125, max: 1, step: 0.125 })
+		resolutionFolder.addInput(params, "resolutionScale", { min: 0.5, max: 1, step: 0.5 })
 
 		pane
 			.addButton({

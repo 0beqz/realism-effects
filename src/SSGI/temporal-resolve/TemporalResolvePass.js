@@ -73,19 +73,6 @@ export class TemporalResolvePass extends Pass {
 		if (options.maxNeighborDepthDifference !== undefined)
 			this.fullscreenMaterial.defines.maxNeighborDepthDifference = options.maxNeighborDepthDifference.toFixed(5)
 
-		let qualityScale = options.qualityScale === undefined ? 1 : options.qualityScale
-
-		Object.defineProperty(this, "qualityScale", {
-			get() {
-				return qualityScale
-			},
-			set(value) {
-				qualityScale = value
-
-				this.setSize(this.renderTarget.width, this.renderTarget.height)
-			}
-		})
-
 		this.fullscreenMaterial.uniforms.velocityTexture.value = this.velocityPass.renderTarget.texture[0]
 		this.fullscreenMaterial.uniforms.depthTexture.value = this.velocityPass.renderTarget.texture[1]
 
@@ -112,8 +99,8 @@ export class TemporalResolvePass extends Pass {
 
 	setSize(width, height) {
 		this.renderTarget.setSize(width, height)
-		this.velocityPass.setSize(width * this.qualityScale, height * this.qualityScale)
-		this.copyDepthPass.setSize(width * this.qualityScale, height * this.qualityScale)
+		this.velocityPass.setSize(width, height)
+		this.copyDepthPass.setSize(width, height)
 		this.velocityPass.renderTarget.texture.needsUpdate = true
 
 		this.fullscreenMaterial.uniforms.invTexSize.value.set(1 / width, 1 / height)
@@ -129,7 +116,7 @@ export class TemporalResolvePass extends Pass {
 		this.accumulatedTexture.magFilter = LinearFilter
 		this.accumulatedTexture.type = HalfFloatType
 
-		this.lastVelocityTexture = new FramebufferTexture(width * this.qualityScale, height * this.qualityScale, RGBAFormat)
+		this.lastVelocityTexture = new FramebufferTexture(width, height, RGBAFormat)
 		this.lastVelocityTexture.minFilter = NearestFilter
 		this.lastVelocityTexture.magFilter = NearestFilter
 

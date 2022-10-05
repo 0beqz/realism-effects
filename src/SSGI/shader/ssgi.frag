@@ -22,6 +22,7 @@ uniform float ior;
 uniform float power;
 uniform float intensity;
 uniform vec2 invTexSize;
+uniform vec2 blueNoiseRepeat;
 
 uniform float samples;
 uniform float time;
@@ -37,7 +38,6 @@ uniform float jitterRoughness;
 float nearMinusFar;
 float nearMulFar;
 float farMinusNear;
-vec2 blueNoiseRepeat;
 
 #include <packing>
 
@@ -74,10 +74,6 @@ void main() {
     nearMinusFar = cameraNear - cameraFar;
     nearMulFar = cameraNear * cameraFar;
     farMinusNear = cameraFar - cameraNear;
-
-    vec2 screenSize = vec2(textureSize(accumulatedTexture, 0));
-    vec2 blueNoiseSize = vec2(textureSize(blueNoiseTexture, 0));
-    blueNoiseRepeat = screenSize / blueNoiseSize;
 
     normalTexel.rgb = unpackRGBToNormal(normalTexel.rgb);
 
@@ -134,12 +130,9 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     float cosThetaMax = cos(thetaMax);
 
     if (spread != 0.) {
-        float seed = time * 0.01;
         vec2 startOffset = vec2(sampleCount / float(spp));
 
-        // seed = 0.;
-
-        vec2 blueNoiseUv = (vUv + startOffset + seed) * blueNoiseRepeat;
+        vec2 blueNoiseUv = (vUv + startOffset + time) * blueNoiseRepeat;
         vec2 random = textureLod(blueNoiseTexture, blueNoiseUv, 0.).rg;
 
         float cosTheta = (1. - random.x) + random.x * cosThetaMax;

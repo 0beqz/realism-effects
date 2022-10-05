@@ -126,6 +126,14 @@ export class VelocityPass extends Pass {
 		this._scene.background = background
 	}
 
+	get texture() {
+		return this.renderTarget.texture[0]
+	}
+
+	get depthTexture() {
+		return this.renderTarget.texture[1]
+	}
+
 	render(renderer) {
 		this.setVelocityMaterialInScene()
 

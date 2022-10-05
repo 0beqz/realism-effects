@@ -21,7 +21,6 @@
  * @property {boolean} [useNormalMap] if roughness maps should be taken account of when calculating ssgi
  * @property {boolean} [useRoughnessMap] if normal maps should be taken account of when calculating ssgi
  * @property {Number} [resolutionScale] resolution of the SSGI effect, a resolution of 0.5 means the effect will be rendered at half resolution
- * @property {Number} [qualityScale] resolution of the velocity buffer, a resolution of 0.5 means velocity will be rendered at half resolution
  * @property {Boolean} [antialias] if enabled, integrated TRAA will be applied to the scene each frame resulting in smoother look and less jagging; enabling this setting is recommended if the scene needs anti-aliasing as it has practically no cost
  * @property {Boolean} [reflectionsOnly] if enabled, only reflections will be calculated for SSGI
  */
@@ -52,7 +51,6 @@ export const defaultSSGIOptions = {
 	useNormalMap: true,
 	useRoughnessMap: true,
 	resolutionScale: 1,
-	qualityScale: 1,
 	antialias: true,
 	reflectionsOnly: false
 }
