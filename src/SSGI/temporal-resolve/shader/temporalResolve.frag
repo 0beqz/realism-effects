@@ -18,8 +18,7 @@ varying vec2 vUv;
 
 #define FLOAT_EPSILON           0.00001
 #define FLOAT_ONE_MINUS_EPSILON 0.9999
-
-const float alphaStep = 0.001;
+#define ALPHA_STEP              0.001
 
 #include <packing>
 
@@ -158,7 +157,7 @@ void main() {
             alpha = min(alpha, blend);
             accumulatedColor = transformColor(accumulatedTexel.rgb);
 
-            alpha += alphaStep;
+            alpha += ALPHA_STEP;
 
 #ifdef neighborhoodClamping
             vec3 clampedColor = clamp(accumulatedColor, minNeighborColor, maxNeighborColor);
@@ -176,8 +175,8 @@ void main() {
 
     vec3 outputColor = inputColor;
 
-    float s = alpha / alphaStep + 1.0;
-    float temporalResolveMix = 1. - 1. / s;
+    float pixelSample = alpha / ALPHA_STEP + 1.0;
+    float temporalResolveMix = 1. - 1. / pixelSample;
     temporalResolveMix = min(temporalResolveMix, blend);
 
     float movement = length(velocity.xy) * 100.;

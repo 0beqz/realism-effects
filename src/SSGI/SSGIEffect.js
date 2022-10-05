@@ -1,7 +1,6 @@
 ﻿import { Effect, Selection } from "postprocessing"
 import { EquirectangularReflectionMapping, Uniform } from "three"
 import { SSGIPass } from "./pass/SSGIPass.js"
-import { upscaleFXAA } from "./pass/UpscalePass.js"
 import applyDiffuse from "./shader/applyDiffuse.frag"
 import compose from "./shader/compose.frag"
 import utils from "./shader/utils.frag"
@@ -48,9 +47,10 @@ export class SSGIEffect extends Effect {
 		uniform sampler2D diffuseTexture;
 		uniform sampler2D directLightTexture;
 		` +
-			this.temporalResolvePass.fullscreenMaterial.fragmentShader
-				.replace("void main()", upscaleFXAA + "void main()")
-				.replace("vec3 inputColor", applyDiffuse + "vec3 inputColor")
+			this.temporalResolvePass.fullscreenMaterial.fragmentShader.replace(
+				"vec3 inputColor",
+				applyDiffuse + "vec3 inputColor"
+			)
 
 		this.temporalResolvePass.fullscreenMaterial.uniforms = {
 			...this.temporalResolvePass.fullscreenMaterial.uniforms,

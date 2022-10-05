@@ -106,10 +106,11 @@ const setAA = value => {
 
 // since using "rendererCanvas" doesn't work when using an offscreen canvas
 const controls = new OrbitControls(camera, document.querySelector("#orbitControlsDomElem"))
+controls.enableDamping = true
+controls.dampingFactor = 0.075
 
-camera.position.fromArray([-0.5999257784165805, 8.75, 25.4251889687681])
+camera.position.fromArray([0, 8.75, 25.4251889687681])
 controls.target.set(0, 8.75, 0)
-camera.position.multiplyScalar(0.3)
 controls.maxPolarAngle = Math.PI / 2
 controls.minDistance = 7.5
 window.controls = controls
@@ -266,7 +267,7 @@ const initScene = () => {
 		blend: 0.925,
 		correction: 1,
 		correctionRadius: 1,
-		blurKernel: 3,
+		blurKernel: 2,
 		jitter: 5.551115123125783e-17,
 		jitterRoughness: 1,
 		steps: 20,
@@ -279,7 +280,7 @@ const initScene = () => {
 		resolutionScale: 0.5,
 		antialias: true,
 		reflectionsOnly: false,
-		sharpness: 32
+		sharpness: 8
 	}
 
 	traaEffect = new TRAAEffect(scene, camera, params)
@@ -381,10 +382,8 @@ const loop = () => {
 		refreshLighting()
 	}
 
-	// lastScene.rotation.y += 0.25
-	lastScene.updateMatrixWorld()
-
 	controls.update()
+	camera.updateMatrixWorld()
 
 	if (guiParams.Method === "three.js AA") {
 		renderer.render(scene, camera)

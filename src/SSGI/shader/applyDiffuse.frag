@@ -6,12 +6,6 @@ vec4 directLightTexel = textureLod(directLightTexture, vUv, 0.0);
 if (isBackground) {
     inputTexel = directLightTexel * TRANSFORM_FACTOR;
 } else {
-    float a = inputTexel.a;
-
-    inputTexel = fxaa(inputTexel, vUv);
-
-    inputTexel.a = a;
-
 #ifdef reflectionsOnly
     inputTexel.rgb *= directLightTexel.rgb;
 #else

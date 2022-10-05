@@ -50,7 +50,7 @@ export class SSGIDebugGUI {
 		blurKernelFolder.addInput(params, "blurKernel", { min: 1, max: 5, step: 1 })
 		blurKernelFolder.addInput(params, "sharpness", {
 			min: 1,
-			max: 100,
+			max: 16,
 			step: 1
 		})
 
