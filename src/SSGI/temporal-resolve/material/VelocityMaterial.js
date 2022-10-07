@@ -44,7 +44,10 @@ uniform mat4 velocityMatrix;
 uniform mat4 prevVelocityMatrix;
 varying vec4 prevPosition;
 varying vec4 newPosition;
+
+#ifdef renderDepth
 varying vec2 vHighPrecisionZW;
+#endif
 `
 
 // Returns the body of the vertex shader for the velocity buffer
@@ -70,13 +73,18 @@ float stretchDot = dot(direction, transformedNormal);
 
 gl_Position = newPosition;
 
+#ifdef renderDepth
 vHighPrecisionZW = gl_Position.zw;
+#endif
 `
 
 export const velocity_fragment_pars = /* glsl */ `
 varying vec4 prevPosition;
 varying vec4 newPosition;
+
+#ifdef renderDepth
 varying vec2 vHighPrecisionZW;
+#endif
 `
 
 export const velocity_fragment_main = /* glsl */ `
@@ -91,7 +99,9 @@ vec2 pos1 = (newPosition.xy / newPosition.w) * 0.5 + 0.5;
 vec2 vel = pos1 - pos0;
 vel = 0.5 * vel + 0.5; // as pack2HalfToRGBA doesn't support negative numbers
 
+#ifdef renderDepth
 float fragCoordZ = 0.5 * vHighPrecisionZW[0] / vHighPrecisionZW[1] + 0.5;
+#endif
 
 gl_FragColor = pack2HalfToRGBA(vel);
 #endif
@@ -124,8 +134,8 @@ export class VelocityMaterial extends ShaderMaterial {
                     }`,
 			fragmentShader: /* glsl */ `
 					#ifdef renderDepth
-					layout(location = 0) out vec4 gVelocity;
-					layout(location = 1) out vec4 gDepth;
+					layout(location = 0) out vec4 gDepth;
+					layout(location = 1) out vec4 gVelocity;
 					#else
 					#define gVelocity gl_FragColor
 					#endif

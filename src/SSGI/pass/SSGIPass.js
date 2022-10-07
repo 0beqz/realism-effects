@@ -4,10 +4,8 @@ import {
 	HalfFloatType,
 	LinearEncoding,
 	LinearFilter,
-	MeshBasicMaterial,
 	NearestFilter,
 	RepeatWrapping,
-	sRGBEncoding,
 	WebGLMultipleRenderTargets,
 	WebGLRenderTarget
 } from "three"
@@ -18,7 +16,7 @@ import { getVisibleChildren, isWebGL2Available } from "../utils/Utils.js"
 import { UpscalePass } from "./UpscalePass.js"
 
 const isWebGL2 = isWebGL2Available()
-const rendererClearColor = new Color()
+const backgroundColor = new Color(0)
 
 export class SSGIPass extends Pass {
 	cachedMaterials = new WeakMap()
@@ -47,7 +45,6 @@ export class SSGIPass extends Pass {
 		this.fullscreenMaterial.uniforms.cameraMatrixWorld.value = this._camera.matrixWorld
 		this.fullscreenMaterial.uniforms.projectionMatrix.value = this._camera.projectionMatrix
 		this.fullscreenMaterial.uniforms.inverseProjectionMatrix.value = this._camera.projectionMatrixInverse
-		this.fullscreenMaterial.uniforms.velocityTexture.value = this.ssgiEffect.temporalResolvePass.velocityPass.texture
 
 		const ktx2Loader = new KTX2Loader()
 		ktx2Loader.setTranscoderPath("examples/js/libs/basis/")
@@ -59,15 +56,13 @@ export class SSGIPass extends Pass {
 			blueNoiseTexture.wrapS = RepeatWrapping
 			blueNoiseTexture.wrapT = RepeatWrapping
 			blueNoiseTexture.encoding = LinearEncoding
+
 			this.fullscreenMaterial.uniforms.blueNoiseTexture.value = blueNoiseTexture
+
+			ktx2Loader.dispose()
 		})
 
-		this.upscalePass = new UpscalePass()
-		this.upscalePass2 = new UpscalePass({ horizontal: false })
-
-		// set the upscale passes' input textures
-		this.upscalePass.fullscreenMaterial.uniforms.inputTexture.value = this.renderTarget.texture
-		this.upscalePass2.fullscreenMaterial.uniforms.inputTexture.value = this.upscalePass.renderTarget.texture
+		this.upscalePass = new UpscalePass(this.renderTarget.texture)
 	}
 
 	initMRTRenderTarget() {
@@ -75,10 +70,11 @@ export class SSGIPass extends Pass {
 		if (this.webgl1DepthPass) this.webgl1DepthPass.dispose()
 		if (this.diffuseRenderTarget) this.diffuseRenderTarget.dispose()
 
-		this.renderDiffuseSeparate = this.ssgiEffect.resolutionScale < 1
+		this.renderVelocitySeparate = this.ssgiEffect.antialias
 
 		if (isWebGL2) {
-			const bufferCount = this.renderDiffuseSeparate ? 2 : 3
+			let bufferCount = 3
+			if (!this.renderVelocitySeparate) bufferCount++
 
 			this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(1, 1, bufferCount, {
 				minFilter: NearestFilter,
@@ -103,47 +99,32 @@ export class SSGIPass extends Pass {
 			this.depthTexture = this.webgl1DepthPass.texture
 		}
 
-		if (this.renderDiffuseSeparate) {
-			this.diffuseRenderTarget = new WebGLRenderTarget(1, 1, {
-				minFilter: NearestFilter,
-				magFilter: NearestFilter,
-				encoding: sRGBEncoding
-			})
-
-			this.diffuseTexture = this.diffuseRenderTarget.texture
-		} else {
-			this.diffuseRenderTarget = null
-		}
-
 		this.fullscreenMaterial.uniforms.normalTexture.value = this.normalTexture
 		this.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
+		this.fullscreenMaterial.uniforms.velocityTexture.value = this.velocityTexture
 
 		// set up uniforms
 		this.ssgiEffect.temporalResolvePass.fullscreenMaterial.uniforms.diffuseTexture.value = this.diffuseTexture
 
 		this.upscalePass.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
-		this.upscalePass2.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
 		this.upscalePass.fullscreenMaterial.uniforms.normalTexture.value = this.normalTexture
-		this.upscalePass2.fullscreenMaterial.uniforms.normalTexture.value = this.normalTexture
+	}
 
-		this.ssgiEffect.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value =
-			this.upscalePass2.renderTarget.texture
+	get velocityTexture() {
+		if (this.renderVelocitySeparate) return this.ssgiEffect.temporalResolvePass.velocityPass.texture
+
+		return this.gBuffersRenderTarget.texture[3]
 	}
 
 	setSize(width, height) {
 		this.initMRTRenderTarget()
 
 		this.renderTarget.setSize(width * this.ssgiEffect.resolutionScale, height * this.ssgiEffect.resolutionScale)
-		this.gBuffersRenderTarget.setSize(width * this.ssgiEffect.resolutionScale, height * this.ssgiEffect.resolutionScale)
+		this.gBuffersRenderTarget.setSize(width, height)
 		if (this.diffuseRenderTarget) this.diffuseRenderTarget.setSize(width, height)
 
 		this.upscalePass.setSize(width, height)
 		this.upscalePass.fullscreenMaterial.uniforms.invTexSize.value.set(
-			1 / this.gBuffersRenderTarget.width,
-			1 / this.gBuffersRenderTarget.height
-		)
-		this.upscalePass2.setSize(width, height)
-		this.upscalePass2.fullscreenMaterial.uniforms.invTexSize.value.set(
 			1 / this.gBuffersRenderTarget.width,
 			1 / this.gBuffersRenderTarget.height
 		)
@@ -206,7 +187,7 @@ export class SSGIPass extends Pass {
 
 			const originalMaterial = c.material
 
-			let [cachedOriginalMaterial, mrtMaterial, diffuseMaterial] = this.cachedMaterials.get(c) || []
+			let [cachedOriginalMaterial, mrtMaterial] = this.cachedMaterials.get(c) || []
 
 			if (originalMaterial !== cachedOriginalMaterial) {
 				if (mrtMaterial) mrtMaterial.dispose()
@@ -226,11 +207,7 @@ export class SSGIPass extends Pass {
 
 				if (map) mrtMaterial.uniforms.uvTransform.value = map.matrix
 
-				diffuseMaterial = new MeshBasicMaterial({
-					toneMapped: false
-				})
-
-				this.cachedMaterials.set(c, [originalMaterial, mrtMaterial, diffuseMaterial])
+				this.cachedMaterials.set(c, [originalMaterial, mrtMaterial])
 			}
 
 			// to ensure SSGI works as good as possible in the scene
@@ -241,13 +218,13 @@ export class SSGIPass extends Pass {
 			this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "roughnessMap", "USE_ROUGHNESS_MAP", "useRoughnessMap")
 			this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "map", "USE_MAP", true)
 
-			if ("renderDiffuse" in mrtMaterial.defines) {
-				if (this.renderDiffuseSeparate) {
-					delete mrtMaterial.defines.renderDiffuse
+			if ("renderVelocity" in mrtMaterial.defines) {
+				if (this.renderVelocitySeparate) {
+					delete mrtMaterial.defines.renderVelocity
 					mrtMaterial.needsUpdate = true
 				}
-			} else if (!this.renderDiffuseSeparate) {
-				mrtMaterial.defines.renderDiffuse = ""
+			} else if (!this.renderVelocitySeparate) {
+				mrtMaterial.defines.renderVelocity = ""
 				mrtMaterial.needsUpdate = true
 			}
 
@@ -258,23 +235,15 @@ export class SSGIPass extends Pass {
 				mrtMaterial.uniforms.boneTexture.value = c.skeleton.boneTexture
 			}
 
-			if (originalMaterial.map) {
-				diffuseMaterial.map = originalMaterial.map
-			}
-
-			if (originalMaterial.color) {
-				diffuseMaterial.color = originalMaterial.color
-				mrtMaterial.uniforms.color.value = originalMaterial.color
-			}
-
-			diffuseMaterial.visible = originalMaterial.visible
-
 			mrtMaterial.uniforms.roughness.value =
 				this.ssgiEffect.selection.size === 0 || this.ssgiEffect.selection.has(c)
 					? originalMaterial.roughness || 0
 					: 10e10
 
 			c.material = mrtMaterial
+
+			if (!this.renderVelocitySeparate)
+				this.ssgiEffect.temporalResolvePass.velocityPass.updateVelocityMaterialBeforeRender(c, originalMaterial)
 		}
 	}
 
@@ -283,32 +252,17 @@ export class SSGIPass extends Pass {
 			// set material back to the original one
 			const [originalMaterial] = this.cachedMaterials.get(c)
 
-			c.material = originalMaterial
-		}
-	}
-
-	setDiffuseMaterialInScene() {
-		for (const c of this.visibleMeshes) {
-			c.visible = c.material.visible && c.material.colorWrite
-
-			c.material = this.cachedMaterials.get(c)[2]
-		}
-	}
-
-	unsetDiffuseMaterialInScene() {
-		for (const c of this.visibleMeshes) {
-			// set material back to the original one
-			const [originalMaterial] = this.cachedMaterials.get(c)
-
-			c.visible = true
+			if (!this.renderVelocitySeparate)
+				this.ssgiEffect.temporalResolvePass.velocityPass.updateVelocityMaterialAfterRender(c)
 
 			c.material = originalMaterial
 		}
 	}
 
 	render(renderer) {
-		renderer.getClearColor(rendererClearColor)
-		renderer.setClearColor(0)
+		const { background } = this._scene
+
+		this._scene.background = backgroundColor
 
 		this.setMRTMaterialInScene()
 
@@ -316,13 +270,6 @@ export class SSGIPass extends Pass {
 
 		this.unsetMRTMaterialInScene()
 
-		if (this.renderDiffuseSeparate) {
-			this.setDiffuseMaterialInScene()
-			this.renderPass.render(renderer, this.diffuseRenderTarget)
-			this.unsetDiffuseMaterialInScene()
-		}
-
-		// render depth and velocity in seperate passes
 		if (!isWebGL2) this.webgl1DepthPass.renderPass.render(renderer, this.webgl1DepthPass.renderTarget)
 
 		this.fullscreenMaterial.uniforms.samples.value = this.ssgiEffect.temporalResolvePass.samples
@@ -343,12 +290,16 @@ export class SSGIPass extends Pass {
 			)
 		}
 
+		this._scene.background = background
+
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)
 
-		renderer.setClearColor(rendererClearColor)
-
-		this.upscalePass.render(renderer)
-		this.upscalePass2.render(renderer)
+		if (this.upscalePass.iterations > 0) {
+			this.upscalePass.render(renderer)
+			this.ssgiEffect.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = this.upscalePass.texture
+		} else {
+			this.ssgiEffect.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = this.renderTarget.texture
+		}
 	}
 }

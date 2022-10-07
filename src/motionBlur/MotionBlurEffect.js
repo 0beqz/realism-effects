@@ -1,0 +1,87 @@
+﻿import { Effect } from "postprocessing"
+import { LinearEncoding, NearestFilter, RepeatWrapping, Uniform, Vector2 } from "three"
+import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader"
+import motionBlur from "./motionBlur.glsl"
+
+// https://www.nvidia.com/docs/io/8230/gdc2003_openglshadertricks.pdf
+// http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html
+// reference code: https://github.com/gkjohnson/threejs-sandbox/blob/master/motionBlurPass/src/CompositeShader.js
+
+const defaultOptions = { intensity: 1, jitter: 5, samples: 16 }
+
+export class MotionBlurEffect extends Effect {
+	constructor(temporalResolvePass, options = defaultOptions) {
+		options = { ...defaultOptions, ...options }
+
+		super("MotionBlurEffect", motionBlur, {
+			type: "MotionBlurMaterial",
+			uniforms: new Map([
+				["inputTexture", new Uniform(null)],
+				["velocityTexture", new Uniform(temporalResolvePass.velocityPass.texture)],
+				["blueNoiseTexture", new Uniform(null)],
+				["blueNoiseRepeat", new Uniform(new Vector2())],
+				["intensity", new Uniform(1)],
+				["jitter", new Uniform(1)],
+				["time", new Uniform(0)],
+				["deltaTime", new Uniform(0)]
+			]),
+			defines: new Map([
+				["samples", options.samples.toFixed(0)],
+				["samplesFloat", options.samples.toFixed(5)]
+			])
+		})
+
+		this.makeOptionsReactive(options)
+
+		// load blue noise texture
+		const ktx2Loader = new KTX2Loader()
+		ktx2Loader.setTranscoderPath("examples/js/libs/basis/")
+		ktx2Loader.detectSupport(window.renderer)
+		ktx2Loader.load("texture/blue_noise_rg.ktx2", blueNoiseTexture => {
+			// generated using "toktx --target_type RG --t2 blue_noise_rg blue_noise_rg.png"
+			blueNoiseTexture.minFilter = NearestFilter
+			blueNoiseTexture.magFilter = NearestFilter
+			blueNoiseTexture.wrapS = RepeatWrapping
+			blueNoiseTexture.wrapT = RepeatWrapping
+			blueNoiseTexture.encoding = LinearEncoding
+
+			this.uniforms.get("blueNoiseTexture").value = blueNoiseTexture
+
+			ktx2Loader.dispose()
+		})
+	}
+
+	makeOptionsReactive(options) {
+		for (const key of Object.keys(options)) {
+			Object.defineProperty(this, key, {
+				get() {
+					return options[key]
+				},
+				set(value) {
+					options[key] = value
+
+					switch (key) {
+						case "intensity":
+						case "jitter":
+							this.uniforms.get(key).value = value
+							break
+					}
+				}
+			})
+		}
+	}
+
+	update(renderer, inputBuffer, deltaTime) {
+		this.uniforms.get("inputTexture").value = inputBuffer.texture
+		this.uniforms.get("deltaTime").value = Math.max(1 / 1000, deltaTime)
+
+		this.uniforms.get("time").value = (performance.now() % (10 * 60 * 1000)) * 0.01
+
+		const noiseTexture = this.uniforms.get("blueNoiseTexture").value
+		if (noiseTexture) {
+			const { width, height } = noiseTexture.source.data
+
+			this.uniforms.get("blueNoiseRepeat").value.set((4 * inputBuffer.width) / width, (4 * inputBuffer.height) / height)
+		}
+	}
+}

@@ -51,65 +51,38 @@ void main() {
     vec4 accumulatedTexel;
     vec3 accumulatedColor;
 
-    vec4 velocity = textureLod(velocityTexture, vUv, 0.0);
-    velocity.xy = unpackRGBATo2Half(velocity) * 2. - 1.;
+    vec2 closestDepthUv = vUv;
 
-    vec2 reprojectedUv = vUv - velocity.xy;
-
+#if defined(dilation) || defined(neighborhoodClamping)
     vec3 minNeighborColor = inputColor;
     vec3 maxNeighborColor = inputColor;
 
-    vec4 neighborTexel;
-    vec3 col;
-    vec2 neighborUv;
-    vec2 offset;
+    float maxDepth = 1.;
 
-    float maxDepth = 0.;
-    float lastMaxDepth = 0.;
-
-    float neighborDepth;
-    float lastNeighborDepth;
-    float colorCount = 1.0;
-
-#if defined(dilation) || defined(neighborhoodClamping)
     for (int x = -1; x <= 1; x++) {
         for (int y = -1; y <= 1; y++) {
             if (x != 0 || y != 0) {
-                offset = vec2(x, y) * invTexSize;
-                neighborUv = vUv + offset;
+                vec2 offset = vec2(x, y) * invTexSize;
+                vec2 neighborUv = vUv + offset;
 
                 if (all(greaterThanEqual(neighborUv, vec2(0.))) && all(lessThanEqual(neighborUv, vec2(1.)))) {
-                    //                 vec4 neigborDepthTexel = textureLod(velocityTexture, vUv + offset, 0.0);
-                    //                 neighborDepth = 1. - neigborDepthTexel.b;
+                    float neighborDepth = unpackRGBAToDepth(textureLod(depthTexture, neighborUv, 0.0));
 
-                    //                 int absX = abs(x);
-                    //                 int absY = abs(y);
-
-                    //                 if (absX <= 1 && absY <= 1) {
-                    // #ifdef dilation
-
-                    //                     // prevents the flickering at the edges of geometries due to treating background pixels differently
-                    //                     if (neighborDepth > 0.) isBackground = false;
-
-                    //                     if (neighborDepth > maxDepth) maxDepth = neighborDepth;
-
-                    //                     vec2 reprojectedNeighborUv = reprojectedUv + vec2(x, y) * invTexSize;
-
-                    //                     vec4 lastNeigborDepthTexel = textureLod(lastVelocityTexture, reprojectedNeighborUv, 0.0);
-                    //                     lastNeighborDepth = 1. - lastNeigborDepthTexel.b;
-
-                    //                     if (lastNeighborDepth > lastMaxDepth) lastMaxDepth = lastNeighborDepth;
-                    // #endif
-                    //                 }
+    #ifdef dilation
+                    if (x >= 0 && y >= 0 && x <= 1 && y <= 1) {
+                        if (neighborDepth < maxDepth) {
+                            maxDepth = neighborDepth;
+                            closestDepthUv = vUv + vec2(x, y) * invTexSize;
+                        }
+                    }
+    #endif
 
     #ifdef neighborhoodClamping
                     // the neighbor pixel is invalid if it's too far away from this pixel
-
                     if (abs(depth - neighborDepth) < maxNeighborDepthDifference) {
-                        neighborTexel = textureLod(inputTexture, neighborUv, 0.0);
+                        vec4 neighborTexel = textureLod(inputTexture, neighborUv, 0.0);
 
-                        col = neighborTexel.rgb;
-                        col = transformColor(col);
+                        vec3 col = transformColor(neighborTexel.rgb);
 
                         minNeighborColor = min(col, minNeighborColor);
                         maxNeighborColor = max(col, maxNeighborColor);
@@ -124,13 +97,9 @@ void main() {
 #endif
 
     // velocity
-    reprojectedUv = vUv - velocity.xy;
-
-    // depth
-    // #ifdef dilation
-    //     depth = maxDepth;
-    //     lastDepth = lastMaxDepth;
-    // #endif
+    vec4 velocity = textureLod(velocityTexture, closestDepthUv, 0.0);
+    velocity.xy = unpackRGBATo2Half(velocity) * 2. - 1.;
+    vec2 reprojectedUv = vUv - velocity.xy;
 
     float depthDiff = 1.0;
 
@@ -170,10 +139,6 @@ void main() {
     float temporalResolveMix = 1. - 1. / pixelSample;
     temporalResolveMix = min(temporalResolveMix, blend);
 
-    float movement = length(velocity.xy) * 100.;
-    if (movement > 1.) movement = 1.;
-        // temporalResolveMix -= 0.375 * movement;
-
 // the user's shader to compose a final outputColor from the inputTexel and accumulatedTexel
 #ifdef useCustomComposeShader
     customComposeShader
@@ -182,8 +147,6 @@ void main() {
 #endif
 
         gl_FragColor = vec4(undoColorTransform(outputColor), alpha);
-
-    // gl_FragColor = vec4(movement);
 
     // if (depthDiff > maxNeighborDepthDifference) gl_FragColor = vec4(0., 1., 0., 1.);
 }

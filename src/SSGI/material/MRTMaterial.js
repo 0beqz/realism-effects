@@ -1,5 +1,13 @@
 ﻿/* eslint-disable camelcase */
+import { UniformsUtils } from "three"
 import { Color, GLSL3, Matrix3, ShaderMaterial, TangentSpaceNormalMap, Uniform, Vector2 } from "three"
+import {
+	velocity_fragment_main,
+	velocity_fragment_pars,
+	velocity_uniforms,
+	velocity_vertex_main,
+	velocity_vertex_pars
+} from "../temporal-resolve/material/VelocityMaterial"
 
 // WebGL1: will render normals to RGB channel and roughness to A channel
 // WebGL2: will render normals to RGB channel of "gNormal" buffer, roughness to A channel of "gNormal" buffer, depth to RGBA channel of "gDepth" buffer
@@ -24,7 +32,8 @@ export class MRTMaterial extends ShaderMaterial {
 				roughnessMap: new Uniform(null),
 				boneTexture: new Uniform(null),
 				map: new Uniform(null),
-				color: new Uniform(new Color())
+				color: new Uniform(new Color()),
+				...UniformsUtils.clone(velocity_uniforms)
 			},
 			vertexShader: /* glsl */ `
                 #ifdef isWebGL2
@@ -42,6 +51,11 @@ export class MRTMaterial extends ShaderMaterial {
                 #include <skinning_pars_vertex>
                 #include <logdepthbuf_pars_vertex>
                 #include <clipping_planes_pars_vertex>
+
+                #ifdef renderVelocity
+                    ${velocity_vertex_pars}
+                #endif
+
                 void main() {
                     #include <uv_vertex>
 
@@ -69,7 +83,11 @@ export class MRTMaterial extends ShaderMaterial {
 
                     #ifdef isWebGL2
                         vHighPrecisionZW = gl_Position.zw;
-                    #endif 
+                    #endif
+
+                    #ifdef renderVelocity
+                    ${velocity_vertex_main}
+                    #endif
                 }
             `,
 
@@ -90,9 +108,14 @@ export class MRTMaterial extends ShaderMaterial {
                 #ifdef isWebGL2
                 layout(location = 0) out vec4 gDepth;
                 layout(location = 1) out vec4 gNormal;
-
-                #ifdef renderDiffuse
                 layout(location = 2) out vec4 gDiffuse;
+
+                #ifdef renderVelocity
+                layout(location = 3) out vec4 gVelocity;
+                #endif
+
+                #ifdef renderVelocity
+                ${velocity_fragment_pars}
                 #endif
 
                 uniform sampler2D map;
@@ -123,6 +146,7 @@ export class MRTMaterial extends ShaderMaterial {
 
                     vec3 normalColor = packNormalToRGB( normal );
                     #ifdef isWebGL2
+
                         gNormal = vec4( normalColor, roughnessFactor );
 
                         float fragCoordZ = 0.5 * vHighPrecisionZW[0] / vHighPrecisionZW[1] + 0.5;
@@ -130,12 +154,14 @@ export class MRTMaterial extends ShaderMaterial {
                         vec4 depthColor = packDepthToRGBA( fragCoordZ );
                         gDepth = depthColor;
 
-                        #ifdef renderDiffuse
                         vec4 diffuseColor = vec4(color, 1.);
 
                         #include <map_fragment>
 
                         gDiffuse = diffuseColor;
+
+                        #ifdef renderVelocity
+                        ${velocity_fragment_main.replaceAll("gl_FragColor", "gVelocity")}
                         #endif
 
                     #else

@@ -44,6 +44,7 @@ export class SSGIDebugGUI {
 
 		temporalResolveFolder.addInput(params, "blend", { min: 0, max: 1, step: 0.001 })
 		const blurKernelFolder = pane.addFolder({ title: "blurKernel" })
+		blurKernelFolder.addInput(params, "blurIterations", { min: 0, max: 5, step: 1 })
 		blurKernelFolder.addInput(params, "blurKernel", { min: 1, max: 5, step: 1 })
 		blurKernelFolder.addInput(params, "blurPower", {
 			min: 1,

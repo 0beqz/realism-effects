@@ -18,20 +18,21 @@ export class SSGIEffect extends Effect {
 	 * @param {SSGIOptions} [options] The optional options for the SSGI effect
 	 */
 	constructor(scene, camera, options = defaultSSGIOptions) {
+		options = { ...defaultSSGIOptions, ...options }
+
 		super("SSGIEffect", finalFragmentShader, {
 			type: "FinalSSGIMaterial",
-			uniforms: new Map([["inputTexture", new Uniform(null)]]),
-			defines: new Map([["RENDER_MODE", "0"]])
+			uniforms: new Map([["inputTexture", new Uniform(null)]])
 		})
 
 		this._scene = scene
 		this._camera = camera
-		options = { ...defaultSSGIOptions, ...options }
 
 		// temporal resolve pass
 		this.temporalResolvePass = new TemporalResolvePass(scene, camera, {
 			neighborhoodClamping: false,
-			traa: true
+			// renderVelocity: options.antialias,
+			traa: options.antialias
 		})
 
 		this.temporalResolvePass.fullscreenMaterial.fragmentShader =
@@ -73,9 +74,7 @@ export class SSGIEffect extends Effect {
 	makeOptionsReactive(options) {
 		let needsUpdate = false
 
-		if (options.reflectionsOnly) {
-			this.temporalResolvePass.fullscreenMaterial.defines.reflectionsOnly = ""
-		}
+		if (options.reflectionsOnly) this.temporalResolvePass.fullscreenMaterial.defines.reflectionsOnly = ""
 
 		const ssgiPassFullscreenMaterialUniforms = this.ssgiPass.fullscreenMaterial.uniforms
 		const ssgiPassFullscreenMaterialUniformsKeys = Object.keys(ssgiPassFullscreenMaterialUniforms)
@@ -105,11 +104,18 @@ export class SSGIEffect extends Effect {
 							this.temporalResolvePass.fullscreenMaterial.uniforms.blur.value = value
 							break
 
+						case "antialias":
+							this.temporalResolvePass.traa = value
+							break
+
+						case "blurIterations":
+							this.ssgiPass.upscalePass.iterations = value
+							break
+
 						case "blurKernel":
 						case "blurPower":
 						case "blurSharpness":
 							this.ssgiPass.upscalePass.fullscreenMaterial.uniforms[key].value = value
-							this.ssgiPass.upscalePass2.fullscreenMaterial.uniforms[key].value = value
 							break
 
 						// defines
@@ -150,7 +156,6 @@ export class SSGIEffect extends Effect {
 							ssgiPassFullscreenMaterialUniforms[key].value = value
 
 							this.ssgiPass.upscalePass.fullscreenMaterial.uniforms[key].value = value
-							this.ssgiPass.upscalePass2.fullscreenMaterial.uniforms[key].value = value
 							break
 
 						// must be a uniform
@@ -170,6 +175,7 @@ export class SSGIEffect extends Effect {
 	}
 
 	setSize(width, height, force = false) {
+		if (width === undefined && height === undefined) return
 		if (
 			!force &&
 			width === this.lastSize.width &&

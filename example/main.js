@@ -7,7 +7,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader"
 import { GroundProjectedEnv } from "three/examples/jsm/objects/GroundProjectedEnv"
-import { MotionBlurEffect } from "../src/MotionBlurEffect"
+import { MotionBlurEffect } from "../src/motionBlur/MotionBlurEffect"
 import { SSGIEffect } from "../src/SSGI/index"
 import { TRAAEffect } from "../src/TRAAEffect"
 import { SSGIDebugGUI } from "./SSGIDebugGUI"
@@ -351,7 +351,7 @@ const initScene = () => {
 		const motionBlurEffect = new MotionBlurEffect(ssgiEffect.temporalResolvePass, { jitter: 2.5 })
 
 		composer.addPass(ssgiPass)
-		composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect, bloomEffect, vignetteEffect, lutEffect))
+		composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, vignetteEffect, lutEffect))
 
 		const smaaEffect = new POSTPROCESSING.SMAAEffect()
 

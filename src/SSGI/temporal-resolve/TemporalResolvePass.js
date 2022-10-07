@@ -10,7 +10,6 @@ import {
 	Vector3,
 	WebGLRenderTarget
 } from "three"
-import { CopyDepthPass } from "../pass/CopyDepthPass"
 import { TemporalResolveMaterial } from "./material/TemporalResolveMaterial"
 import { VelocityPass } from "./pass/VelocityPass"
 import { generateHalton23Points } from "./utils/generateHalton23Points"
@@ -73,27 +72,21 @@ export class TemporalResolvePass extends Pass {
 		this.fullscreenMaterial.uniforms.velocityTexture.value = this.velocityPass.texture
 		this.fullscreenMaterial.uniforms.depthTexture.value = this.velocityPass.depthTexture
 
-		this.copyDepthPass = new CopyDepthPass()
-
-		this.copyDepthPass.fullscreenMaterial.uniforms.copyTexture.value = this.velocityPass.depthTexture
-		this.fullscreenMaterial.uniforms.lastDepthTexture.value = this.copyDepthPass.renderTarget.texture
-
 		this.setupFramebuffers(1, 1)
 	}
 
 	dispose() {
 		this.renderTarget.dispose()
 		this.accumulatedTexture.dispose()
+		this.lastDepthTexture.dispose()
 		this.fullscreenMaterial.dispose()
-		this.copyDepthPass.dispose()
 
 		if (this.usingOwnVelocityPass) this.velocityPass.dispose()
 	}
 
 	setSize(width, height) {
 		this.renderTarget.setSize(width, height)
-		this.copyDepthPass.setSize(width, height)
-		this.velocityPass.setSize(width, height)
+		if (this.usingOwnVelocityPass) this.velocityPass.setSize(width, height)
 
 		this.fullscreenMaterial.uniforms.invTexSize.value.set(1 / width, 1 / height)
 		this.setupFramebuffers(width, height)
@@ -108,6 +101,10 @@ export class TemporalResolvePass extends Pass {
 		this.accumulatedTexture.type = HalfFloatType
 
 		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.accumulatedTexture
+
+		this.lastDepthTexture = new FramebufferTexture(width, height, RGBAFormat)
+		this.lastDepthTexture.minFilter = NearestFilter
+		this.lastDepthTexture.magFilter = NearestFilter
 	}
 
 	checkNeedsResample() {
@@ -139,7 +136,9 @@ export class TemporalResolvePass extends Pass {
 		// save the render target's texture for use in next frame
 		renderer.copyFramebufferToTexture(zeroVec2, this.accumulatedTexture)
 
-		this.copyDepthPass.render(renderer)
+		renderer.setRenderTarget(this.velocityPass.renderTarget)
+		renderer.copyFramebufferToTexture(zeroVec2, this.lastDepthTexture)
+		this.fullscreenMaterial.uniforms.lastDepthTexture.value = this.lastDepthTexture
 	}
 
 	jitter(jitterScale = 1) {

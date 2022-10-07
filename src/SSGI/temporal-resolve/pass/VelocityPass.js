@@ -54,8 +54,6 @@ export class VelocityPass extends Pass {
 	}
 
 	setVelocityMaterialInScene() {
-		this.renderedMeshesThisFrame = 0
-
 		this.visibleMeshes = getVisibleChildren(this._scene)
 
 		for (const c of this.visibleMeshes) {
@@ -87,17 +85,27 @@ export class VelocityPass extends Pass {
 
 			if (this.renderDepth && isWebGL2) velocityMaterial.defines.renderDepth = ""
 
-			for (const prop of updateProperties) velocityMaterial[prop] = originalMaterial[prop]
-
-			if (c.skeleton?.boneTexture) {
-				c.material.defines.USE_SKINNING = ""
-				c.material.defines.BONE_TEXTURE = ""
-
-				c.material.uniforms.boneTexture.value = c.skeleton.boneTexture
-			}
-
-			c.material.uniforms.velocityMatrix.value.multiplyMatrices(this._camera.projectionMatrix, c.modelViewMatrix)
+			this.updateVelocityMaterialBeforeRender(c, originalMaterial)
 		}
+	}
+
+	updateVelocityMaterialBeforeRender(c, originalMaterial) {
+		for (const prop of updateProperties) c.material[prop] = originalMaterial[prop]
+
+		if (c.skeleton?.boneTexture) {
+			c.material.defines.USE_SKINNING = ""
+			c.material.defines.BONE_TEXTURE = ""
+
+			c.material.uniforms.boneTexture.value = c.skeleton.boneTexture
+		}
+
+		c.material.uniforms.velocityMatrix.value.multiplyMatrices(this._camera.projectionMatrix, c.modelViewMatrix)
+	}
+
+	updateVelocityMaterialAfterRender(c) {
+		c.material.uniforms.prevVelocityMatrix.value.multiplyMatrices(this._camera.projectionMatrix, c.modelViewMatrix)
+
+		if (c.skeleton?.boneTexture) this.saveBoneTexture(c)
 	}
 
 	saveBoneTexture(object) {
@@ -121,9 +129,7 @@ export class VelocityPass extends Pass {
 
 	unsetVelocityMaterialInScene() {
 		for (const c of this.visibleMeshes) {
-			c.material.uniforms.prevVelocityMatrix.value.multiplyMatrices(this._camera.projectionMatrix, c.modelViewMatrix)
-
-			if (c.skeleton?.boneTexture) this.saveBoneTexture(c)
+			this.updateVelocityMaterialAfterRender(c)
 
 			c.material = this.cachedMaterials.get(c)[0]
 		}
@@ -140,11 +146,11 @@ export class VelocityPass extends Pass {
 	}
 
 	get texture() {
-		return isWebGL2 ? this.renderTarget.texture[0] : this.renderTarget.texture
+		return isWebGL2 ? this.renderTarget.texture[1] : this.renderTarget.texture
 	}
 
 	get depthTexture() {
-		return isWebGL2 ? this.renderTarget.texture[1] : this.webgl1DepthPass.texture
+		return isWebGL2 ? this.renderTarget.texture[0] : this.webgl1DepthPass.texture
 	}
 
 	render(renderer) {
@@ -156,12 +162,12 @@ export class VelocityPass extends Pass {
 
 		this.renderPass.render(renderer, this.renderTarget)
 
-		this._scene.background = background
-
-		this.unsetVelocityMaterialInScene()
-
 		if (!isWebGL2) {
 			this.webgl1DepthPass.renderPass.render(renderer, this.webgl1DepthPass.renderTarget)
 		}
+
+		this._scene.background = background
+
+		this.unsetVelocityMaterialInScene()
 	}
 }
