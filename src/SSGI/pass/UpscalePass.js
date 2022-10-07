@@ -14,7 +14,8 @@ export class UpscalePass extends Pass {
             uniform sampler2D depthTexture;
             uniform sampler2D normalTexture;
             uniform vec2 invTexSize;
-            uniform float sharpness;
+            uniform float blurPower;
+            uniform float blurSharpness;
             uniform float blurKernel;
             uniform float jitter;
             uniform float jitterRoughness;
@@ -39,23 +40,28 @@ export class UpscalePass extends Pass {
                 float alpha = inputTexel.a;
                 float pixelSample = alpha / ALPHA_STEP + 1.0;
 
-                float roughness = textureLod(normalTexture, vUv, 0.).a;
+                vec4 normalTexel = textureLod(normalTexture, vUv, 0.);
+                vec3 normal = unpackRGBToNormal(normalTexel.rgb);
+                float roughness = normalTexel.a;
                 float roughnessFactor = min(1., jitterRoughness * roughness + jitter);
 
                 float kernel = blurKernel * roughnessFactor;
 
                 bool isEarlyPixelSample = pixelSample < 16.;
 
-                if(isEarlyPixelSample){
-                    float pixelSampleWeight = max(0., pixelSample - 3.) / 13.;
-                    kernel = mix(4.0, kernel, pixelSampleWeight);
-                }
+                // if(isEarlyPixelSample){
+                //     float pixelSampleWeight = max(0., pixelSample - 3.) / 13.;
+                //     kernel = mix(4.0, kernel, pixelSampleWeight);
+                // }
+
+                kernel = round(kernel);
 
                 if(kernel == 0.){
                     gl_FragColor = vec4(color, inputTexel.a);
                     return;
                 }
 
+                float normalSimilarityMix = 1.0 - blurSharpness;
                 float depth = unpackRGBAToDepth(depthTexel);
                 
                 for(float i = -kernel; i <= kernel; i++){
@@ -70,14 +76,21 @@ export class UpscalePass extends Pass {
                         if (all(greaterThanEqual(neighborUv, vec2(0.))) && all(lessThanEqual(neighborUv, vec2(1.)))) {
                             float neighborDepth = unpackRGBAToDepth(textureLod(depthTexture, neighborUv, 0.));
 
-                            float depthDiff = abs(depth - neighborDepth);
+                            float depthDiff = abs(depth - neighborDepth) * depth;
                             depthDiff /= maxDepthDifference;
 
                             if(depthDiff < 1.){
+                                vec4 neighborNormalTexel = textureLod(normalTexture, neighborUv, 0.);
+                                vec3 neighborNormal = unpackRGBToNormal(neighborNormalTexel.rgb);
+                                
+                                float normalSimilarity = dot(neighborNormal, normal);
+                                normalSimilarity = mix(normalSimilarity, 1., normalSimilarityMix);
+
                                 float weight = 1. - depthDiff;
-                                weight = pow(weight, sharpness);
+                                weight = pow(weight, blurPower);
                                 totalWeight += weight;
-                                color += textureLod(inputTexture, neighborUv, 0.).rgb * weight;
+                                color += textureLod(inputTexture, neighborUv, 0.).rgb * weight * normalSimilarity;
+                                // color += vec3(0., 1., 0.) * weight * sim;
                                 // bestUv += neighborUv * weight;
                             }
                         }
@@ -85,6 +98,8 @@ export class UpscalePass extends Pass {
                 }
                 
                 color /= totalWeight;
+
+                if(min(color.r, min(color.g, color.b)) < 0.0) color = inputTexel.rgb;
 
                 // bestUv /= totalWeight;
                 // bestUv -= vUv;
@@ -101,7 +116,8 @@ export class UpscalePass extends Pass {
 				normalTexture: new Uniform(null),
 				invTexSize: new Uniform(new Vector2()),
 				blurKernel: new Uniform(2),
-				sharpness: new Uniform(8),
+				blurPower: new Uniform(8),
+				blurSharpness: new Uniform(1),
 				jitter: new Uniform(0),
 				jitterRoughness: new Uniform(0)
 			}

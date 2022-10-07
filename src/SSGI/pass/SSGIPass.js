@@ -2,15 +2,16 @@
 import {
 	Color,
 	HalfFloatType,
+	LinearEncoding,
 	LinearFilter,
 	MeshBasicMaterial,
 	NearestFilter,
 	RepeatWrapping,
 	sRGBEncoding,
-	TextureLoader,
 	WebGLMultipleRenderTargets,
 	WebGLRenderTarget
 } from "three"
+import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader.js"
 import { MRTMaterial } from "../material/MRTMaterial.js"
 import { SSGIMaterial } from "../material/SSGIMaterial.js"
 import { getVisibleChildren, isWebGL2Available } from "../utils/Utils.js"
@@ -20,9 +21,7 @@ const isWebGL2 = isWebGL2Available()
 const rendererClearColor = new Color()
 
 export class SSGIPass extends Pass {
-	ssgiEffect
 	cachedMaterials = new WeakMap()
-	webgl1DepthPass = null
 	visibleMeshes = []
 
 	constructor(ssgiEffect) {
@@ -48,15 +47,19 @@ export class SSGIPass extends Pass {
 		this.fullscreenMaterial.uniforms.cameraMatrixWorld.value = this._camera.matrixWorld
 		this.fullscreenMaterial.uniforms.projectionMatrix.value = this._camera.projectionMatrix
 		this.fullscreenMaterial.uniforms.inverseProjectionMatrix.value = this._camera.projectionMatrixInverse
-		this.fullscreenMaterial.uniforms.velocityTexture.value =
-			this.ssgiEffect.temporalResolvePass.velocityPass.renderTarget.texture[0]
+		this.fullscreenMaterial.uniforms.velocityTexture.value = this.ssgiEffect.temporalResolvePass.velocityPass.texture
 
-		const noiseTexture = new TextureLoader().load("./texture/blue_noise_rg.png", () => {
-			this.fullscreenMaterial.uniforms.blueNoiseTexture.value = noiseTexture
-			noiseTexture.minFilter = NearestFilter
-			noiseTexture.magFilter = NearestFilter
-			noiseTexture.wrapS = RepeatWrapping
-			noiseTexture.wrapT = RepeatWrapping
+		const ktx2Loader = new KTX2Loader()
+		ktx2Loader.setTranscoderPath("examples/js/libs/basis/")
+		ktx2Loader.detectSupport(window.renderer)
+		ktx2Loader.load("texture/blue_noise_rg.ktx2", blueNoiseTexture => {
+			// generated using "toktx --target_type RG --t2 blue_noise_rg blue_noise_rg.png"
+			blueNoiseTexture.minFilter = NearestFilter
+			blueNoiseTexture.magFilter = NearestFilter
+			blueNoiseTexture.wrapS = RepeatWrapping
+			blueNoiseTexture.wrapT = RepeatWrapping
+			blueNoiseTexture.encoding = LinearEncoding
+			this.fullscreenMaterial.uniforms.blueNoiseTexture.value = blueNoiseTexture
 		})
 
 		this.upscalePass = new UpscalePass()
@@ -79,8 +82,7 @@ export class SSGIPass extends Pass {
 
 			this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(1, 1, bufferCount, {
 				minFilter: NearestFilter,
-				magFilter: NearestFilter,
-				generateMipmaps: false
+				magFilter: NearestFilter
 			})
 
 			this.normalTexture = this.gBuffersRenderTarget.texture[1]
@@ -334,9 +336,10 @@ export class SSGIPass extends Pass {
 		if (noiseTexture) {
 			const { width, height } = noiseTexture.source.data
 
+			// a factor of 4 seems to get the best results when comparing different factors
 			this.fullscreenMaterial.uniforms.blueNoiseRepeat.value.set(
-				this.ssgiEffect.temporalResolvePass.renderTarget.width / width,
-				this.ssgiEffect.temporalResolvePass.renderTarget.height / height
+				(4 * this.ssgiEffect.temporalResolvePass.renderTarget.width) / width,
+				(4 * this.ssgiEffect.temporalResolvePass.renderTarget.height) / height
 			)
 		}
 

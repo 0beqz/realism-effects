@@ -10,7 +10,6 @@ export class TemporalResolveMaterial extends ShaderMaterial {
 				inputTexture: new Uniform(null),
 				accumulatedTexture: new Uniform(null),
 				velocityTexture: new Uniform(null),
-				lastVelocityTexture: new Uniform(null),
 				depthTexture: new Uniform(null),
 				lastDepthTexture: new Uniform(null),
 				samples: new Uniform(1),
@@ -19,8 +18,7 @@ export class TemporalResolveMaterial extends ShaderMaterial {
 				invTexSize: new Uniform(new Vector2())
 			},
 			defines: {
-				maxNeighborDepthDifference: "0.00000375",
-				correctionRadius: 1
+				maxNeighborDepthDifference: "0.00000375"
 			},
 			vertexShader,
 			fragmentShader

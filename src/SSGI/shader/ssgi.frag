@@ -218,13 +218,12 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
 
     // highlight reflections of brighter spots more (e.g. if the direct light is being reflected)
     float ssgiLum = czm_luminance(SSGI);
-    float brightnessDiff = ssgiLum - 0.375 * TRANSFORM_FACTOR;
-    if (brightnessDiff > 0. && distance(vUv, coords.xy) > 0.01) {
-        brightnessDiff /= TRANSFORM_FACTOR / (1. - 0.375);
-        SSGI = mix(SSGI, 10.0 * SSGI, brightnessDiff);
-    }
+    // float brightnessDiff = ssgiLum - 0.375 * TRANSFORM_FACTOR;
+    // if (brightnessDiff > 0. && distance(vUv, coords.xy) > 0.01) {
+    //     brightnessDiff /= TRANSFORM_FACTOR / (1. - 0.375);
+    //     SSGI = mix(SSGI, 10.0 * SSGI, brightnessDiff);
+    // }
 
-    SSGI = min(vec3(1.0, 1.0, 1.0), SSGI);
     SSGI *= TRANSFORM_FACTOR;
 
     if (isAllowedMissedRay) {

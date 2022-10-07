@@ -41,7 +41,7 @@ export const defaultSSGIOptions = {
 	correction: 1,
 	correctionRadius: 1,
 	blurKernel: 2,
-	sharpness: 8,
+	blurSharpness: 8,
 	jitter: 0,
 	jitterRoughness: 0,
 	steps: 20,

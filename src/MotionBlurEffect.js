@@ -1,5 +1,6 @@
 ﻿import { Effect } from "postprocessing"
-import { NearestFilter, RepeatWrapping, TextureLoader, Uniform, Vector2 } from "three"
+import { LinearEncoding, NearestFilter, RepeatWrapping, Uniform, Vector2 } from "three"
+import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader"
 
 // https://www.nvidia.com/docs/io/8230/gdc2003_openglshadertricks.pdf
 // http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html
@@ -30,7 +31,7 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
     velocity.xy *= intensity / (60. * deltaTime);
 
     vec2 blueNoise = textureLod(blueNoiseTexture, (vUv + time) * blueNoiseRepeat, 0.).rg;
-    int numSamples = 16;
+    int numSamples = 8;
 
     vec3 motionBlurredColor;
     vec3 neighborColor;
@@ -95,12 +96,18 @@ export class MotionBlurEffect extends Effect {
 			this[key] = options[key]
 		}
 
-		const noiseTexture = new TextureLoader().load("./texture/blue_noise_rg.png", () => {
-			this.uniforms.get("blueNoiseTexture").value = noiseTexture
-			noiseTexture.minFilter = NearestFilter
-			noiseTexture.magFilter = NearestFilter
-			noiseTexture.wrapS = RepeatWrapping
-			noiseTexture.wrapT = RepeatWrapping
+		const ktx2Loader = new KTX2Loader()
+		ktx2Loader.setTranscoderPath("examples/js/libs/basis/")
+		ktx2Loader.detectSupport(window.renderer)
+		ktx2Loader.load("texture/blue_noise_rg.ktx2", blueNoiseTexture => {
+			// generated using "toktx --target_type RG --t2 blue_noise_rg blue_noise_rg.png"
+			blueNoiseTexture.minFilter = NearestFilter
+			blueNoiseTexture.magFilter = NearestFilter
+			blueNoiseTexture.wrapS = RepeatWrapping
+			blueNoiseTexture.wrapT = RepeatWrapping
+			blueNoiseTexture.encoding = LinearEncoding
+
+			this.uniforms.get("blueNoiseTexture").value = blueNoiseTexture
 		})
 	}
 

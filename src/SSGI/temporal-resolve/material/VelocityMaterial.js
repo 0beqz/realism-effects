@@ -123,8 +123,12 @@ export class VelocityMaterial extends ShaderMaterial {
 						${velocity_vertex_main}
                     }`,
 			fragmentShader: /* glsl */ `
+					#ifdef renderDepth
 					layout(location = 0) out vec4 gVelocity;
 					layout(location = 1) out vec4 gDepth;
+					#else
+					#define gVelocity gl_FragColor
+					#endif
 
 					${velocity_fragment_pars}
 					#include <packing>
@@ -132,11 +136,17 @@ export class VelocityMaterial extends ShaderMaterial {
                     void main() {
 						${velocity_fragment_main.replaceAll("gl_FragColor", "gVelocity")}
 
+						#ifdef renderDepth
 						gDepth = packDepthToRGBA(fragCoordZ);
+						#endif
                     }`
 		})
 
-		this.glslVersion = GLSL3
+		Object.defineProperty(this, "glslVersion", {
+			get() {
+				return "renderDepth" in this.defines ? GLSL3 : null
+			}
+		})
 
 		this.isVelocityMaterial = true
 	}

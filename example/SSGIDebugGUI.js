@@ -43,15 +43,17 @@ export class SSGIDebugGUI {
 		const temporalResolveFolder = pane.addFolder({ title: "Temporal Resolve" })
 
 		temporalResolveFolder.addInput(params, "blend", { min: 0, max: 1, step: 0.001 })
-		// temporalResolveFolder.addInput(params, "correction", { min: 0, max: 1, step: 0.0001 })
-		// temporalResolveFolder.addInput(params, "correctionRadius", { min: 1, max: 4, step: 1 })
-
 		const blurKernelFolder = pane.addFolder({ title: "blurKernel" })
 		blurKernelFolder.addInput(params, "blurKernel", { min: 1, max: 5, step: 1 })
-		blurKernelFolder.addInput(params, "sharpness", {
+		blurKernelFolder.addInput(params, "blurPower", {
 			min: 1,
 			max: 16,
 			step: 1
+		})
+		blurKernelFolder.addInput(params, "blurSharpness", {
+			min: 0,
+			max: 1,
+			step: 0.01
 		})
 
 		const jitterFolder = pane.addFolder({ title: "Jitter" })

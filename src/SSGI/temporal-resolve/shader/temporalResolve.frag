@@ -4,7 +4,6 @@ uniform sampler2D inputTexture;
 uniform sampler2D accumulatedTexture;
 
 uniform sampler2D velocityTexture;
-uniform sampler2D lastVelocityTexture;
 
 uniform sampler2D depthTexture;
 uniform sampler2D lastDepthTexture;
@@ -53,12 +52,9 @@ void main() {
     vec3 accumulatedColor;
 
     vec4 velocity = textureLod(velocityTexture, vUv, 0.0);
-
     velocity.xy = unpackRGBATo2Half(velocity) * 2. - 1.;
 
-    // gl_FragColor = vec4(velocity.xy * 100., 0., 0.);
-    // if (isBackground) gl_FragColor = vec4(0.);
-    // return;
+    vec2 reprojectedUv = vUv - velocity.xy;
 
     vec3 minNeighborColor = inputColor;
     vec3 maxNeighborColor = inputColor;
@@ -68,11 +64,6 @@ void main() {
     vec2 neighborUv;
     vec2 offset;
 
-    // reproject from the last frame
-    vec2 reprojectedUv = vUv - velocity.xy;
-    vec4 lastVelocity = textureLod(lastVelocityTexture, reprojectedUv, 0.0);
-    lastVelocity.xy = unpackRGBATo2Half(lastVelocity) * 2. - 1.;
-
     float maxDepth = 0.;
     float lastMaxDepth = 0.;
 
@@ -81,8 +72,8 @@ void main() {
     float colorCount = 1.0;
 
 #if defined(dilation) || defined(neighborhoodClamping)
-    for (int x = -correctionRadius; x <= correctionRadius; x++) {
-        for (int y = -correctionRadius; y <= correctionRadius; y++) {
+    for (int x = -1; x <= 1; x++) {
+        for (int y = -1; y <= 1; y++) {
             if (x != 0 || y != 0) {
                 offset = vec2(x, y) * invTexSize;
                 neighborUv = vUv + offset;

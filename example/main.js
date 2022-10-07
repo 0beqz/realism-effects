@@ -262,12 +262,12 @@ const initScene = () => {
 		roughnessFade: 0,
 		thickness: 2.4999999999999973,
 		ior: 2.33,
-		mip: 1.734723475976807e-18,
 		maxRoughness: 1,
-		blend: 0.925,
+		blend: 0.9,
 		correction: 1,
 		correctionRadius: 1,
 		blurKernel: 2,
+		blurSharpness: 0,
 		jitter: 5.551115123125783e-17,
 		jitterRoughness: 1,
 		steps: 20,
@@ -280,7 +280,8 @@ const initScene = () => {
 		resolutionScale: 0.5,
 		antialias: true,
 		reflectionsOnly: false,
-		sharpness: 8
+		blurSharpness: 1,
+		blurPower: 8
 	}
 
 	traaEffect = new TRAAEffect(scene, camera, params)

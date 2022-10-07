@@ -26,21 +26,13 @@ export class SSGIEffect extends Effect {
 
 		this._scene = scene
 		this._camera = camera
-
-		const trOptions = {
-			dilation: false,
-			renderVelocity: false,
-			neighborhoodClamping: false,
-			logTransform: false,
-			...options
-		}
-
-		options = { ...defaultSSGIOptions, ...options, ...trOptions }
-
-		// set up passes
+		options = { ...defaultSSGIOptions, ...options }
 
 		// temporal resolve pass
-		this.temporalResolvePass = new TemporalResolvePass(scene, camera, options)
+		this.temporalResolvePass = new TemporalResolvePass(scene, camera, {
+			neighborhoodClamping: false,
+			traa: true
+		})
 
 		this.temporalResolvePass.fullscreenMaterial.fragmentShader =
 			/* glsl */ `
@@ -114,13 +106,10 @@ export class SSGIEffect extends Effect {
 							break
 
 						case "blurKernel":
-							this.ssgiPass.upscalePass.fullscreenMaterial.uniforms.blurKernel.value = value
-							this.ssgiPass.upscalePass2.fullscreenMaterial.uniforms.blurKernel.value = value
-							break
-
-						case "sharpness":
-							this.ssgiPass.upscalePass.fullscreenMaterial.uniforms.sharpness.value = value
-							this.ssgiPass.upscalePass2.fullscreenMaterial.uniforms.sharpness.value = value
+						case "blurPower":
+						case "blurSharpness":
+							this.ssgiPass.upscalePass.fullscreenMaterial.uniforms[key].value = value
+							this.ssgiPass.upscalePass2.fullscreenMaterial.uniforms[key].value = value
 							break
 
 						// defines
@@ -225,16 +214,10 @@ export class SSGIEffect extends Effect {
 	update(renderer, inputBuffer) {
 		this.keepEnvMapUpdated()
 
-		if (this.antialias) this.temporalResolvePass.unjitter()
-
-		this.temporalResolvePass.velocityPass.render(renderer)
-
-		if (this.antialias) this.temporalResolvePass.jitter()
-
-		this.ssgiPass.render(renderer, inputBuffer)
-
 		this.temporalResolvePass.fullscreenMaterial.uniforms.directLightTexture.value = inputBuffer.texture
 		this.ssgiPass.fullscreenMaterial.uniforms.directLightTexture.value = inputBuffer.texture
+
+		this.ssgiPass.render(renderer, inputBuffer)
 
 		this.temporalResolvePass.render(renderer)
 	}
