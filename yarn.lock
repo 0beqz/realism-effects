@@ -1949,6 +1949,11 @@
   "resolved" "https://registry.npmjs.org/functions-have-names/-/functions-have-names-1.2.3.tgz"
   "version" "1.2.3"
 
+"gaussian-convolution-kernel@^1.0.0":
+  "integrity" "sha512-d7beZqXpvyWfIuhPKli89GrMZM9a91dPm5YVIWaWIbC3ObIlzEPqRaSBYYSVkoTHaFcYoBs4gcChqL2Hzu8EIQ=="
+  "resolved" "https://registry.npmjs.org/gaussian-convolution-kernel/-/gaussian-convolution-kernel-1.0.0.tgz"
+  "version" "1.0.0"
+
 "gensync@^1.0.0-beta.2":
   "integrity" "sha512-3hN7NaskYvMDLQY55gnW3NQ+mesEAepTqlg+VEbj7zzqEMBVNhzcGYYeqFo/TlYz6eQiFcp1HcsCZO+nGgS8zg=="
   "resolved" "https://registry.npmjs.org/gensync/-/gensync-1.0.0-beta.2.tgz"

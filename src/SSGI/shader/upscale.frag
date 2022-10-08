@@ -12,8 +12,12 @@ uniform float jitter;
 uniform float jitterRoughness;
 uniform float stepSize;
 
-const float kernel5[] = float[](
-    0.12900108216683737, 0.1425207917273954, 0.1513031774986128, 0.1543498972143089, 0.1513031774986128, 0.1425207917273954, 0.12900108216683737);
+// uniform float kernel1[] = float[](0.3311108596640263, 0.33777828067194743, 0.331110859664026);
+// uniform float kernel2[] = float[](0.19207709898427072, 0.203913232931118, 0.20801933616922258, 0.203913232931118, 0.19207709898427072);
+// uniform float kernel3[] = float[](0.12900108216683737, 0.1425207917273954, 0.1513031774986128, 0.1543498972143089, 0.1513031774986128, 0.1425207917273954, 0.12900108216683737);
+// uniform float kernel4[] = float[](0.09163686898681825, 0.10535857163547686, 0.11640047348855351, 0.12357327859115343, 0.12606161459599594, 0.12357327859115343, 0.11640047348855351, 0.10535857163547686, 0.09163686898681825);
+
+uniform float kernelCoefficients[7];
 
 #include <packing>
 
@@ -35,28 +39,23 @@ void main() {
     // skip background
     if (dot(depthTexel.rgb, depthTexel.rgb) == 0.) return;
 
-    float totalWeight = kernel5[6];
-
     vec4 inputTexel = textureLod(inputTexture, vUv, 0.);
-
-    vec3 color = inputTexel.rgb * totalWeight;
-
-    float alpha = inputTexel.a;
-    float pixelSample = alpha / ALPHA_STEP + 1.0;
 
     vec4 normalTexel = textureLod(normalTexture, vUv, 0.);
     vec3 normal = unpackRGBToNormal(normalTexel.rgb);
+
     float roughness = normalTexel.a;
     float roughnessFactor = min(1., jitterRoughness * roughness + jitter);
 
-    float kernel = denoiseKernel;
-
-    kernel = round(kernel * roughnessFactor);
+    float kernel = round(denoiseKernel * roughnessFactor);
 
     if (kernel == 0.) {
-        gl_FragColor = vec4(color, inputTexel.a);
+        gl_FragColor = inputTexel;
         return;
     }
+
+    float totalWeight = kernelCoefficients[int(denoiseKernel) + 1];
+    vec3 color = inputTexel.rgb * totalWeight;
 
     float similarityMix = 1.0 - denoiseSharpness;
     float depth = unpackRGBAToDepth(depthTexel);
@@ -83,13 +82,14 @@ void main() {
 
                     float normalSimilarity = dot(neighborNormal, normal);
                     float lumaSimilarity = 1.0 - lumaDiff / lumaPhi;
-                    float depthSimilarity = exp(-depthDiff);
+                    float depthSimilarity = 1.0 - depthDiff;
 
-                    float weight = 1. - depthDiff / maxDepthDifference;
+                    // @todo: take account of depth again here
+                    float weight = 1.;
                     weight *= normalSimilarity * lumaSimilarity * depthSimilarity;
 
                     if (weight > 0.) {
-                        float kernelWeight = kernel5[int(i + kernel)];
+                        float kernelWeight = kernelCoefficients[int(i + kernel)];
                         weight = pow(weight, denoisePower);
                         weight *= kernelWeight;
 

@@ -71,6 +71,7 @@
 		"*.{js,css,md}": "prettier --write"
 	},
 	"dependencies": {
+		"gaussian-convolution-kernel": "^1.0.0",
 		"screen-space-reflections": "^2.1.1"
 	}
 }

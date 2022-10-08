@@ -129,7 +129,7 @@ export class TemporalResolvePass extends Pass {
 
 		if (this.renderVelocity && this.usingOwnVelocityPass) this.velocityPass.render(renderer)
 
-		if (this.traa) this.jitter(0)
+		if (this.traa) this.jitter()
 
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)

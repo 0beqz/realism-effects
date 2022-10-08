@@ -113,6 +113,9 @@ export class SSGIEffect extends Effect {
 							break
 
 						case "denoiseKernel":
+							this.ssgiPass.upscalePass.fullscreenMaterial.uniforms[key].value = value
+							this.ssgiPass.upscalePass.setKernel(value)
+							break
 						case "denoisePower":
 						case "denoiseSharpness":
 							this.ssgiPass.upscalePass.fullscreenMaterial.uniforms[key].value = value

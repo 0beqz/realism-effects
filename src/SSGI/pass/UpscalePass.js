@@ -2,6 +2,7 @@
 import { HalfFloatType, NearestFilter, ShaderMaterial, Uniform, Vector2, WebGLRenderTarget } from "three"
 import basicVertexShader from "../shader/basic.vert"
 import fragmentShader from "../shader/upscale.frag"
+import { gaussian_kernel } from "../utils/Utils"
 
 // https://diharaw.github.io/post/adventures_in_hybrid_rendering/
 
@@ -27,7 +28,11 @@ export class UpscalePass extends Pass {
 				denoiseSharpness: new Uniform(40),
 				jitter: new Uniform(0),
 				jitterRoughness: new Uniform(0),
-				stepSize: new Uniform(1)
+				stepSize: new Uniform(1),
+				kernelCoefficients: new Uniform(new Float32Array())
+			},
+			defines: {
+				KERNEL_SIZE: 3
 			}
 		})
 
@@ -44,6 +49,18 @@ export class UpscalePass extends Pass {
 			type: HalfFloatType,
 			depthBuffer: false
 		})
+
+		this.setKernel(this.fullscreenMaterial.defines.KERNEL_SIZE)
+	}
+
+	setKernel(kernelSize, standardDeviation = 5) {
+		this.fullscreenMaterial.uniforms.kernelCoefficients.value = new Float32Array(
+			gaussian_kernel(kernelSize * 2 + 1, standardDeviation)
+		)
+
+		this.fullscreenMaterial.defines.KERNEL_SIZE = parseInt(kernelSize)
+
+		this.fullscreenMaterial.needsUpdate = true
 	}
 
 	setSize(width, height) {
@@ -55,6 +72,7 @@ export class UpscalePass extends Pass {
 		let stepSize = 1
 		for (let i = 0; i < 2 * this.iterations; i++) {
 			const horizontal = i % 2 === 0
+			if (horizontal) stepSize = 2 ** (i / 2)
 
 			this.fullscreenMaterial.uniforms.horizontal.value = horizontal
 			this.fullscreenMaterial.uniforms.stepSize.value = stepSize
@@ -68,8 +86,6 @@ export class UpscalePass extends Pass {
 
 			renderer.setRenderTarget(renderTarget)
 			renderer.render(this.scene, this.camera)
-
-			if (horizontal) stepSize++
 		}
 	}
 

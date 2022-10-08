@@ -279,9 +279,9 @@ const initScene = () => {
 		resolutionScale: 1,
 		antialias: true,
 		reflectionsOnly: false,
-		denoiseSharpness: 40,
 		denoiseKernel: 3,
-		denoisePower: 32,
+		denoisePower: 24,
+		denoiseSharpness: 40,
 		denoiseIterations: 5
 	}
 
