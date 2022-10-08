@@ -16,6 +16,13 @@ uniform float jitterRoughness;
 #define ALPHA_STEP 0.001
 const float maxDepthDifference = 0.000025;
 
+// source: https://github.com/CesiumGS/cesium/blob/main/Source/Shaders/Builtin/Functions/luminance.glsl
+float czm_luminance(vec3 rgb) {
+    // Algorithm from Chapter 10 of Graphics Shaders.
+    const vec3 W = vec3(0.2125, 0.7154, 0.0721);
+    return dot(rgb, W);
+}
+
 void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.);
 
@@ -50,8 +57,9 @@ void main() {
         return;
     }
 
-    float normalSimilarityMix = 1.0 - denoiseSharpness;
+    float similarityMix = 1.0 - denoiseSharpness;
     float depth = unpackRGBAToDepth(depthTexel);
+    float luma = czm_luminance(inputTexel.rgb);
 
     for (float i = -kernel; i <= kernel; i++) {
         if (i != 0.) {
@@ -60,6 +68,7 @@ void main() {
 
             if (all(greaterThanEqual(neighborUv, vec2(0.))) && all(lessThanEqual(neighborUv, vec2(1.)))) {
                 float neighborDepth = unpackRGBAToDepth(textureLod(depthTexture, neighborUv, 0.));
+                float neighborLuma = czm_luminance(inputTexel.rgb);
 
                 float depthDiff = abs(depth - neighborDepth) * depth;
                 depthDiff /= maxDepthDifference;
@@ -68,15 +77,26 @@ void main() {
                     vec4 neighborNormalTexel = textureLod(normalTexture, neighborUv, 0.);
                     vec3 neighborNormal = unpackRGBToNormal(neighborNormalTexel.rgb);
 
+                    float lumaPhi = sqrt(luma);
+
                     float normalSimilarity = dot(neighborNormal, normal);
-                    normalSimilarity = mix(normalSimilarity, 1., normalSimilarityMix);
+                    float lumaSimilarity = 1.0 - abs(luma - neighborLuma) * lumaPhi;
+                    float depthSimilarity = exp(-abs(depth - neighborDepth));
+
+                    float similarity = mix(normalSimilarity * lumaSimilarity * depthSimilarity, 1., similarityMix);
 
                     float weight = 1. - depthDiff;
-                    weight = pow(weight, denoisePower);
-                    totalWeight += weight;
-                    color += textureLod(inputTexture, neighborUv, 0.).rgb * weight * normalSimilarity;
-                    // color += vec3(0., 1., 0.) * weight * sim;
-                    // bestUv += neighborUv * weight;
+                    weight *= similarity;
+
+                    if (weight > 0.) {
+                        weight = pow(weight, denoisePower);
+                        totalWeight += weight;
+
+                        color += textureLod(inputTexture, neighborUv, 0.).rgb * weight;
+
+                        // color += vec3(0., 1., 0.) * weight;
+                        // bestUv += neighborUv * weight;
+                    }
                 }
             }
         }

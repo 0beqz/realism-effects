@@ -98,10 +98,11 @@ void main() {
     vec2 reprojectedUv = vUv - velocity.xy;
 
     float depthDiff = 1.0;
+    float lastDepth;
 
     // the reprojected UV coordinates are inside the view
     if (all(greaterThanEqual(reprojectedUv, vec2(0.))) && all(lessThanEqual(reprojectedUv, vec2(1.)))) {
-        float lastDepth = unpackRGBAToDepth(textureLod(lastDepthTexture, reprojectedUv, 0.));
+        lastDepth = unpackRGBAToDepth(textureLod(lastDepthTexture, reprojectedUv, 0.));
 
         depthDiff = abs(depth - lastDepth);
 

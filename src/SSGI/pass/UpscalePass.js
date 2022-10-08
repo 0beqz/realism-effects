@@ -3,6 +3,8 @@ import { HalfFloatType, NearestFilter, ShaderMaterial, Uniform, Vector2, WebGLRe
 import basicVertexShader from "../shader/basic.vert"
 import fragmentShader from "../shader/upscale.frag"
 
+// https://diharaw.github.io/post/adventures_in_hybrid_rendering/
+
 export class UpscalePass extends Pass {
 	iterations = 1
 
