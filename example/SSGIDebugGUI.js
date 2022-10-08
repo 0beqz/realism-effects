@@ -52,7 +52,7 @@ export class SSGIDebugGUI {
 			step: 1
 		})
 		denoiseKernelFolder.addInput(params, "denoiseSharpness", {
-			min: 0,
+			min: 1,
 			max: 64,
 			step: 0.1
 		})

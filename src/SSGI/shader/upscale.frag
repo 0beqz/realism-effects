@@ -12,6 +12,9 @@ uniform float jitter;
 uniform float jitterRoughness;
 uniform float stepSize;
 
+const float kernel5[] = float[](
+    0.12900108216683737, 0.1425207917273954, 0.1513031774986128, 0.1543498972143089, 0.1513031774986128, 0.1425207917273954, 0.12900108216683737);
+
 #include <packing>
 
 #define ALPHA_STEP    0.001
@@ -32,10 +35,12 @@ void main() {
     // skip background
     if (dot(depthTexel.rgb, depthTexel.rgb) == 0.) return;
 
-    float totalWeight = 1.;
+    float totalWeight = kernel5[6];
 
     vec4 inputTexel = textureLod(inputTexture, vUv, 0.);
-    vec3 color = inputTexel.rgb;
+
+    vec3 color = inputTexel.rgb * totalWeight;
+
     float alpha = inputTexel.a;
     float pixelSample = alpha / ALPHA_STEP + 1.0;
 
@@ -56,7 +61,7 @@ void main() {
     float similarityMix = 1.0 - denoiseSharpness;
     float depth = unpackRGBAToDepth(depthTexel);
     float luma = czm_luminance(inputTexel.rgb);
-    // float lumaPhi = 10. * sqrt(FLOAT_EPSILON + luma);
+    float lumaPhi = denoiseSharpness * sqrt(FLOAT_EPSILON + luma);
 
     for (float i = -kernel; i <= kernel; i++) {
         if (i != 0.) {
@@ -77,14 +82,17 @@ void main() {
                     float lumaDiff = abs(luma - neighborLuma);
 
                     float normalSimilarity = dot(neighborNormal, normal);
-                    // float lumaSimilarity = 1.0 - lumaDiff;
+                    float lumaSimilarity = 1.0 - lumaDiff / lumaPhi;
                     float depthSimilarity = exp(-depthDiff);
 
                     float weight = 1. - depthDiff / maxDepthDifference;
-                    weight *= normalSimilarity * depthSimilarity;
+                    weight *= normalSimilarity * lumaSimilarity * depthSimilarity;
 
                     if (weight > 0.) {
+                        float kernelWeight = kernel5[int(i + kernel)];
                         weight = pow(weight, denoisePower);
+                        weight *= kernelWeight;
+
                         totalWeight += weight;
 
                         color += neighborColor * weight;

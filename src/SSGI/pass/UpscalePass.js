@@ -24,7 +24,7 @@ export class UpscalePass extends Pass {
 				horizontal: new Uniform(true),
 				denoiseKernel: new Uniform(2),
 				denoisePower: new Uniform(8),
-				denoiseSharpness: new Uniform(1),
+				denoiseSharpness: new Uniform(40),
 				jitter: new Uniform(0),
 				jitterRoughness: new Uniform(0),
 				stepSize: new Uniform(1)

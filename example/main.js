@@ -279,7 +279,7 @@ const initScene = () => {
 		resolutionScale: 1,
 		antialias: true,
 		reflectionsOnly: false,
-		denoiseSharpness: 1,
+		denoiseSharpness: 40,
 		denoiseKernel: 3,
 		denoisePower: 32,
 		denoiseIterations: 5
