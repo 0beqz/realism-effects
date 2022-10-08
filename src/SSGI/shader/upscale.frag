@@ -10,6 +10,7 @@ uniform float denoiseSharpness;
 uniform float denoiseKernel;
 uniform float jitter;
 uniform float jitterRoughness;
+uniform float stepSize;
 
 #include <packing>
 
@@ -64,7 +65,7 @@ void main() {
     for (float i = -kernel; i <= kernel; i++) {
         if (i != 0.) {
             vec2 neighborVec = horizontal ? vec2(i, 0.) : vec2(0., i);
-            vec2 neighborUv = vUv + neighborVec * invTexSize;
+            vec2 neighborUv = vUv + neighborVec * invTexSize * stepSize;
 
             if (all(greaterThanEqual(neighborUv, vec2(0.))) && all(lessThanEqual(neighborUv, vec2(1.)))) {
                 float neighborDepth = unpackRGBAToDepth(textureLod(depthTexture, neighborUv, 0.));

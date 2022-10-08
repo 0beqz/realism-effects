@@ -26,7 +26,8 @@ export class UpscalePass extends Pass {
 				denoisePower: new Uniform(8),
 				denoiseSharpness: new Uniform(1),
 				jitter: new Uniform(0),
-				jitterRoughness: new Uniform(0)
+				jitterRoughness: new Uniform(0),
+				stepSize: new Uniform(1)
 			}
 		})
 
@@ -51,10 +52,12 @@ export class UpscalePass extends Pass {
 	}
 
 	render(renderer) {
+		let stepSize = 1
 		for (let i = 0; i < 2 * this.iterations; i++) {
 			const horizontal = i % 2 === 0
 
 			this.fullscreenMaterial.uniforms.horizontal.value = horizontal
+			this.fullscreenMaterial.uniforms.stepSize.value = stepSize
 			const renderTarget = horizontal ? this.renderTargetA : this.renderTargetB
 
 			this.fullscreenMaterial.uniforms.inputTexture.value = horizontal
@@ -65,6 +68,8 @@ export class UpscalePass extends Pass {
 
 			renderer.setRenderTarget(renderTarget)
 			renderer.render(this.scene, this.camera)
+
+			if (horizontal) stepSize++
 		}
 	}
 

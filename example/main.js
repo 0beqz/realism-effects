@@ -264,26 +264,25 @@ const initScene = () => {
 		thickness: 2.4999999999999973,
 		ior: 2.33,
 		maxRoughness: 1,
-		blend: 0.9,
+		blend: 0,
 		correction: 1,
 		correctionRadius: 1,
-		denoiseKernel: 2,
-		denoiseSharpness: 0,
 		jitter: 5.551115123125783e-17,
 		jitterRoughness: 1,
 		steps: 20,
 		refineSteps: 2,
-		spp: 8,
+		spp: 1,
 		missedRays: false,
 		useMap: true,
 		useNormalMap: true,
 		useRoughnessMap: true,
-		resolutionScale: 0.5,
+		resolutionScale: 1,
 		antialias: true,
 		reflectionsOnly: false,
-		denoiseSharpness: 0.5,
-		denoisePower: 8,
-		denoiseIterations: 2
+		denoiseSharpness: 1,
+		denoiseKernel: 3,
+		denoisePower: 32,
+		denoiseIterations: 5
 	}
 
 	traaEffect = new TRAAEffect(scene, camera, params)
