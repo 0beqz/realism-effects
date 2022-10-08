@@ -14,7 +14,9 @@ uniform float stepSize;
 
 #include <packing>
 
-#define ALPHA_STEP 0.001
+#define ALPHA_STEP    0.001
+#define FLOAT_EPSILON 0.00001
+
 const float maxDepthDifference = 0.000025;
 
 // source: https://github.com/CesiumGS/cesium/blob/main/Source/Shaders/Builtin/Functions/luminance.glsl
@@ -30,7 +32,6 @@ void main() {
     // skip background
     if (dot(depthTexel.rgb, depthTexel.rgb) == 0.) return;
 
-    // vec2 bestUv;
     float totalWeight = 1.;
 
     vec4 inputTexel = textureLod(inputTexture, vUv, 0.);
@@ -45,12 +46,6 @@ void main() {
 
     float kernel = denoiseKernel;
 
-    // bool isEarlyPixelSample = pixelSample < 16.;
-    // if (isEarlyPixelSample && kernel < 4.0) {
-    //     float pixelSampleWeight = max(0., pixelSample - 3.) / 13.;
-    //     kernel = mix(4.0, kernel, pixelSampleWeight);
-    // }
-
     kernel = round(kernel * roughnessFactor);
 
     if (kernel == 0.) {
@@ -61,6 +56,7 @@ void main() {
     float similarityMix = 1.0 - denoiseSharpness;
     float depth = unpackRGBAToDepth(depthTexel);
     float luma = czm_luminance(inputTexel.rgb);
+    float phiColor = 10.0 * sqrt(FLOAT_EPSILON + luma);
 
     for (float i = -kernel; i <= kernel; i++) {
         if (i != 0.) {
@@ -78,13 +74,15 @@ void main() {
                     vec4 neighborNormalTexel = textureLod(normalTexture, neighborUv, 0.);
                     vec3 neighborNormal = unpackRGBToNormal(neighborNormalTexel.rgb);
 
+                    float lumaDiff = abs(luma - neighborLuma);
+
                     float lumaPhi = sqrt(luma);
 
                     float normalSimilarity = dot(neighborNormal, normal);
-                    float lumaSimilarity = 1.0 - abs(luma - neighborLuma) * lumaPhi;
+                    float lumaSimilarity = 1.0 - lumaDiff * lumaPhi;
                     float depthSimilarity = exp(-abs(depth - neighborDepth));
 
-                    float similarity = mix(normalSimilarity * lumaSimilarity * depthSimilarity, 1., similarityMix);
+                    float similarity = mix(normalSimilarity * lumaSimilarity * depthSimilarity, 1., 0.);
 
                     float weight = 1. - depthDiff;
                     weight *= similarity;
@@ -94,9 +92,6 @@ void main() {
                         totalWeight += weight;
 
                         color += textureLod(inputTexture, neighborUv, 0.).rgb * weight;
-
-                        // color += vec3(0., 1., 0.) * weight;
-                        // bestUv += neighborUv * weight;
                     }
                 }
             }
@@ -106,11 +101,6 @@ void main() {
     color /= totalWeight;
 
     if (min(color.r, min(color.g, color.b)) < 0.0) color = inputTexel.rgb;
-
-    // bestUv /= totalWeight;
-    // bestUv -= vUv;
-    // bestUv *= 1000.;
-    // color = bestUv.xyx;
 
     gl_FragColor = vec4(color, inputTexel.a);
 }
