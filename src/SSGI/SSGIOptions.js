@@ -11,7 +11,7 @@
  * @property {Number} [blend] a value between 0 and 1 to set how much the last frame's ssgi should be blended in; higher values will result in less noisy ssgi when moving the camera but a more smeary look
  * @property {boolean} [correction] how much pixels should be corrected when doing temporal resolving; higher values will result in less smearing but more noise
  * @property {boolean} [correctionRadius] how many surrounding pixels will be used for neighborhood clamping; a higher value can reduce noise when moving the camera but will result in less performance
- * @property {Number} [blurKernel] how much SSGI should be mixed with the raw SSGI
+ * @property {Number} [denoiseKernel] how much SSGI should be mixed with the raw SSGI
  * @property {Number} [jitter] how intense jittering should be
  * @property {Number} [jitterRoughness] how intense jittering should be in relation to a material's roughness
  * @property {Number} [steps] number of steps a ssgi ray can maximally do to find an object it intersected (and thus reflects)
@@ -40,9 +40,9 @@ export const defaultSSGIOptions = {
 	blend: 0.9,
 	correction: 1,
 	correctionRadius: 1,
-	blurIterations: 1,
-	blurKernel: 2,
-	blurSharpness: 8,
+	denoiseIterations: 1,
+	denoiseKernel: 2,
+	denoiseSharpness: 8,
 	jitter: 0,
 	jitterRoughness: 0,
 	steps: 20,

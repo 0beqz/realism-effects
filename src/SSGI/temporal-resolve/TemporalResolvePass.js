@@ -17,9 +17,10 @@ import { generateHalton23Points } from "./utils/generateHalton23Points"
 const zeroVec2 = new Vector2()
 
 const defaultOptions = {
+	blend: 0.9,
 	renderVelocity: true,
 	dilation: false,
-	neighborhoodClamping: true,
+	neighborhoodClamping: false,
 	logTransform: false,
 	customComposeShader: null,
 	traa: false,
@@ -136,7 +137,7 @@ export class TemporalResolvePass extends Pass {
 		// save the render target's texture for use in next frame
 		renderer.copyFramebufferToTexture(zeroVec2, this.accumulatedTexture)
 
-		renderer.setRenderTarget(this.velocityPass.renderTarget)
+		renderer.setRenderTarget(this.velocityPass.depthRenderTarget)
 		renderer.copyFramebufferToTexture(zeroVec2, this.lastDepthTexture)
 		this.fullscreenMaterial.uniforms.lastDepthTexture.value = this.lastDepthTexture
 	}

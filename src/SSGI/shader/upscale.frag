@@ -5,9 +5,9 @@ uniform sampler2D depthTexture;
 uniform sampler2D normalTexture;
 uniform vec2 invTexSize;
 uniform bool horizontal;
-uniform float blurPower;
-uniform float blurSharpness;
-uniform float blurKernel;
+uniform float denoisePower;
+uniform float denoiseSharpness;
+uniform float denoiseKernel;
 uniform float jitter;
 uniform float jitterRoughness;
 
@@ -35,7 +35,7 @@ void main() {
     float roughness = normalTexel.a;
     float roughnessFactor = min(1., jitterRoughness * roughness + jitter);
 
-    float kernel = blurKernel;
+    float kernel = denoiseKernel;
 
     // bool isEarlyPixelSample = pixelSample < 16.;
     // if (isEarlyPixelSample && kernel < 4.0) {
@@ -50,7 +50,7 @@ void main() {
         return;
     }
 
-    float normalSimilarityMix = 1.0 - blurSharpness;
+    float normalSimilarityMix = 1.0 - denoiseSharpness;
     float depth = unpackRGBAToDepth(depthTexel);
 
     for (float i = -kernel; i <= kernel; i++) {
@@ -72,7 +72,7 @@ void main() {
                     normalSimilarity = mix(normalSimilarity, 1., normalSimilarityMix);
 
                     float weight = 1. - depthDiff;
-                    weight = pow(weight, blurPower);
+                    weight = pow(weight, denoisePower);
                     totalWeight += weight;
                     color += textureLod(inputTexture, neighborUv, 0.).rgb * weight * normalSimilarity;
                     // color += vec3(0., 1., 0.) * weight * sim;

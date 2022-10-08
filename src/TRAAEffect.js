@@ -1,30 +1,21 @@
 ﻿import { Effect } from "postprocessing"
-import { Quaternion, Uniform, Vector3 } from "three"
+import { Uniform } from "three"
 import compose from "./shader/compose.frag"
 import utils from "./SSGI/shader/utils.frag"
 import { TemporalResolvePass } from "./SSGI/temporal-resolve/TemporalResolvePass.js"
-import { generateHalton23Points } from "./utils/generateHalton23Points"
 
 const finalFragmentShader = compose.replace("#include <utils>", utils)
 
 export const defaultTRAAOptions = {
 	blend: 0.9,
-	correction: 1,
-	correctionRadius: 1,
 	logTransform: true,
-	neighborhoodClamping: false,
+	neighborhoodClamping: true,
 	dilation: true,
-	renderVelocity: false
+	traa: true
 }
 
 export class TRAAEffect extends Effect {
-	haltonSequence = generateHalton23Points(1024)
-	haltonIndex = 0
 	#lastSize
-	#lastCameraTransform = {
-		position: new Vector3(),
-		quaternion: new Quaternion()
-	}
 
 	constructor(scene, camera, options = defaultTRAAOptions) {
 		super("TRAAEffect", finalFragmentShader, {
@@ -40,8 +31,6 @@ export class TRAAEffect extends Effect {
 		// set up passes
 
 		this.#lastSize = { width: options.width, height: options.height, resolutionScale: options.resolutionScale }
-		this.#lastCameraTransform.position.copy(camera.position)
-		this.#lastCameraTransform.quaternion.copy(camera.quaternion)
 
 		this.temporalResolvePass = new TemporalResolvePass(scene, camera, options)
 
@@ -69,11 +58,6 @@ export class TRAAEffect extends Effect {
 						case "blend":
 						case "correction":
 							this.temporalResolvePass.fullscreenMaterial.uniforms[key].value = value
-							break
-
-						case "correctionRadius":
-							this.temporalResolvePass.fullscreenMaterial.defines.correctionRadius = Math.round(value)
-							this.temporalResolvePass.fullscreenMaterial.needsUpdate = true
 							break
 
 						case "dilation":
@@ -118,20 +102,8 @@ export class TRAAEffect extends Effect {
 	}
 
 	update(renderer, inputBuffer) {
-		const { autoUpdate } = this._scene
-		this._scene.autoUpdate = false
-
-		this.temporalResolvePass.unjitter()
-
-		if (!this.temporalResolvePass.checkCanUseSharedVelocityTexture())
-			this.temporalResolvePass.velocityPass.render(renderer)
-
-		this.temporalResolvePass.jitter()
-
 		this.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = inputBuffer.texture
 
 		this.temporalResolvePass.render(renderer)
-
-		this._scene.autoUpdate = autoUpdate
 	}
 }

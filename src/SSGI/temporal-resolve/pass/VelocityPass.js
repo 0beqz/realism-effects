@@ -153,6 +153,10 @@ export class VelocityPass extends Pass {
 		return isWebGL2 ? this.renderTarget.texture[0] : this.webgl1DepthPass.texture
 	}
 
+	get depthRenderTarget() {
+		return isWebGL2 ? this.renderTarget : this.webgl1DepthPass.renderTarget
+	}
+
 	render(renderer) {
 		this.setVelocityMaterialInScene()
 

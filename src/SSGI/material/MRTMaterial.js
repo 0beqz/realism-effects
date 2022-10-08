@@ -122,6 +122,8 @@ export class MRTMaterial extends ShaderMaterial {
                 uniform vec3 color;
 
                 varying vec2 vHighPrecisionZW;
+                #else
+                #define gNormal gl_FragColor
                 #endif
                 
                 uniform float roughness;
@@ -145,10 +147,8 @@ export class MRTMaterial extends ShaderMaterial {
                     }
 
                     vec3 normalColor = packNormalToRGB( normal );
+                    gNormal = vec4( normalColor, roughnessFactor );
                     #ifdef isWebGL2
-
-                        gNormal = vec4( normalColor, roughnessFactor );
-
                         float fragCoordZ = 0.5 * vHighPrecisionZW[0] / vHighPrecisionZW[1] + 0.5;
 
                         vec4 depthColor = packDepthToRGBA( fragCoordZ );
@@ -163,9 +163,6 @@ export class MRTMaterial extends ShaderMaterial {
                         #ifdef renderVelocity
                         ${velocity_fragment_main.replaceAll("gl_FragColor", "gVelocity")}
                         #endif
-
-                    #else
-                        gl_FragColor = vec4(normalColor, roughnessFactor);
                     #endif
                 }
             `,

@@ -10,14 +10,14 @@ import motionBlur from "./motionBlur.glsl"
 const defaultOptions = { intensity: 1, jitter: 5, samples: 16 }
 
 export class MotionBlurEffect extends Effect {
-	constructor(temporalResolvePass, options = defaultOptions) {
+	constructor(velocityTexture, options = defaultOptions) {
 		options = { ...defaultOptions, ...options }
 
 		super("MotionBlurEffect", motionBlur, {
 			type: "MotionBlurMaterial",
 			uniforms: new Map([
 				["inputTexture", new Uniform(null)],
-				["velocityTexture", new Uniform(temporalResolvePass.velocityPass.texture)],
+				["velocityTexture", new Uniform(velocityTexture)],
 				["blueNoiseTexture", new Uniform(null)],
 				["blueNoiseRepeat", new Uniform(new Vector2())],
 				["intensity", new Uniform(1)],
@@ -32,23 +32,6 @@ export class MotionBlurEffect extends Effect {
 		})
 
 		this.makeOptionsReactive(options)
-
-		// load blue noise texture
-		const ktx2Loader = new KTX2Loader()
-		ktx2Loader.setTranscoderPath("examples/js/libs/basis/")
-		ktx2Loader.detectSupport(window.renderer)
-		ktx2Loader.load("texture/blue_noise_rg.ktx2", blueNoiseTexture => {
-			// generated using "toktx --target_type RG --t2 blue_noise_rg blue_noise_rg.png"
-			blueNoiseTexture.minFilter = NearestFilter
-			blueNoiseTexture.magFilter = NearestFilter
-			blueNoiseTexture.wrapS = RepeatWrapping
-			blueNoiseTexture.wrapT = RepeatWrapping
-			blueNoiseTexture.encoding = LinearEncoding
-
-			this.uniforms.get("blueNoiseTexture").value = blueNoiseTexture
-
-			ktx2Loader.dispose()
-		})
 	}
 
 	makeOptionsReactive(options) {
@@ -69,6 +52,27 @@ export class MotionBlurEffect extends Effect {
 				}
 			})
 		}
+	}
+
+	initialize(renderer, ...args) {
+		super.initialize(renderer, ...args)
+
+		// load blue noise texture
+		const ktx2Loader = new KTX2Loader()
+		ktx2Loader.setTranscoderPath("examples/js/libs/basis/")
+		ktx2Loader.detectSupport(renderer)
+		ktx2Loader.load("texture/blue_noise_rg.ktx2", blueNoiseTexture => {
+			// generated using "toktx --target_type RG --t2 blue_noise_rg blue_noise_rg.png"
+			blueNoiseTexture.minFilter = NearestFilter
+			blueNoiseTexture.magFilter = NearestFilter
+			blueNoiseTexture.wrapS = RepeatWrapping
+			blueNoiseTexture.wrapT = RepeatWrapping
+			blueNoiseTexture.encoding = LinearEncoding
+
+			this.uniforms.get("blueNoiseTexture").value = blueNoiseTexture
+
+			ktx2Loader.dispose()
+		})
 	}
 
 	update(renderer, inputBuffer, deltaTime) {

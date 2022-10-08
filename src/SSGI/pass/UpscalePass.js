@@ -20,9 +20,9 @@ export class UpscalePass extends Pass {
 				normalTexture: new Uniform(null),
 				invTexSize: new Uniform(new Vector2()),
 				horizontal: new Uniform(true),
-				blurKernel: new Uniform(2),
-				blurPower: new Uniform(8),
-				blurSharpness: new Uniform(1),
+				denoiseKernel: new Uniform(2),
+				denoisePower: new Uniform(8),
+				denoiseSharpness: new Uniform(1),
 				jitter: new Uniform(0),
 				jitterRoughness: new Uniform(0)
 			}

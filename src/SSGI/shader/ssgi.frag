@@ -97,12 +97,10 @@ void main() {
 
     if (spread < 0.05) {
         iterations = 1;
-    } else if (spread > 0.95 && lastFrameAlpha == 1.0) {
+    } else if (lastFrameAlpha == 1.0) {
         iterations = 1;
-    } else if (lastFrameAlpha <= 0.05)
+    } else if (lastFrameAlpha <= 0.05) {
         iterations *= 2;
-    else if (lastFrameAlpha == 1.0) {
-        iterations = 1;
     }
 
     for (int s = 0; s < iterations; s++) {
@@ -123,7 +121,6 @@ void main() {
 }
 
 vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float sampleCount, float spread) {
-    // jittering
     vec3 jitteredNormal = viewNormal;
 
     float thetaMax = spread * M_PI / 2.;
@@ -214,19 +211,10 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
         SSGI = textureLod(directLightTexture, vUv, 0.).rgb;
     }
 
-    SSGI *= ssgiIntensity * fresnelFactor;
-
-    // highlight reflections of brighter spots more (e.g. if the direct light is being reflected)
-    float ssgiLum = czm_luminance(SSGI);
-    // float brightnessDiff = ssgiLum - 0.375 * TRANSFORM_FACTOR;
-    // if (brightnessDiff > 0. && distance(vUv, coords.xy) > 0.01) {
-    //     brightnessDiff /= TRANSFORM_FACTOR / (1. - 0.375);
-    //     SSGI = mix(SSGI, 10.0 * SSGI, brightnessDiff);
-    // }
-
-    SSGI *= TRANSFORM_FACTOR;
+    SSGI *= ssgiIntensity * fresnelFactor * TRANSFORM_FACTOR;
 
     if (isAllowedMissedRay) {
+        float ssgiLum = czm_luminance(SSGI);
         float envLum = czm_luminance(envMapSample);
 
         if (envLum > ssgiLum) SSGI = envMapSample;

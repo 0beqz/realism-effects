@@ -30,8 +30,8 @@ export class SSGIEffect extends Effect {
 
 		// temporal resolve pass
 		this.temporalResolvePass = new TemporalResolvePass(scene, camera, {
-			neighborhoodClamping: false,
-			// renderVelocity: options.antialias,
+			renderVelocity: options.antialias,
+			dilation: false,
 			traa: options.antialias
 		})
 
@@ -108,13 +108,13 @@ export class SSGIEffect extends Effect {
 							this.temporalResolvePass.traa = value
 							break
 
-						case "blurIterations":
+						case "denoiseIterations":
 							this.ssgiPass.upscalePass.iterations = value
 							break
 
-						case "blurKernel":
-						case "blurPower":
-						case "blurSharpness":
+						case "denoiseKernel":
+						case "denoisePower":
+						case "denoiseSharpness":
 							this.ssgiPass.upscalePass.fullscreenMaterial.uniforms[key].value = value
 							break
 
@@ -172,6 +172,11 @@ export class SSGIEffect extends Effect {
 		}
 
 		needsUpdate = true
+	}
+
+	initialize(renderer, ...args) {
+		super.initialize(renderer, ...args)
+		this.ssgiPass.initialize(renderer, ...args)
 	}
 
 	setSize(width, height, force = false) {

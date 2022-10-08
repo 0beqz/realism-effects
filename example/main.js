@@ -2,6 +2,7 @@ import dragDrop from "drag-drop"
 import * as POSTPROCESSING from "postprocessing"
 import Stats from "stats.js"
 import * as THREE from "three"
+import { AmbientLight } from "three"
 import { ACESFilmicToneMapping, Box3, DirectionalLight, DoubleSide, Vector3 } from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
@@ -42,7 +43,7 @@ const canvas = document.querySelector(".webgl")
 const rendererCanvas = canvas
 
 // use an offscreen canvas if available
-// if (window.OffscreenCanvas) {
+// if (window.OffscreenCanvas && !navigator.userAgent.toLowerCase().includes("firefox")) {
 // 	rendererCanvas = canvas.transferControlToOffscreen()
 // 	rendererCanvas.style = canvas.style
 // 	rendererCanvas.toDataURL = canvas.toDataURL.bind(canvas)
@@ -55,6 +56,7 @@ const renderer = new THREE.WebGLRenderer({
 	premultipliedAlpha: false,
 	stencil: false,
 	antialias: true,
+	alpha: false,
 	preserveDrawingBuffer: true
 })
 
@@ -168,7 +170,6 @@ new RGBELoader().load("quarry_02_4k.hdr", envMap => {
 	envMap.mapping = THREE.EquirectangularReflectionMapping
 
 	scene.environment = envMap
-	// scene.background = envMap
 
 	envMesh = new GroundProjectedEnv(envMap)
 	envMesh.radius = 440
@@ -238,7 +239,7 @@ const initScene = () => {
 	// 	blend: 0.925,
 	// 	correction: 1,
 	// 	correctionRadius: 1,
-	// 	blurKernel: 0,
+	// 	denoiseKernel: 0,
 	// 	jitter: 0.32000000000000006,
 	// 	jitterRoughness: 1,
 	// 	steps: 10,
@@ -266,8 +267,8 @@ const initScene = () => {
 		blend: 0.9,
 		correction: 1,
 		correctionRadius: 1,
-		blurKernel: 2,
-		blurSharpness: 0,
+		denoiseKernel: 2,
+		denoiseSharpness: 0,
 		jitter: 5.551115123125783e-17,
 		jitterRoughness: 1,
 		steps: 20,
@@ -280,8 +281,9 @@ const initScene = () => {
 		resolutionScale: 0.5,
 		antialias: true,
 		reflectionsOnly: false,
-		blurSharpness: 1,
-		blurPower: 8
+		denoiseSharpness: 0.5,
+		denoisePower: 8,
+		denoiseIterations: 2
 	}
 
 	traaEffect = new TRAAEffect(scene, camera, params)
@@ -348,10 +350,10 @@ const initScene = () => {
 	new POSTPROCESSING.LUTCubeLoader().load("lut.cube").then(lutTexture => {
 		const lutEffect = new POSTPROCESSING.LUT3DEffect(lutTexture)
 
-		const motionBlurEffect = new MotionBlurEffect(ssgiEffect.temporalResolvePass, { jitter: 2.5 })
+		const motionBlurEffect = new MotionBlurEffect(ssgiEffect.temporalResolvePass.velocityPass.texture, { jitter: 5 })
 
 		composer.addPass(ssgiPass)
-		composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, vignetteEffect, lutEffect))
+		composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect, bloomEffect, vignetteEffect, lutEffect))
 
 		const smaaEffect = new POSTPROCESSING.SMAAEffect()
 

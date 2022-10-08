@@ -66,10 +66,9 @@ void main() {
                 vec2 neighborUv = vUv + offset;
 
                 if (all(greaterThanEqual(neighborUv, vec2(0.))) && all(lessThanEqual(neighborUv, vec2(1.)))) {
-                    float neighborDepth = unpackRGBAToDepth(textureLod(depthTexture, neighborUv, 0.0));
-
     #ifdef dilation
                     if (x >= 0 && y >= 0 && x <= 1 && y <= 1) {
+                        float neighborDepth = unpackRGBAToDepth(textureLod(depthTexture, neighborUv, 0.0));
                         if (neighborDepth < maxDepth) {
                             maxDepth = neighborDepth;
                             closestDepthUv = vUv + vec2(x, y) * invTexSize;
@@ -78,15 +77,12 @@ void main() {
     #endif
 
     #ifdef neighborhoodClamping
-                    // the neighbor pixel is invalid if it's too far away from this pixel
-                    if (abs(depth - neighborDepth) < maxNeighborDepthDifference) {
-                        vec4 neighborTexel = textureLod(inputTexture, neighborUv, 0.0);
+                    vec4 neighborTexel = textureLod(inputTexture, neighborUv, 0.0);
 
-                        vec3 col = transformColor(neighborTexel.rgb);
+                    vec3 col = transformColor(neighborTexel.rgb);
 
-                        minNeighborColor = min(col, minNeighborColor);
-                        maxNeighborColor = max(col, maxNeighborColor);
-                    }
+                    minNeighborColor = min(col, minNeighborColor);
+                    maxNeighborColor = max(col, maxNeighborColor);
 
     #endif
                 }

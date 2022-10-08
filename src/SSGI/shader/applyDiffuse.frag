@@ -7,14 +7,13 @@ if (isBackground) {
     inputTexel = directLightTexel * TRANSFORM_FACTOR;
 } else {
 #ifdef reflectionsOnly
-    inputTexel.rgb *= directLightTexel.rgb;
+    inputTexel.rgb += directLightTexel.rgb;
 #else
     vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.0);
     const float diffuseInfluence = 0.95;
 
     vec3 diffuseColor = diffuseTexel.rgb * diffuseInfluence + (1. - diffuseInfluence);
     inputTexel.rgb *= diffuseColor;
-
 #endif
 
     inputTexel.rgb += directLightTexel.rgb * TRANSFORM_FACTOR;

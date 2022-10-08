@@ -43,15 +43,15 @@ export class SSGIDebugGUI {
 		const temporalResolveFolder = pane.addFolder({ title: "Temporal Resolve" })
 
 		temporalResolveFolder.addInput(params, "blend", { min: 0, max: 1, step: 0.001 })
-		const blurKernelFolder = pane.addFolder({ title: "blurKernel" })
-		blurKernelFolder.addInput(params, "blurIterations", { min: 0, max: 5, step: 1 })
-		blurKernelFolder.addInput(params, "blurKernel", { min: 1, max: 5, step: 1 })
-		blurKernelFolder.addInput(params, "blurPower", {
+		const denoiseKernelFolder = pane.addFolder({ title: "Denoise" })
+		denoiseKernelFolder.addInput(params, "denoiseIterations", { min: 0, max: 5, step: 1 })
+		denoiseKernelFolder.addInput(params, "denoiseKernel", { min: 1, max: 5, step: 1 })
+		denoiseKernelFolder.addInput(params, "denoisePower", {
 			min: 1,
 			max: 16,
 			step: 1
 		})
-		blurKernelFolder.addInput(params, "blurSharpness", {
+		denoiseKernelFolder.addInput(params, "denoiseSharpness", {
 			min: 0,
 			max: 1,
 			step: 0.01
