@@ -334,10 +334,9 @@ export class SSGIPass extends Pass {
 		if (noiseTexture) {
 			const { width, height } = noiseTexture.source.data
 
-			// a factor of 4 seems to get the best results when comparing different factors
 			this.fullscreenMaterial.uniforms.blueNoiseRepeat.value.set(
-				(4 * this.ssgiEffect.temporalResolvePass.renderTarget.width) / width,
-				(4 * this.ssgiEffect.temporalResolvePass.renderTarget.height) / height
+				this.ssgiEffect.temporalResolvePass.renderTarget.width / width,
+				this.ssgiEffect.temporalResolvePass.renderTarget.height / height
 			)
 		}
 

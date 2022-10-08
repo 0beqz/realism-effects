@@ -56,7 +56,7 @@ void main() {
     float similarityMix = 1.0 - denoiseSharpness;
     float depth = unpackRGBAToDepth(depthTexel);
     float luma = czm_luminance(inputTexel.rgb);
-    float phiColor = 10.0 * sqrt(FLOAT_EPSILON + luma);
+    // float lumaPhi = 10. * sqrt(FLOAT_EPSILON + luma);
 
     for (float i = -kernel; i <= kernel; i++) {
         if (i != 0.) {
@@ -65,33 +65,29 @@ void main() {
 
             if (all(greaterThanEqual(neighborUv, vec2(0.))) && all(lessThanEqual(neighborUv, vec2(1.)))) {
                 float neighborDepth = unpackRGBAToDepth(textureLod(depthTexture, neighborUv, 0.));
-                float neighborLuma = czm_luminance(inputTexel.rgb);
+                vec3 neighborColor = textureLod(inputTexture, neighborUv, 0.).rgb;
+                float neighborLuma = czm_luminance(neighborColor);
 
                 float depthDiff = abs(depth - neighborDepth) * depth;
-                depthDiff /= maxDepthDifference;
 
-                if (depthDiff < 1.) {
+                if (depthDiff < maxDepthDifference) {
                     vec4 neighborNormalTexel = textureLod(normalTexture, neighborUv, 0.);
                     vec3 neighborNormal = unpackRGBToNormal(neighborNormalTexel.rgb);
 
                     float lumaDiff = abs(luma - neighborLuma);
 
-                    float lumaPhi = sqrt(luma);
-
                     float normalSimilarity = dot(neighborNormal, normal);
-                    float lumaSimilarity = 1.0 - lumaDiff * lumaPhi;
-                    float depthSimilarity = exp(-abs(depth - neighborDepth));
+                    // float lumaSimilarity = 1.0 - lumaDiff;
+                    float depthSimilarity = exp(-depthDiff);
 
-                    float similarity = mix(normalSimilarity * lumaSimilarity * depthSimilarity, 1., 0.);
-
-                    float weight = 1. - depthDiff;
-                    weight *= similarity;
+                    float weight = 1. - depthDiff / maxDepthDifference;
+                    weight *= normalSimilarity * depthSimilarity;
 
                     if (weight > 0.) {
                         weight = pow(weight, denoisePower);
                         totalWeight += weight;
 
-                        color += textureLod(inputTexture, neighborUv, 0.).rgb * weight;
+                        color += neighborColor * weight;
                     }
                 }
             }

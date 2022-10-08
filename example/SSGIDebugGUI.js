@@ -53,8 +53,8 @@ export class SSGIDebugGUI {
 		})
 		denoiseKernelFolder.addInput(params, "denoiseSharpness", {
 			min: 0,
-			max: 1,
-			step: 0.01
+			max: 64,
+			step: 0.1
 		})
 
 		const jitterFolder = pane.addFolder({ title: "Jitter" })
