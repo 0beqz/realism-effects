@@ -3,6 +3,7 @@
 uniform sampler2D inputTexture;
 uniform sampler2D depthTexture;
 uniform sampler2D normalTexture;
+uniform sampler2D momentsTexture;
 uniform vec2 invTexSize;
 uniform bool horizontal;
 uniform float lumaPhi;
@@ -41,10 +42,10 @@ void main() {
 
     float kernel = round(denoiseKernel * roughnessFactor);
 
-    if (kernel == 0.) {
-        gl_FragColor = inputTexel;
-        return;
-    }
+    // if (kernel == 0.) {
+    //     gl_FragColor = inputTexel;
+    //     return;
+    // }
 
     float totalWeight = 1.;
     vec3 color = inputTexel.rgb;
@@ -73,8 +74,13 @@ void main() {
 
                     float lumaDiff = abs(luma - neighborLuma);
 
+                    vec2 moment = textureLod(momentsTexture, neighborUv, 0.).rg;
+                    float variance = max(0.0, moment.g - moment.r * moment.r);
+
+                    float phi_color = lumaPhi * sqrt(max(0.0, FLOAT_EPSILON + variance));
+
                     float normalSimilarity = pow(max(0., dot(neighborNormal, normal)), normalPhi);
-                    float lumaSimilarity = clamp(1.0 - lumaDiff / lumPhi, 0., 1.);
+                    float lumaSimilarity = clamp(1.0 - lumaDiff / phi_color, 0., 1.);
                     float depthSimilarity = exp(-depthDiff * depthPhi);
 
                     float weight = normalSimilarity * lumaSimilarity * depthSimilarity;
@@ -92,6 +98,9 @@ void main() {
     color /= totalWeight;
 
     if (min(color.r, min(color.g, color.b)) < 0.0) color = inputTexel.rgb;
+
+    // vec3 l = textureLod(momentsTexture, vUv, 0.).rgb;
+    // float variance = max(0.0, l.g - l.r * l.r);
 
     gl_FragColor = vec4(color, inputTexel.a);
 }

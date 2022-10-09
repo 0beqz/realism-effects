@@ -136,14 +136,14 @@ void main() {
     float temporalResolveMix = 1. - 1. / pixelSample;
     temporalResolveMix = min(temporalResolveMix, blend);
 
+    outputColor = mix(inputColor, accumulatedColor, temporalResolveMix);
+
 // the user's shader to compose a final outputColor from the inputTexel and accumulatedTexel
 #ifdef useCustomComposeShader
     customComposeShader
 #else
-    outputColor = mix(inputColor, accumulatedColor, temporalResolveMix);
+    gl_FragColor = vec4(undoColorTransform(outputColor), alpha);
 #endif
-
-        gl_FragColor = vec4(undoColorTransform(outputColor), alpha);
 
     // if (depthDiff > maxNeighborDepthDifference) gl_FragColor = vec4(0., 1., 0., 1.);
 }

@@ -23,6 +23,7 @@ export class DenoisePass extends Pass {
 				inputTexture: new Uniform(null),
 				depthTexture: new Uniform(null),
 				normalTexture: new Uniform(null),
+				momentsTexture: new Uniform(null),
 				invTexSize: new Uniform(new Vector2()),
 				horizontal: new Uniform(true),
 				denoiseKernel: new Uniform(1),

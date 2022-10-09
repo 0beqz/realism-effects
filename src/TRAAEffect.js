@@ -34,7 +34,7 @@ export class TRAAEffect extends Effect {
 
 		this.temporalResolvePass = new TemporalResolvePass(scene, camera, options)
 
-		this.uniforms.get("accumulatedTexture").value = this.temporalResolvePass.renderTarget.texture
+		this.uniforms.get("accumulatedTexture").value = this.temporalResolvePass.texture
 
 		this.setSize(options.width, options.height)
 

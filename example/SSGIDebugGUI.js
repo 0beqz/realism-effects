@@ -48,7 +48,7 @@ export class SSGIDebugGUI {
 		denoiseKernelFolder.addInput(params, "denoiseKernel", { min: 1, max: 5, step: 1 })
 		denoiseKernelFolder.addInput(params, "lumaPhi", {
 			min: 0.01,
-			max: 5,
+			max: 20,
 			step: 0.01
 		})
 		denoiseKernelFolder.addInput(params, "depthPhi", {

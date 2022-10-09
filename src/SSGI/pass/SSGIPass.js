@@ -49,6 +49,8 @@ export class SSGIPass extends Pass {
 		this.fullscreenMaterial.uniforms.inverseProjectionMatrix.value = this._camera.projectionMatrixInverse
 
 		this.denoisePass = new DenoisePass(this.renderTarget.texture)
+		this.denoisePass.fullscreenMaterial.uniforms.momentsTexture.value =
+			this.ssgiEffect.temporalResolvePass.renderTarget.texture[1]
 	}
 
 	initialize(renderer, ...args) {
@@ -150,7 +152,7 @@ export class SSGIPass extends Pass {
 
 		this.fullscreenMaterial.uniforms.invTexSize.value.set(1 / width, 1 / height)
 
-		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.ssgiEffect.temporalResolvePass.renderTarget.texture
+		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.ssgiEffect.temporalResolvePass.texture
 
 		this.fullscreenMaterial.needsUpdate = true
 	}
@@ -351,5 +353,7 @@ export class SSGIPass extends Pass {
 		} else {
 			this.ssgiEffect.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = this.renderTarget.texture
 		}
+
+		this.ssgiEffect.temporalResolvePass.fullscreenMaterial.uniforms.rawInputTexture.value = this.renderTarget.texture
 	}
 }

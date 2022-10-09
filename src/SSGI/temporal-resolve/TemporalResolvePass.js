@@ -1,4 +1,5 @@
 ﻿import { Pass } from "postprocessing"
+import { WebGLMultipleRenderTargets } from "three"
 import {
 	FramebufferTexture,
 	HalfFloatType,
@@ -24,7 +25,8 @@ const defaultOptions = {
 	logTransform: false,
 	customComposeShader: null,
 	traa: false,
-	velocityPass: null
+	velocityPass: null,
+	renderTarget: null
 }
 
 export class TemporalResolvePass extends Pass {
@@ -43,12 +45,14 @@ export class TemporalResolvePass extends Pass {
 		this._camera = camera
 		options = { ...defaultOptions, ...options }
 
-		this.renderTarget = new WebGLRenderTarget(1, 1, {
-			minFilter: NearestFilter,
-			magFilter: NearestFilter,
-			type: HalfFloatType,
-			depthBuffer: false
-		})
+		this.renderTarget =
+			options.renderTarget ||
+			new WebGLRenderTarget(1, 1, {
+				minFilter: NearestFilter,
+				magFilter: NearestFilter,
+				type: HalfFloatType,
+				depthBuffer: false
+			})
 
 		this.renderVelocity = options.renderVelocity
 		this.velocityPass = options.velocityPass || new VelocityPass(scene, camera, { renderDepth: true })
@@ -118,6 +122,12 @@ export class TemporalResolvePass extends Pass {
 			this.lastCameraTransform.position.copy(this._camera.position)
 			this.lastCameraTransform.quaternion.copy(this._camera.quaternion)
 		}
+	}
+
+	get texture() {
+		return this.renderTarget instanceof WebGLMultipleRenderTargets
+			? this.renderTarget.texture[0]
+			: this.renderTarget.texture
 	}
 
 	render(renderer) {

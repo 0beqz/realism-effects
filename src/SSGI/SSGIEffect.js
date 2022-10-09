@@ -1,5 +1,7 @@
 ﻿import { Effect, Selection } from "postprocessing"
+import { GLSL3, HalfFloatType, NearestFilter, WebGLMultipleRenderTargets } from "three"
 import { EquirectangularReflectionMapping, Uniform } from "three"
+import { CopyPass } from "./pass/CopyPass.js"
 import { SSGIPass } from "./pass/SSGIPass.js"
 import applyDiffuse from "./shader/applyDiffuse.frag"
 import compose from "./shader/compose.frag"
@@ -28,17 +30,53 @@ export class SSGIEffect extends Effect {
 		this._scene = scene
 		this._camera = camera
 
+		const customComposeShader = /* glsl */ `
+		gOutput = vec4(undoColorTransform(outputColor), alpha);
+
+		vec2 moments = vec2(0.);
+		moments.r = abs(czm_luminance(textureLod(rawInputTexture, vUv, 0.).rgb) - czm_luminance(outputColor));
+		moments.g = moments.r * moments.r;
+
+		vec2 historyMoments = textureLod(momentsTexture, vUv, 0.).rg;
+
+		float momentAlpha = min(0.8, temporalResolveMix);
+		gMoment = vec4(mix(historyMoments, moments, 0.2), 0., 0.);
+
+		// float variance = max(0.0, gMoment.g - gMoment.r * gMoment.r);
+		// gMoment = vec4(variance);
+		`
+
+		const temporalResolvePassRenderTarget = new WebGLMultipleRenderTargets(1, 1, 2, {
+			minFilter: NearestFilter,
+			magFilter: NearestFilter,
+			type: HalfFloatType,
+			depthBuffer: false
+		})
+
 		// temporal resolve pass
 		this.temporalResolvePass = new TemporalResolvePass(scene, camera, {
 			renderVelocity: options.antialias,
-			dilation: false,
-			traa: options.antialias
+			customComposeShader,
+			traa: options.antialias,
+			renderTarget: temporalResolvePassRenderTarget
 		})
 
 		this.temporalResolvePass.fullscreenMaterial.fragmentShader =
 			/* glsl */ `
 		uniform sampler2D diffuseTexture;
 		uniform sampler2D directLightTexture;
+		uniform sampler2D momentsTexture;
+		uniform sampler2D rawInputTexture;
+
+		layout(location = 0) out vec4 gOutput;
+		layout(location = 1) out vec4 gMoment;
+
+		// source: https://github.com/CesiumGS/cesium/blob/main/Source/Shaders/Builtin/Functions/luminance.glsl
+		float czm_luminance(vec3 rgb) {
+			// Algorithm from Chapter 10 of Graphics Shaders.
+			const vec3 W = vec3(0.2125, 0.7154, 0.0721);
+			return dot(rgb, W);
+		}
 		` +
 			this.temporalResolvePass.fullscreenMaterial.fragmentShader.replace(
 				"vec3 inputColor",
@@ -49,11 +87,16 @@ export class SSGIEffect extends Effect {
 			...this.temporalResolvePass.fullscreenMaterial.uniforms,
 			...{
 				diffuseTexture: new Uniform(null),
-				directLightTexture: new Uniform(null)
+				directLightTexture: new Uniform(null),
+				momentsTexture: new Uniform(null),
+				rawInputTexture: new Uniform(null)
 			}
 		}
 
-		this.uniforms.get("inputTexture").value = this.temporalResolvePass.renderTarget.texture
+		this.temporalResolvePass.fullscreenMaterial.glslVersion = GLSL3
+
+		this.uniforms.get("inputTexture").value = this.temporalResolvePass.texture
+		// this.uniforms.get("inputTexture").value = this.temporalResolvePass.renderTarget.texture[1]
 
 		// ssgi pass
 		this.ssgiPass = new SSGIPass(this)
@@ -65,6 +108,11 @@ export class SSGIEffect extends Effect {
 			height: options.height,
 			resolutionScale: options.resolutionScale
 		}
+
+		this.copyPass = new CopyPass()
+		this.copyPass.fullscreenMaterial.uniforms.inputTexture.value = this.temporalResolvePass.renderTarget.texture[1]
+
+		this.temporalResolvePass.fullscreenMaterial.uniforms.momentsTexture.value = this.copyPass.renderTarget.texture
 
 		this.setSize(options.width, options.height)
 
@@ -192,6 +240,7 @@ export class SSGIEffect extends Effect {
 
 		this.temporalResolvePass.setSize(width, height)
 		this.ssgiPass.setSize(width, height)
+		this.copyPass.setSize(width, height)
 
 		this.lastSize = {
 			width,
@@ -204,6 +253,7 @@ export class SSGIEffect extends Effect {
 		super.dispose()
 
 		this.ssgiPass.dispose()
+		this.copyPass.dispose()
 		this.temporalResolvePass.dispose()
 	}
 
@@ -232,5 +282,7 @@ export class SSGIEffect extends Effect {
 		this.ssgiPass.render(renderer, inputBuffer)
 
 		this.temporalResolvePass.render(renderer)
+
+		this.copyPass.render(renderer)
 	}
 }
