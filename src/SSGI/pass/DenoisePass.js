@@ -1,16 +1,18 @@
 ﻿import { Pass } from "postprocessing"
-import { HalfFloatType, NearestFilter, ShaderMaterial, Uniform, Vector2, WebGLRenderTarget } from "three"
+import { HalfFloatType, LinearFilter, NearestFilter, ShaderMaterial, Uniform, Vector2, WebGLRenderTarget } from "three"
 import basicVertexShader from "../shader/basic.vert"
-import fragmentShader from "../shader/upscale.frag"
+import fragmentShader from "../shader/denoise.frag"
 import { gaussian_kernel } from "../utils/Utils"
 
+// https://research.nvidia.com/sites/default/files/pubs/2017-07_Spatiotemporal-Variance-Guided-Filtering%3A//svgf_preprint.pdf
 // https://diharaw.github.io/post/adventures_in_hybrid_rendering/
+// https://github.com/NVIDIAGameWorks/Falcor/tree/master/Source/RenderPasses/SVGFPass
 
-export class UpscalePass extends Pass {
+export class DenoisePass extends Pass {
 	iterations = 1
 
 	constructor(inputTexture) {
-		super("UpscalePass")
+		super("DenoisePass")
 
 		this.inputTexture = inputTexture
 
@@ -23,44 +25,25 @@ export class UpscalePass extends Pass {
 				normalTexture: new Uniform(null),
 				invTexSize: new Uniform(new Vector2()),
 				horizontal: new Uniform(true),
-				denoiseKernel: new Uniform(2),
-				denoisePower: new Uniform(8),
-				denoiseSharpness: new Uniform(40),
+				denoiseKernel: new Uniform(1),
+				lumaPhi: new Uniform(1),
+				depthPhi: new Uniform(1),
+				normalPhi: new Uniform(1),
 				jitter: new Uniform(0),
 				jitterRoughness: new Uniform(0),
-				stepSize: new Uniform(1),
-				kernelCoefficients: new Uniform(new Float32Array())
-			},
-			defines: {
-				KERNEL_SIZE: 3
+				stepSize: new Uniform(1)
 			}
 		})
 
-		this.renderTargetA = new WebGLRenderTarget(1, 1, {
+		const options = {
 			minFilter: NearestFilter,
 			magFilter: NearestFilter,
 			type: HalfFloatType,
 			depthBuffer: false
-		})
+		}
 
-		this.renderTargetB = new WebGLRenderTarget(1, 1, {
-			minFilter: NearestFilter,
-			magFilter: NearestFilter,
-			type: HalfFloatType,
-			depthBuffer: false
-		})
-
-		this.setKernel(this.fullscreenMaterial.defines.KERNEL_SIZE)
-	}
-
-	setKernel(kernelSize, standardDeviation = 5) {
-		this.fullscreenMaterial.uniforms.kernelCoefficients.value = new Float32Array(
-			gaussian_kernel(kernelSize * 2 + 1, standardDeviation)
-		)
-
-		this.fullscreenMaterial.defines.KERNEL_SIZE = parseInt(kernelSize)
-
-		this.fullscreenMaterial.needsUpdate = true
+		this.renderTargetA = new WebGLRenderTarget(1, 1, options)
+		this.renderTargetB = new WebGLRenderTarget(1, 1, options)
 	}
 
 	setSize(width, height) {

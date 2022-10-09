@@ -109,16 +109,14 @@ export class SSGIEffect extends Effect {
 							break
 
 						case "denoiseIterations":
-							this.ssgiPass.upscalePass.iterations = value
+							this.ssgiPass.denoisePass.iterations = value
 							break
 
 						case "denoiseKernel":
-							this.ssgiPass.upscalePass.fullscreenMaterial.uniforms[key].value = value
-							this.ssgiPass.upscalePass.setKernel(value)
-							break
-						case "denoisePower":
-						case "denoiseSharpness":
-							this.ssgiPass.upscalePass.fullscreenMaterial.uniforms[key].value = value
+						case "lumaPhi":
+						case "depthPhi":
+						case "normalPhi":
+							this.ssgiPass.denoisePass.fullscreenMaterial.uniforms[key].value = value
 							break
 
 						// defines
@@ -158,7 +156,7 @@ export class SSGIEffect extends Effect {
 						case "jitterRoughness":
 							ssgiPassFullscreenMaterialUniforms[key].value = value
 
-							this.ssgiPass.upscalePass.fullscreenMaterial.uniforms[key].value = value
+							this.ssgiPass.denoisePass.fullscreenMaterial.uniforms[key].value = value
 							break
 
 						// must be a uniform

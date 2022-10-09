@@ -15,7 +15,7 @@ import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader.js"
 import { MRTMaterial } from "../material/MRTMaterial.js"
 import { SSGIMaterial } from "../material/SSGIMaterial.js"
 import { getVisibleChildren, isWebGL2Available } from "../utils/Utils.js"
-import { UpscalePass } from "./UpscalePass.js"
+import { DenoisePass } from "./DenoisePass.js"
 
 const isWebGL2 = isWebGL2Available()
 const backgroundColor = new Color(0)
@@ -48,7 +48,7 @@ export class SSGIPass extends Pass {
 		this.fullscreenMaterial.uniforms.projectionMatrix.value = this._camera.projectionMatrix
 		this.fullscreenMaterial.uniforms.inverseProjectionMatrix.value = this._camera.projectionMatrixInverse
 
-		this.upscalePass = new UpscalePass(this.renderTarget.texture)
+		this.denoisePass = new DenoisePass(this.renderTarget.texture)
 	}
 
 	initialize(renderer, ...args) {
@@ -117,8 +117,8 @@ export class SSGIPass extends Pass {
 		// set up uniforms
 		this.ssgiEffect.temporalResolvePass.fullscreenMaterial.uniforms.diffuseTexture.value = this.diffuseTexture
 
-		this.upscalePass.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
-		this.upscalePass.fullscreenMaterial.uniforms.normalTexture.value = this.normalTexture
+		this.denoisePass.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
+		this.denoisePass.fullscreenMaterial.uniforms.normalTexture.value = this.normalTexture
 	}
 
 	get velocityTexture() {
@@ -134,8 +134,8 @@ export class SSGIPass extends Pass {
 		this.gBuffersRenderTarget.setSize(width, height)
 		if (this.diffuseRenderTarget) this.diffuseRenderTarget.setSize(width, height)
 
-		this.upscalePass.setSize(width, height)
-		this.upscalePass.fullscreenMaterial.uniforms.invTexSize.value.set(
+		this.denoisePass.setSize(width, height)
+		this.denoisePass.fullscreenMaterial.uniforms.invTexSize.value.set(
 			1 / this.gBuffersRenderTarget.width,
 			1 / this.gBuffersRenderTarget.height
 		)
@@ -345,9 +345,9 @@ export class SSGIPass extends Pass {
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)
 
-		if (this.upscalePass.iterations > 0) {
-			this.upscalePass.render(renderer)
-			this.ssgiEffect.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = this.upscalePass.texture
+		if (this.denoisePass.iterations > 0) {
+			this.denoisePass.render(renderer)
+			this.ssgiEffect.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = this.denoisePass.texture
 		} else {
 			this.ssgiEffect.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = this.renderTarget.texture
 		}

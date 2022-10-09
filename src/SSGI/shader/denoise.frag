@@ -5,26 +5,18 @@ uniform sampler2D depthTexture;
 uniform sampler2D normalTexture;
 uniform vec2 invTexSize;
 uniform bool horizontal;
-uniform float denoisePower;
-uniform float denoiseSharpness;
+uniform float lumaPhi;
+uniform float depthPhi;
+uniform float normalPhi;
 uniform float denoiseKernel;
 uniform float jitter;
 uniform float jitterRoughness;
 uniform float stepSize;
 
-// uniform float kernel1[] = float[](0.3311108596640263, 0.33777828067194743, 0.331110859664026);
-// uniform float kernel2[] = float[](0.19207709898427072, 0.203913232931118, 0.20801933616922258, 0.203913232931118, 0.19207709898427072);
-// uniform float kernel3[] = float[](0.12900108216683737, 0.1425207917273954, 0.1513031774986128, 0.1543498972143089, 0.1513031774986128, 0.1425207917273954, 0.12900108216683737);
-// uniform float kernel4[] = float[](0.09163686898681825, 0.10535857163547686, 0.11640047348855351, 0.12357327859115343, 0.12606161459599594, 0.12357327859115343, 0.11640047348855351, 0.10535857163547686, 0.09163686898681825);
-
-uniform float kernelCoefficients[7];
-
 #include <packing>
 
 #define ALPHA_STEP    0.001
 #define FLOAT_EPSILON 0.00001
-
-const float maxDepthDifference = 0.000025;
 
 // source: https://github.com/CesiumGS/cesium/blob/main/Source/Shaders/Builtin/Functions/luminance.glsl
 float czm_luminance(vec3 rgb) {
@@ -54,13 +46,12 @@ void main() {
         return;
     }
 
-    float totalWeight = kernelCoefficients[int(denoiseKernel) + 1];
-    vec3 color = inputTexel.rgb * totalWeight;
+    float totalWeight = 1.;
+    vec3 color = inputTexel.rgb;
 
-    float similarityMix = 1.0 - denoiseSharpness;
     float depth = unpackRGBAToDepth(depthTexel);
     float luma = czm_luminance(inputTexel.rgb);
-    float lumaPhi = denoiseSharpness * sqrt(FLOAT_EPSILON + luma);
+    float lumPhi = lumaPhi * sqrt(FLOAT_EPSILON + luma);
 
     for (float i = -kernel; i <= kernel; i++) {
         if (i != 0.) {
@@ -68,34 +59,30 @@ void main() {
             vec2 neighborUv = vUv + neighborVec * invTexSize * stepSize;
 
             if (all(greaterThanEqual(neighborUv, vec2(0.))) && all(lessThanEqual(neighborUv, vec2(1.)))) {
-                float neighborDepth = unpackRGBAToDepth(textureLod(depthTexture, neighborUv, 0.));
-                vec3 neighborColor = textureLod(inputTexture, neighborUv, 0.).rgb;
-                float neighborLuma = czm_luminance(neighborColor);
+                vec4 neighborDepthTexel = textureLod(depthTexture, neighborUv, 0.);
 
-                float depthDiff = abs(depth - neighborDepth) * depth;
+                if (dot(neighborDepthTexel.rgb, neighborDepthTexel.rgb) != 0.) {
+                    float neighborDepth = unpackRGBAToDepth(neighborDepthTexel);
+                    vec3 neighborColor = textureLod(inputTexture, neighborUv, 0.).rgb;
+                    float neighborLuma = czm_luminance(neighborColor);
 
-                if (depthDiff < maxDepthDifference) {
+                    float depthDiff = abs(depth - neighborDepth) * 100000.;
+
                     vec4 neighborNormalTexel = textureLod(normalTexture, neighborUv, 0.);
                     vec3 neighborNormal = unpackRGBToNormal(neighborNormalTexel.rgb);
 
                     float lumaDiff = abs(luma - neighborLuma);
 
-                    float normalSimilarity = dot(neighborNormal, normal);
-                    float lumaSimilarity = 1.0 - lumaDiff / lumaPhi;
-                    float depthSimilarity = 1.0 - depthDiff;
+                    float normalSimilarity = pow(max(0., dot(neighborNormal, normal)), normalPhi);
+                    float lumaSimilarity = clamp(1.0 - lumaDiff / lumPhi, 0., 1.);
+                    float depthSimilarity = exp(-depthDiff * depthPhi);
 
-                    // @todo: take account of depth again here
-                    float weight = 1.;
-                    weight *= normalSimilarity * lumaSimilarity * depthSimilarity;
+                    float weight = normalSimilarity * lumaSimilarity * depthSimilarity;
 
                     if (weight > 0.) {
-                        float kernelWeight = kernelCoefficients[int(i + kernel)];
-                        weight = pow(weight, denoisePower);
-                        weight *= kernelWeight;
+                        color += neighborColor * weight;
 
                         totalWeight += weight;
-
-                        color += neighborColor * weight;
                     }
                 }
             }

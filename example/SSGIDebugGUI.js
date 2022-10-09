@@ -46,15 +46,20 @@ export class SSGIDebugGUI {
 		const denoiseKernelFolder = pane.addFolder({ title: "Denoise" })
 		denoiseKernelFolder.addInput(params, "denoiseIterations", { min: 0, max: 5, step: 1 })
 		denoiseKernelFolder.addInput(params, "denoiseKernel", { min: 1, max: 5, step: 1 })
-		denoiseKernelFolder.addInput(params, "denoisePower", {
-			min: 1,
-			max: 64,
-			step: 1
+		denoiseKernelFolder.addInput(params, "lumaPhi", {
+			min: 0.01,
+			max: 5,
+			step: 0.01
 		})
-		denoiseKernelFolder.addInput(params, "denoiseSharpness", {
+		denoiseKernelFolder.addInput(params, "depthPhi", {
 			min: 1,
-			max: 64,
+			max: 10,
 			step: 0.1
+		})
+		denoiseKernelFolder.addInput(params, "normalPhi", {
+			min: 0.5,
+			max: 100,
+			step: 0.01
 		})
 
 		const jitterFolder = pane.addFolder({ title: "Jitter" })
