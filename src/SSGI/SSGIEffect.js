@@ -1,5 +1,5 @@
 ﻿import { Effect, Selection } from "postprocessing"
-import { GLSL3, HalfFloatType, NearestFilter, WebGLMultipleRenderTargets } from "three"
+import { GLSL3, HalfFloatType, LinearFilter, NearestFilter, WebGLMultipleRenderTargets } from "three"
 import { EquirectangularReflectionMapping, Uniform } from "three"
 import { CopyPass } from "./pass/CopyPass.js"
 import { SSGIPass } from "./pass/SSGIPass.js"
@@ -34,21 +34,19 @@ export class SSGIEffect extends Effect {
 		gOutput = vec4(undoColorTransform(outputColor), alpha);
 
 		vec2 moments = vec2(0.);
-		moments.r = abs(czm_luminance(textureLod(rawInputTexture, vUv, 0.).rgb) - czm_luminance(outputColor));
+		moments.r = czm_luminance(textureLod(rawInputTexture, vUv, 0.).rgb);
 		moments.g = moments.r * moments.r;
 
 		vec2 historyMoments = textureLod(momentsTexture, vUv, 0.).rg;
 
-		float momentAlpha = min(0.8, temporalResolveMix);
-		gMoment = vec4(mix(historyMoments, moments, 0.2), 0., 0.);
+		// float momentAlpha = blend;
+		gMoment = vec4(mix(moments, historyMoments, temporalResolveMix), 0., 0.);
 
-		// float variance = max(0.0, gMoment.g - gMoment.r * gMoment.r);
-		// gMoment = vec4(variance);
 		`
 
 		const temporalResolvePassRenderTarget = new WebGLMultipleRenderTargets(1, 1, 2, {
-			minFilter: NearestFilter,
-			magFilter: NearestFilter,
+			minFilter: LinearFilter,
+			magFilter: LinearFilter,
 			type: HalfFloatType,
 			depthBuffer: false
 		})
