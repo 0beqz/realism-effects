@@ -51,6 +51,8 @@ export class MotionBlurEffect extends Effect {
 					}
 				}
 			})
+
+			this[key] = options[key]
 		}
 	}
 

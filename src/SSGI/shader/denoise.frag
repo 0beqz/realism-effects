@@ -39,21 +39,15 @@ void main() {
     vec3 normal = unpackRGBToNormal(normalTexel.rgb);
 
     float roughness = normalTexel.a;
-    float roughnessFactor = min(1., jitterRoughness * roughness + jitter);
+    float roughnessFactor = min(1., (jitterRoughness * roughness + jitter) * 4.);
 
-    float kernel = denoiseKernel;  // round(denoiseKernel * roughnessFactor);
-
-    // if (kernel == 0.) {
-    //     gl_FragColor = inputTexel;
-    //     return;
-    // }
+    float kernel = ceil(denoiseKernel * roughnessFactor + FLOAT_EPSILON);
 
     float totalWeight = 1.;
     vec3 color = inputTexel.rgb;
 
     float depth = unpackRGBAToDepth(depthTexel);
     float luma = czm_luminance(inputTexel.rgb);
-    float lumPhi = lumaPhi * sqrt(FLOAT_EPSILON + luma);
 
     for (float i = -kernel; i <= kernel; i++) {
         if (i != 0.) {
@@ -68,20 +62,23 @@ void main() {
                     vec3 neighborColor = textureLod(inputTexture, neighborUv, 0.).rgb;
                     float neighborLuma = czm_luminance(neighborColor);
 
-                    float depthDiff = abs(depth - neighborDepth) * 100000.;
+                    float depthDiff = abs(depth - neighborDepth) * 50000.;
+                    float lumaDiff = abs(luma - neighborLuma);
 
                     vec4 neighborNormalTexel = textureLod(normalTexture, neighborUv, 0.);
                     vec3 neighborNormal = unpackRGBToNormal(neighborNormalTexel.rgb);
 
-                    float lumaDiff = abs(luma - neighborLuma);
-
+#ifdef USE_MOMENT
                     vec2 moment = textureLod(momentsTexture, neighborUv, 0.).rg;
                     float variance = max(0.0, moment.g - moment.r * moment.r);
 
-                    float phi_color = lumaPhi * sqrt(max(0.0, FLOAT_EPSILON + variance));
+                    float colorPhi = lumaPhi * sqrt(max(0.0, FLOAT_EPSILON + variance));
+#else
+                    float colorPhi = lumaPhi;
+#endif
 
                     float normalSimilarity = pow(max(0., dot(neighborNormal, normal)), normalPhi);
-                    float lumaSimilarity = clamp(1.0 - lumaDiff / phi_color, 0., 1.);
+                    float lumaSimilarity = clamp(1.0 - lumaDiff / colorPhi, 0., 1.);
                     float depthSimilarity = exp(-depthDiff * depthPhi);
 
                     float weight = normalSimilarity * lumaSimilarity * depthSimilarity;
@@ -100,14 +97,7 @@ void main() {
 
     if (min(color.r, min(color.g, color.b)) < 0.0) color = inputTexel.rgb;
 
-    // vec3 l = textureLod(momentsTexture, vUv, 0.).rgb;
-    // float variance = max(0.0, l.g - l.r * l.r);
-
-    // vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.0);
-    // const float diffuseInfluence = 0.95;
-
-    // vec3 diffuseColor = diffuseTexel.rgb * diffuseInfluence + (1. - diffuseInfluence);
-    // color.rgb *= diffuseColor;
+    if (roughnessFactor < 1.) color = mix(inputTexel.rgb, color, roughnessFactor);
 
     gl_FragColor = vec4(color, inputTexel.a);
 }

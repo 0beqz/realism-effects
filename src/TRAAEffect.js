@@ -38,10 +38,10 @@ export class TRAAEffect extends Effect {
 
 		this.setSize(options.width, options.height)
 
-		this.#makeOptionsReactive(options)
+		this.makeOptionsReactive(options)
 	}
 
-	#makeOptionsReactive(options) {
+	makeOptionsReactive(options) {
 		let needsUpdate = false
 
 		for (const key of Object.keys(options)) {

@@ -51,49 +51,24 @@ export const isWebGL2Available = () => {
 	}
 }
 
-// Adapted from https://github.com/ghewgill/picomath/blob/master/javascript/erf.js
-function erf(x) {
-	// constants
-	const a1 = 0.254829592
-	const a2 = -0.284496736
-	const a3 = 1.421413741
-	const a4 = -1.453152027
-	const a5 = 1.061405429
-	const p = 0.3275911
+export const keepMaterialMapUpdated = (mrtMaterial, originalMaterial, prop, define, useKey) => {
+	if (useKey) {
+		if (originalMaterial[prop] !== mrtMaterial[prop]) {
+			mrtMaterial[prop] = originalMaterial[prop]
+			mrtMaterial.uniforms[prop].value = originalMaterial[prop]
 
-	// A&S formula 7.1.26
-	const t = 1.0 / (1.0 + p * Math.abs(x))
-	const y = 1.0 - ((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t * Math.exp(-x * x)
+			if (originalMaterial[prop]) {
+				mrtMaterial.defines[define] = ""
+			} else {
+				delete mrtMaterial.defines[define]
+			}
 
-	return Math.sign(x) * y
-}
-
-// source: https://observablehq.com/@jobleonard/gaussian-kernel-calculater
-function def_int_gaussian(x, mu, sigma) {
-	return 0.5 * erf((x - mu) / (Math.SQRT2 * sigma))
-}
-
-export function gaussian_kernel(kernel_size = 5, sigma = 1, mu = 0, step = 1) {
-	const end = 0.5 * kernel_size
-	const start = -end
-	const coeff = []
-	let sum = 0
-	let x = start
-	let last_int = def_int_gaussian(x, mu, sigma)
-	const acc = 0
-	while (x < end) {
-		x += step
-		const new_int = def_int_gaussian(x, mu, sigma)
-		const c = new_int - last_int
-		coeff.push(c)
-		sum += c
-		last_int = new_int
+			mrtMaterial.needsUpdate = true
+		}
+	} else if (mrtMaterial[prop] !== undefined) {
+		mrtMaterial[prop] = undefined
+		mrtMaterial.uniforms[prop].value = undefined
+		delete mrtMaterial.defines[define]
+		mrtMaterial.needsUpdate = true
 	}
-
-	// normalize
-	sum = 1 / sum
-	for (let i = 0; i < coeff.length; i++) {
-		coeff[i] *= sum
-	}
-	return coeff
 }

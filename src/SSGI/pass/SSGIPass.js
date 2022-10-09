@@ -14,7 +14,7 @@ import {
 import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader.js"
 import { MRTMaterial } from "../material/MRTMaterial.js"
 import { SSGIMaterial } from "../material/SSGIMaterial.js"
-import { getVisibleChildren, isWebGL2Available } from "../utils/Utils.js"
+import { getVisibleChildren, isWebGL2Available, keepMaterialMapUpdated } from "../utils/Utils.js"
 import { DenoisePass } from "./DenoisePass.js"
 
 const isWebGL2 = isWebGL2Available()
@@ -49,8 +49,10 @@ export class SSGIPass extends Pass {
 		this.fullscreenMaterial.uniforms.inverseProjectionMatrix.value = this._camera.projectionMatrixInverse
 
 		this.denoisePass = new DenoisePass(this.renderTarget.texture)
-		this.denoisePass.fullscreenMaterial.uniforms.momentsTexture.value =
-			this.ssgiEffect.temporalResolvePass.renderTarget.texture[1]
+		if (isWebGL2) {
+			this.denoisePass.fullscreenMaterial.uniforms.momentsTexture.value =
+				this.ssgiEffect.temporalResolvePass.renderTarget.texture[1]
+		}
 	}
 
 	initialize(renderer, ...args) {
@@ -102,8 +104,8 @@ export class SSGIPass extends Pass {
 			})
 
 			this.diffuseRenderTarget = new WebGLRenderTarget(1, 1, {
-				minFilter: NearestFilter,
-				magFilter: NearestFilter,
+				minFilter: LinearFilter,
+				magFilter: LinearFilter,
 				encoding: sRGBEncoding
 			})
 
@@ -170,28 +172,6 @@ export class SSGIPass extends Pass {
 		this.diffuseTexture = null
 	}
 
-	keepMaterialMapUpdated(mrtMaterial, originalMaterial, prop, define, useKey) {
-		if (useKey === true || this.ssgiEffect[useKey]) {
-			if (originalMaterial[prop] !== mrtMaterial[prop]) {
-				mrtMaterial[prop] = originalMaterial[prop]
-				mrtMaterial.uniforms[prop].value = originalMaterial[prop]
-
-				if (originalMaterial[prop]) {
-					mrtMaterial.defines[define] = ""
-				} else {
-					delete mrtMaterial.defines[define]
-				}
-
-				mrtMaterial.needsUpdate = true
-			}
-		} else if (mrtMaterial[prop] !== undefined) {
-			mrtMaterial[prop] = undefined
-			mrtMaterial.uniforms[prop].value = undefined
-			delete mrtMaterial.defines[define]
-			mrtMaterial.needsUpdate = true
-		}
-	}
-
 	setMRTMaterialInScene() {
 		this.visibleMeshes = getVisibleChildren(this._scene)
 
@@ -231,9 +211,23 @@ export class SSGIPass extends Pass {
 			originalMaterial.envMapIntensity = 0
 
 			// update the child's MRT material
-			this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "normalMap", "USE_NORMAL_MAP", "useNormalMap")
-			this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "roughnessMap", "USE_ROUGHNESS_MAP", "useRoughnessMap")
-			this.keepMaterialMapUpdated(mrtMaterial, originalMaterial, "map", "USE_MAP", true)
+			keepMaterialMapUpdated(
+				mrtMaterial,
+				originalMaterial,
+				"normalMap",
+				"USE_NORMAL_MAP",
+				this.ssgiEffect["useNormalMap"]
+			)
+
+			keepMaterialMapUpdated(
+				mrtMaterial,
+				originalMaterial,
+				"roughnessMap",
+				"USE_ROUGHNESS_MAP",
+				this.ssgiEffect["useRoughnessMap"]
+			)
+
+			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "map", "USE_MAP", true)
 
 			if ("renderVelocity" in mrtMaterial.defines) {
 				if (this.renderVelocitySeparate) {
@@ -354,6 +348,8 @@ export class SSGIPass extends Pass {
 			this.ssgiEffect.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = this.renderTarget.texture
 		}
 
-		this.ssgiEffect.temporalResolvePass.fullscreenMaterial.uniforms.rawInputTexture.value = this.renderTarget.texture
+		if (isWebGL2) {
+			this.ssgiEffect.temporalResolvePass.fullscreenMaterial.uniforms.rawInputTexture.value = this.renderTarget.texture
+		}
 	}
 }

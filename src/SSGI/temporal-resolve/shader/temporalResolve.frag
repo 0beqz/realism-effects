@@ -41,9 +41,10 @@ vec3 undoColorTransform(vec3 color) {
 void main() {
     vec4 inputTexel = textureLod(inputTexture, vUv, 0.0);
 
-    float depth = unpackRGBAToDepth(textureLod(depthTexture, vUv, 0.));
+    vec4 depthTexel = textureLod(depthTexture, vUv, 0.);
+    float depth = unpackRGBAToDepth(depthTexel);
 
-    bool isBackground = depth > FLOAT_ONE_MINUS_EPSILON;
+    bool isBackground = dot(depthTexel.rgb, depthTexel.rgb) == 0.0;
 
     vec3 inputColor = transformColor(inputTexel.rgb);
     float alpha = inputTexel.a;

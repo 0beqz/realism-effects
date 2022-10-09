@@ -185,7 +185,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
         envMapSample = sampleEquirectEnvMapColor(sampleDir, envMap, 0.);
 
         // we won't deal with calculating direct sun light from the env map as it takes too long to compute and is too noisy
-        if (dot(envMapSample, envMapSample) > 3.) envMapSample = vec3(0.);
+        if (dot(envMapSample, envMapSample) > 3.) envMapSample = vec3(1.);
 
         envMapSample *= fresnelFactor * TRANSFORM_FACTOR;
 

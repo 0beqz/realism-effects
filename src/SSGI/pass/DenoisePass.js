@@ -1,8 +1,7 @@
 ﻿import { Pass } from "postprocessing"
-import { HalfFloatType, LinearFilter, NearestFilter, ShaderMaterial, Uniform, Vector2, WebGLRenderTarget } from "three"
+import { HalfFloatType, LinearFilter, ShaderMaterial, Uniform, Vector2, WebGLRenderTarget } from "three"
 import basicVertexShader from "../shader/basic.vert"
 import fragmentShader from "../shader/denoise.frag"
-import { gaussian_kernel } from "../utils/Utils"
 
 // https://research.nvidia.com/sites/default/files/pubs/2017-07_Spatiotemporal-Variance-Guided-Filtering%3A//svgf_preprint.pdf
 // https://diharaw.github.io/post/adventures_in_hybrid_rendering/
@@ -14,14 +13,12 @@ export class DenoisePass extends Pass {
 	constructor(inputTexture) {
 		super("DenoisePass")
 
-		this.inputTexture = inputTexture
-
 		this.fullscreenMaterial = new ShaderMaterial({
 			fragmentShader,
 			vertexShader: basicVertexShader,
 			uniforms: {
+				inputTexture: new Uniform(inputTexture),
 				diffuseTexture: new Uniform(null),
-				inputTexture: new Uniform(null),
 				depthTexture: new Uniform(null),
 				normalTexture: new Uniform(null),
 				momentsTexture: new Uniform(null),
@@ -34,6 +31,9 @@ export class DenoisePass extends Pass {
 				jitter: new Uniform(0),
 				jitterRoughness: new Uniform(0),
 				stepSize: new Uniform(1)
+			},
+			defines: {
+				USE_MOMENT: ""
 			}
 		})
 
@@ -54,6 +54,8 @@ export class DenoisePass extends Pass {
 	}
 
 	render(renderer) {
+		const inputTexture = this.fullscreenMaterial.uniforms.inputTexture.value
+
 		let stepSize = 1
 		for (let i = 0; i < 2 * this.iterations; i++) {
 			const horizontal = i % 2 === 0
@@ -65,13 +67,15 @@ export class DenoisePass extends Pass {
 
 			this.fullscreenMaterial.uniforms.inputTexture.value = horizontal
 				? i === 0
-					? this.inputTexture
+					? inputTexture
 					: this.renderTargetB.texture
 				: this.renderTargetA.texture
 
 			renderer.setRenderTarget(renderTarget)
 			renderer.render(this.scene, this.camera)
 		}
+
+		this.fullscreenMaterial.uniforms.inputTexture.value = inputTexture
 	}
 
 	get texture() {
