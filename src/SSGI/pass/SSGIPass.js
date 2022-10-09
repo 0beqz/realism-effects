@@ -347,13 +347,12 @@ export class SSGIPass extends Pass {
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)
 
-		if (this.denoisePass.iterations > 0) {
-			this.denoisePass.render(renderer)
-			this.ssgiEffect.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = this.denoisePass.texture
-		} else {
-			this.ssgiEffect.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = this.renderTarget.texture
-		}
+		// if (this.denoisePass.iterations > 0) {
+		// 	this.denoisePass.render(renderer)
+		// 	this.ssgiEffect.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = this.denoisePass.texture
+		// } else {
+		// }
 
-		this.ssgiEffect.temporalResolvePass.fullscreenMaterial.uniforms.rawInputTexture.value = this.renderTarget.texture
+		this.ssgiEffect.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = this.renderTarget.texture
 	}
 }

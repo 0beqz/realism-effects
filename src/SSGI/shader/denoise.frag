@@ -1,5 +1,6 @@
 ﻿varying vec2 vUv;
 
+uniform sampler2D directLightTexture;
 uniform sampler2D diffuseTexture;
 uniform sampler2D inputTexture;
 uniform sampler2D depthTexture;
@@ -14,11 +15,13 @@ uniform float denoiseKernel;
 uniform float jitter;
 uniform float jitterRoughness;
 uniform float stepSize;
+uniform bool isLastIteration;
 
 #include <packing>
 
-#define ALPHA_STEP    0.001
-#define FLOAT_EPSILON 0.00001
+#define ALPHA_STEP       0.001
+#define FLOAT_EPSILON    0.00001
+#define TRANSFORM_FACTOR 0.1
 
 // source: https://github.com/CesiumGS/cesium/blob/main/Source/Shaders/Builtin/Functions/luminance.glsl
 float czm_luminance(vec3 rgb) {
@@ -100,14 +103,16 @@ void main() {
 
     if (min(color.r, min(color.g, color.b)) < 0.0) color = inputTexel.rgb;
 
-    // vec3 l = textureLod(momentsTexture, vUv, 0.).rgb;
-    // float variance = max(0.0, l.g - l.r * l.r);
+    // if (isLastIteration) {
+    //     vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.0);
+    //     const float diffuseInfluence = 0.95;
 
-    // vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.0);
-    // const float diffuseInfluence = 0.95;
+    //     vec3 diffuseColor = diffuseTexel.rgb * diffuseInfluence + (1. - diffuseInfluence);
+    //     color *= diffuseColor;
 
-    // vec3 diffuseColor = diffuseTexel.rgb * diffuseInfluence + (1. - diffuseInfluence);
-    // color.rgb *= diffuseColor;
+    //     vec4 directLightTexel = textureLod(directLightTexture, vUv, 0.0);
+    //     color += directLightTexel.rgb * TRANSFORM_FACTOR;
+    // }
 
     gl_FragColor = vec4(color, inputTexel.a);
 }

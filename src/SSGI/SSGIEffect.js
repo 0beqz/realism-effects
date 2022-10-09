@@ -1,6 +1,13 @@
 ﻿import { Effect, Selection } from "postprocessing"
-import { GLSL3, HalfFloatType, LinearFilter, NearestFilter, WebGLMultipleRenderTargets } from "three"
-import { EquirectangularReflectionMapping, Uniform } from "three"
+import {
+	EquirectangularReflectionMapping,
+	GLSL3,
+	HalfFloatType,
+	LinearFilter,
+	Uniform,
+	WebGLMultipleRenderTargets
+} from "three"
+import { ComposePass } from "./pass/ComposePass.js"
 import { CopyPass } from "./pass/CopyPass.js"
 import { SSGIPass } from "./pass/SSGIPass.js"
 import applyDiffuse from "./shader/applyDiffuse.frag"
@@ -34,15 +41,13 @@ export class SSGIEffect extends Effect {
 		gOutput = vec4(undoColorTransform(outputColor), alpha);
 
 		vec2 moments = vec2(0.);
-		moments.r = czm_luminance(textureLod(rawInputTexture, vUv, 0.).rgb);
+		moments.r = czm_luminance(inputColor);
 		moments.g = moments.r * moments.r;
 
-		vec4 historyMoments = textureLod(momentsTexture, vUv, 0.);
+		vec4 historyMoments = textureLod(momentsTexture, reprojectedUv, 0.);
 
 		float momentsAlpha = 0.;
-		if(alpha != 0.){
-			momentsAlpha = historyMoments.a + ALPHA_STEP;
-		}
+		if(alpha > FLOAT_EPSILON) momentsAlpha = historyMoments.a + ALPHA_STEP;
 
 		pixelSample = momentsAlpha / ALPHA_STEP + 1.0;
     temporalResolveMix = 1. - 1. / pixelSample;
@@ -73,7 +78,6 @@ export class SSGIEffect extends Effect {
 		uniform sampler2D diffuseTexture;
 		uniform sampler2D directLightTexture;
 		uniform sampler2D momentsTexture;
-		uniform sampler2D rawInputTexture;
 
 		layout(location = 0) out vec4 gOutput;
 		layout(location = 1) out vec4 gMoment;
@@ -95,18 +99,17 @@ export class SSGIEffect extends Effect {
 			...{
 				diffuseTexture: new Uniform(null),
 				directLightTexture: new Uniform(null),
-				momentsTexture: new Uniform(null),
-				rawInputTexture: new Uniform(null)
+				momentsTexture: new Uniform(null)
 			}
 		}
 
 		this.temporalResolvePass.fullscreenMaterial.glslVersion = GLSL3
 
-		this.uniforms.get("inputTexture").value = this.temporalResolvePass.texture
-		// this.uniforms.get("inputTexture").value = this.temporalResolvePass.renderTarget.texture[1]
-
 		// ssgi pass
 		this.ssgiPass = new SSGIPass(this)
+
+		// this.uniforms.get("inputTexture").value = this.ssgiPass.denoisePass.renderTargetB.texture
+		this.uniforms.get("inputTexture").value = this.temporalResolvePass.renderTarget.texture[1]
 
 		this.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = this.ssgiPass.renderTarget.texture
 
@@ -118,6 +121,9 @@ export class SSGIEffect extends Effect {
 
 		this.copyPass = new CopyPass()
 		this.copyPass.fullscreenMaterial.uniforms.inputTexture.value = this.temporalResolvePass.renderTarget.texture[1]
+
+		this.composePass = new ComposePass()
+		this.uniforms.get("inputTexture").value = this.composePass.renderTarget.texture
 
 		this.temporalResolvePass.fullscreenMaterial.uniforms.momentsTexture.value = this.copyPass.renderTarget.texture
 
@@ -248,6 +254,7 @@ export class SSGIEffect extends Effect {
 		this.temporalResolvePass.setSize(width, height)
 		this.ssgiPass.setSize(width, height)
 		this.copyPass.setSize(width, height)
+		this.composePass.setSize(width, height)
 
 		this.lastSize = {
 			width,
@@ -261,6 +268,7 @@ export class SSGIEffect extends Effect {
 
 		this.ssgiPass.dispose()
 		this.copyPass.dispose()
+		this.composePass.dispose()
 		this.temporalResolvePass.dispose()
 	}
 
@@ -291,5 +299,20 @@ export class SSGIEffect extends Effect {
 		this.temporalResolvePass.render(renderer)
 
 		this.copyPass.render(renderer)
+
+		this.ssgiPass.fullscreenMaterial.uniforms.accumulatedTexture.value = this.composePass.renderTarget.texture
+		this.ssgiPass.denoisePass.fullscreenMaterial.uniforms.diffuseTexture.value = this.ssgiPass.diffuseTexture
+		this.ssgiPass.denoisePass.fullscreenMaterial.uniforms.directLightTexture.value = inputBuffer.texture
+		this.ssgiPass.denoisePass.inputTexture = this.temporalResolvePass.texture
+
+		this.temporalResolvePass.fullscreenMaterial.uniforms.accumulatedTexture.value =
+			this.ssgiPass.denoisePass.renderTargetB.texture
+
+		this.composePass.fullscreenMaterial.uniforms.inputTexture.value = this.ssgiPass.denoisePass.renderTargetB.texture
+		this.composePass.fullscreenMaterial.uniforms.diffuseTexture.value = this.ssgiPass.diffuseTexture
+		this.composePass.fullscreenMaterial.uniforms.directLightTexture.value = inputBuffer.texture
+		this.composePass.render(renderer)
+
+		this.ssgiPass.denoisePass.render(renderer)
 	}
 }

@@ -1,8 +1,7 @@
 ﻿import { Pass } from "postprocessing"
-import { HalfFloatType, LinearFilter, NearestFilter, ShaderMaterial, Uniform, Vector2, WebGLRenderTarget } from "three"
+import { HalfFloatType, LinearFilter, ShaderMaterial, Uniform, Vector2, WebGLRenderTarget } from "three"
 import basicVertexShader from "../shader/basic.vert"
 import fragmentShader from "../shader/denoise.frag"
-import { gaussian_kernel } from "../utils/Utils"
 
 // https://research.nvidia.com/sites/default/files/pubs/2017-07_Spatiotemporal-Variance-Guided-Filtering%3A//svgf_preprint.pdf
 // https://diharaw.github.io/post/adventures_in_hybrid_rendering/
@@ -20,6 +19,7 @@ export class DenoisePass extends Pass {
 			fragmentShader,
 			vertexShader: basicVertexShader,
 			uniforms: {
+				directLightTexture: new Uniform(null),
 				diffuseTexture: new Uniform(null),
 				inputTexture: new Uniform(null),
 				depthTexture: new Uniform(null),
@@ -33,7 +33,8 @@ export class DenoisePass extends Pass {
 				normalPhi: new Uniform(1),
 				jitter: new Uniform(0),
 				jitterRoughness: new Uniform(0),
-				stepSize: new Uniform(1)
+				stepSize: new Uniform(1),
+				isLastIteration: new Uniform(false)
 			}
 		})
 
@@ -60,6 +61,7 @@ export class DenoisePass extends Pass {
 			if (horizontal) stepSize = 2 ** (i / 2)
 
 			this.fullscreenMaterial.uniforms.horizontal.value = horizontal
+			this.fullscreenMaterial.uniforms.isLastIteration.value = i === 2 * this.iterations - 1
 			this.fullscreenMaterial.uniforms.stepSize.value = stepSize
 			const renderTarget = horizontal ? this.renderTargetA : this.renderTargetB
 
