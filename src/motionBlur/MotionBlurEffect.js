@@ -79,7 +79,7 @@ export class MotionBlurEffect extends Effect {
 		this.uniforms.get("inputTexture").value = inputBuffer.texture
 		this.uniforms.get("deltaTime").value = Math.max(1 / 1000, deltaTime)
 
-		this.uniforms.get("time").value = (performance.now() % (10 * 60 * 1000)) * 0.01
+		this.uniforms.get("time").value = Math.random()
 
 		const noiseTexture = this.uniforms.get("blueNoiseTexture").value
 		if (noiseTexture) {

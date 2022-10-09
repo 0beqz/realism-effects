@@ -1,5 +1,6 @@
 ﻿varying vec2 vUv;
 
+uniform sampler2D diffuseTexture;
 uniform sampler2D inputTexture;
 uniform sampler2D depthTexture;
 uniform sampler2D normalTexture;
@@ -40,7 +41,7 @@ void main() {
     float roughness = normalTexel.a;
     float roughnessFactor = min(1., jitterRoughness * roughness + jitter);
 
-    float kernel = round(denoiseKernel * roughnessFactor);
+    float kernel = denoiseKernel;  // round(denoiseKernel * roughnessFactor);
 
     // if (kernel == 0.) {
     //     gl_FragColor = inputTexel;
@@ -101,6 +102,12 @@ void main() {
 
     // vec3 l = textureLod(momentsTexture, vUv, 0.).rgb;
     // float variance = max(0.0, l.g - l.r * l.r);
+
+    // vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.0);
+    // const float diffuseInfluence = 0.95;
+
+    // vec3 diffuseColor = diffuseTexel.rgb * diffuseInfluence + (1. - diffuseInfluence);
+    // color.rgb *= diffuseColor;
 
     gl_FragColor = vec4(color, inputTexel.a);
 }

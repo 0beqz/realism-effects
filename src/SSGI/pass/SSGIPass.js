@@ -326,7 +326,7 @@ export class SSGIPass extends Pass {
 		}
 
 		this.fullscreenMaterial.uniforms.samples.value = this.ssgiEffect.temporalResolvePass.samples
-		this.fullscreenMaterial.uniforms.time.value = (performance.now() % (10 * 60 * 1000)) * 0.01
+		this.fullscreenMaterial.uniforms.time.value = Math.random()
 		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
 		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far
 

@@ -37,10 +37,19 @@ export class SSGIEffect extends Effect {
 		moments.r = czm_luminance(textureLod(rawInputTexture, vUv, 0.).rgb);
 		moments.g = moments.r * moments.r;
 
-		vec2 historyMoments = textureLod(momentsTexture, vUv, 0.).rg;
+		vec4 historyMoments = textureLod(momentsTexture, vUv, 0.);
+
+		float momentsAlpha = 0.;
+		if(alpha != 0.){
+			momentsAlpha = historyMoments.a + ALPHA_STEP;
+		}
+
+		pixelSample = momentsAlpha / ALPHA_STEP + 1.0;
+    temporalResolveMix = 1. - 1. / pixelSample;
+    temporalResolveMix = min(temporalResolveMix, 0.9);
 
 		// float momentAlpha = blend;
-		gMoment = vec4(mix(moments, historyMoments, temporalResolveMix), 0., 0.);
+		gMoment = vec4(mix(moments, historyMoments.rg, temporalResolveMix), 0., momentsAlpha);
 
 		`
 

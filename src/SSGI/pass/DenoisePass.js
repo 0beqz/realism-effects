@@ -20,6 +20,7 @@ export class DenoisePass extends Pass {
 			fragmentShader,
 			vertexShader: basicVertexShader,
 			uniforms: {
+				diffuseTexture: new Uniform(null),
 				inputTexture: new Uniform(null),
 				depthTexture: new Uniform(null),
 				normalTexture: new Uniform(null),
@@ -37,8 +38,8 @@ export class DenoisePass extends Pass {
 		})
 
 		const options = {
-			minFilter: NearestFilter,
-			magFilter: NearestFilter,
+			minFilter: LinearFilter,
+			magFilter: LinearFilter,
 			type: HalfFloatType,
 			depthBuffer: false
 		}

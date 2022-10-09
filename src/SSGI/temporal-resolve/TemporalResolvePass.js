@@ -152,7 +152,7 @@ export class TemporalResolvePass extends Pass {
 		this.fullscreenMaterial.uniforms.lastDepthTexture.value = this.lastDepthTexture
 	}
 
-	jitter(jitterScale = 0) {
+	jitter(jitterScale = 1) {
 		this.unjitter()
 
 		if (this.haltonSequence.length === 0) this.haltonSequence = generateHalton23Points(16)
