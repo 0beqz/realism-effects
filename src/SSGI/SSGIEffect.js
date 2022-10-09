@@ -1,6 +1,12 @@
 ﻿import { Effect, Selection } from "postprocessing"
-import { GLSL3, HalfFloatType, LinearFilter, NearestFilter, WebGLMultipleRenderTargets } from "three"
-import { EquirectangularReflectionMapping, Uniform } from "three"
+import {
+	EquirectangularReflectionMapping,
+	GLSL3,
+	HalfFloatType,
+	LinearFilter,
+	Uniform,
+	WebGLMultipleRenderTargets
+} from "three"
 import { CopyPass } from "./pass/CopyPass.js"
 import { SSGIPass } from "./pass/SSGIPass.js"
 import applyDiffuse from "./shader/applyDiffuse.frag"
@@ -33,20 +39,22 @@ export class SSGIEffect extends Effect {
 		const customComposeShader = /* glsl */ `
 		gOutput = vec4(undoColorTransform(outputColor), alpha);
 
+		vec3 rawColor = textureLod(rawInputTexture, vUv, 0.).rgb;
+
 		vec2 moments = vec2(0.);
-		moments.r = czm_luminance(textureLod(rawInputTexture, vUv, 0.).rgb);
+		moments.r = czm_luminance(rawColor);
 		moments.g = moments.r * moments.r;
 
-		vec4 historyMoments = textureLod(momentsTexture, vUv, 0.);
+		vec4 historyMoments = textureLod(momentsTexture, reprojectedUv, 0.);
 
 		float momentsAlpha = 0.;
-		if(alpha != 0.){
+		if(alpha > FLOAT_EPSILON){
 			momentsAlpha = historyMoments.a + ALPHA_STEP;
 		}
 
 		pixelSample = momentsAlpha / ALPHA_STEP + 1.0;
     temporalResolveMix = 1. - 1. / pixelSample;
-    temporalResolveMix = min(temporalResolveMix, 0.9);
+    temporalResolveMix = min(temporalResolveMix, 0.95);
 
 		// float momentAlpha = blend;
 		gMoment = vec4(mix(moments, historyMoments.rg, temporalResolveMix), 0., momentsAlpha);
