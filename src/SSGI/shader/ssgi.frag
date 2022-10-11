@@ -120,18 +120,43 @@ void main() {
     gl_FragColor = vec4(SSGI, lastFrameAlpha);
 }
 
+// source: https://github.com/Domenicobrz/SSR-TAA-in-threejs-/blob/master/Components/ssr.js
+vec3 SampleBRDF(vec3 wo, vec3 norm, float roughness, vec2 random) {
+    float r0 = random.x;
+    float r1 = random.y;
+
+    float a = roughness * roughness;
+    float a2 = a * a;
+    float theta = acos(sqrt((1.0 - r0) / ((a2 - 1.0) * r0 + 1.0)));
+    float phi = 2.0 * M_PI * r1;
+    float x = sin(theta) * cos(phi);
+    float y = cos(theta);
+    float z = sin(theta) * sin(phi);
+    vec3 wm = normalize(vec3(x, y, z));
+    vec3 w = norm;
+    if (abs(norm.y) < 0.95) {
+        vec3 u = normalize(cross(w, vec3(0.0, 1.0, 0.0)));
+        vec3 v = normalize(cross(u, w));
+        wm = normalize(wm.y * w + wm.x * u + wm.z * v);
+    } else {
+        vec3 u = normalize(cross(w, vec3(0.0, 0.0, 1.0)));
+        vec3 v = normalize(cross(u, w));
+        wm = normalize(wm.y * w + wm.x * u + wm.z * v);
+    }
+    vec3 wi = reflect(wo, wm);
+    return wi;
+}
+
 vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float sampleCount, float spread) {
     vec3 jitteredNormal = viewNormal;
 
+    vec2 startOffset = vec2(sampleCount / float(spp));
+    vec2 blueNoiseUv = (vUv + startOffset + time) * blueNoiseRepeat;
+    vec2 random = textureLod(blueNoiseTexture, blueNoiseUv, 0.).rg;
+
     float thetaMax = spread * M_PI / 2.;
     float cosThetaMax = cos(thetaMax);
-
     if (spread != 0.) {
-        vec2 startOffset = vec2(sampleCount / float(spp));
-
-        vec2 blueNoiseUv = (vUv + startOffset + time) * blueNoiseRepeat;
-        vec2 random = textureLod(blueNoiseTexture, blueNoiseUv, 0.).rg;
-
         float cosTheta = (1. - random.x) + random.x * cosThetaMax;
         float sinTheta = sqrt(1. - cosTheta * cosTheta);
         float phi = random.y * 2. * M_PI;
@@ -140,20 +165,20 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
         float z = cosTheta;
         vec3 hemisphereVector = vec3(x, y, z);
 
-        mat3 normalBasis = getBasisFromNormal(jitteredNormal);
+        mat3 normalBasis = getBasisFromNormal(viewNormal);
 
         jitteredNormal = normalize(normalBasis * hemisphereVector);
     }
 
-    // source: https://computergraphics.stackexchange.com/a/4994
-    float pdf = 1. / (dot(viewNormal, jitteredNormal) * M_PI);
-    if (pdf < 0.1) pdf = 0.1;
+    // view-space reflected ray
+    // vec3 reflected = normalize(reflect(viewDir, jitteredNormal));
+
+    vec3 reflected = SampleBRDF(viewDir, viewNormal, sqrt(spread), random);
 
     float curIor = mix(ior, 2.33, spread);
-    float fresnelFactor = fresnel_dielectric(viewDir, jitteredNormal, curIor);
+    float fresnelFactor = fresnel_dielectric(viewDir, reflected, curIor);
 
-    // view-space reflected ray
-    vec3 reflected = normalize(reflect(viewDir, jitteredNormal));
+    float m = fresnelFactor * TRANSFORM_FACTOR * M_PI;
 
     vec3 dir = normalize(reflected * -viewPos.z);
     dir *= rayDistance / float(steps);
@@ -187,14 +212,14 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
         // we won't deal with calculating direct sun light from the env map as it takes too long to compute and is too noisy
         if (dot(envMapSample, envMapSample) > 3.) envMapSample = vec3(1.);
 
-        envMapSample *= fresnelFactor * TRANSFORM_FACTOR;
-
-        if (!isAllowedMissedRay) return envMapSample / pdf;
+        if (!isAllowedMissedRay) return m * envMapSample;
     }
 #endif
 
     vec2 dCoords = smoothstep(0.2, 0.6, abs(vec2(0.5, 0.5) - coords.xy));
     float ssgiIntensity = clamp(1.0 - (dCoords.x + dCoords.y), 0.0, 1.0);
+
+    m *= ssgiIntensity;
 
     // reproject the coords from the last frame
     vec4 velocity = textureLod(velocityTexture, coords.xy, 0.0);
@@ -206,12 +231,10 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
 
     // check if the reprojected coordinates are within the screen
     if (all(greaterThanEqual(reprojectedUv, vec2(0.))) && all(lessThanEqual(reprojectedUv, vec2(1.)))) {
-        SSGI = textureLod(accumulatedTexture, reprojectedUv, 0.).rgb;
+        SSGI = textureLod(accumulatedTexture, reprojectedUv, 0.).rgb + textureLod(directLightTexture, reprojectedUv, 0.).rgb;
     } else {
         SSGI = textureLod(directLightTexture, vUv, 0.).rgb;
     }
-
-    SSGI *= ssgiIntensity * fresnelFactor * TRANSFORM_FACTOR;
 
     if (isAllowedMissedRay) {
         float ssgiLum = czm_luminance(SSGI);
@@ -220,7 +243,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
         if (envLum > ssgiLum) SSGI = envMapSample;
     }
 
-    return M_PI * SSGI / pdf;
+    return m * SSGI;
 }
 
 vec2 RayMarch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {

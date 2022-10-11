@@ -172,6 +172,7 @@ export class SSGIEffect extends Effect {
 						case "lumaPhi":
 						case "depthPhi":
 						case "normalPhi":
+						case "roughnessPhi":
 							this.ssgiPass.denoisePass.fullscreenMaterial.uniforms[key].value = value
 							break
 

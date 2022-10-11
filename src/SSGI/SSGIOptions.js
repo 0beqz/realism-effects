@@ -45,6 +45,7 @@ export const defaultSSGIOptions = {
 	lumaPhi: 10,
 	depthPhi: 2,
 	normalPhi: 50,
+	roughnessPhi: 1,
 	jitter: 0,
 	jitterRoughness: 0,
 	steps: 20,

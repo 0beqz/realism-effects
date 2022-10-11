@@ -10,6 +10,7 @@ uniform bool horizontal;
 uniform float lumaPhi;
 uniform float depthPhi;
 uniform float normalPhi;
+uniform float roughnessPhi;
 uniform float denoiseKernel;
 uniform float jitter;
 uniform float jitterRoughness;
@@ -40,6 +41,7 @@ void main() {
 
     float roughness = normalTexel.a;
     float roughnessFactor = min(1., (jitterRoughness * roughness + jitter) * 4.);
+    roughnessFactor = mix(1., roughnessFactor, roughnessPhi);
 
     float kernel = ceil(denoiseKernel * roughnessFactor + FLOAT_EPSILON);
 

@@ -20,7 +20,7 @@ export class SSGIDebugGUI {
 		const generalFolder = pane.addFolder({ title: "General" })
 		generalFolder.addInput(params, "intensity", { min: 0, max: 3, step: 0.01 })
 		generalFolder.addInput(params, "power", { min: 0.025, max: 3, step: 0.01 })
-		generalFolder.addInput(params, "distance", { min: 0.001, max: 20, step: 0.01 })
+		generalFolder.addInput(params, "distance", { min: 0.001, max: 50, step: 0.01 })
 		generalFolder.addInput(params, "roughnessFade", {
 			min: 0,
 			max: 1,
@@ -28,7 +28,7 @@ export class SSGIDebugGUI {
 		})
 		generalFolder.addInput(params, "thickness", {
 			min: 0,
-			max: 5,
+			max: 20,
 			step: 0.01
 		})
 
@@ -59,6 +59,11 @@ export class SSGIDebugGUI {
 		denoiseKernelFolder.addInput(params, "normalPhi", {
 			min: 0.5,
 			max: 100,
+			step: 0.01
+		})
+		denoiseKernelFolder.addInput(params, "roughnessPhi", {
+			min: 0,
+			max: 1,
 			step: 0.01
 		})
 

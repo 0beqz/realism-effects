@@ -28,6 +28,7 @@ export class DenoisePass extends Pass {
 				lumaPhi: new Uniform(1),
 				depthPhi: new Uniform(1),
 				normalPhi: new Uniform(1),
+				roughnessPhi: new Uniform(1),
 				jitter: new Uniform(0),
 				jitterRoughness: new Uniform(0),
 				stepSize: new Uniform(1)
