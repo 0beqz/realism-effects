@@ -1,5 +1,4 @@
 ﻿import { Pass } from "postprocessing"
-import { WebGLMultipleRenderTargets } from "three"
 import {
 	FramebufferTexture,
 	HalfFloatType,
@@ -17,7 +16,7 @@ import { generateHalton23Points } from "./utils/generateHalton23Points"
 
 const zeroVec2 = new Vector2()
 
-const defaultOptions = {
+export const defaultTemporalResolvePassOptions = {
 	blend: 0.9,
 	renderVelocity: true,
 	dilation: false,
@@ -38,12 +37,12 @@ export class TemporalResolvePass extends Pass {
 		quaternion: new Quaternion()
 	}
 
-	constructor(scene, camera, options = defaultOptions) {
+	constructor(scene, camera, options = defaultTemporalResolvePassOptions) {
 		super("TemporalResolvePass")
 
 		this._scene = scene
 		this._camera = camera
-		options = { ...defaultOptions, ...options }
+		options = { ...defaultTemporalResolvePassOptions, ...options }
 
 		this.renderTarget =
 			options.renderTarget ||
@@ -125,9 +124,7 @@ export class TemporalResolvePass extends Pass {
 	}
 
 	get texture() {
-		return this.renderTarget instanceof WebGLMultipleRenderTargets
-			? this.renderTarget.texture[0]
-			: this.renderTarget.texture
+		return this.renderTarget.texture
 	}
 
 	render(renderer) {

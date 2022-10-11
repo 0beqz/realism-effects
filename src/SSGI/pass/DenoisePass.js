@@ -2,10 +2,13 @@
 import { HalfFloatType, LinearFilter, ShaderMaterial, Uniform, Vector2, WebGLRenderTarget } from "three"
 import basicVertexShader from "../shader/basic.vert"
 import fragmentShader from "../shader/denoise.frag"
+import { isWebGL2Available } from "../utils/Utils"
 
 // https://research.nvidia.com/sites/default/files/pubs/2017-07_Spatiotemporal-Variance-Guided-Filtering%3A//svgf_preprint.pdf
 // https://diharaw.github.io/post/adventures_in_hybrid_rendering/
 // https://github.com/NVIDIAGameWorks/Falcor/tree/master/Source/RenderPasses/SVGFPass
+
+const isWebGL2 = isWebGL2Available()
 
 export class DenoisePass extends Pass {
 	iterations = 1
@@ -18,7 +21,6 @@ export class DenoisePass extends Pass {
 			vertexShader: basicVertexShader,
 			uniforms: {
 				inputTexture: new Uniform(inputTexture),
-				diffuseTexture: new Uniform(null),
 				depthTexture: new Uniform(null),
 				normalTexture: new Uniform(null),
 				momentsTexture: new Uniform(null),
@@ -32,9 +34,6 @@ export class DenoisePass extends Pass {
 				jitter: new Uniform(0),
 				jitterRoughness: new Uniform(0),
 				stepSize: new Uniform(1)
-			},
-			defines: {
-				USE_MOMENT: ""
 			}
 		})
 
@@ -47,6 +46,8 @@ export class DenoisePass extends Pass {
 
 		this.renderTargetA = new WebGLRenderTarget(1, 1, options)
 		this.renderTargetB = new WebGLRenderTarget(1, 1, options)
+
+		if (isWebGL2) this.fullscreenMaterial.defines.USE_MOMENT = ""
 	}
 
 	setSize(width, height) {

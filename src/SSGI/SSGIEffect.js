@@ -1,25 +1,13 @@
 ﻿import { Effect, Selection } from "postprocessing"
-import {
-	EquirectangularReflectionMapping,
-	GLSL3,
-	HalfFloatType,
-	LinearFilter,
-	Uniform,
-	WebGLMultipleRenderTargets
-} from "three"
-import { CopyPass } from "./pass/CopyPass.js"
+import { EquirectangularReflectionMapping, Uniform } from "three"
 import { SSGIPass } from "./pass/SSGIPass.js"
 import applyDiffuse from "./shader/applyDiffuse.frag"
 import compose from "./shader/compose.frag"
-import customTemporalResolve from "./shader/customTemporalResolve.frag"
 import utils from "./shader/utils.frag"
 import { defaultSSGIOptions } from "./SSGIOptions"
-import { TemporalResolvePass } from "./temporal-resolve/TemporalResolvePass.js"
-import { isWebGL2Available } from "./utils/Utils.js"
+import { SVGF } from "./SVGF.js"
 
 const finalFragmentShader = compose.replace("#include <utils>", utils)
-
-const isWebGL2 = isWebGL2Available()
 
 export class SSGIEffect extends Effect {
 	selection = new Selection()
@@ -40,86 +28,38 @@ export class SSGIEffect extends Effect {
 		this._scene = scene
 		this._camera = camera
 
-		const temporalResolvePassRenderTarget = isWebGL2
-			? new WebGLMultipleRenderTargets(1, 1, 2, {
-					minFilter: LinearFilter,
-					magFilter: LinearFilter,
-					type: HalfFloatType,
-					depthBuffer: false
-			  })
-			: null
+		this.svgf = new SVGF(scene, camera, { antialias: true })
 
-		// temporal resolve pass
-		this.temporalResolvePass = new TemporalResolvePass(scene, camera, {
-			renderVelocity: options.antialias,
-			traa: options.antialias,
-			customComposeShader: isWebGL2 ? customTemporalResolve : null,
-			renderTarget: temporalResolvePassRenderTarget
-		})
+		// ssgi pass
+		this.ssgiPass = new SSGIPass(this)
 
-		const webGl2Buffers = isWebGL2
-			? /* glsl */ `
-		// source: https://github.com/CesiumGS/cesium/blob/main/Source/Shaders/Builtin/Functions/luminance.glsl
-		float czm_luminance(vec3 rgb) {
-			// Algorithm from Chapter 10 of Graphics Shaders.
-			const vec3 W = vec3(0.2125, 0.7154, 0.0721);
-			return dot(rgb, W);
-		}
+		// define the input and the output
+		this.svgf.setInputTexture(this.ssgiPass.renderTarget.texture)
+		this.uniforms.get("inputTexture").value = this.svgf.texture
 
-		layout(location = 0) out vec4 gOutput;
-		layout(location = 1) out vec4 gMoment;
-
-		uniform sampler2D momentsTexture;
-		uniform sampler2D rawInputTexture;
-		`
-			: ""
-
-		const webgl2Uniforms = isWebGL2
-			? {
-					momentsTexture: new Uniform(null),
-					rawInputTexture: new Uniform(null)
-			  }
-			: {}
-
-		this.temporalResolvePass.fullscreenMaterial.fragmentShader =
+		// modify the temporal resolve pass of SVGF denoiser for the SSGI effect
+		this.svgf.svgfTemporalResolvePass.fullscreenMaterial.fragmentShader =
 			/* glsl */ `
 		uniform sampler2D diffuseTexture;
 		uniform sampler2D directLightTexture;
-
-		${webGl2Buffers}
 		` +
-			this.temporalResolvePass.fullscreenMaterial.fragmentShader.replace(
+			this.svgf.svgfTemporalResolvePass.fullscreenMaterial.fragmentShader.replace(
 				"vec3 inputColor",
 				applyDiffuse + "vec3 inputColor"
 			)
 
-		this.temporalResolvePass.fullscreenMaterial.uniforms = {
-			...this.temporalResolvePass.fullscreenMaterial.uniforms,
+		this.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms = {
+			...this.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms,
 			...{
 				diffuseTexture: new Uniform(null),
 				directLightTexture: new Uniform(null)
-			},
-			...webgl2Uniforms
+			}
 		}
-
-		this.uniforms.get("inputTexture").value = this.temporalResolvePass.texture
-
-		// ssgi pass
-		this.ssgiPass = new SSGIPass(this)
-		if (!isWebGL2) delete this.ssgiPass.denoisePass.fullscreenMaterial.defines.USE_MOMENT
 
 		this.lastSize = {
 			width: options.width,
 			height: options.height,
 			resolutionScale: options.resolutionScale
-		}
-
-		this.copyPass = new CopyPass()
-
-		if (isWebGL2) {
-			this.copyPass.fullscreenMaterial.uniforms.inputTexture.value = this.temporalResolvePass.renderTarget.texture[1]
-			this.temporalResolvePass.fullscreenMaterial.uniforms.momentsTexture.value = this.copyPass.renderTarget.texture
-			this.temporalResolvePass.fullscreenMaterial.glslVersion = GLSL3
 		}
 
 		this.setSize(options.width, options.height)
@@ -130,7 +70,7 @@ export class SSGIEffect extends Effect {
 	makeOptionsReactive(options) {
 		let needsUpdate = false
 
-		if (options.reflectionsOnly) this.temporalResolvePass.fullscreenMaterial.defines.reflectionsOnly = ""
+		if (options.reflectionsOnly) this.svgf.svgfTemporalResolvePass.fullscreenMaterial.defines.reflectionsOnly = ""
 
 		const ssgiPassFullscreenMaterialUniforms = this.ssgiPass.fullscreenMaterial.uniforms
 		const ssgiPassFullscreenMaterialUniformsKeys = Object.keys(ssgiPassFullscreenMaterialUniforms)
@@ -157,15 +97,15 @@ export class SSGIEffect extends Effect {
 							break
 
 						case "blur":
-							this.temporalResolvePass.fullscreenMaterial.uniforms.blur.value = value
+							this.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.blur.value = value
 							break
 
 						case "antialias":
-							this.temporalResolvePass.traa = value
+							this.svgf.svgfTemporalResolvePass.traa = value
 							break
 
 						case "denoiseIterations":
-							this.ssgiPass.denoisePass.iterations = value
+							this.svgf.denoisePass.iterations = value
 							break
 
 						case "denoiseKernel":
@@ -173,7 +113,7 @@ export class SSGIEffect extends Effect {
 						case "depthPhi":
 						case "normalPhi":
 						case "roughnessPhi":
-							this.ssgiPass.denoisePass.fullscreenMaterial.uniforms[key].value = value
+							this.svgf.denoisePass.fullscreenMaterial.uniforms[key].value = value
 							break
 
 						// defines
@@ -195,14 +135,14 @@ export class SSGIEffect extends Effect {
 							break
 
 						case "correctionRadius":
-							this.temporalResolvePass.fullscreenMaterial.defines.correctionRadius = Math.round(value)
+							this.svgf.svgfTemporalResolvePass.fullscreenMaterial.defines.correctionRadius = Math.round(value)
 
-							this.temporalResolvePass.fullscreenMaterial.needsUpdate = needsUpdate
+							this.svgf.svgfTemporalResolvePass.fullscreenMaterial.needsUpdate = needsUpdate
 							break
 
 						case "blend":
 						case "correction":
-							this.temporalResolvePass.fullscreenMaterial.uniforms[key].value = value
+							this.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms[key].value = value
 							break
 
 						case "distance":
@@ -213,7 +153,7 @@ export class SSGIEffect extends Effect {
 						case "jitterRoughness":
 							ssgiPassFullscreenMaterialUniforms[key].value = value
 
-							this.ssgiPass.denoisePass.fullscreenMaterial.uniforms[key].value = value
+							this.svgf.denoisePass.fullscreenMaterial.uniforms[key].value = value
 							break
 
 						// must be a uniform
@@ -247,9 +187,8 @@ export class SSGIEffect extends Effect {
 		)
 			return
 
-		this.temporalResolvePass.setSize(width, height)
 		this.ssgiPass.setSize(width, height)
-		this.copyPass.setSize(width, height)
+		this.svgf.setSize(width, height)
 
 		this.lastSize = {
 			width,
@@ -262,8 +201,7 @@ export class SSGIEffect extends Effect {
 		super.dispose()
 
 		this.ssgiPass.dispose()
-		this.copyPass.dispose()
-		this.temporalResolvePass.dispose()
+		this.svgf.dispose()
 	}
 
 	keepEnvMapUpdated() {
@@ -285,13 +223,11 @@ export class SSGIEffect extends Effect {
 	update(renderer, inputBuffer) {
 		this.keepEnvMapUpdated()
 
-		this.temporalResolvePass.fullscreenMaterial.uniforms.directLightTexture.value = inputBuffer.texture
+		this.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.directLightTexture.value = inputBuffer.texture
 		this.ssgiPass.fullscreenMaterial.uniforms.directLightTexture.value = inputBuffer.texture
 
 		this.ssgiPass.render(renderer, inputBuffer)
 
-		this.temporalResolvePass.render(renderer)
-
-		if (isWebGL2) this.copyPass.render(renderer)
+		this.svgf.render(renderer)
 	}
 }

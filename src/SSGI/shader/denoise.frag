@@ -1,6 +1,5 @@
 ﻿varying vec2 vUv;
 
-uniform sampler2D diffuseTexture;
 uniform sampler2D inputTexture;
 uniform sampler2D depthTexture;
 uniform sampler2D normalTexture;

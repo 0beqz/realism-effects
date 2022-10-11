@@ -349,7 +349,9 @@ const initScene = () => {
 	new POSTPROCESSING.LUTCubeLoader().load("lut.cube").then(lutTexture => {
 		const lutEffect = new POSTPROCESSING.LUT3DEffect(lutTexture)
 
-		const motionBlurEffect = new MotionBlurEffect(ssgiEffect.temporalResolvePass.velocityPass.texture, { jitter: 5 })
+		const motionBlurEffect = new MotionBlurEffect(ssgiEffect.svgf.svgfTemporalResolvePass.velocityPass.texture, {
+			jitter: 5
+		})
 
 		composer.addPass(ssgiPass)
 		composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect, bloomEffect, vignetteEffect, lutEffect))
@@ -375,7 +377,7 @@ const initScene = () => {
 const loop = () => {
 	if (stats) stats.begin()
 
-	// if (ssgiEffect.temporalResolvePass.samples === 8) return
+	// if (ssgiEffect.svgf.svgfTemporalResolvePass.samples === 8) return
 
 	const dt = clock.getDelta()
 	if (mixer) {

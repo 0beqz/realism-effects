@@ -15,7 +15,6 @@ import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader.js"
 import { MRTMaterial } from "../material/MRTMaterial.js"
 import { SSGIMaterial } from "../material/SSGIMaterial.js"
 import { getVisibleChildren, isWebGL2Available, keepMaterialMapUpdated } from "../utils/Utils.js"
-import { DenoisePass } from "./DenoisePass.js"
 
 const isWebGL2 = isWebGL2Available()
 const backgroundColor = new Color(0)
@@ -47,12 +46,6 @@ export class SSGIPass extends Pass {
 		this.fullscreenMaterial.uniforms.cameraMatrixWorld.value = this._camera.matrixWorld
 		this.fullscreenMaterial.uniforms.projectionMatrix.value = this._camera.projectionMatrix
 		this.fullscreenMaterial.uniforms.inverseProjectionMatrix.value = this._camera.projectionMatrixInverse
-
-		this.denoisePass = new DenoisePass(this.renderTarget.texture)
-		if (isWebGL2) {
-			this.denoisePass.fullscreenMaterial.uniforms.momentsTexture.value =
-				this.ssgiEffect.temporalResolvePass.renderTarget.texture[1]
-		}
 	}
 
 	initialize(renderer, ...args) {
@@ -119,14 +112,14 @@ export class SSGIPass extends Pass {
 		this.fullscreenMaterial.uniforms.velocityTexture.value = this.velocityTexture
 
 		// set up uniforms
-		this.ssgiEffect.temporalResolvePass.fullscreenMaterial.uniforms.diffuseTexture.value = this.diffuseTexture
+		this.ssgiEffect.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.diffuseTexture.value = this.diffuseTexture
 
-		this.denoisePass.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
-		this.denoisePass.fullscreenMaterial.uniforms.normalTexture.value = this.normalTexture
+		this.ssgiEffect.svgf.setNormalTexture(this.normalTexture)
+		this.ssgiEffect.svgf.setDepthTexture(this.depthTexture)
 	}
 
 	get velocityTexture() {
-		if (this.renderVelocitySeparate) return this.ssgiEffect.temporalResolvePass.velocityPass.texture
+		if (this.renderVelocitySeparate) return this.ssgiEffect.svgf.svgfTemporalResolvePass.velocityPass.texture
 
 		return this.gBuffersRenderTarget.texture[3]
 	}
@@ -138,12 +131,6 @@ export class SSGIPass extends Pass {
 		this.gBuffersRenderTarget.setSize(width, height)
 		if (this.diffuseRenderTarget) this.diffuseRenderTarget.setSize(width, height)
 
-		this.denoisePass.setSize(width, height)
-		this.denoisePass.fullscreenMaterial.uniforms.invTexSize.value.set(
-			1 / this.gBuffersRenderTarget.width,
-			1 / this.gBuffersRenderTarget.height
-		)
-
 		// setting the size for the webgl1DepthPass currently causes a stack overflow due to recursive calling
 		if (!isWebGL2) {
 			this.webgl1DepthPass.renderTarget.setSize(
@@ -154,7 +141,7 @@ export class SSGIPass extends Pass {
 
 		this.fullscreenMaterial.uniforms.invTexSize.value.set(1 / width, 1 / height)
 
-		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.ssgiEffect.temporalResolvePass.texture
+		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.ssgiEffect.svgf.svgfTemporalResolvePass.texture
 
 		this.fullscreenMaterial.needsUpdate = true
 	}
@@ -265,7 +252,10 @@ export class SSGIPass extends Pass {
 			c.material = mrtMaterial
 
 			if (!this.renderVelocitySeparate)
-				this.ssgiEffect.temporalResolvePass.velocityPass.updateVelocityMaterialBeforeRender(c, originalMaterial)
+				this.ssgiEffect.svgf.svgfTemporalResolvePass.velocityPass.updateVelocityMaterialBeforeRender(
+					c,
+					originalMaterial
+				)
 		}
 	}
 
@@ -275,7 +265,7 @@ export class SSGIPass extends Pass {
 			const [originalMaterial] = this.cachedMaterials.get(c)
 
 			if (!this.renderVelocitySeparate)
-				this.ssgiEffect.temporalResolvePass.velocityPass.updateVelocityMaterialAfterRender(c)
+				this.ssgiEffect.svgf.svgfTemporalResolvePass.velocityPass.updateVelocityMaterialAfterRender(c)
 
 			c.material = originalMaterial
 		}
@@ -319,7 +309,7 @@ export class SSGIPass extends Pass {
 			this.unsetDiffuseMaterialInScene()
 		}
 
-		this.fullscreenMaterial.uniforms.samples.value = this.ssgiEffect.temporalResolvePass.samples
+		this.fullscreenMaterial.uniforms.samples.value = this.ssgiEffect.svgf.svgfTemporalResolvePass.samples
 		this.fullscreenMaterial.uniforms.time.value = Math.random()
 		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
 		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far
@@ -331,8 +321,8 @@ export class SSGIPass extends Pass {
 			const { width, height } = noiseTexture.source.data
 
 			this.fullscreenMaterial.uniforms.blueNoiseRepeat.value.set(
-				this.ssgiEffect.temporalResolvePass.renderTarget.width / width,
-				this.ssgiEffect.temporalResolvePass.renderTarget.height / height
+				this.renderTarget.width / width,
+				this.renderTarget.height / height
 			)
 		}
 
@@ -340,16 +330,5 @@ export class SSGIPass extends Pass {
 
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)
-
-		if (this.denoisePass.iterations > 0) {
-			this.denoisePass.render(renderer)
-			this.ssgiEffect.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = this.denoisePass.texture
-		} else {
-			this.ssgiEffect.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = this.renderTarget.texture
-		}
-
-		if (isWebGL2) {
-			this.ssgiEffect.temporalResolvePass.fullscreenMaterial.uniforms.rawInputTexture.value = this.renderTarget.texture
-		}
 	}
 }
