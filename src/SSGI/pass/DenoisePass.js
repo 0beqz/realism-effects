@@ -31,8 +31,6 @@ export class DenoisePass extends Pass {
 				depthPhi: new Uniform(1),
 				normalPhi: new Uniform(1),
 				roughnessPhi: new Uniform(1),
-				jitter: new Uniform(0),
-				jitterRoughness: new Uniform(0),
 				stepSize: new Uniform(1)
 			}
 		})
@@ -53,6 +51,11 @@ export class DenoisePass extends Pass {
 	setSize(width, height) {
 		this.renderTargetA.setSize(width, height)
 		this.renderTargetB.setSize(width, height)
+	}
+
+	dispose() {
+		this.renderTargetA.dispose()
+		this.renderTargetB.dispose()
 	}
 
 	render(renderer) {

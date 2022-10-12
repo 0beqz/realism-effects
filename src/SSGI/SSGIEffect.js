@@ -28,14 +28,13 @@ export class SSGIEffect extends Effect {
 		this._scene = scene
 		this._camera = camera
 
-		this.svgf = new SVGF(scene, camera, { antialias: true })
+		this.svgf = new SVGF(scene, camera, { antialias: true, denoiseFirst: true })
 
 		// ssgi pass
 		this.ssgiPass = new SSGIPass(this)
 
 		// define the input and the output
 		this.svgf.setInputTexture(this.ssgiPass.renderTarget.texture)
-		this.uniforms.get("inputTexture").value = this.svgf.texture
 
 		// modify the temporal resolve pass of SVGF denoiser for the SSGI effect
 		this.svgf.svgfTemporalResolvePass.fullscreenMaterial.fragmentShader =
@@ -53,6 +52,26 @@ export class SSGIEffect extends Effect {
 			...{
 				diffuseTexture: new Uniform(null),
 				directLightTexture: new Uniform(null)
+			}
+		}
+
+		// patch the denoise pass
+
+		this.svgf.denoisePass.fullscreenMaterial.fragmentShader =
+			/* glsl */ `
+		uniform float jitter;
+		uniform float jitterRoughness;
+		` +
+			this.svgf.denoisePass.fullscreenMaterial.fragmentShader.replace(
+				"float kernel = denoiseKernel;",
+				"float kernel = ceil(denoiseKernel * roughnessFactor + FLOAT_EPSILON);"
+			)
+
+		this.svgf.denoisePass.fullscreenMaterial.uniforms = {
+			...this.svgf.denoisePass.fullscreenMaterial.uniforms,
+			...{
+				jitter: new Uniform(0),
+				jitterRoughness: new Uniform(0)
 			}
 		}
 
@@ -229,5 +248,7 @@ export class SSGIEffect extends Effect {
 		this.ssgiPass.render(renderer, inputBuffer)
 
 		this.svgf.render(renderer)
+
+		this.uniforms.get("inputTexture").value = this.svgf.texture
 	}
 }

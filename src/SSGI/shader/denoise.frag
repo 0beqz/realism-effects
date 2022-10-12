@@ -11,8 +11,6 @@ uniform float depthPhi;
 uniform float normalPhi;
 uniform float roughnessPhi;
 uniform float denoiseKernel;
-uniform float jitter;
-uniform float jitterRoughness;
 uniform float stepSize;
 
 #include <packing>
@@ -42,7 +40,7 @@ void main() {
     float roughnessFactor = min(1., (jitterRoughness * roughness + jitter) * 4.);
     roughnessFactor = mix(1., roughnessFactor, roughnessPhi);
 
-    float kernel = ceil(denoiseKernel * roughnessFactor + FLOAT_EPSILON);
+    float kernel = denoiseKernel;
 
     float totalWeight = 1.;
     vec3 color = inputTexel.rgb;

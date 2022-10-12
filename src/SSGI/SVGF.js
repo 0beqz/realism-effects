@@ -7,17 +7,24 @@ import { isWebGL2Available } from "./utils/Utils"
 const isWebGL2 = isWebGL2Available()
 
 const defaultOptions = {
-	...defaultTemporalResolvePassOptions
+	...defaultTemporalResolvePassOptions,
+	denoiseFirst: false
 }
 
 export class SVGF {
 	constructor(scene, camera, options = defaultOptions) {
 		options = { ...defaultOptions, ...options }
+		this.denoiseFirst = options.denoiseFirst
 
 		this.svgfTemporalResolvePass = new SVGFTemporalResolvePass(scene, camera)
 
 		this.denoisePass = new DenoisePass()
-		this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = this.denoisePass.texture
+
+		if (this.denoiseFirst) {
+			this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = this.denoisePass.texture
+		} else {
+			this.denoisePass.fullscreenMaterial.uniforms.inputTexture.value = this.svgfTemporalResolvePass.texture
+		}
 
 		if (isWebGL2) {
 			this.copyPass = new CopyPass()
@@ -30,13 +37,20 @@ export class SVGF {
 
 	// the denoised texture
 	get texture() {
-		return this.svgfTemporalResolvePass.texture
+		return this.denoiseFirst || this.denoisePass.iterations === 0
+			? this.svgfTemporalResolvePass.texture
+			: this.denoisePass.texture
 	}
 
 	setInputTexture(texture) {
 		const { uniforms } = this.svgfTemporalResolvePass.fullscreenMaterial
 		if ("rawInputTexture" in uniforms) uniforms.rawInputTexture.value = texture
-		this.denoisePass.fullscreenMaterial.uniforms.inputTexture.value = texture
+
+		if (this.denoiseFirst) {
+			this.denoisePass.fullscreenMaterial.uniforms.inputTexture.value = texture
+		} else {
+			uniforms.inputTexture.value = texture
+		}
 	}
 
 	setDepthTexture(texture) {
@@ -68,13 +82,16 @@ export class SVGF {
 			}
 		})
 
-		this.denoisePass.render(renderer)
-
-		if (this.denoisePass.iterations > 0) {
-		} else {
-			// todo
-			// this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value =
-			// 	this.renderTarget.texture
+		if (this.denoiseFirst) {
+			if (this.denoisePass.iterations > 0) {
+				this.denoisePass.render(renderer)
+				this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = this.denoisePass.texture
+			} else {
+				this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value =
+					this.denoisePass.fullscreenMaterial.uniforms.inputTexture.value
+			}
+		} else if (this.denoisePass.iterations > 0) {
+			this.denoisePass.render(renderer)
 		}
 
 		this.svgfTemporalResolvePass.render(renderer)
