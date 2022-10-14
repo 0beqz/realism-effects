@@ -283,8 +283,6 @@ export class SSGIPass extends Pass {
 
 	setDiffuseMaterialInScene() {
 		for (const c of this.visibleMeshes) {
-			c.visible = c.material.visible && c.material.colorWrite
-
 			c.material = this.cachedMaterials.get(c)[2]
 		}
 	}
@@ -293,8 +291,6 @@ export class SSGIPass extends Pass {
 		for (const c of this.visibleMeshes) {
 			// set material back to the original one
 			const [originalMaterial] = this.cachedMaterials.get(c)
-
-			c.visible = true
 
 			c.material = originalMaterial
 		}

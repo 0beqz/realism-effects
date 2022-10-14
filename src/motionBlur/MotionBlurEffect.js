@@ -1,6 +1,7 @@
 ﻿import { Effect } from "postprocessing"
 import { LinearEncoding, LinearFilter, RepeatWrapping, Uniform, Vector2 } from "three"
 import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader"
+import { generateHalton2Points } from "../utils/Halton"
 import motionBlur from "./motionBlur.glsl"
 
 // https://www.nvidia.com/docs/io/8230/gdc2003_openglshadertricks.pdf
@@ -9,7 +10,11 @@ import motionBlur from "./motionBlur.glsl"
 
 const defaultOptions = { intensity: 1, jitter: 5, samples: 16 }
 
+const halton2Points = generateHalton2Points(512)
+
 export class MotionBlurEffect extends Effect {
+	haltonIndex = 0
+
 	constructor(velocityTexture, options = defaultOptions) {
 		options = { ...defaultOptions, ...options }
 
@@ -80,13 +85,15 @@ export class MotionBlurEffect extends Effect {
 		this.uniforms.get("inputTexture").value = inputBuffer.texture
 		this.uniforms.get("deltaTime").value = Math.max(1 / 1000, deltaTime)
 
-		this.uniforms.get("seed").value = Math.random()
+		this.haltonIndex = (this.haltonIndex + 1) % halton2Points.length
+
+		this.uniforms.get("seed").value = halton2Points[this.haltonIndex]
 
 		const noiseTexture = this.uniforms.get("blueNoiseTexture").value
 		if (noiseTexture) {
 			const { width, height } = noiseTexture.source.data
 
-			this.uniforms.get("blueNoiseRepeat").value.set((4 * inputBuffer.width) / width, (4 * inputBuffer.height) / height)
+			this.uniforms.get("blueNoiseRepeat").value.set(inputBuffer.width / width, inputBuffer.height / height)
 		}
 	}
 }
