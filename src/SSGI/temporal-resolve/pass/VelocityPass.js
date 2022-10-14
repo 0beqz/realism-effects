@@ -7,7 +7,6 @@ import {
 	Quaternion,
 	RGBAFormat,
 	Vector3,
-	VideoTexture,
 	WebGLMultipleRenderTargets,
 	WebGLRenderTarget
 } from "three"
@@ -71,16 +70,6 @@ export class VelocityPass extends Pass {
 				this.cachedMaterials.set(c, [originalMaterial, velocityMaterial])
 			}
 
-			if (c.userData.needsUpdatedReflections || originalMaterial.map instanceof VideoTexture) {
-				if (!("FULL_MOVEMENT" in velocityMaterial.defines)) velocityMaterial.needsUpdate = true
-				velocityMaterial.defines.FULL_MOVEMENT = ""
-			} else {
-				if ("FULL_MOVEMENT" in velocityMaterial.defines) {
-					delete velocityMaterial.defines.FULL_MOVEMENT
-					velocityMaterial.needsUpdate = true
-				}
-			}
-
 			c.material = velocityMaterial
 
 			if (this.renderDepth && isWebGL2) velocityMaterial.defines.renderDepth = ""
@@ -129,6 +118,8 @@ export class VelocityPass extends Pass {
 
 	unsetVelocityMaterialInScene() {
 		for (const c of this.visibleMeshes) {
+			c.visible = true
+
 			this.updateVelocityMaterialAfterRender(c)
 
 			c.material = this.cachedMaterials.get(c)[0]

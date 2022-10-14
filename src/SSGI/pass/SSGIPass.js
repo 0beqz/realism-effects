@@ -12,9 +12,12 @@ import {
 	WebGLRenderTarget
 } from "three"
 import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader.js"
+import { generateHalton2Points } from "../../utils/Halton.js"
 import { MRTMaterial } from "../material/MRTMaterial.js"
 import { SSGIMaterial } from "../material/SSGIMaterial.js"
 import { getVisibleChildren, isWebGL2Available, keepMaterialMapUpdated } from "../utils/Utils.js"
+
+const halton2Points = generateHalton2Points(512)
 
 const isWebGL2 = isWebGL2Available()
 const backgroundColor = new Color(0)
@@ -22,6 +25,7 @@ const backgroundColor = new Color(0)
 export class SSGIPass extends Pass {
 	cachedMaterials = new WeakMap()
 	visibleMeshes = []
+	haltonIndex = 0
 
 	constructor(ssgiEffect) {
 		super("SSGIPass")
@@ -44,6 +48,7 @@ export class SSGIPass extends Pass {
 
 		// set up basic uniforms that we don't have to update
 		this.fullscreenMaterial.uniforms.cameraMatrixWorld.value = this._camera.matrixWorld
+		this.fullscreenMaterial.uniforms.cameraMatrixWorldInverse.value = this._camera.matrixWorldInverse
 		this.fullscreenMaterial.uniforms.projectionMatrix.value = this._camera.projectionMatrix
 		this.fullscreenMaterial.uniforms.inverseProjectionMatrix.value = this._camera.projectionMatrixInverse
 	}
@@ -55,8 +60,7 @@ export class SSGIPass extends Pass {
 		ktx2Loader.detectSupport(renderer)
 		ktx2Loader.load("texture/blue_noise_rg.ktx2", blueNoiseTexture => {
 			// generated using "toktx --target_type RG --t2 blue_noise_rg blue_noise_rg.png"
-			blueNoiseTexture.minFilter = NearestFilter
-			blueNoiseTexture.magFilter = NearestFilter
+			blueNoiseTexture.minFilter = LinearFilter
 			blueNoiseTexture.wrapS = RepeatWrapping
 			blueNoiseTexture.wrapT = RepeatWrapping
 			blueNoiseTexture.encoding = LinearEncoding
@@ -116,6 +120,9 @@ export class SSGIPass extends Pass {
 
 		this.ssgiEffect.svgf.setNormalTexture(this.normalTexture)
 		this.ssgiEffect.svgf.setDepthTexture(this.depthTexture)
+
+		this.ssgiEffect.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.velocityTexture.value =
+			this.velocityTexture
 	}
 
 	get velocityTexture() {
@@ -242,7 +249,8 @@ export class SSGIPass extends Pass {
 				mrtMaterial.uniforms.color.value = originalMaterial.color
 			}
 
-			diffuseMaterial.visible = originalMaterial.visible
+			const visible = originalMaterial.visible && !c.constructor.name.includes("GroundProjectedEnv")
+			c.visible = visible
 
 			mrtMaterial.uniforms.roughness.value =
 				this.ssgiEffect.selection.size === 0 || this.ssgiEffect.selection.has(c)
@@ -261,6 +269,8 @@ export class SSGIPass extends Pass {
 
 	unsetMRTMaterialInScene() {
 		for (const c of this.visibleMeshes) {
+			c.visible = true
+
 			// set material back to the original one
 			const [originalMaterial] = this.cachedMaterials.get(c)
 
@@ -310,7 +320,11 @@ export class SSGIPass extends Pass {
 		}
 
 		this.fullscreenMaterial.uniforms.samples.value = this.ssgiEffect.svgf.svgfTemporalResolvePass.samples
-		this.fullscreenMaterial.uniforms.time.value = Math.random()
+
+		this.haltonIndex = (this.haltonIndex + 1) % halton2Points.length
+
+		this.fullscreenMaterial.uniforms.seed.value = halton2Points[this.haltonIndex]
+
 		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
 		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far
 
@@ -326,9 +340,9 @@ export class SSGIPass extends Pass {
 			)
 		}
 
-		this._scene.background = background
-
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)
+
+		this._scene.background = background
 	}
 }

@@ -1,11 +1,12 @@
 ﻿import { Effect, Selection } from "postprocessing"
-import { EquirectangularReflectionMapping, Uniform } from "three"
+import { EquirectangularReflectionMapping, LinearMipMapLinearFilter, Uniform } from "three"
 import { SSGIPass } from "./pass/SSGIPass.js"
 import applyDiffuse from "./shader/applyDiffuse.frag"
 import compose from "./shader/compose.frag"
 import utils from "./shader/utils.frag"
 import { defaultSSGIOptions } from "./SSGIOptions"
 import { SVGF } from "./SVGF.js"
+import { getMaxMipLevel } from "./utils/Utils.js"
 
 const finalFragmentShader = compose.replace("#include <utils>", utils)
 
@@ -28,7 +29,7 @@ export class SSGIEffect extends Effect {
 		this._scene = scene
 		this._camera = camera
 
-		this.svgf = new SVGF(scene, camera, { antialias: true, denoiseFirst: true })
+		this.svgf = new SVGF(scene, camera, { antialias: options.antialias, renderVelocity: options.antialias })
 
 		// ssgi pass
 		this.ssgiPass = new SSGIPass(this)
@@ -209,6 +210,8 @@ export class SSGIEffect extends Effect {
 		this.ssgiPass.setSize(width, height)
 		this.svgf.setSize(width, height)
 
+		if (!this.antialias) this.svgf.svgfTemporalResolvePass.customDepthRenderTarget = this.ssgiPass.gBuffersRenderTarget
+
 		this.lastSize = {
 			width,
 			height,
@@ -229,6 +232,17 @@ export class SSGIEffect extends Effect {
 		if (ssgiMaterial.uniforms.envMap.value !== this._scene.environment) {
 			if (this._scene.environment?.mapping === EquirectangularReflectionMapping) {
 				ssgiMaterial.uniforms.envMap.value = this._scene.environment
+
+				if (!this._scene.environment.generateMipmaps) {
+					this._scene.environment.generateMipmaps = true
+					this._scene.environment.minFilter = LinearMipMapLinearFilter
+					this._scene.environment.magFilter = LinearMipMapLinearFilter
+					this._scene.environment.needsUpdate = true
+				}
+
+				const maxEnvMapMipLevel = getMaxMipLevel(this._scene.environment)
+				ssgiMaterial.uniforms.maxEnvMapMipLevel.value = maxEnvMapMipLevel
+
 				ssgiMaterial.defines.USE_ENVMAP = ""
 			} else {
 				ssgiMaterial.uniforms.envMap.value = null

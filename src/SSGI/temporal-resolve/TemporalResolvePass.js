@@ -47,11 +47,13 @@ export class TemporalResolvePass extends Pass {
 		this.renderTarget =
 			options.renderTarget ||
 			new WebGLRenderTarget(1, 1, {
-				minFilter: NearestFilter,
-				magFilter: NearestFilter,
+				minFilter: LinearFilter,
+				magFilter: LinearFilter,
 				type: HalfFloatType,
 				depthBuffer: false
 			})
+
+		console.log(options.renderVelocity)
 
 		this.renderVelocity = options.renderVelocity
 		this.velocityPass = options.velocityPass || new VelocityPass(scene, camera, { renderDepth: true })
@@ -144,8 +146,13 @@ export class TemporalResolvePass extends Pass {
 		// save the render target's texture for use in next frame
 		renderer.copyFramebufferToTexture(zeroVec2, this.accumulatedTexture)
 
-		renderer.setRenderTarget(this.velocityPass.depthRenderTarget)
+		const depthRenderTarget = this.customDepthRenderTarget || this.velocityPass.depthRenderTarget
+
+		renderer.setRenderTarget(depthRenderTarget)
 		renderer.copyFramebufferToTexture(zeroVec2, this.lastDepthTexture)
+		this.fullscreenMaterial.uniforms.depthTexture.value = Array.isArray(depthRenderTarget.texture)
+			? depthRenderTarget.texture[0]
+			: depthRenderTarget.texture
 		this.fullscreenMaterial.uniforms.lastDepthTexture.value = this.lastDepthTexture
 	}
 

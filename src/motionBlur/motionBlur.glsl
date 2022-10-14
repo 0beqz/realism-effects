@@ -5,7 +5,7 @@ uniform sampler2D blueNoiseTexture;
 uniform vec2 blueNoiseRepeat;
 uniform float intensity;
 uniform float jitter;
-uniform float time;
+uniform float seed;
 uniform float deltaTime;
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
@@ -22,7 +22,7 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 
     velocity.xy *= intensity / (60. * deltaTime);
 
-    vec2 blueNoise = textureLod(blueNoiseTexture, (vUv + time) * blueNoiseRepeat, 0.).rg;
+    vec2 blueNoise = textureLod(blueNoiseTexture, (vUv + seed) * blueNoiseRepeat, 0.).rg;
 
     vec3 motionBlurredColor;
     vec3 neighborColor;

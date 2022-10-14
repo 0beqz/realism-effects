@@ -40,14 +40,14 @@ window.camera = camera
 
 const canvas = document.querySelector(".webgl")
 
-const rendererCanvas = canvas
+let rendererCanvas = canvas
 
 // use an offscreen canvas if available
-// if (window.OffscreenCanvas && !navigator.userAgent.toLowerCase().includes("firefox")) {
-// 	rendererCanvas = canvas.transferControlToOffscreen()
-// 	rendererCanvas.style = canvas.style
-// 	rendererCanvas.toDataURL = canvas.toDataURL.bind(canvas)
-// }
+if (window.OffscreenCanvas && !navigator.userAgent.toLowerCase().includes("firefox")) {
+	rendererCanvas = canvas.transferControlToOffscreen()
+	rendererCanvas.style = canvas.style
+	rendererCanvas.toDataURL = canvas.toDataURL.bind(canvas)
+}
 
 // Renderer
 const renderer = new THREE.WebGLRenderer({
@@ -123,8 +123,8 @@ const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
 composer.addPass(renderPass)
 
 const lightParams = {
-	yaw: 74,
-	pitch: 61,
+	yaw: 55,
+	pitch: 49,
 	intensity: 2.5
 }
 
@@ -177,6 +177,8 @@ new RGBELoader().load("quarry_02_4k.hdr", envMap => {
 	envMesh.scale.setScalar(100)
 	envMesh.updateMatrixWorld()
 	scene.add(envMesh)
+
+	console.log(envMesh)
 })
 
 const gltflLoader = new GLTFLoader()
@@ -226,35 +228,6 @@ const refreshLighting = () => {
 const clock = new THREE.Clock()
 
 const initScene = () => {
-	// const options = {
-	// 	intensity: 0.999999999999999,
-	// 	power: 1.005,
-	// 	distance: 2.6600000000000037,
-	// 	fade: 4.874572967494828e-16,
-	// 	roughnessFade: 0,
-	// 	thickness: 1.089999999999997,
-	// 	ior: 2.33,
-	// 	mip: 1.734723475976807e-18,
-	// 	maxRoughness: 1,
-	// 	blend: 0.925,
-	// 	correction: 1,
-	// 	correctionRadius: 1,
-	// 	denoiseKernel: 0,
-	// 	jitter: 0.32000000000000006,
-	// 	jitterRoughness: 1,
-	// 	steps: 10,
-	// 	refineSteps: 2,
-	// 	spp: 2,
-	// 	missedRays: false,
-	// 	useMap: true,
-	// 	useNormalMap: true,
-	// 	useRoughnessMap: true,
-	// 	resolutionScale: 1,
-	// 	qualityScale: 1,
-	// 	antialias: true,
-	// 	reflectionsOnly: false
-	// }
-
 	const options = {
 		intensity: 0.999999999999999,
 		power: 1,
@@ -525,6 +498,7 @@ dragDrop("body", files => {
 			}
 		})
 	})
+
 	reader.readAsArrayBuffer(file)
 })
 

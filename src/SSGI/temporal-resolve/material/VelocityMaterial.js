@@ -88,11 +88,6 @@ varying vec2 vHighPrecisionZW;
 `
 
 export const velocity_fragment_main = /* glsl */ `
-#ifdef FULL_MOVEMENT
-gl_FragColor = vec4( 1.);
-return;
-#else
-
 vec2 pos0 = (prevPosition.xy / prevPosition.w) * 0.5 + 0.5;
 vec2 pos1 = (newPosition.xy / newPosition.w) * 0.5 + 0.5;
 
@@ -104,7 +99,6 @@ float fragCoordZ = 0.5 * vHighPrecisionZW[0] / vHighPrecisionZW[1] + 0.5;
 #endif
 
 gl_FragColor = pack2HalfToRGBA(vel);
-#endif
 `
 
 export const velocity_uniforms = {

@@ -72,3 +72,9 @@ export const keepMaterialMapUpdated = (mrtMaterial, originalMaterial, prop, defi
 		mrtMaterial.needsUpdate = true
 	}
 }
+
+export const getMaxMipLevel = texture => {
+	const { width, height } = texture.image
+
+	return Math.floor(Math.log2(Math.max(width, height))) + 1
+}

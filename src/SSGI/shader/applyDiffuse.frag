@@ -2,6 +2,8 @@
 
 vec4 directLightTexel = textureLod(directLightTexture, vUv, 0.0);
 
+bool isBackground = dot(depthTexel.rgb, depthTexel.rgb) == 0.0;
+
 // if this texel belongs to the background
 if (isBackground) {
     inputTexel = directLightTexel * TRANSFORM_FACTOR;

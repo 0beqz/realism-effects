@@ -1,5 +1,5 @@
 ﻿import { Effect } from "postprocessing"
-import { LinearEncoding, NearestFilter, RepeatWrapping, Uniform, Vector2 } from "three"
+import { LinearEncoding, LinearFilter, RepeatWrapping, Uniform, Vector2 } from "three"
 import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader"
 import motionBlur from "./motionBlur.glsl"
 
@@ -22,7 +22,7 @@ export class MotionBlurEffect extends Effect {
 				["blueNoiseRepeat", new Uniform(new Vector2())],
 				["intensity", new Uniform(1)],
 				["jitter", new Uniform(1)],
-				["time", new Uniform(0)],
+				["seed", new Uniform(0)],
 				["deltaTime", new Uniform(0)]
 			]),
 			defines: new Map([
@@ -65,8 +65,7 @@ export class MotionBlurEffect extends Effect {
 		ktx2Loader.detectSupport(renderer)
 		ktx2Loader.load("texture/blue_noise_rg.ktx2", blueNoiseTexture => {
 			// generated using "toktx --target_type RG --t2 blue_noise_rg blue_noise_rg.png"
-			blueNoiseTexture.minFilter = NearestFilter
-			blueNoiseTexture.magFilter = NearestFilter
+			blueNoiseTexture.minFilter = LinearFilter
 			blueNoiseTexture.wrapS = RepeatWrapping
 			blueNoiseTexture.wrapT = RepeatWrapping
 			blueNoiseTexture.encoding = LinearEncoding
@@ -81,7 +80,7 @@ export class MotionBlurEffect extends Effect {
 		this.uniforms.get("inputTexture").value = inputBuffer.texture
 		this.uniforms.get("deltaTime").value = Math.max(1 / 1000, deltaTime)
 
-		this.uniforms.get("time").value = Math.random()
+		this.uniforms.get("seed").value = Math.random()
 
 		const noiseTexture = this.uniforms.get("blueNoiseTexture").value
 		if (noiseTexture) {

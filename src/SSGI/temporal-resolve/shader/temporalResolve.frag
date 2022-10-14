@@ -44,8 +44,6 @@ void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.);
     float depth = unpackRGBAToDepth(depthTexel);
 
-    bool isBackground = dot(depthTexel.rgb, depthTexel.rgb) == 0.0;
-
     vec3 inputColor = transformColor(inputTexel.rgb);
     float alpha = inputTexel.a;
 
@@ -96,14 +94,18 @@ void main() {
     // velocity
     vec4 velocity = textureLod(velocityTexture, closestDepthUv, 0.0);
     velocity.xy = unpackRGBATo2Half(velocity) * 2. - 1.;
+
+    if (all(lessThan(abs(velocity.xy), invTexSize * 0.25))) {
+        velocity.xy = vec2(0.);
+    }
+
     vec2 reprojectedUv = vUv - velocity.xy;
 
     float depthDiff = 1.0;
-    float lastDepth;
 
     // the reprojected UV coordinates are inside the view
     if (all(greaterThanEqual(reprojectedUv, vec2(0.))) && all(lessThanEqual(reprojectedUv, vec2(1.)))) {
-        lastDepth = unpackRGBAToDepth(textureLod(lastDepthTexture, reprojectedUv, 0.));
+        float lastDepth = unpackRGBAToDepth(textureLod(lastDepthTexture, reprojectedUv, 0.));
 
         depthDiff = abs(depth - lastDepth);
 

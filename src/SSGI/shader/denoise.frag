@@ -18,12 +18,7 @@ uniform float stepSize;
 #define ALPHA_STEP    0.001
 #define FLOAT_EPSILON 0.00001
 
-// source: https://github.com/CesiumGS/cesium/blob/main/Source/Shaders/Builtin/Functions/luminance.glsl
-float czm_luminance(vec3 rgb) {
-    // Algorithm from Chapter 10 of Graphics Shaders.
-    const vec3 W = vec3(0.2125, 0.7154, 0.0721);
-    return dot(rgb, W);
-}
+const vec3 W = vec3(0.2125, 0.7154, 0.0721);
 
 void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.);
@@ -36,65 +31,60 @@ void main() {
     vec4 normalTexel = textureLod(normalTexture, vUv, 0.);
     vec3 normal = unpackRGBToNormal(normalTexel.rgb);
 
+    float totalWeight = 1.;
+    vec3 color = inputTexel.rgb;
+
+    float depth = unpackRGBAToDepth(depthTexel);
+    float luma = dot(W, inputTexel.rgb);
+    vec2 pixelStepOffset = invTexSize * stepSize;
+
     float roughness = normalTexel.a;
     float roughnessFactor = min(1., (jitterRoughness * roughness + jitter) * 4.);
     roughnessFactor = mix(1., roughnessFactor, roughnessPhi);
 
     float kernel = denoiseKernel;
 
-    float totalWeight = 1.;
-    vec3 color = inputTexel.rgb;
-
-    float depth = unpackRGBAToDepth(depthTexel);
-    float luma = czm_luminance(inputTexel.rgb);
-
     for (float i = -kernel; i <= kernel; i++) {
         if (i != 0.) {
             vec2 neighborVec = horizontal ? vec2(i, 0.) : vec2(0., i);
-            vec2 neighborUv = vUv + neighborVec * invTexSize * stepSize;
+            vec2 neighborUv = vUv + neighborVec * pixelStepOffset;
 
-            if (all(greaterThanEqual(neighborUv, vec2(0.))) && all(lessThanEqual(neighborUv, vec2(1.)))) {
-                vec4 neighborDepthTexel = textureLod(depthTexture, neighborUv, 0.);
+            vec4 neighborDepthTexel = textureLod(depthTexture, neighborUv, 0.);
 
-                if (dot(neighborDepthTexel.rgb, neighborDepthTexel.rgb) != 0.) {
-                    float neighborDepth = unpackRGBAToDepth(neighborDepthTexel);
-                    vec3 neighborColor = textureLod(inputTexture, neighborUv, 0.).rgb;
-                    float neighborLuma = czm_luminance(neighborColor);
+            float neighborDepth = unpackRGBAToDepth(neighborDepthTexel);
+            vec3 neighborColor = textureLod(inputTexture, neighborUv, 0.).rgb;
+            float neighborLuma = dot(W, neighborColor);
 
-                    float depthDiff = abs(depth - neighborDepth) * 50000.;
-                    float lumaDiff = abs(luma - neighborLuma);
+            float depthDiff = abs(depth - neighborDepth) * 50000.;
+            float lumaDiff = abs(luma - neighborLuma);
 
-                    vec4 neighborNormalTexel = textureLod(normalTexture, neighborUv, 0.);
-                    vec3 neighborNormal = unpackRGBToNormal(neighborNormalTexel.rgb);
+            vec4 neighborNormalTexel = textureLod(normalTexture, neighborUv, 0.);
+            vec3 neighborNormal = unpackRGBToNormal(neighborNormalTexel.rgb);
 
 #ifdef USE_MOMENT
-                    vec2 moment = textureLod(momentsTexture, neighborUv, 0.).rg;
-                    float variance = max(0.0, moment.g - moment.r * moment.r);
+            vec2 moment = textureLod(momentsTexture, neighborUv, 0.).rg;
+            float variance = max(0.0, moment.g - moment.r * moment.r);
 
-                    float colorPhi = lumaPhi * sqrt(max(0.0, FLOAT_EPSILON + variance));
+            float colorPhi = lumaPhi * sqrt(FLOAT_EPSILON + variance);
 #else
-                    float colorPhi = lumaPhi;
+            float colorPhi = lumaPhi;
 #endif
 
-                    float normalSimilarity = pow(max(0., dot(neighborNormal, normal)), normalPhi);
-                    float lumaSimilarity = clamp(1.0 - lumaDiff / colorPhi, 0., 1.);
-                    float depthSimilarity = exp(-depthDiff * depthPhi);
+            float normalSimilarity = pow(max(0., dot(neighborNormal, normal)), normalPhi);
+            float lumaSimilarity = max(1.0 - lumaDiff / colorPhi, 0.0);
+            float depthSimilarity = exp(-depthDiff * depthPhi);
 
-                    float weight = normalSimilarity * lumaSimilarity * depthSimilarity;
+            float weight = normalSimilarity * lumaSimilarity * depthSimilarity;
 
-                    if (weight > 0.) {
-                        color += neighborColor * weight;
+            if (weight > 0.) {
+                color += neighborColor * weight;
 
-                        totalWeight += weight;
-                    }
-                }
+                totalWeight += weight;
             }
         }
     }
 
     color /= totalWeight;
-
-    if (min(color.r, min(color.g, color.b)) < 0.0) color = inputTexel.rgb;
 
     if (roughnessFactor < 1.) color = mix(inputTexel.rgb, color, roughnessFactor);
 

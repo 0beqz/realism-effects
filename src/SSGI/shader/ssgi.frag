@@ -11,8 +11,10 @@ uniform sampler2D envMap;
 uniform mat4 projectionMatrix;
 uniform mat4 inverseProjectionMatrix;
 uniform mat4 cameraMatrixWorld;
+uniform mat4 cameraMatrixWorldInverse;
 uniform float cameraNear;
 uniform float cameraFar;
+uniform float maxEnvMapMipLevel;
 
 uniform float rayDistance;
 uniform float roughnessFade;
@@ -25,7 +27,7 @@ uniform vec2 invTexSize;
 uniform vec2 blueNoiseRepeat;
 
 uniform float samples;
-uniform float time;
+uniform float seed;
 
 uniform float jitter;
 uniform float jitterRoughness;
@@ -52,15 +54,13 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
 void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.0);
 
-    float depthSize = dot(depthTexel.rgb, depthTexel.rgb);
+    float unpackedDepth = unpackRGBAToDepth(depthTexel);
 
     // filter out background
-    if (depthSize == 0.) {
+    if (dot(depthTexel.rgb, depthTexel.rgb) == 0.) {
         gl_FragColor = EARLY_OUT_COLOR;
         return;
     }
-
-    float unpackedDepth = unpackRGBAToDepth(depthTexel);
 
     vec4 normalTexel = textureLod(normalTexture, vUv, 0.0);
     float roughness = normalTexel.a;
@@ -151,27 +151,8 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     vec3 jitteredNormal = viewNormal;
 
     vec2 startOffset = vec2(sampleCount / float(spp));
-    vec2 blueNoiseUv = (vUv + startOffset + time) * blueNoiseRepeat;
+    vec2 blueNoiseUv = (vUv + startOffset + seed) * blueNoiseRepeat;
     vec2 random = textureLod(blueNoiseTexture, blueNoiseUv, 0.).rg;
-
-    float thetaMax = spread * M_PI / 2.;
-    float cosThetaMax = cos(thetaMax);
-    if (spread != 0.) {
-        float cosTheta = (1. - random.x) + random.x * cosThetaMax;
-        float sinTheta = sqrt(1. - cosTheta * cosTheta);
-        float phi = random.y * 2. * M_PI;
-        float x = cos(phi) * sinTheta;
-        float y = sin(phi) * sinTheta;
-        float z = cosTheta;
-        vec3 hemisphereVector = vec3(x, y, z);
-
-        mat3 normalBasis = getBasisFromNormal(viewNormal);
-
-        jitteredNormal = normalize(normalBasis * hemisphereVector);
-    }
-
-    // view-space reflected ray
-    // vec3 reflected = normalize(reflect(viewDir, jitteredNormal));
 
     vec3 reflected = SampleBRDF(viewDir, viewNormal, sqrt(spread), random);
 
@@ -203,11 +184,13 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     // invalid ray, use environment lighting as fallback
     if (isInvalidRay || isAllowedMissedRay) {
         // world-space reflected ray
-        vec4 reflectedWS = vec4(reflected, 1.) * inverse(cameraMatrixWorld);
+        vec4 reflectedWS = vec4(reflected, 1.) * cameraMatrixWorldInverse;
         reflectedWS.xyz = normalize(reflectedWS.xyz);
 
+        float mip = 8. / 13. * maxEnvMapMipLevel * spread;
+
         vec3 sampleDir = reflectedWS.xyz;
-        envMapSample = sampleEquirectEnvMapColor(sampleDir, envMap, 0.);
+        envMapSample = sampleEquirectEnvMapColor(sampleDir, envMap, mip);
 
         // we won't deal with calculating direct sun light from the env map as it takes too long to compute and is too noisy
         if (dot(envMapSample, envMapSample) > 3.) envMapSample = vec3(1.);
@@ -270,8 +253,6 @@ vec2 RayMarch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference)
             return BinarySearch(dir, hitPos, rayHitDepthDifference);
 #endif
         }
-
-        if (uv.x < 0. || uv.x > 1. || uv.y < 0. || uv.y > 1.) return INVALID_RAY_COORDS;
     }
 
 #ifndef missedRays
