@@ -315,15 +315,14 @@ export class SSGIPass extends Pass {
 			this.unsetDiffuseMaterialInScene()
 		}
 
-		this.fullscreenMaterial.uniforms.samples.value = this.ssgiEffect.svgf.svgfTemporalResolvePass.samples
+		// update uniforms
 
+		this.fullscreenMaterial.uniforms.samples.value = this.ssgiEffect.svgf.svgfTemporalResolvePass.samples
 		this.haltonIndex = (this.haltonIndex + 1) % halton2Points.length
 
 		this.fullscreenMaterial.uniforms.seed.value = halton2Points[this.haltonIndex]
-
 		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
 		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far
-
 		this.fullscreenMaterial.uniforms.viewMatrix.value.copy(this._camera.matrixWorldInverse)
 
 		const noiseTexture = this.fullscreenMaterial.uniforms.blueNoiseTexture.value

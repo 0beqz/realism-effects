@@ -51,6 +51,8 @@ export class DenoisePass extends Pass {
 	setSize(width, height) {
 		this.renderTargetA.setSize(width, height)
 		this.renderTargetB.setSize(width, height)
+
+		this.fullscreenMaterial.uniforms.invTexSize.value.set(1 / width, 1 / height)
 	}
 
 	dispose() {

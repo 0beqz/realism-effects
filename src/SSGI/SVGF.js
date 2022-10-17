@@ -48,7 +48,6 @@ export class SVGF {
 
 	setSize(width, height) {
 		this.denoisePass.setSize(width, height)
-		this.denoisePass.fullscreenMaterial.uniforms.invTexSize.value.set(1 / width, 1 / height)
 
 		this.svgfTemporalResolvePass.setSize(width, height)
 		this.copyPass?.setSize(width, height)
@@ -60,13 +59,17 @@ export class SVGF {
 		this.copyPass?.dispose()
 	}
 
-	render(renderer) {
+	ensureAllTexturesSet() {
 		requiredTextures.forEach(bufferName => {
 			if (!this.denoisePass.fullscreenMaterial.uniforms[bufferName].value?.isTexture) {
 				const functionName = "set" + bufferName[0].toUpperCase() + bufferName.slice(1)
-				console.warn("SVGF has no " + bufferName + ". Set a " + bufferName + " through " + functionName + "().")
+				console.error("SVGF has no " + bufferName + ". Set a " + bufferName + " through " + functionName + "().")
 			}
 		})
+	}
+
+	render(renderer) {
+		this.ensureAllTexturesSet()
 
 		if (this.denoisePass.iterations > 0) {
 			this.denoisePass.render(renderer)
