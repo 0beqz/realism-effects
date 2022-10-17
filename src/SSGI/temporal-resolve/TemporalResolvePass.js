@@ -53,8 +53,6 @@ export class TemporalResolvePass extends Pass {
 				depthBuffer: false
 			})
 
-		console.log(options.renderVelocity)
-
 		this.renderVelocity = options.renderVelocity
 		this.velocityPass = options.velocityPass || new VelocityPass(scene, camera, { renderDepth: true })
 		this.usingOwnVelocityPass = options.velocityPass !== this.velocityPass

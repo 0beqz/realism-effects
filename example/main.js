@@ -3,6 +3,7 @@ import * as POSTPROCESSING from "postprocessing"
 import Stats from "stats.js"
 import * as THREE from "three"
 import { AmbientLight } from "three"
+import { ShaderMaterial } from "three"
 import { ACESFilmicToneMapping, Box3, DirectionalLight, DoubleSide, Vector3 } from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
@@ -10,10 +11,13 @@ import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader"
 import { GroundProjectedEnv } from "three/examples/jsm/objects/GroundProjectedEnv"
 import { MotionBlurEffect } from "../src/motionBlur/MotionBlurEffect"
 import { SSGIEffect } from "../src/SSGI/index"
+import { SSREffect } from "../src/SSREffect"
 import { TRAAEffect } from "../src/TRAAEffect"
 import { SSGIDebugGUI } from "./SSGIDebugGUI"
 import "./style.css"
 import { TRAADebugGUI } from "./TRAADebugGUI"
+
+console.log(new ShaderMaterial())
 
 let traaEffect
 let traaPass
@@ -31,6 +35,8 @@ const guiParams = {
 
 const scene = new THREE.Scene()
 window.scene = scene
+
+// scene.add(new AmbientLight())
 
 const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.01, 250)
 
@@ -302,7 +308,7 @@ const initScene = () => {
 		offset: 0.3
 	})
 
-	ssgiEffect = new SSGIEffect(scene, camera, options)
+	ssgiEffect = new SSREffect(scene, camera, options)
 	window.ssgiEffect = ssgiEffect
 
 	scene.traverse(c => {
@@ -418,7 +424,7 @@ document.addEventListener("keydown", ev => {
 
 		scene.traverse(c => {
 			if (c.material) {
-				c.material.envMapIntensity = ssgiPass.enabled ? 0 : 1
+				// c.material.envMapIntensity = ssgiPass.enabled ? 0 : 1
 			}
 		})
 

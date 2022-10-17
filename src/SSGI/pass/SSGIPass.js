@@ -202,7 +202,7 @@ export class SSGIPass extends Pass {
 			}
 
 			// to ensure SSGI works as good as possible in the scene
-			originalMaterial.envMapIntensity = 0
+			if (!this.ssgiEffect.reflectionsOnly) originalMaterial.envMapIntensity = 0
 
 			// update the child's MRT material
 			keepMaterialMapUpdated(
