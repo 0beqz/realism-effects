@@ -12,12 +12,9 @@ import {
 	WebGLRenderTarget
 } from "three"
 import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader.js"
-import { generateHalton2Points } from "../../utils/Halton.js"
 import { MRTMaterial } from "../material/MRTMaterial.js"
 import { SSGIMaterial } from "../material/SSGIMaterial.js"
 import { getVisibleChildren, isWebGL2Available, keepMaterialMapUpdated } from "../utils/Utils.js"
-
-const halton2Points = generateHalton2Points(512)
 
 const isWebGL2 = isWebGL2Available()
 const backgroundColor = new Color(0)
@@ -73,8 +70,8 @@ export class SSGIPass extends Pass {
 
 	initMRTRenderTarget() {
 		if (this.gBuffersRenderTarget) this.gBuffersRenderTarget.dispose()
-		if (this.webgl1DepthPass) this.webgl1DepthPass.dispose()
-		if (this.diffuseRenderTarget) this.diffuseRenderTarget.dispose()
+		this.webgl1DepthPass?.dispose()
+		this.diffuseRenderTarget?.dispose()
 
 		this.renderVelocitySeparate = !isWebGL2 || this.ssgiEffect.antialias
 
@@ -157,7 +154,8 @@ export class SSGIPass extends Pass {
 		this.renderTarget.dispose()
 		this.gBuffersRenderTarget.dispose()
 		this.renderPass.dispose()
-		if (!isWebGL2) this.webgl1DepthPass.dispose()
+		this.webgl1DepthPass?.dispose()
+		this.diffuseRenderTarget?.dispose()
 
 		this.fullscreenMaterial.dispose()
 
@@ -318,9 +316,7 @@ export class SSGIPass extends Pass {
 		// update uniforms
 
 		this.fullscreenMaterial.uniforms.samples.value = this.ssgiEffect.svgf.svgfTemporalResolvePass.samples
-		this.haltonIndex = (this.haltonIndex + 1) % halton2Points.length
-
-		this.fullscreenMaterial.uniforms.seed.value = halton2Points[this.haltonIndex]
+		this.fullscreenMaterial.uniforms.seed.value = Math.random()
 		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
 		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far
 		this.fullscreenMaterial.uniforms.viewMatrix.value.copy(this._camera.matrixWorldInverse)

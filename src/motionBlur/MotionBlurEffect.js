@@ -10,11 +10,7 @@ import motionBlur from "./motionBlur.glsl"
 
 const defaultOptions = { intensity: 1, jitter: 5, samples: 16 }
 
-const halton2Points = generateHalton2Points(512)
-
 export class MotionBlurEffect extends Effect {
-	haltonIndex = 0
-
 	constructor(velocityTexture, options = defaultOptions) {
 		options = { ...defaultOptions, ...options }
 
@@ -85,9 +81,7 @@ export class MotionBlurEffect extends Effect {
 		this.uniforms.get("inputTexture").value = inputBuffer.texture
 		this.uniforms.get("deltaTime").value = Math.max(1 / 1000, deltaTime)
 
-		this.haltonIndex = (this.haltonIndex + 1) % halton2Points.length
-
-		this.uniforms.get("seed").value = halton2Points[this.haltonIndex]
+		this.uniforms.get("seed").value = Math.random()
 
 		const noiseTexture = this.uniforms.get("blueNoiseTexture").value
 		if (noiseTexture) {

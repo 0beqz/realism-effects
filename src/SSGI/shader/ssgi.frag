@@ -148,18 +148,33 @@ vec3 SampleBRDF(vec3 wo, vec3 norm, float roughness, vec2 random) {
 }
 
 vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float sampleCount, float spread) {
-    vec3 jitteredNormal = viewNormal;
-
     vec2 startOffset = vec2(sampleCount / float(spp));
     vec2 blueNoiseUv = (vUv + startOffset + seed) * blueNoiseRepeat;
     vec2 random = textureLod(blueNoiseTexture, blueNoiseUv, 0.).rg;
 
-    vec3 reflected = SampleBRDF(viewDir, viewNormal, sqrt(spread), random);
+    float spreadSqrt = sqrt(spread);
+
+    vec3 reflected = SampleBRDF(viewDir, viewNormal, spreadSqrt, random);
+
+    if (dot(reflected, viewNormal) < 0.) {
+        reflected = SampleBRDF(viewDir, viewNormal, spreadSqrt, vec2(random.y, random.x));
+    }
 
     float curIor = mix(ior, 2.33, spread);
     float fresnelFactor = fresnel_dielectric(viewDir, reflected, curIor);
 
+    vec3 SSGI;
     float m = fresnelFactor * TRANSFORM_FACTOR * M_PI;
+
+    if (dot(reflected, viewNormal) < 0.) {
+        vec4 velocity = textureLod(velocityTexture, vUv, 0.0);
+        velocity.xy = unpackRGBATo2Half(velocity) * 2. - 1.;
+
+        vec2 reprojectedUv = vUv - velocity.xy;
+
+        SSGI = textureLod(accumulatedTexture, reprojectedUv, 0.).rgb + textureLod(directLightTexture, reprojectedUv, 0.).rgb;
+        return m * SSGI;
+    }
 
     vec3 dir = normalize(reflected * -viewPos.z);
     dir *= rayDistance / float(steps);
@@ -201,7 +216,6 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
 
     vec2 dCoords = smoothstep(0.2, 0.6, abs(vec2(0.5, 0.5) - coords.xy));
     float ssgiIntensity = clamp(1.0 - (dCoords.x + dCoords.y), 0.0, 1.0);
-
     m *= ssgiIntensity;
 
     // reproject the coords from the last frame
@@ -209,8 +223,6 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     velocity.xy = unpackRGBATo2Half(velocity) * 2. - 1.;
 
     vec2 reprojectedUv = coords.xy - velocity.xy;
-
-    vec3 SSGI;
 
     // check if the reprojected coordinates are within the screen
     if (all(greaterThanEqual(reprojectedUv, vec2(0.))) && all(lessThanEqual(reprojectedUv, vec2(1.)))) {
