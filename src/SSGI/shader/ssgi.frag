@@ -93,17 +93,7 @@ void main() {
 
     vec3 SSGI;
 
-    int iterations = spp;
-
-    if (spread < 0.05) {
-        iterations = 1;
-    } else if (lastFrameAlpha == 1.0) {
-        iterations = 1;
-    } else if (lastFrameAlpha <= 0.05) {
-        iterations *= 2;
-    }
-
-    for (int s = 0; s < iterations; s++) {
+    for (int s = 0; s < spp; s++) {
         float sF = float(s);
         vec3 sampledSSGI = doSample(viewPos, viewDir, viewNormal, roughness, sF, spread);
 
@@ -177,7 +167,6 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     }
 
     vec3 dir = normalize(reflected * -viewPos.z);
-    dir *= rayDistance / float(steps);
 
     vec3 hitPos = viewPos;
     float rayHitDepthDifference = 0.;
@@ -242,13 +231,16 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
 }
 
 vec2 RayMarch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {
+    float stepsFloat = float(steps);
+
+    dir *= rayDistance / float(steps);
+
     float depth;
     float unpackedDepth;
     vec2 uv;
 
-    for (int i = 0; i < steps; i++) {
+    for (int i = 1; i <= steps; i++) {
         hitPos += dir;
-
         uv = viewSpaceToScreenSpace(hitPos);
 
         unpackedDepth = unpackRGBAToDepth(textureLod(depthTexture, uv, 0.0));

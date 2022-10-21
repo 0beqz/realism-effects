@@ -97,8 +97,6 @@ export class SSGIEffect extends Effect {
 		const ssgiPassFullscreenMaterialUniforms = this.ssgiPass.fullscreenMaterial.uniforms
 		const ssgiPassFullscreenMaterialUniformsKeys = Object.keys(ssgiPassFullscreenMaterialUniforms)
 
-		const noResetSamplesProperties = [...this.uniforms.keys()]
-
 		for (const key of Object.keys(options)) {
 			Object.defineProperty(this, key, {
 				get() {
@@ -108,10 +106,6 @@ export class SSGIEffect extends Effect {
 					if (options[key] === value && needsUpdate) return
 
 					options[key] = value
-
-					if (!noResetSamplesProperties.includes(key)) {
-						this.setSize(this.lastSize.width, this.lastSize.height, true)
-					}
 
 					switch (key) {
 						case "resolutionScale":

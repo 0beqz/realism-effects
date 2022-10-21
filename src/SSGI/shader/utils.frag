@@ -38,6 +38,11 @@ vec2 viewSpaceToScreenSpace(vec3 position) {
     return projectedCoord.xy;
 }
 
+vec3 viewSpaceToWorldSpace(vec3 position) {
+    vec4 positionWS = vec4(position, 1.) * cameraMatrixWorldInverse;
+    return positionWS.xyz;
+}
+
 // vec2 worldSpaceToScreenSpace(vec3 worldPos){
 //     vec4 ssPos = projectionMatrix * inverse(cameraMatrixWorld) * vec4(worldPos, 1.0);
 //     ssPos.xy /= ssPos.w;
