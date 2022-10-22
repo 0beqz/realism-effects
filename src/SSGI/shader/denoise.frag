@@ -61,7 +61,7 @@ void main() {
             vec4 neighborNormalTexel = textureLod(normalTexture, neighborUv, 0.);
             vec3 neighborNormal = unpackRGBToNormal(neighborNormalTexel.rgb);
 
-#ifdef USE_MOMENTx
+#ifdef USE_MOMENT
             vec2 moment = textureLod(momentsTexture, neighborUv, 0.).rg;
             float variance = max(0.0, moment.g - moment.r * moment.r);
 

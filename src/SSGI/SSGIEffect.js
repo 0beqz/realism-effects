@@ -33,8 +33,6 @@ export class SSGIEffect extends Effect {
 
 		// ssgi pass
 		this.ssgiPass = new SSGIPass(this)
-
-		// define the input and the output
 		this.svgf.setInputTexture(this.ssgiPass.renderTarget.texture)
 
 		// modify the temporal resolve pass of SVGF denoiser for the SSGI effect
