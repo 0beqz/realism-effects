@@ -191,6 +191,13 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
         vec4 reflectedWS = vec4(reflected, 1.) * cameraMatrixWorldInverse;
         reflectedWS.xyz = normalize(reflectedWS.xyz);
 
+    #ifdef BOX_PROJECTED_ENV_MAP
+        float depth = unpackRGBAToDepth(textureLod(depthTexture, vUv, 0.));
+        vec3 worldPosition = screenSpaceToWorldSpace(vUv, depth);
+        reflectedWS.xyz = parallaxCorrectNormal(reflectedWS.xyz, envMapSize, envMapPosition, worldPosition);
+        reflectedWS.xyz = normalize(reflectedWS.xyz);
+    #endif
+
         float mip = 8. / 13. * maxEnvMapMipLevel * spread;
 
         vec3 sampleDir = reflectedWS.xyz;
@@ -199,11 +206,11 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
         // we won't deal with calculating direct sun light from the env map as it takes too long to compute and is too noisy
         if (dot(envMapSample, envMapSample) > 3.) envMapSample = vec3(1.);
 
-        if (!isAllowedMissedRay) return m * envMapSample;
+        if (!isAllowedMissedRay) return 0.7 * m * envMapSample;
     }
 #endif
 
-    vec2 dCoords = smoothstep(0.2, 0.6, abs(vec2(0.5, 0.5) - coords.xy));
+    vec2 dCoords = smoothstep(0.2, 0.6, abs(vec2(0.5, 0.5) - vUv));
     float ssgiIntensity = clamp(1.0 - (dCoords.x + dCoords.y), 0.0, 1.0);
     m *= ssgiIntensity;
 

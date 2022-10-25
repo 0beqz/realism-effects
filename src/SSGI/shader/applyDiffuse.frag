@@ -13,7 +13,7 @@ if (isBackground) {
 #ifdef reflectionsOnly
     const float diffuseInfluence = 1.0;
 #else
-    const float diffuseInfluence = 0.9675;
+    const float diffuseInfluence = 0.975;
 #endif
 
     vec3 diffuseColor = diffuseTexel.rgb * diffuseInfluence + (1. - diffuseInfluence);

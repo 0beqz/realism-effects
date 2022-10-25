@@ -39,7 +39,9 @@ export class SSGIMaterial extends ShaderMaterial {
 				envMapSize: new Uniform(new Vector3()),
 				viewMatrix: new Uniform(new Matrix4()),
 				invTexSize: new Uniform(new Vector2()),
-				blueNoiseRepeat: new Uniform(new Vector2())
+				blueNoiseRepeat: new Uniform(new Vector2()),
+				envMapPosition: new Uniform(new Vector3()),
+				envMapSize: new Uniform(new Vector3())
 			},
 
 			defines: {

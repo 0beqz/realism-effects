@@ -38,11 +38,6 @@ vec2 viewSpaceToScreenSpace(vec3 position) {
     return projectedCoord.xy;
 }
 
-vec3 viewSpaceToWorldSpace(vec3 position) {
-    vec4 positionWS = vec4(position, 1.) * cameraMatrixWorldInverse;
-    return positionWS.xyz;
-}
-
 // vec2 worldSpaceToScreenSpace(vec3 worldPos){
 //     vec4 ssPos = projectionMatrix * inverse(cameraMatrixWorld) * vec4(worldPos, 1.0);
 //     ssPos.xy /= ssPos.w;
@@ -50,6 +45,25 @@ vec3 viewSpaceToWorldSpace(vec3 position) {
 
 //     return ssPos.xy;
 // }
+
+#ifdef BOX_PROJECTED_ENV_MAP
+uniform vec3 envMapSize;
+uniform vec3 envMapPosition;
+
+vec3 parallaxCorrectNormal(vec3 v, vec3 cubeSize, vec3 cubePos, vec3 worldPosition) {
+    vec3 nDir = normalize(v);
+    vec3 rbmax = (.5 * cubeSize + cubePos - worldPosition) / nDir;
+    vec3 rbmin = (-.5 * cubeSize + cubePos - worldPosition) / nDir;
+    vec3 rbminmax;
+    rbminmax.x = (nDir.x > 0.) ? rbmax.x : rbmin.x;
+    rbminmax.y = (nDir.y > 0.) ? rbmax.y : rbmin.y;
+    rbminmax.z = (nDir.z > 0.) ? rbmax.z : rbmin.z;
+    float correction = min(min(rbminmax.x, rbminmax.y), rbminmax.z);
+    vec3 boxIntersection = worldPosition + nDir * correction;
+
+    return boxIntersection - cubePos;
+}
+#endif
 
 #define M_PI 3.1415926535897932384626433832795
 
