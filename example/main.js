@@ -122,9 +122,9 @@ const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
 composer.addPass(renderPass)
 
 const lightParams = {
-	yaw: 55,
-	pitch: 49,
-	intensity: 2.5
+	yaw: 98,
+	pitch: 35,
+	intensity: 0.5
 }
 
 const light = new DirectionalLight(0xffffff, lightParams.intensity)
@@ -225,7 +225,7 @@ const refreshLighting = () => {
 const clock = new THREE.Clock()
 
 const initScene = () => {
-	const options = {
+	let options = {
 		intensity: 0.999999999999999,
 		power: 1,
 		distance: 2.600000000000006,
@@ -253,6 +253,33 @@ const initScene = () => {
 		resolutionScale: 1,
 		antialias: true,
 		reflectionsOnly: false
+	}
+
+	options = {
+		intensity: 1.499999999999999,
+		power: 1.16,
+		distance: 23.370000000000008,
+		roughnessFade: 0,
+		thickness: 7.169999999999997,
+		ior: 2.33,
+		maxRoughness: 1,
+		blend: 0.9,
+		denoiseIterations: 5,
+		denoiseKernel: 1,
+		lumaPhi: 50,
+		depthPhi: 13.200000000000001,
+		normalPhi: 1.58,
+		roughnessPhi: 1,
+		jitter: 0.53,
+		jitterRoughness: 1,
+		steps: 50,
+		refineSteps: 4,
+		spp: 4,
+		missedRays: false,
+		useNormalMap: true,
+		useRoughnessMap: true,
+		resolutionScale: 0.5,
+		antialias: true
 	}
 
 	traaEffect = new TRAAEffect(scene, camera, params)
@@ -344,6 +371,13 @@ const initScene = () => {
 	})
 }
 
+let mX = 0
+
+document.body.addEventListener("mousemove", ev => {
+	mX = (window.innerHeight - ev.clientY) / window.innerHeight
+	console.log(mixer)
+})
+
 const loop = () => {
 	if (stats) stats.begin()
 
@@ -351,7 +385,10 @@ const loop = () => {
 
 	const dt = clock.getDelta()
 	if (mixer) {
-		mixer.update(dt)
+		for (const ac of mixer._actions) {
+			ac.time = (250 / 30) * mX
+		}
+		mixer.update(0)
 		lastScene.updateMatrixWorld()
 		refreshLighting()
 	}
@@ -483,16 +520,6 @@ dragDrop("body", files => {
 			}
 
 			setupAsset(asset)
-
-			const clips = asset.animations
-
-			if (clips.length) {
-				mixer = new THREE.AnimationMixer(asset.scene)
-
-				const action = mixer.clipAction(clips[0])
-
-				if (action) action.play()
-			}
 		})
 	})
 
@@ -511,6 +538,18 @@ const setupAsset = asset => {
 
 		c.frustumCulled = false
 	})
+
+	const clips = asset.animations
+
+	if (clips.length) {
+		mixer = new THREE.AnimationMixer(asset.scene)
+
+		for (const clip of clips) {
+			const action = mixer.clipAction(clip)
+
+			if (action) action.play()
+		}
+	}
 
 	const bb = new Box3()
 	bb.setFromObject(asset.scene)
