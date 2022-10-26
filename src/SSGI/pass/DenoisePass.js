@@ -66,7 +66,7 @@ export class DenoisePass extends Pass {
 		let stepSize = 1
 		for (let i = 0; i < 2 * this.iterations; i++) {
 			const horizontal = i % 2 === 0
-			if (horizontal) stepSize = 2 ** (i / 2)
+			stepSize = 2 ** ~~(i / 2)
 
 			this.fullscreenMaterial.uniforms.horizontal.value = horizontal
 			this.fullscreenMaterial.uniforms.stepSize.value = stepSize
