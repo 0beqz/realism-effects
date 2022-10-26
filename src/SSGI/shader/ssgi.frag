@@ -17,7 +17,6 @@ uniform float cameraFar;
 uniform float maxEnvMapMipLevel;
 
 uniform float rayDistance;
-uniform float roughnessFade;
 uniform float maxRoughness;
 uniform float thickness;
 uniform float ior;
@@ -65,7 +64,7 @@ void main() {
     vec4 normalTexel = textureLod(normalTexture, vUv, 0.0);
     float roughness = normalTexel.a;
 
-    if (roughness > maxRoughness || (roughness == 1.0 && roughnessFade == 1.0)) {
+    if (roughness > maxRoughness) {
         gl_FragColor = EARLY_OUT_COLOR;
         return;
     }
@@ -93,16 +92,18 @@ void main() {
 
     vec3 SSGI;
 
+    // bool isDiffuseSamples = int(samples) % 2 == 0;
+
     for (int s = 0; s < spp; s++) {
         float sF = float(s);
-        vec3 sampledSSGI = doSample(viewPos, viewDir, viewNormal, roughness, sF, spread);
+        vec3 diffuseSSGI = doSample(viewPos, viewDir, viewNormal, roughness, sF, 1.0);
+        vec3 specularSSGI = doSample(viewPos, viewDir, viewNormal, roughness, sF, spread);
 
         float m = 1. / (sF + 1.0);
 
-        SSGI = mix(SSGI, sampledSSGI, m);
+        SSGI = mix(SSGI, diffuseSSGI + specularSSGI, m);
     }
 
-    if (roughnessFade != 0.0) SSGI *= mix(1.0 - roughness, 1.0, max(0.0, 1.0 - roughnessFade));
     if (power != 1.0) SSGI = pow(SSGI, vec3(power));
 
     SSGI *= intensity;
@@ -110,8 +111,25 @@ void main() {
     gl_FragColor = vec4(SSGI, lastFrameAlpha);
 }
 
+vec3 SampleLambert(vec3 viewNormal, vec2 random) {
+    float thetaMax = M_PI / 2.;
+    float cosThetaMax = cos(thetaMax);
+
+    float cosTheta = (1. - random.x) + random.x * cosThetaMax;
+    float sinTheta = sqrt(1. - cosTheta * cosTheta);
+    float phi = random.y * 2. * M_PI;
+    float x = cos(phi) * sinTheta;
+    float y = sin(phi) * sinTheta;
+    float z = cosTheta;
+    vec3 hemisphereVector = vec3(x, y, z);
+
+    mat3 normalBasis = getBasisFromNormal(viewNormal);
+
+    return normalize(normalBasis * hemisphereVector);
+}
+
 // source: https://github.com/Domenicobrz/SSR-TAA-in-threejs-/blob/master/Components/ssr.js
-vec3 SampleBRDF(vec3 wo, vec3 norm, float roughness, vec2 random) {
+vec3 SampleGGX(vec3 wo, vec3 norm, float roughness, vec2 random) {
     float r0 = random.x;
     float r1 = random.y;
 
@@ -142,12 +160,10 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     vec2 blueNoiseUv = (vUv + startOffset + seed) * blueNoiseRepeat;
     vec2 random = textureLod(blueNoiseTexture, blueNoiseUv, 0.).rg;
 
-    float spreadSqrt = sqrt(spread);
-
-    vec3 reflected = SampleBRDF(viewDir, viewNormal, spreadSqrt, random);
+    vec3 reflected = spread == 1.0 ? SampleLambert(viewNormal, random) : SampleGGX(viewDir, viewNormal, spread, random);
 
     if (dot(reflected, viewNormal) < 0.) {
-        reflected = SampleBRDF(viewDir, viewNormal, spreadSqrt, vec2(random.y, random.x));
+        reflected = SampleGGX(viewDir, viewNormal, spread, vec2(random.y, random.x));
     }
 
     float curIor = mix(ior, 2.33, spread);
@@ -162,7 +178,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
 
         vec2 reprojectedUv = vUv - velocity.xy;
 
-        SSGI = textureLod(accumulatedTexture, reprojectedUv, 0.).rgb + textureLod(directLightTexture, reprojectedUv, 0.).rgb;
+        SSGI = textureLod(accumulatedTexture, reprojectedUv, 0.).rgb;
         return m * SSGI;
     }
 

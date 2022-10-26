@@ -4,7 +4,6 @@
  * @property {Number} [intensity] intensity of the ssgi
  * @property {Number} [power] the exponent by which the final ssgi color will be potentiated
  * @property {Number} [distance] maximum distance a ssgi ray can travel to find what it reflects
- * @property {Number} [roughnessFade] how intense ssgi should be on rough spots; a higher value will make ssgi fade out quicker on rough spots
  * @property {Number} [thickness] maximum depth difference between a ray and the particular depth at its screen position before refining with binary search; higher values will result in better performance
  * @property {Number} [ior] Index of Refraction, used for calculating fresnel; reflections tend to be more intense the steeper the angle between them and the viewer is, the ior parameter sets how much the intensity varies
  * @property {Number} [maxRoughness] maximum roughness a texel can have to have ssgi calculated for it
@@ -35,7 +34,6 @@ export const defaultSSGIOptions = {
 	intensity: 1,
 	power: 1,
 	distance: 10,
-	roughnessFade: 1,
 	thickness: 10,
 	ior: 2.33,
 	maxRoughness: 1,

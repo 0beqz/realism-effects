@@ -24,7 +24,6 @@ export class SSGIMaterial extends ShaderMaterial {
 				cameraNear: new Uniform(0),
 				cameraFar: new Uniform(0),
 				rayDistance: new Uniform(0),
-				roughnessFade: new Uniform(0),
 				thickness: new Uniform(0),
 				ior: new Uniform(0),
 				power: new Uniform(0),
