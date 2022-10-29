@@ -144,6 +144,9 @@ export class MRTMaterial extends ShaderMaterial {
                             // reads channel G, compatible with a combined OcclusionRoughnessMetallic (RGB) texture
                             roughnessFactor *= texelRoughness.g;
                         #endif
+
+                        // roughness of 1.0 is reserved for deselected meshes
+                        roughnessFactor = min(0.99, roughnessFactor);
                     }
 
                     vec3 normalColor = packNormalToRGB( normal );

@@ -5,7 +5,6 @@
  * @property {Number} [power] the exponent by which the final ssgi color will be potentiated
  * @property {Number} [distance] maximum distance a ssgi ray can travel to find what it reflects
  * @property {Number} [thickness] maximum depth difference between a ray and the particular depth at its screen position before refining with binary search; higher values will result in better performance
- * @property {Number} [ior] Index of Refraction, used for calculating fresnel; reflections tend to be more intense the steeper the angle between them and the viewer is, the ior parameter sets how much the intensity varies
  * @property {Number} [maxRoughness] maximum roughness a texel can have to have ssgi calculated for it
  * @property {Number} [blend] a value between 0 and 1 to set how much the last frame's ssgi should be blended in; higher values will result in less noisy ssgi when moving the camera but a more smeary look
  * @property {Number} [denoiseIterations] how many times the denoise filter runs, more iterations will denoise the frame better but need more performance
@@ -35,7 +34,6 @@ export const defaultSSGIOptions = {
 	power: 1,
 	distance: 10,
 	thickness: 10,
-	ior: 2.33,
 	maxRoughness: 1,
 	blend: 0.9,
 	denoiseIterations: 1,

@@ -325,12 +325,6 @@ const initScene = () => {
 	ssgiEffect = new SSGIEffect(scene, camera, options)
 	window.ssgiEffect = ssgiEffect
 
-	scene.traverse(c => {
-		if (c.isMesh && c.material.isMeshStandardMaterial) {
-			c.material.side = DoubleSide
-		}
-	})
-
 	gui2 = new SSGIDebugGUI(ssgiEffect, options)
 	gui2.pane.containerElem_.style.left = "8px"
 

@@ -19,7 +19,6 @@ uniform float maxEnvMapMipLevel;
 uniform float rayDistance;
 uniform float maxRoughness;
 uniform float thickness;
-uniform float ior;
 uniform float power;
 uniform float intensity;
 uniform vec2 invTexSize;
@@ -64,7 +63,8 @@ void main() {
     vec4 normalTexel = textureLod(normalTexture, vUv, 0.0);
     float roughness = normalTexel.a;
 
-    if (roughness > maxRoughness) {
+    // a roughness of 1 is only being used for deselected meshes
+    if (roughness == 1.0 || roughness > maxRoughness) {
         gl_FragColor = EARLY_OUT_COLOR;
         return;
     }
@@ -92,7 +92,6 @@ void main() {
 
     vec3 SSGI;
 
-    // bool isDiffuseSamples = int(samples) % 2 == 0;
     float cosTheta = max(dot(viewNormal, viewDir), 0.0);
     vec3 Fresnel = fresnelSchlick(cosTheta, vec3(0.04));
 
@@ -221,10 +220,10 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
         vec3 sampleDir = reflectedWS.xyz;
         envMapSample = sampleEquirectEnvMapColor(sampleDir, envMap, mip);
 
-        // we won't deal with calculating direct sun light from the env map as it takes too long to compute and is too noisy
+        // we won't deal with calculating direct sun light from the env map as it is too noisy
         if (dot(envMapSample, envMapSample) > 3.) envMapSample = vec3(1.);
 
-        if (!isAllowedMissedRay) return 0.7 * m * envMapSample;
+        if (!isAllowedMissedRay) return m * envMapSample;
     }
 #endif
 
