@@ -365,15 +365,11 @@ let mX = 0
 
 document.body.addEventListener("mousemove", ev => {
 	mX = (window.innerHeight - ev.clientY) / window.innerHeight
-	console.log(mixer)
 })
 
 const loop = () => {
 	if (stats) stats.begin()
 
-	// if (ssgiEffect.svgf.svgfTemporalResolvePass.samples === 8) return
-
-	const dt = clock.getDelta()
 	if (mixer) {
 		for (const ac of mixer._actions) {
 			ac.time = (250 / 30) * mX
