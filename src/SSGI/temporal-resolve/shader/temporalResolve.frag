@@ -45,7 +45,7 @@ void main() {
     float depth = unpackRGBAToDepth(depthTexel);
 
     vec3 inputColor = transformColor(inputTexel.rgb);
-    float alpha = inputTexel.a;
+    float alpha = 1.0;
 
     vec4 accumulatedTexel;
     vec3 accumulatedColor;
@@ -113,7 +113,7 @@ void main() {
         if (depthDiff < maxNeighborDepthDifference) {
             accumulatedTexel = textureLod(accumulatedTexture, reprojectedUv, 0.0);
 
-            alpha = min(alpha, accumulatedTexel.a);
+            alpha = accumulatedTexel.a;
             alpha = min(alpha, blend);
             accumulatedColor = transformColor(accumulatedTexel.rgb);
 

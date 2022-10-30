@@ -1,4 +1,4 @@
-﻿#define TRANSFORM_FACTOR 0.1
+﻿#define TRANSFORM_FACTOR 0.2
 
 vec4 directLightTexel = textureLod(directLightTexture, vUv, 0.0);
 
@@ -13,11 +13,13 @@ if (isBackground) {
 #ifdef reflectionsOnly
     const float diffuseInfluence = 1.0;
 #else
-    const float diffuseInfluence = 0.975;
+    float metalness = inputTexel.a;
+
+    float diffuseInfluence = mix(0.975, 0.75, metalness);
 #endif
 
     vec3 diffuseColor = diffuseTexel.rgb * diffuseInfluence + (1. - diffuseInfluence);
     inputTexel.rgb *= diffuseColor;
 
-    inputTexel.rgb += directLightTexel.rgb * TRANSFORM_FACTOR;
+    inputTexel.rgb += directLightTexel.rgb * (1. - metalness) * TRANSFORM_FACTOR;
 }

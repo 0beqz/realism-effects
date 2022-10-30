@@ -35,7 +35,7 @@ uniform float jitterRoughness;
 #define INVALID_RAY_COORDS vec2(-1.0);
 #define EARLY_OUT_COLOR    vec4(0.0, 0.0, 0.0, 1.0)
 #define FLOAT_EPSILON      0.00001
-#define TRANSFORM_FACTOR   0.1
+#define TRANSFORM_FACTOR   0.2
 
 float nearMinusFar;
 float nearMulFar;
@@ -81,7 +81,6 @@ void main() {
     // view-space depth
     float depth = fastGetViewZ(unpackedDepth);
 
-    float lastFrameAlpha = textureLod(accumulatedTexture, vUv, 0.0).a;
     vec3 worldPos = screenSpaceToWorldSpace(vUv, unpackedDepth);
 
     // view-space position of the current texel
@@ -110,7 +109,7 @@ void main() {
         float cosTheta = max(dot(viewNormal, reflected), 0.0);
         float fresnelFactor = fresnel_dielectric(viewDir, reflected, ior);
 
-        vec3 gi = mix(diffuseSSGI, specularSSGI, fresnelFactor);
+        vec3 gi = mix(diffuseSSGI * (1.0 - metalness), specularSSGI, fresnelFactor);
 
         SSGI = mix(SSGI, gi, m);
     }
@@ -119,7 +118,7 @@ void main() {
 
     SSGI *= intensity;
 
-    gl_FragColor = vec4(SSGI, lastFrameAlpha);
+    gl_FragColor = vec4(SSGI, metalness);
 }
 
 vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float sampleCount, float spread, vec3 Fresnel, inout vec3 reflected) {
@@ -134,7 +133,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     }
 
     vec3 SSGI;
-    vec3 m = Fresnel * TRANSFORM_FACTOR * M_PI;
+    vec3 m = Fresnel * TRANSFORM_FACTOR;
 
     if (dot(reflected, viewNormal) < 0.) {
         vec4 velocity = textureLod(velocityTexture, vUv, 0.0);

@@ -1,4 +1,4 @@
-﻿#define INV_TRANSFORM_FACTOR 10.0
+﻿#define INV_TRANSFORM_FACTOR 5.0
 
 uniform sampler2D inputTexture;
 

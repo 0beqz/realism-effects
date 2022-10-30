@@ -122,9 +122,9 @@ const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
 composer.addPass(renderPass)
 
 const lightParams = {
-	yaw: 98,
-	pitch: 35,
-	intensity: 0.5
+	yaw: 55,
+	pitch: 27,
+	intensity: 1.7
 }
 
 const light = new DirectionalLight(0xffffff, lightParams.intensity)
