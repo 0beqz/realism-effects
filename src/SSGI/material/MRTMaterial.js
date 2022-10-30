@@ -24,12 +24,13 @@ export class MRTMaterial extends ShaderMaterial {
 			},
 
 			uniforms: {
-				opacity: new Uniform(1),
 				normalMap: new Uniform(null),
 				normalScale: new Uniform(new Vector2(1, 1)),
 				uvTransform: new Uniform(new Matrix3()),
-				roughness: new Uniform(1),
+				roughness: new Uniform(0),
+				metalness: new Uniform(0),
 				roughnessMap: new Uniform(null),
+				metalnessMap: new Uniform(null),
 				boneTexture: new Uniform(null),
 				map: new Uniform(null),
 				color: new Uniform(new Color()),
@@ -122,7 +123,11 @@ export class MRTMaterial extends ShaderMaterial {
                 uniform vec3 color;
 
                 varying vec2 vHighPrecisionZW;
+
+                #include <metalnessmap_pars_fragment>
+                uniform float metalness;
                 #else
+                // webgl 1
                 #define gNormal gl_FragColor
                 #endif
                 
@@ -134,10 +139,14 @@ export class MRTMaterial extends ShaderMaterial {
                     #include <normal_fragment_begin>
                     #include <normal_fragment_maps>
 
+
                     float roughnessFactor = roughness;
+                    bool isDeselected = roughness > 10.0e9;
+
                     
-                    if(roughness > 10.0e9){
+                    if(isDeselected){
                         roughnessFactor = 1.;
+                        gNormal = vec4(0.);
                     }else{
                         #ifdef USE_ROUGHNESSMAP
                             vec4 texelRoughness = texture2D( roughnessMap, vUv );
@@ -147,17 +156,32 @@ export class MRTMaterial extends ShaderMaterial {
 
                         // roughness of 1.0 is reserved for deselected meshes
                         roughnessFactor = min(0.99, roughnessFactor);
-                    }
 
-                    vec3 normalColor = packNormalToRGB( normal );
-                    gNormal = vec4( normalColor, roughnessFactor );
+                        vec3 normalColor = packNormalToRGB( normal );
+                        gNormal = vec4( normalColor, roughnessFactor );
+                    }
+                    
+
                     #ifdef isWebGL2
+                        if(isDeselected){
+                            gDepth = vec4(0.);
+                            gDiffuse = vec4(0.);
+                            
+                            #ifdef renderVelocity
+                            gVelocity = vec4(0.);
+                            #endif
+
+                            return;
+                        }
+
                         float fragCoordZ = 0.5 * vHighPrecisionZW[0] / vHighPrecisionZW[1] + 0.5;
 
                         vec4 depthColor = packDepthToRGBA( fragCoordZ );
                         gDepth = depthColor;
 
-                        vec4 diffuseColor = vec4(color, 1.);
+                        #include <metalnessmap_fragment>
+
+                        vec4 diffuseColor = vec4(color, metalnessFactor);
 
                         #include <map_fragment>
 

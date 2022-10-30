@@ -165,7 +165,7 @@ const params = {}
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
 pmremGenerator.compileEquirectangularShader()
 
-new RGBELoader().load("quarry_02_4k.hdr", envMap => {
+new RGBELoader().load("modern_buildings_2_4k.hdr", envMap => {
 	envMap.mapping = THREE.EquirectangularReflectionMapping
 
 	scene.environment = envMap
@@ -222,15 +222,13 @@ const refreshLighting = () => {
 	renderer.shadowMap.needsUpdate = true
 }
 
-const clock = new THREE.Clock()
-
 const initScene = () => {
 	const options = {
 		intensity: 0.9999999999999989,
 		power: 0.9999999999999999,
 		distance: 5.440000000000008,
 		thickness: 5.219999999999997,
-		ior: 2.33,
+		ior: 1.45,
 		maxRoughness: 1,
 		blend: 0.9,
 		denoiseIterations: 3,
@@ -245,38 +243,9 @@ const initScene = () => {
 		refineSteps: 4,
 		spp: 1,
 		missedRays: false,
-		useNormalMap: true,
-		useRoughnessMap: true,
 		resolutionScale: 1,
 		antialias: true
 	}
-
-	// options = {
-	// 	intensity: 1.499999999999999,
-	// 	power: 1.16,
-	// 	distance: 23.370000000000008,
-	// 	roughnessFade: 0,
-	// 	thickness: 7.169999999999997,
-	// 	ior: 2.33,
-	// 	maxRoughness: 1,
-	// 	blend: 0.9,
-	// 	denoiseIterations: 5,
-	// 	denoiseKernel: 1,
-	// 	lumaPhi: 50,
-	// 	depthPhi: 13.200000000000001,
-	// 	normalPhi: 1.58,
-	// 	roughnessPhi: 1,
-	// 	jitter: 0.53,
-	// 	jitterRoughness: 1,
-	// 	steps: 50,
-	// 	refineSteps: 4,
-	// 	spp: 4,
-	// 	missedRays: false,
-	// 	useNormalMap: true,
-	// 	useRoughnessMap: true,
-	// 	resolutionScale: 0.5,
-	// 	antialias: true
-	// }
 
 	traaEffect = new TRAAEffect(scene, camera, params)
 
@@ -372,7 +341,7 @@ const loop = () => {
 
 	if (mixer) {
 		for (const ac of mixer._actions) {
-			ac.time = (250 / 30) * mX
+			ac.time = maxAnimDuration * mX
 		}
 		mixer.update(0)
 		lastScene.updateMatrixWorld()
@@ -512,6 +481,8 @@ dragDrop("body", files => {
 	reader.readAsArrayBuffer(file)
 })
 
+let maxAnimDuration = 0
+
 const setupAsset = asset => {
 	scene.add(asset.scene)
 	asset.scene.scale.setScalar(1)
@@ -531,6 +502,7 @@ const setupAsset = asset => {
 		mixer = new THREE.AnimationMixer(asset.scene)
 
 		for (const clip of clips) {
+			maxAnimDuration = Math.max(clip.duration)
 			const action = mixer.clipAction(clip)
 
 			if (action) action.play()

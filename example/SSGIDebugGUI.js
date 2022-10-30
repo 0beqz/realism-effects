@@ -27,6 +27,12 @@ export class SSGIDebugGUI {
 			step: 0.01
 		})
 
+		generalFolder.addInput(params, "ior", {
+			min: 1,
+			max: 3,
+			step: 0.01
+		})
+
 		generalFolder.addInput(params, "maxRoughness", { min: 0, max: 1, step: 0.01 })
 
 		const temporalResolveFolder = pane.addFolder({ title: "Temporal Resolve" })
@@ -41,12 +47,12 @@ export class SSGIDebugGUI {
 			step: 0.01
 		})
 		denoiseKernelFolder.addInput(params, "depthPhi", {
-			min: 1,
+			min: 0,
 			max: 20,
 			step: 0.1
 		})
 		denoiseKernelFolder.addInput(params, "normalPhi", {
-			min: 0.5,
+			min: 0,
 			max: 100,
 			step: 0.01
 		})
@@ -69,7 +75,7 @@ export class SSGIDebugGUI {
 		definesFolder.addInput(params, "missedRays")
 
 		const resolutionFolder = pane.addFolder({ title: "Resolution", expanded: false })
-		resolutionFolder.addInput(params, "resolutionScale", { min: 0.5, max: 1, step: 0.5 })
+		resolutionFolder.addInput(params, "resolutionScale", { min: 0.25, max: 1, step: 0.25 })
 
 		pane
 			.addButton({

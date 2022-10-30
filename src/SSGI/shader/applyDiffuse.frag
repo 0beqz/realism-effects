@@ -20,6 +20,4 @@ if (isBackground) {
     inputTexel.rgb *= diffuseColor;
 
     inputTexel.rgb += directLightTexel.rgb * TRANSFORM_FACTOR;
-
-    inputTexel.rgb = min(inputTexel.rgb, vec3(1.));
 }

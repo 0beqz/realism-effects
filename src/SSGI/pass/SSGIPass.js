@@ -110,6 +110,7 @@ export class SSGIPass extends Pass {
 
 		this.fullscreenMaterial.uniforms.normalTexture.value = this.normalTexture
 		this.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
+		this.fullscreenMaterial.uniforms.diffuseTexture.value = this.diffuseTexture
 		this.fullscreenMaterial.uniforms.velocityTexture.value = this.velocityTexture
 
 		// set up uniforms
@@ -203,22 +204,9 @@ export class SSGIPass extends Pass {
 			if (!this.ssgiEffect.reflectionsOnly) originalMaterial.envMapIntensity = 0
 
 			// update the child's MRT material
-			keepMaterialMapUpdated(
-				mrtMaterial,
-				originalMaterial,
-				"normalMap",
-				"USE_NORMAL_MAP",
-				this.ssgiEffect["useNormalMap"]
-			)
-
-			keepMaterialMapUpdated(
-				mrtMaterial,
-				originalMaterial,
-				"roughnessMap",
-				"USE_ROUGHNESS_MAP",
-				this.ssgiEffect["useRoughnessMap"]
-			)
-
+			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "normalMap", "USE_NORMAL_MAP", true)
+			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "roughnessMap", "USE_ROUGHNESS_MAP", true)
+			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "metalnessMap", "USE_	METALNESS_MAP", true)
 			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "map", "USE_MAP", true)
 
 			if ("renderVelocity" in mrtMaterial.defines) {
@@ -255,6 +243,7 @@ export class SSGIPass extends Pass {
 					? originalMaterial.roughness || 0
 					: 10e10
 
+			mrtMaterial.uniforms.metalness.value = c.material.metalness || 0
 			c.material = mrtMaterial
 
 			if (!this.renderVelocitySeparate)

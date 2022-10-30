@@ -19,8 +19,6 @@
  * @property {Number} [refineSteps] once we had our ray intersect something, we need to find the exact point in space it intersected and thus it reflects; this can be done through binary search with the given number of maximum steps
  * @property {Number} [spp] number of samples per pixel
  * @property {boolean} [missedRays] if there should still be ssgi for rays for which a reflecting point couldn't be found; enabling this will result in stretched looking ssgi which can look good or bad depending on the angle
- * @property {boolean} [useNormalMap] if roughness maps should be taken account of when calculating ssgi
- * @property {boolean} [useRoughnessMap] if normal maps should be taken account of when calculating ssgi
  * @property {Number} [resolutionScale] resolution of the SSGI effect, a resolution of 0.5 means the effect will be rendered at half resolution
  * @property {Boolean} [antialias] if enabled, integrated TRAA will be applied to the scene each frame resulting in smoother look and less jagging; enabling this setting is recommended if the scene needs anti-aliasing as it has practically no cost
  */
@@ -34,6 +32,7 @@ export const defaultSSGIOptions = {
 	power: 1,
 	distance: 10,
 	thickness: 10,
+	ior: 1.45,
 	maxRoughness: 1,
 	blend: 0.9,
 	denoiseIterations: 1,
@@ -47,9 +46,6 @@ export const defaultSSGIOptions = {
 	steps: 20,
 	refineSteps: 5,
 	spp: 1,
-	missedRays: true,
-	useNormalMap: true,
-	useRoughnessMap: true,
 	resolutionScale: 1,
 	antialias: true
 }

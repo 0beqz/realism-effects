@@ -4,6 +4,7 @@ uniform sampler2D directLightTexture;
 uniform sampler2D accumulatedTexture;
 uniform sampler2D normalTexture;
 uniform sampler2D depthTexture;
+uniform sampler2D diffuseTexture;
 uniform sampler2D blueNoiseTexture;
 uniform sampler2D velocityTexture;
 uniform sampler2D envMap;
@@ -18,6 +19,7 @@ uniform float maxEnvMapMipLevel;
 
 uniform float rayDistance;
 uniform float maxRoughness;
+uniform float ior;
 uniform float thickness;
 uniform float power;
 uniform float intensity;
@@ -47,7 +49,7 @@ float farMinusNear;
 vec2 RayMarch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
 vec2 BinarySearch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
 float fastGetViewZ(const in float depth);
-vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float sampleCount, float spread, vec3 Fresnel);
+vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float sampleCount, float spread, vec3 Fresnel, inout vec3 reflected);
 
 void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.0);
@@ -90,23 +92,28 @@ void main() {
     float spread = jitter + roughness * jitterRoughness;
     spread = min(1.0, spread);
 
-    vec3 SSGI;
+    float metalness = textureLod(diffuseTexture, vUv, 0.).a;
 
-    float cosTheta = max(dot(viewNormal, viewDir), 0.0);
-    vec3 Fresnel = fresnelSchlick(cosTheta, vec3(0.04));
+    vec3 SSGI;
+    vec3 diffuseSSGI;
+    vec3 specularSSGI;
+    vec3 reflected;
 
     for (int s = 0; s < spp; s++) {
         float sF = float(s);
 
-        vec3 diffuseSSGI = doSample(viewPos, viewDir, viewNormal, roughness, sF, 1.0, vec3(1.0));
-        vec3 specularSSGI = doSample(viewPos, viewDir, viewNormal, roughness, sF, spread, Fresnel);
+        diffuseSSGI = doSample(viewPos, viewDir, viewNormal, roughness, sF, 1.0, vec3(1.0), reflected);
+        specularSSGI = doSample(viewPos, viewDir, viewNormal, roughness, sF, spread, vec3(1.), reflected);
 
         float m = 1. / (sF + 1.0);
 
-        SSGI = mix(SSGI, diffuseSSGI + specularSSGI, m);
-    }
+        float cosTheta = max(dot(viewNormal, reflected), 0.0);
+        float fresnelFactor = fresnel_dielectric(viewDir, reflected, ior);
 
-    SSGI *= 0.5;
+        vec3 gi = mix(diffuseSSGI, specularSSGI, fresnelFactor);
+
+        SSGI = mix(SSGI, gi, m);
+    }
 
     if (power != 1.0) SSGI = pow(SSGI, vec3(power));
 
@@ -115,56 +122,12 @@ void main() {
     gl_FragColor = vec4(SSGI, lastFrameAlpha);
 }
 
-vec3 SampleLambert(vec3 viewNormal, vec2 random) {
-    float thetaMax = M_PI / 2.;
-    float cosThetaMax = cos(thetaMax);
-
-    float cosTheta = (1. - random.x) + random.x * cosThetaMax;
-    float sinTheta = sqrt(1. - cosTheta * cosTheta);
-    float phi = random.y * 2. * M_PI;
-    float x = cos(phi) * sinTheta;
-    float y = sin(phi) * sinTheta;
-    float z = cosTheta;
-    vec3 hemisphereVector = vec3(x, y, z);
-
-    mat3 normalBasis = getBasisFromNormal(viewNormal);
-
-    return normalize(normalBasis * hemisphereVector);
-}
-
-// source: https://github.com/Domenicobrz/SSR-TAA-in-threejs-/blob/master/Components/ssr.js
-vec3 SampleGGX(vec3 wo, vec3 norm, float roughness, vec2 random) {
-    float r0 = random.x;
-    float r1 = random.y;
-
-    float a = roughness * roughness;
-    float a2 = a * a;
-    float theta = acos(sqrt((1.0 - r0) / ((a2 - 1.0) * r0 + 1.0)));
-    float phi = 2.0 * M_PI * r1;
-    float x = sin(theta) * cos(phi);
-    float y = cos(theta);
-    float z = sin(theta) * sin(phi);
-    vec3 wm = normalize(vec3(x, y, z));
-    vec3 w = norm;
-    if (abs(norm.y) < 0.95) {
-        vec3 u = normalize(cross(w, vec3(0.0, 1.0, 0.0)));
-        vec3 v = normalize(cross(u, w));
-        wm = normalize(wm.y * w + wm.x * u + wm.z * v);
-    } else {
-        vec3 u = normalize(cross(w, vec3(0.0, 0.0, 1.0)));
-        vec3 v = normalize(cross(u, w));
-        wm = normalize(wm.y * w + wm.x * u + wm.z * v);
-    }
-    vec3 wi = reflect(wo, wm);
-    return wi;
-}
-
-vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float sampleCount, float spread, vec3 Fresnel) {
+vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float sampleCount, float spread, vec3 Fresnel, inout vec3 reflected) {
     vec2 startOffset = vec2(sampleCount / float(spp));
     vec2 blueNoiseUv = (vUv + startOffset + seed) * blueNoiseRepeat;
     vec2 random = textureLod(blueNoiseTexture, blueNoiseUv, 0.).rg;
 
-    vec3 reflected = spread == 1.0 ? SampleLambert(viewNormal, random) : SampleGGX(viewDir, viewNormal, spread, random);
+    reflected = spread == 1.0 ? SampleLambert(viewNormal, random) : SampleGGX(viewDir, viewNormal, spread, random);
 
     if (dot(reflected, viewNormal) < 0.) {
         reflected = SampleGGX(viewDir, viewNormal, spread, vec2(random.y, random.x));

@@ -69,8 +69,6 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0) {
     return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
 }
 
-#define M_PI 3.1415926535897932384626433832795
-
 // source: https://github.com/blender/blender/blob/594f47ecd2d5367ca936cf6fc6ec8168c2b360d0/source/blender/gpu/shaders/material/gpu_shader_material_fresnel.glsl
 float fresnel_dielectric_cos(float cosi, float eta) {
     /* compute fresnel reflectance without explicitly computing
@@ -100,6 +98,8 @@ float fresnel_dielectric(vec3 Incoming, vec3 Normal, float eta) {
     return min(1.0, 5.0 * fresnel_dielectric_cos(cosine, eta));
 }
 
+#define M_PI 3.1415926535897932384626433832795
+
 // ray sampling x and z are swapped to align with expected background view
 vec2 equirectDirectionToUv(vec3 direction) {
     // from Spherical.setFromCartesianCoords
@@ -117,35 +117,6 @@ vec3 sampleEquirectEnvMapColor(vec3 direction, sampler2D map, float lod) {
     return textureLod(map, equirectDirectionToUv(direction), lod).rgb;
 }
 
-vec2 hash23(vec3 p3) {
-    p3 = fract(p3 * vec3(.1031, .1030, .0973));
-    p3 += dot(p3, p3.yzx + 33.33);
-    return fract((p3.xx + p3.yz) * p3.zy);
-}
-
-// source: https://github.com/CesiumGS/cesium/blob/main/Source/Shaders/Builtin/Functions/luminance.glsl
-float czm_luminance(vec3 rgb) {
-    // Algorithm from Chapter 10 of Graphics Shaders.
-    const vec3 W = vec3(0.2125, 0.7154, 0.0721);
-    return dot(rgb, W);
-}
-
-// source: https://github.com/gkjohnson/three-gpu-pathtracer/blob/428463b5d6d8b95d09842983f0f3690f34eadf5b/src/shader/shaderUtils.js#L63
-vec3 getHemisphereSample(vec3 n, vec2 uv) {
-    // https://www.rorydriscoll.com/2009/01/07/better-sampling/
-    // https://graphics.pixar.com/library/OrthonormalB/paper.pdf
-    float sign = n.z == 0.0 ? 1.0 : sign(n.z);
-    float a = -1.0 / (sign + n.z);
-    float b = n.x * n.y * a;
-    vec3 b1 = vec3(1.0 + sign * n.x * n.x * a, sign * b, -sign * n.x);
-    vec3 b2 = vec3(b, sign + n.y * n.y * a, -n.y);
-    float r = sqrt(uv.x);
-    float theta = 2.0 * M_PI * uv.y;
-    float x = r * cos(theta);
-    float y = r * sin(theta);
-    return x * b1 + y * b2 + sqrt(1.0 - uv.x) * n;
-}
-
 mat3 getBasisFromNormal(vec3 normal) {
     vec3 other;
     if (abs(normal.x) > 0.5) {
@@ -156,4 +127,55 @@ mat3 getBasisFromNormal(vec3 normal) {
     vec3 ortho = normalize(cross(normal, other));
     vec3 ortho2 = normalize(cross(normal, ortho));
     return mat3(ortho2, ortho, normal);
+}
+
+vec3 SampleLambert(vec3 viewNormal, vec2 random) {
+    float thetaMax = M_PI / 2.;
+    float cosThetaMax = cos(thetaMax);
+
+    float cosTheta = (1. - random.x) + random.x * cosThetaMax;
+    float sinTheta = sqrt(1. - cosTheta * cosTheta);
+    float phi = random.y * 2. * M_PI;
+    float x = cos(phi) * sinTheta;
+    float y = sin(phi) * sinTheta;
+    float z = cosTheta;
+    vec3 hemisphereVector = vec3(x, y, z);
+
+    mat3 normalBasis = getBasisFromNormal(viewNormal);
+
+    return normalize(normalBasis * hemisphereVector);
+}
+
+// source: https://github.com/Domenicobrz/SSR-TAA-in-threejs-/blob/master/Components/ssr.js
+vec3 SampleGGX(vec3 wo, vec3 norm, float roughness, vec2 random) {
+    float r0 = random.x;
+    float r1 = random.y;
+
+    float a = roughness * roughness;
+    float a2 = a * a;
+    float theta = acos(sqrt((1.0 - r0) / ((a2 - 1.0) * r0 + 1.0)));
+    float phi = 2.0 * M_PI * r1;
+    float x = sin(theta) * cos(phi);
+    float y = cos(theta);
+    float z = sin(theta) * sin(phi);
+    vec3 wm = normalize(vec3(x, y, z));
+    vec3 w = norm;
+    if (abs(norm.y) < 0.95) {
+        vec3 u = normalize(cross(w, vec3(0.0, 1.0, 0.0)));
+        vec3 v = normalize(cross(u, w));
+        wm = normalize(wm.y * w + wm.x * u + wm.z * v);
+    } else {
+        vec3 u = normalize(cross(w, vec3(0.0, 0.0, 1.0)));
+        vec3 v = normalize(cross(u, w));
+        wm = normalize(wm.y * w + wm.x * u + wm.z * v);
+    }
+    vec3 wi = reflect(wo, wm);
+    return wi;
+}
+
+// source: https://github.com/CesiumGS/cesium/blob/main/Source/Shaders/Builtin/Functions/luminance.glsl
+float czm_luminance(vec3 rgb) {
+    // Algorithm from Chapter 10 of Graphics Shaders.
+    const vec3 W = vec3(0.2125, 0.7154, 0.0721);
+    return dot(rgb, W);
 }
