@@ -15,11 +15,11 @@ if (isBackground) {
 #else
     float metalness = inputTexel.a;
 
-    float diffuseInfluence = mix(0.975, 0.75, metalness);
+    float diffuseInfluence = mix(0.975, 0.875, metalness);
 #endif
 
     vec3 diffuseColor = diffuseTexel.rgb * diffuseInfluence + (1. - diffuseInfluence);
     inputTexel.rgb *= diffuseColor;
 
-    inputTexel.rgb += directLightTexel.rgb * (1. - metalness) * TRANSFORM_FACTOR;
+    inputTexel.rgb += directLightTexel.rgb * TRANSFORM_FACTOR;
 }

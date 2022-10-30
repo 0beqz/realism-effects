@@ -2,7 +2,7 @@ import dragDrop from "drag-drop"
 import * as POSTPROCESSING from "postprocessing"
 import Stats from "stats.js"
 import * as THREE from "three"
-import { ACESFilmicToneMapping, Box3, DirectionalLight, DoubleSide, Vector3 } from "three"
+import { ACESFilmicToneMapping, Box3, DirectionalLight, Vector3 } from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader"
@@ -31,7 +31,7 @@ const guiParams = {
 const scene = new THREE.Scene()
 window.scene = scene
 
-const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.01, 250)
+const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.01, 250)
 
 scene.add(camera)
 scene.autoUpdate = false
@@ -223,7 +223,7 @@ const refreshLighting = () => {
 }
 
 const initScene = () => {
-	const options = {
+	let options = {
 		intensity: 0.9999999999999989,
 		power: 0.9999999999999999,
 		distance: 5.440000000000008,
@@ -243,6 +243,29 @@ const initScene = () => {
 		refineSteps: 4,
 		spp: 1,
 		missedRays: false,
+		resolutionScale: 1,
+		antialias: true
+	}
+
+	options = {
+		intensity: 2.379999999999999,
+		power: 0.9999999999999999,
+		distance: 20.65000000000001,
+		thickness: 6.519999999999997,
+		ior: 2.15,
+		maxRoughness: 1,
+		blend: 0.9,
+		denoiseIterations: 3,
+		denoiseKernel: 2,
+		lumaPhi: 10,
+		depthPhi: 14.200000000000001,
+		normalPhi: 56.74,
+		roughnessPhi: 1,
+		jitter: 0.22000000000000003,
+		jitterRoughness: 0,
+		steps: 17,
+		refineSteps: 4,
+		spp: 1,
 		resolutionScale: 1,
 		antialias: true
 	}
