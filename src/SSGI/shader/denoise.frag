@@ -72,7 +72,7 @@ void main() {
 
             float normalSimilarity = pow(max(0., dot(neighborNormal, normal)), normalPhi);
             float lumaSimilarity = max(1.0 - lumaDiff / colorPhi, 0.0);
-            float depthSimilarity = exp(-depthDiff * depthPhi);
+            float depthSimilarity = 1.0 - min(1.0, depthDiff * depthPhi);
 
             float weight = normalSimilarity * lumaSimilarity * depthSimilarity;
 

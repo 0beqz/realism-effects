@@ -2585,6 +2585,11 @@
   "resolved" "https://registry.npmjs.org/minimist/-/minimist-1.2.6.tgz"
   "version" "1.2.6"
 
+"moore@~1.0.0":
+  "integrity" "sha512-xcsFo/jgtMuVaGePHod5TdSzxnRAQQ4wFpDmFuu34lHvx5sNMsioA84NW7iBWYZ10jHR/nyGaDkhunMJxqAzkw=="
+  "resolved" "https://registry.npmjs.org/moore/-/moore-1.0.0.tgz"
+  "version" "1.0.0"
+
 "ms@^2.1.1", "ms@2.1.2":
   "integrity" "sha512-sGkPx+VjMtmA6MX27oA4FBFELFCZZ4S4XqeGOXCv68tT+jb3vk/RyaKWP0PTKyWtmLSM0b+adUTEvbs1PEaH2w=="
   "resolved" "https://registry.npmjs.org/ms/-/ms-2.1.2.tgz"
@@ -2780,6 +2785,13 @@
   "integrity" "sha512-eG2dWTVw5bzqGRztnHExczNxt5VGsE6OwTeCG3fdUf9KBsZzO3R5OIIIzWR+iZA0NtZ+RDVdaoE2dK1cn6jH4g=="
   "resolved" "https://registry.npmjs.org/pidtree/-/pidtree-0.6.0.tgz"
   "version" "0.6.0"
+
+"poisson-disk-sampling@^2.3.1":
+  "integrity" "sha512-O3TzHR8IA+Do5zC7EgPdHLOYOpUJ6DikiTwqRqXdSPUhx1ZqfeH6PqAD86KKi+8Nq8vnL2navErsgURKTe089w=="
+  "resolved" "https://registry.npmjs.org/poisson-disk-sampling/-/poisson-disk-sampling-2.3.1.tgz"
+  "version" "2.3.1"
+  dependencies:
+    "moore" "~1.0.0"
 
 "postprocessing@>=6.28.0":
   "integrity" "sha512-3KwA5k9IwdB0bpyJ/jK1KnXAk1BJYV1jnywGXJnQXg5trSNVRUq0Gkas2GDIpo+6ThCbwb20NmF6WQOaeyk1Og=="

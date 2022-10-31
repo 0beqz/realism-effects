@@ -22,7 +22,7 @@ const backgroundColor = new Color(0)
 export class SSGIPass extends Pass {
 	cachedMaterials = new WeakMap()
 	visibleMeshes = []
-	haltonIndex = 0
+	pointsIndex = 0
 
 	constructor(ssgiEffect) {
 		super("SSGIPass")
@@ -138,10 +138,7 @@ export class SSGIPass extends Pass {
 
 		// setting the size for the webgl1DepthPass currently causes a stack overflow due to recursive calling
 		if (!isWebGL2) {
-			this.webgl1DepthPass.renderTarget.setSize(
-				width * this.ssgiEffect.resolutionScale,
-				height * this.ssgiEffect.resolutionScale
-			)
+			this.webgl1DepthPass.renderTarget.setSize(width, height)
 		}
 
 		this.fullscreenMaterial.uniforms.invTexSize.value.set(1 / width, 1 / height)
@@ -169,7 +166,7 @@ export class SSGIPass extends Pass {
 		this.visibleMeshes = getVisibleChildren(this._scene)
 
 		for (const c of this.visibleMeshes) {
-			c.visible = c.material.visible && c.material.colorWrite
+			c.visible = c.material.visible && c.material.colorWrite && !c.material.transparent
 
 			const originalMaterial = c.material
 
@@ -236,7 +233,7 @@ export class SSGIPass extends Pass {
 			}
 
 			const visible = originalMaterial.visible && !c.constructor.name.includes("GroundProjectedEnv")
-			c.visible = visible
+			c.visible &&= visible
 
 			mrtMaterial.uniforms.roughness.value =
 				this.ssgiEffect.selection.size === 0 || this.ssgiEffect.selection.has(c)
@@ -305,7 +302,7 @@ export class SSGIPass extends Pass {
 		// update uniforms
 
 		this.fullscreenMaterial.uniforms.samples.value = this.ssgiEffect.svgf.svgfTemporalResolvePass.samples
-		this.fullscreenMaterial.uniforms.seed.value = Math.random()
+		this.fullscreenMaterial.uniforms.seed.value++
 		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
 		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far
 		this.fullscreenMaterial.uniforms.viewMatrix.value.copy(this._camera.matrixWorldInverse)

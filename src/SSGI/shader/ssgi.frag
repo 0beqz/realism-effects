@@ -27,7 +27,7 @@ uniform vec2 invTexSize;
 uniform vec2 blueNoiseRepeat;
 
 uniform float samples;
-uniform float seed;
+uniform int seed;
 
 uniform float jitter;
 uniform float jitterRoughness;
@@ -70,6 +70,8 @@ void main() {
         gl_FragColor = EARLY_OUT_COLOR;
         return;
     }
+
+    rng_initialize(vUv, seed);
 
     // pre-calculated variables for the "fastGetViewZ" function
     nearMinusFar = cameraNear - cameraFar;
@@ -123,7 +125,7 @@ void main() {
 
 vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float sampleCount, float spread, vec3 Fresnel, inout vec3 reflected) {
     vec2 startOffset = vec2(sampleCount / float(spp));
-    vec2 blueNoiseUv = (vUv + startOffset + seed) * blueNoiseRepeat;
+    vec2 blueNoiseUv = (vUv + rand2()) * blueNoiseRepeat;
     vec2 random = textureLod(blueNoiseTexture, blueNoiseUv, 0.).rg;
 
     reflected = spread == 1.0 ? SampleLambert(viewNormal, random) : SampleGGX(viewDir, viewNormal, spread, random);
@@ -229,7 +231,7 @@ vec2 RayMarch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference)
         hitPos += dir;
         uv = viewSpaceToScreenSpace(hitPos);
 
-        unpackedDepth = unpackRGBAToDepth(textureLod(depthTexture, uv, 0.0));
+        unpackedDepth = unpackRGBAToDepth(textureLod(depthTexture, uv, 2.0));
         depth = fastGetViewZ(unpackedDepth);
 
         rayHitDepthDifference = depth - hitPos.z;

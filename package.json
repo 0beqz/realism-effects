@@ -72,6 +72,7 @@
 	},
 	"dependencies": {
 		"gaussian-convolution-kernel": "^1.0.0",
+		"poisson-disk-sampling": "^2.3.1",
 		"screen-space-reflections": "^2.1.1"
 	}
 }
