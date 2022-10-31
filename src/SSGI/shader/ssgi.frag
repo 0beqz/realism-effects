@@ -19,7 +19,6 @@ uniform float maxEnvMapMipLevel;
 
 uniform float rayDistance;
 uniform float maxRoughness;
-uniform float ior;
 uniform float thickness;
 uniform float power;
 uniform float intensity;
@@ -36,6 +35,7 @@ uniform float jitterRoughness;
 #define EARLY_OUT_COLOR    vec4(0.0, 0.0, 0.0, 1.0)
 #define FLOAT_EPSILON      0.00001
 #define TRANSFORM_FACTOR   0.2
+const vec3 Fdielectric = vec3(0.04);
 
 float nearMinusFar;
 float nearMulFar;
@@ -49,7 +49,7 @@ float farMinusNear;
 vec2 RayMarch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
 vec2 BinarySearch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
 float fastGetViewZ(const in float depth);
-vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float sampleCount, float spread, vec3 Fresnel, inout vec3 reflected);
+vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float spread, vec3 Fresnel, inout vec3 reflected);
 
 void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.0);
@@ -93,38 +93,45 @@ void main() {
     float spread = jitter + roughness * jitterRoughness;
     spread = min(1.0, spread);
 
-    float metalness = textureLod(diffuseTexture, vUv, 0.).a;
+    vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.);
+    vec3 diffuse = diffuseTexel.rgb;
+    float metalness = diffuseTexel.a;
 
     vec3 SSGI;
     vec3 diffuseSSGI;
     vec3 specularSSGI;
     vec3 reflected;
+    vec3 F;
 
     for (int s = 0; s < spp; s++) {
         float sF = float(s);
 
-        diffuseSSGI = doSample(viewPos, viewDir, viewNormal, roughness, sF, 1.0, vec3(1.0), reflected);
-        specularSSGI = doSample(viewPos, viewDir, viewNormal, roughness, sF, spread, vec3(1.), reflected);
+        diffuseSSGI = doSample(viewPos, viewDir, viewNormal, roughness, 1.0, vec3(1.0), reflected);
+        specularSSGI = doSample(viewPos, viewDir, viewNormal, roughness, spread, vec3(1.), reflected);
 
         float m = 1. / (sF + 1.0);
 
         float cosTheta = max(dot(viewNormal, reflected), 0.0);
-        float fresnelFactor = fresnel_dielectric(viewDir, reflected, ior);
 
-        vec3 gi = mix(diffuseSSGI * (1.0 - metalness), specularSSGI, fresnelFactor);
+        vec3 F0 = mix(Fdielectric, diffuse, metalness);
+        F = fresnelSchlick(F0, max(0.0, dot(viewDir, reflected)));
+
+        vec3 gi = mix(diffuseSSGI * (1.0 - metalness), specularSSGI, F);
 
         SSGI = mix(SSGI, gi, m);
     }
 
     if (power != 1.0) SSGI = pow(SSGI, vec3(power));
 
-    SSGI *= intensity;
+    vec2 dCoords = smoothstep(0.2, 0.6, abs(vec2(0.5, 0.5) - vUv));
+    float screenEdgeIntensity = clamp(1.0 - (dCoords.x + dCoords.y), 0.0, 1.0);
+
+    SSGI *= screenEdgeIntensity;
 
     gl_FragColor = vec4(SSGI, metalness);
 }
 
-vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float sampleCount, float spread, vec3 Fresnel, inout vec3 reflected) {
-    vec2 startOffset = vec2(sampleCount / float(spp));
+vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float spread, vec3 Fresnel, inout vec3 reflected) {
     vec2 blueNoiseUv = (vUv + rand2()) * blueNoiseRepeat;
     vec2 random = textureLod(blueNoiseTexture, blueNoiseUv, 0.).rg;
 
@@ -190,10 +197,6 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
         if (!isAllowedMissedRay) return m * envMapSample;
     }
 #endif
-
-    vec2 dCoords = smoothstep(0.2, 0.6, abs(vec2(0.5, 0.5) - vUv));
-    float ssgiIntensity = clamp(1.0 - (dCoords.x + dCoords.y), 0.0, 1.0);
-    m *= ssgiIntensity;
 
     // reproject the coords from the last frame
     vec4 velocity = textureLod(velocityTexture, coords.xy, 0.0);

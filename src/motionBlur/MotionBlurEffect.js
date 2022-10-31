@@ -1,7 +1,6 @@
 ﻿import { Effect } from "postprocessing"
-import { LinearEncoding, LinearFilter, RepeatWrapping, Uniform, Vector2 } from "three"
+import { LinearEncoding, LinearFilter, NearestFilter, RepeatWrapping, Uniform, Vector2 } from "three"
 import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader"
-import { generateHalton2Points } from "../utils/Halton"
 import motionBlur from "./motionBlur.glsl"
 
 // https://www.nvidia.com/docs/io/8230/gdc2003_openglshadertricks.pdf
@@ -66,7 +65,8 @@ export class MotionBlurEffect extends Effect {
 		ktx2Loader.detectSupport(renderer)
 		ktx2Loader.load("texture/blue_noise_rg.ktx2", blueNoiseTexture => {
 			// generated using "toktx --target_type RG --t2 blue_noise_rg blue_noise_rg.png"
-			blueNoiseTexture.minFilter = LinearFilter
+			blueNoiseTexture.minFilter = NearestFilter
+			blueNoiseTexture.magFilter = NearestFilter
 			blueNoiseTexture.wrapS = RepeatWrapping
 			blueNoiseTexture.wrapT = RepeatWrapping
 			blueNoiseTexture.encoding = LinearEncoding
@@ -81,7 +81,7 @@ export class MotionBlurEffect extends Effect {
 		this.uniforms.get("inputTexture").value = inputBuffer.texture
 		this.uniforms.get("deltaTime").value = Math.max(1 / 1000, deltaTime)
 
-		this.uniforms.get("seed").value = Math.random()
+		this.uniforms.get("seed").value++
 
 		const noiseTexture = this.uniforms.get("blueNoiseTexture").value
 		if (noiseTexture) {

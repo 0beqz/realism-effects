@@ -32,7 +32,6 @@ export const defaultSSGIOptions = {
 	power: 1,
 	distance: 10,
 	thickness: 10,
-	ior: 1.45,
 	maxRoughness: 1,
 	blend: 0.9,
 	denoiseIterations: 1,

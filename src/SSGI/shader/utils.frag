@@ -211,3 +211,8 @@ vec2 rand2() {
     pcg4d(s0);
     return vec2(s0.xy) / float(0xffffffffu);
 }
+
+// Shlick's approximation of the Fresnel factor.
+vec3 fresnelSchlick(vec3 F0, float cosTheta) {
+    return F0 + (vec3(1.0) - F0) * pow(1.0 - cosTheta, 5.0);
+}
