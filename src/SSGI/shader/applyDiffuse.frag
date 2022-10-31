@@ -15,7 +15,7 @@ if (isBackground) {
 #else
     float metalness = inputTexel.a;
 
-    float diffuseInfluence = mix(0.975, 0.875, metalness);
+    float diffuseInfluence = mix(0.975, 0.9, metalness);
 #endif
 
     vec3 diffuseColor = diffuseTexel.rgb * diffuseInfluence + (1. - diffuseInfluence);

@@ -12,6 +12,8 @@ uniform float normalPhi;
 uniform float roughnessPhi;
 uniform float denoiseKernel;
 uniform float stepSize;
+uniform mat4 _viewMatrix;
+uniform mat4 _projectionMatrixInverse;
 
 #include <packing>
 
@@ -19,6 +21,8 @@ uniform float stepSize;
 #define FLOAT_EPSILON 0.00001
 
 const vec3 W = vec3(0.2125, 0.7154, 0.0721);
+
+#define PERSPECTIVE_CAMERA
 
 void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.);
@@ -30,6 +34,10 @@ void main() {
 
     vec4 normalTexel = textureLod(normalTexture, vUv, 0.);
     vec3 normal = unpackRGBToNormal(normalTexel.rgb);
+
+    mat3 screenToWorldMatrix = mat3(_viewMatrix) * mat3(_projectionMatrixInverse);
+    normal *= screenToWorldMatrix;
+    normal = normalize(normal);
 
     float totalWeight = 1.;
     vec3 color = inputTexel.rgb;
@@ -43,6 +51,7 @@ void main() {
     roughnessFactor = mix(1., roughnessFactor, roughnessPhi);
 
     float kernel = denoiseKernel;
+    vec3 neighborNormal;
 
     for (float i = -kernel; i <= kernel; i++) {
         if (i != 0.) {
@@ -59,7 +68,9 @@ void main() {
             float lumaDiff = abs(luma - neighborLuma);
 
             vec4 neighborNormalTexel = textureLod(normalTexture, neighborUv, 0.);
-            vec3 neighborNormal = unpackRGBToNormal(neighborNormalTexel.rgb);
+            neighborNormal = unpackRGBToNormal(neighborNormalTexel.rgb);
+            neighborNormal *= screenToWorldMatrix;
+            neighborNormal = normalize(neighborNormal);
 
 #ifdef USE_MOMENT
             vec2 moment = textureLod(momentsTexture, neighborUv, 0.).rg;

@@ -1,5 +1,5 @@
 ﻿import { Pass } from "postprocessing"
-import { HalfFloatType, LinearFilter, ShaderMaterial, Uniform, Vector2, WebGLRenderTarget } from "three"
+import { HalfFloatType, LinearFilter, Matrix4, ShaderMaterial, Uniform, Vector2, WebGLRenderTarget } from "three"
 import basicVertexShader from "../shader/basic.vert"
 import fragmentShader from "../shader/denoise.frag"
 import { isWebGL2Available } from "../utils/Utils"
@@ -13,7 +13,7 @@ const isWebGL2 = isWebGL2Available()
 export class DenoisePass extends Pass {
 	iterations = 1
 
-	constructor(inputTexture) {
+	constructor(camera, inputTexture) {
 		super("DenoisePass")
 
 		this.fullscreenMaterial = new ShaderMaterial({
@@ -31,7 +31,9 @@ export class DenoisePass extends Pass {
 				depthPhi: new Uniform(1),
 				normalPhi: new Uniform(1),
 				roughnessPhi: new Uniform(1),
-				stepSize: new Uniform(1)
+				stepSize: new Uniform(1),
+				_viewMatrix: new Uniform(camera.matrixWorldInverse),
+				_projectionMatrixInverse: new Uniform(camera.projectionMatrixInverse)
 			}
 		})
 
