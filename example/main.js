@@ -34,7 +34,7 @@ window.scene = scene
 const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.01, 250)
 
 scene.add(camera)
-scene.autoUpdate = false
+scene.matrixWorldAutoUpdate = false
 window.camera = camera
 
 const canvas = document.querySelector(".webgl")

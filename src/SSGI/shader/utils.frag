@@ -129,50 +129,6 @@ mat3 getBasisFromNormal(vec3 normal) {
     return mat3(ortho2, ortho, normal);
 }
 
-vec3 SampleLambert(vec3 viewNormal, vec2 random) {
-    float thetaMax = M_PI / 2.;
-    float cosThetaMax = cos(thetaMax);
-
-    float cosTheta = (1. - random.x) + random.x * cosThetaMax;
-    float sinTheta = sqrt(1. - cosTheta * cosTheta);
-    float phi = random.y * 2. * M_PI;
-    float x = cos(phi) * sinTheta;
-    float y = sin(phi) * sinTheta;
-    float z = cosTheta;
-    vec3 hemisphereVector = vec3(x, y, z);
-
-    mat3 normalBasis = getBasisFromNormal(viewNormal);
-
-    return normalize(normalBasis * hemisphereVector);
-}
-
-// source: https://github.com/Domenicobrz/SSR-TAA-in-threejs-/blob/master/Components/ssr.js
-vec3 SampleGGX(vec3 wo, vec3 norm, float roughness, vec2 random) {
-    float r0 = random.x;
-    float r1 = random.y;
-
-    float a = roughness * roughness;
-    float a2 = a * a;
-    float theta = acos(sqrt((1.0 - r0) / ((a2 - 1.0) * r0 + 1.0)));
-    float phi = 2.0 * M_PI * r1;
-    float x = sin(theta) * cos(phi);
-    float y = cos(theta);
-    float z = sin(theta) * sin(phi);
-    vec3 wm = normalize(vec3(x, y, z));
-    vec3 w = norm;
-    if (abs(norm.y) < 0.95) {
-        vec3 u = normalize(cross(w, vec3(0.0, 1.0, 0.0)));
-        vec3 v = normalize(cross(u, w));
-        wm = normalize(wm.y * w + wm.x * u + wm.z * v);
-    } else {
-        vec3 u = normalize(cross(w, vec3(0.0, 0.0, 1.0)));
-        vec3 v = normalize(cross(u, w));
-        wm = normalize(wm.y * w + wm.x * u + wm.z * v);
-    }
-    vec3 wi = reflect(wo, wm);
-    return wi;
-}
-
 // source: https://github.com/CesiumGS/cesium/blob/main/Source/Shaders/Builtin/Functions/luminance.glsl
 float czm_luminance(vec3 rgb) {
     // Algorithm from Chapter 10 of Graphics Shaders.
@@ -215,4 +171,124 @@ vec2 rand2() {
 // Shlick's approximation of the Fresnel factor.
 vec3 fresnelSchlick(vec3 F0, float cosTheta) {
     return F0 + (vec3(1.0) - F0) * pow(1.0 - cosTheta, 5.0);
+}
+
+#define EPSILON FLOAT_EPSILON
+#define PI      M_PI
+
+// An acos with input values bound to the range [-1, 1].
+float acosSafe(float x) {
+    return acos(clamp(x, -1.0, 1.0));
+}
+
+// Below are PDF and related functions for use in a Monte Carlo path tracer
+// as specified in Appendix B of the following paper
+// See equation (34) from reference [0]
+float ggxLamda(float theta, float roughness) {
+    float tanTheta = tan(theta);
+    float tanTheta2 = tanTheta * tanTheta;
+    float alpha2 = roughness * roughness;
+    float numerator = -1.0 + sqrt(1.0 + alpha2 * tanTheta2);
+    return numerator / 2.0;
+}
+// See equation (34) from reference [0]
+float ggxShadowMaskG1(float theta, float roughness) {
+    return 1.0 / (1.0 + ggxLamda(theta, roughness));
+}
+// See equation (125) from reference [4]
+float ggxShadowMaskG2(vec3 wi, vec3 wo, float roughness) {
+    float incidentTheta = acos(wi.z);
+    float scatterTheta = acos(wo.z);
+    return 1.0 / (1.0 + ggxLamda(incidentTheta, roughness) + ggxLamda(scatterTheta, roughness));
+}
+// See equation (33) from reference [0]
+float ggxDistribution(vec3 halfVector, float roughness) {
+    float a2 = roughness * roughness;
+    a2 = max(EPSILON, a2);
+    float cosTheta = halfVector.z;
+    float cosTheta4 = pow(cosTheta, 4.0);
+    if (cosTheta == 0.0) return 0.0;
+    float theta = acosSafe(halfVector.z);
+    float tanTheta = tan(theta);
+    float tanTheta2 = pow(tanTheta, 2.0);
+    float denom = PI * cosTheta4 * pow(a2 + tanTheta2, 2.0);
+    return (a2 / denom);
+}
+
+// See equation (3) from reference [2]
+float ggxPDF(vec3 wi, vec3 halfVector, float roughness) {
+    float incidentTheta = acos(wi.z);
+    float D = ggxDistribution(halfVector, roughness);
+    float G1 = ggxShadowMaskG1(incidentTheta, roughness);
+    return D * G1 * max(0.0, dot(wi, halfVector)) / wi.z;
+}
+
+vec3 getHalfVector(vec3 a, vec3 b) {
+    return normalize(a + b);
+}
+
+float specularPDF(vec3 wo, vec3 wi, float roughness) {
+    // See 14.1.1 Microfacet BxDFs in https://www.pbr-book.org/
+    float filteredRoughness = roughness;
+    vec3 halfVector = getHalfVector(wi, wo);
+    float incidentTheta = acos(wo.z);
+    float D = ggxDistribution(halfVector, filteredRoughness);
+    float G1 = ggxShadowMaskG1(incidentTheta, filteredRoughness);
+    float ggxPdf = D * G1 * max(0.0, abs(dot(wo, halfVector))) / abs(wo.z);
+    return ggxPdf / (4.0 * dot(wo, halfVector));
+}
+
+float diffusePDF(vec3 wo, vec3 wi) {
+    // https://raytracing.github.io/books/RayTracingTheRestOfYourLife.html#lightscattering/thescatteringpdf
+    float cosValue = dot(wo, wi);
+    return cosValue / PI;
+}
+
+vec3 SampleLambert(vec3 viewNormal, vec2 random, out float pdf) {
+    float sqrtR0 = sqrt(random.x);
+
+    float x = sqrtR0 * cos(2. * M_PI * random.y);
+    float y = sqrtR0 * sin(2. * M_PI * random.y);
+    float z = sqrt(1. - random.x);
+
+    vec3 hemisphereVector = vec3(x, y, z);
+
+    mat3 normalBasis = getBasisFromNormal(viewNormal);
+
+    pdf = z * M_PI;
+    if (pdf < 0.25) pdf = 0.25;
+
+    return normalize(normalBasis * hemisphereVector);
+}
+
+// source: https://github.com/Domenicobrz/SSR-TAA-in-threejs-/blob/master/Components/ssr.js
+vec3 SampleGGX(vec3 wo, vec3 norm, float roughness, vec2 random, out float pdf) {
+    float r0 = random.x;
+    float r1 = random.y;
+
+    float a = roughness * roughness;
+    a = max(a, 0.01);
+
+    float a2 = a * a;
+    float theta = acos(sqrt((1.0 - r0) / ((a2 - 1.0) * r0 + 1.0)));
+    float phi = 2.0 * M_PI * r1;
+    float x = sin(theta) * cos(phi);
+    float y = cos(theta);
+    float z = sin(theta) * sin(phi);
+    vec3 wm = normalize(vec3(x, y, z));
+    vec3 w = norm;
+    if (abs(norm.y) < 0.95) {
+        vec3 u = normalize(cross(w, vec3(0.0, 1.0, 0.0)));
+        vec3 v = normalize(cross(u, w));
+        wm = normalize(wm.y * w + wm.x * u + wm.z * v);
+    } else {
+        vec3 u = normalize(cross(w, vec3(0.0, 0.0, 1.0)));
+        vec3 v = normalize(cross(u, w));
+        wm = normalize(wm.y * w + wm.x * u + wm.z * v);
+    }
+    vec3 wi = reflect(wo, wm);
+
+    // pdf = specularPDF(wi, norm, roughness);
+
+    return wi;
 }

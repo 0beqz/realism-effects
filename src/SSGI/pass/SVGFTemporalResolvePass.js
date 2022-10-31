@@ -1,4 +1,4 @@
-﻿import { GLSL3, HalfFloatType, LinearFilter, Uniform, WebGLMultipleRenderTargets } from "three"
+﻿import { GLSL3, HalfFloatType, LinearFilter, NearestFilter, Uniform, WebGLMultipleRenderTargets } from "three"
 import svgfTemporalResolve from "../shader/svgfTemporalResolve.frag"
 import { TemporalResolvePass } from "../temporal-resolve/TemporalResolvePass"
 import { isWebGL2Available } from "../utils/Utils"
@@ -9,8 +9,8 @@ export class SVGFTemporalResolvePass extends TemporalResolvePass {
 	constructor(scene, camera, options = {}) {
 		const temporalResolvePassRenderTarget = isWebGL2
 			? new WebGLMultipleRenderTargets(1, 1, 2, {
-					minFilter: LinearFilter,
-					magFilter: LinearFilter,
+					minFilter: NearestFilter,
+					magFilter: NearestFilter,
 					type: HalfFloatType,
 					depthBuffer: false
 			  })
