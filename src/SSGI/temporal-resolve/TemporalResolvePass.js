@@ -75,6 +75,11 @@ export class TemporalResolvePass extends Pass {
 
 		this.fullscreenMaterial.uniforms.velocityTexture.value = this.velocityPass.texture
 		this.fullscreenMaterial.uniforms.depthTexture.value = this.velocityPass.depthTexture
+		this.fullscreenMaterial.uniforms.projectionMatrix.value = camera.projectionMatrix
+		this.fullscreenMaterial.uniforms.cameraMatrixWorld.value = camera.matrixWorld
+		this.fullscreenMaterial.uniforms.cameraPos.value = camera.position
+		this.fullscreenMaterial.uniforms.projectionMatrix.value = camera.projectionMatrix
+		this.fullscreenMaterial.uniforms.prevViewMatrix.value = camera.matrixWorldInverse.clone()
 
 		this.setupFramebuffers(1, 1)
 	}
@@ -152,6 +157,8 @@ export class TemporalResolvePass extends Pass {
 			? depthRenderTarget.texture[0]
 			: depthRenderTarget.texture
 		this.fullscreenMaterial.uniforms.lastDepthTexture.value = this.lastDepthTexture
+
+		this.fullscreenMaterial.uniforms.prevViewMatrix.value.copy(this._camera.matrixWorldInverse)
 	}
 
 	jitter(jitterScale = 1) {

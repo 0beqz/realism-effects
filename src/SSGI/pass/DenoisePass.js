@@ -1,5 +1,5 @@
 ﻿import { Pass } from "postprocessing"
-import { HalfFloatType, LinearFilter, Matrix4, ShaderMaterial, Uniform, Vector2, WebGLRenderTarget } from "three"
+import { LinearFilter, ShaderMaterial, sRGBEncoding, Uniform, Vector2, WebGLRenderTarget } from "three"
 import basicVertexShader from "../shader/basic.vert"
 import fragmentShader from "../shader/denoise.frag"
 import { isWebGL2Available } from "../utils/Utils"
@@ -40,7 +40,7 @@ export class DenoisePass extends Pass {
 		const options = {
 			minFilter: LinearFilter,
 			magFilter: LinearFilter,
-			type: HalfFloatType,
+			encoding: sRGBEncoding,
 			depthBuffer: false
 		}
 

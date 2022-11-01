@@ -1,4 +1,4 @@
-﻿import { Vector2 } from "three"
+﻿import { GLSL3, Vector2 } from "three"
 import { Matrix4, ShaderMaterial, Uniform, Vector3 } from "three"
 import vertexShader from "../shader/basic.vert"
 import utils from "../shader/utils.frag"
@@ -39,8 +39,8 @@ export class SSGIMaterial extends ShaderMaterial {
 				viewMatrix: new Uniform(new Matrix4()),
 				invTexSize: new Uniform(new Vector2()),
 				blueNoiseRepeat: new Uniform(new Vector2()),
-				envMapPosition: new Uniform(new Vector3()),
-				envMapSize: new Uniform(new Vector3())
+				envMapSize: new Uniform(new Vector3()),
+				camPos: new Uniform(new Vector3())
 			},
 
 			defines: {

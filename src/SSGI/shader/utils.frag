@@ -65,10 +65,6 @@ vec3 parallaxCorrectNormal(vec3 v, vec3 cubeSize, vec3 cubePos, vec3 worldPositi
 }
 #endif
 
-vec3 fresnelSchlick(float cosTheta, vec3 F0) {
-    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
-}
-
 // source: https://github.com/blender/blender/blob/594f47ecd2d5367ca936cf6fc6ec8168c2b360d0/source/blender/gpu/shaders/material/gpu_shader_material_fresnel.glsl
 float fresnel_dielectric_cos(float cosi, float eta) {
     /* compute fresnel reflectance without explicitly computing
@@ -168,83 +164,10 @@ vec2 rand2() {
     return vec2(s0.xy) / float(0xffffffffu);
 }
 
-// Shlick's approximation of the Fresnel factor.
-vec3 fresnelSchlick(vec3 F0, float cosTheta) {
-    return F0 + (vec3(1.0) - F0) * pow(1.0 - cosTheta, 5.0);
-}
-
 #define EPSILON FLOAT_EPSILON
 #define PI      M_PI
 
-// An acos with input values bound to the range [-1, 1].
-float acosSafe(float x) {
-    return acos(clamp(x, -1.0, 1.0));
-}
-
-// Below are PDF and related functions for use in a Monte Carlo path tracer
-// as specified in Appendix B of the following paper
-// See equation (34) from reference [0]
-float ggxLamda(float theta, float roughness) {
-    float tanTheta = tan(theta);
-    float tanTheta2 = tanTheta * tanTheta;
-    float alpha2 = roughness * roughness;
-    float numerator = -1.0 + sqrt(1.0 + alpha2 * tanTheta2);
-    return numerator / 2.0;
-}
-// See equation (34) from reference [0]
-float ggxShadowMaskG1(float theta, float roughness) {
-    return 1.0 / (1.0 + ggxLamda(theta, roughness));
-}
-// See equation (125) from reference [4]
-float ggxShadowMaskG2(vec3 wi, vec3 wo, float roughness) {
-    float incidentTheta = acos(wi.z);
-    float scatterTheta = acos(wo.z);
-    return 1.0 / (1.0 + ggxLamda(incidentTheta, roughness) + ggxLamda(scatterTheta, roughness));
-}
-// See equation (33) from reference [0]
-float ggxDistribution(vec3 halfVector, float roughness) {
-    float a2 = roughness * roughness;
-    a2 = max(EPSILON, a2);
-    float cosTheta = halfVector.z;
-    float cosTheta4 = pow(cosTheta, 4.0);
-    if (cosTheta == 0.0) return 0.0;
-    float theta = acosSafe(halfVector.z);
-    float tanTheta = tan(theta);
-    float tanTheta2 = pow(tanTheta, 2.0);
-    float denom = PI * cosTheta4 * pow(a2 + tanTheta2, 2.0);
-    return (a2 / denom);
-}
-
-// See equation (3) from reference [2]
-float ggxPDF(vec3 wi, vec3 halfVector, float roughness) {
-    float incidentTheta = acos(wi.z);
-    float D = ggxDistribution(halfVector, roughness);
-    float G1 = ggxShadowMaskG1(incidentTheta, roughness);
-    return D * G1 * max(0.0, dot(wi, halfVector)) / wi.z;
-}
-
-vec3 getHalfVector(vec3 a, vec3 b) {
-    return normalize(a + b);
-}
-
-float specularPDF(vec3 wo, vec3 wi, float roughness) {
-    // See 14.1.1 Microfacet BxDFs in https://www.pbr-book.org/
-    float filteredRoughness = roughness;
-    vec3 halfVector = getHalfVector(wi, wo);
-    float incidentTheta = acos(wo.z);
-    float D = ggxDistribution(halfVector, filteredRoughness);
-    float G1 = ggxShadowMaskG1(incidentTheta, filteredRoughness);
-    float ggxPdf = D * G1 * max(0.0, abs(dot(wo, halfVector))) / abs(wo.z);
-    return ggxPdf / (4.0 * dot(wo, halfVector));
-}
-
-float diffusePDF(vec3 wo, vec3 wi) {
-    // https://raytracing.github.io/books/RayTracingTheRestOfYourLife.html#lightscattering/thescatteringpdf
-    float cosValue = dot(wo, wi);
-    return cosValue / PI;
-}
-
-vec3 SampleLambert(vec3 viewNormal, vec2 random, out float pdf) {
+vec3 SampleLambert(vec3 viewNormal, vec2 random) {
     float sqrtR0 = sqrt(random.x);
 
     float x = sqrtR0 * cos(2. * M_PI * random.y);
@@ -255,14 +178,11 @@ vec3 SampleLambert(vec3 viewNormal, vec2 random, out float pdf) {
 
     mat3 normalBasis = getBasisFromNormal(viewNormal);
 
-    pdf = z * M_PI;
-    if (pdf < 0.25) pdf = 0.25;
-
     return normalize(normalBasis * hemisphereVector);
 }
 
 // source: https://github.com/Domenicobrz/SSR-TAA-in-threejs-/blob/master/Components/ssr.js
-vec3 SampleGGX(vec3 wo, vec3 norm, float roughness, vec2 random, out float pdf) {
+vec3 SampleGGX(vec3 wo, vec3 norm, float roughness, vec2 random) {
     float r0 = random.x;
     float r1 = random.y;
 
@@ -287,8 +207,6 @@ vec3 SampleGGX(vec3 wo, vec3 norm, float roughness, vec2 random, out float pdf) 
         wm = normalize(wm.y * w + wm.x * u + wm.z * v);
     }
     vec3 wi = reflect(wo, wm);
-
-    // pdf = specularPDF(wi, norm, roughness);
 
     return wi;
 }

@@ -16,6 +16,7 @@ uniform mat4 cameraMatrixWorldInverse;
 uniform float cameraNear;
 uniform float cameraFar;
 uniform float maxEnvMapMipLevel;
+uniform vec3 camPos;
 
 uniform float rayDistance;
 uniform float maxRoughness;
@@ -35,7 +36,6 @@ uniform float jitterRoughness;
 #define EARLY_OUT_COLOR    vec4(0.0, 0.0, 0.0, 1.0)
 #define FLOAT_EPSILON      0.00001
 #define TRANSFORM_FACTOR   0.5
-const vec3 Fdielectric = vec3(0.04);
 
 float nearMinusFar;
 float nearMulFar;
@@ -49,7 +49,7 @@ float farMinusNear;
 vec2 RayMarch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
 vec2 BinarySearch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
 float fastGetViewZ(const in float depth);
-vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float spread, vec3 Fresnel, inout vec3 reflected, out float pdf);
+vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float spread, vec3 Fresnel, inout vec3 reflected, inout vec3 hitPos);
 
 void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.0);
@@ -101,30 +101,24 @@ void main() {
     vec3 diffuseSSGI;
     vec3 specularSSGI;
     vec3 reflected;
+    vec3 hitPos;
 
-    float diffusePdf;
-    float specularPdf;
-    float pdf;
+    float fresnelFactor;
 
     for (int s = 0; s < spp; s++) {
         float sF = float(s);
         float m = 1. / (sF + 1.0);
 
-        diffuseSSGI = doSample(viewPos, viewDir, viewNormal, roughness, 1.0, vec3(1.0), reflected, pdf);
-        specularSSGI = doSample(viewPos, viewDir, viewNormal, roughness, min(spread, 0.99), vec3(1.0), reflected, pdf);
-
-        // reference: https://github.com/Nadrin/PBR/blob/master/data/shaders/glsl/pbr_fs.glsl
-        vec3 F0 = mix(Fdielectric, diffuse, metalness);
-        vec3 F = fresnelSchlick(F0, max(0.0, dot(reflected, viewDir)));
+        diffuseSSGI = doSample(viewPos, viewDir, viewNormal, roughness, 1.0, vec3(1.0), reflected, hitPos);
+        specularSSGI = doSample(viewPos, viewDir, viewNormal, roughness, min(spread, 0.99), vec3(1.0), reflected, hitPos);
 
         float ior = mix(3.0, 1.0, max(0., spread - metalness));
-        float fresnelFactor = fresnel_dielectric(viewDir, reflected, ior);
+        fresnelFactor = fresnel_dielectric(viewDir, reflected, ior);
 
-        // vec3 kd = mix(vec3(1.0) - F, vec3(0.0), metalness);
-        // diffuseSSGI *= kd;
+        diffuseSSGI *= (1. - metalness);
+        specularSSGI *= fresnelFactor;
 
-        vec3 gi = diffuseSSGI + specularSSGI * F;
-        gi = diffuseSSGI * (1. - metalness * metalness) + specularSSGI * fresnelFactor;
+        vec3 gi = diffuseSSGI + specularSSGI;
 
         SSGI = mix(SSGI, gi, m);
     }
@@ -133,22 +127,26 @@ void main() {
 
     SSGI *= intensity;
 
-    gl_FragColor = vec4(SSGI, metalness);
+    mat3 screenToWorldMatrix = mat3(cameraMatrixWorldInverse);
+
+    hitPos *= screenToWorldMatrix;
+    float rayLength = distance(worldPos, hitPos);
+
+    gl_FragColor = vec4(SSGI, rayLength);
 }
 
-vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float spread, vec3 Fresnel, inout vec3 reflected, out float pdf) {
+vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float spread, vec3 Fresnel, inout vec3 reflected, inout vec3 hitPos) {
     vec2 blueNoiseUv = (vUv + rand2()) * blueNoiseRepeat;
     vec2 random = textureLod(blueNoiseTexture, blueNoiseUv, 0.).rg;
 
-    reflected = spread == 1.0 ? SampleLambert(viewNormal, random, pdf) : SampleGGX(viewDir, viewNormal, spread, random, pdf);
+    reflected = spread == 1.0 ? SampleLambert(viewNormal, random) : SampleGGX(viewDir, viewNormal, spread, random);
 
     if (spread != 1.0 && dot(reflected, viewNormal) < 0.) {
-        reflected = SampleGGX(viewDir, viewNormal, spread, vec2(random.y, random.x), pdf);
+        reflected = SampleGGX(viewDir, viewNormal, spread, vec2(random.y, random.x));
     }
 
     vec3 SSGI;
     vec3 m = vec3(TRANSFORM_FACTOR);
-    // if (spread == 1.0) m /= pdf;
 
     // if (dot(reflected, viewNormal) < 0.) {
     //     vec4 velocity = textureLod(velocityTexture, vUv, 0.0);
@@ -162,7 +160,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
 
     vec3 dir = normalize(reflected * -viewPos.z);
 
-    vec3 hitPos = viewPos;
+    hitPos = viewPos;
     float rayHitDepthDifference = 0.;
 
 #if steps == 0
@@ -172,6 +170,10 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
 #else
     vec2 coords = RayMarch(dir, hitPos, rayHitDepthDifference);
 #endif
+
+    // if (spread != 1.) {
+    //     gHitPositions = vec4(coords, 0., 1.);
+    // }
 
     bool isAllowedMissedRay = rayHitDepthDifference == -1.0;
     bool isInvalidRay = coords.x == -1.0;

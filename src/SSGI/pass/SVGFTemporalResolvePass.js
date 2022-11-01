@@ -1,32 +1,40 @@
 ﻿import { GLSL3, HalfFloatType, LinearFilter, NearestFilter, Uniform, WebGLMultipleRenderTargets } from "three"
 import svgfTemporalResolve from "../shader/svgfTemporalResolve.frag"
 import { TemporalResolvePass } from "../temporal-resolve/TemporalResolvePass"
-import { isWebGL2Available } from "../utils/Utils"
 
-const isWebGL2 = isWebGL2Available()
-
+const defaultSVGFTemporalResolvePassOptions = {
+	moments: true
+}
 export class SVGFTemporalResolvePass extends TemporalResolvePass {
-	constructor(scene, camera, options = {}) {
-		const temporalResolvePassRenderTarget = isWebGL2
+	constructor(scene, camera, options = defaultSVGFTemporalResolvePassOptions) {
+		const temporalResolvePassRenderTarget = options.moments
 			? new WebGLMultipleRenderTargets(1, 1, 2, {
-					minFilter: NearestFilter,
-					magFilter: NearestFilter,
+					minFilter: LinearFilter,
+					magFilter: LinearFilter,
 					type: HalfFloatType,
 					depthBuffer: false
 			  })
 			: null
 
 		options = {
+			...defaultSVGFTemporalResolvePassOptions,
 			...options,
 			...{
-				customComposeShader: isWebGL2 ? svgfTemporalResolve : null,
-				renderTarget: temporalResolvePassRenderTarget
+				customComposeShader: options.moments ? svgfTemporalResolve : null,
+				renderTarget: temporalResolvePassRenderTarget,
+				neighborhoodClamping: false
 			}
+		}
+
+		if (options.moments) {
+			temporalResolvePassRenderTarget.texture[1].minFilter = NearestFilter
+			temporalResolvePassRenderTarget.texture[1].magFilter = NearestFilter
+			temporalResolvePassRenderTarget.texture[1].needsUpdate = true
 		}
 
 		super(scene, camera, options)
 
-		const webGl2Buffers = isWebGL2
+		const webGl2Buffers = options.moments
 			? /* glsl */ `
 		layout(location = 0) out vec4 gOutput;
 		layout(location = 1) out vec4 gMoment;
@@ -38,7 +46,7 @@ export class SVGFTemporalResolvePass extends TemporalResolvePass {
 
 		this.fullscreenMaterial.fragmentShader = webGl2Buffers + this.fullscreenMaterial.fragmentShader
 
-		const webgl2Uniforms = isWebGL2
+		const webgl2Uniforms = options.moments
 			? {
 					momentsTexture: new Uniform(null),
 					rawInputTexture: new Uniform(null)
@@ -50,7 +58,7 @@ export class SVGFTemporalResolvePass extends TemporalResolvePass {
 			...webgl2Uniforms
 		}
 
-		if (isWebGL2) this.fullscreenMaterial.glslVersion = GLSL3
+		if (options.moments) this.fullscreenMaterial.glslVersion = GLSL3
 	}
 
 	get texture() {

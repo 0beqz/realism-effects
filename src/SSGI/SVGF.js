@@ -2,14 +2,17 @@
 import { DenoisePass } from "./pass/DenoisePass.js"
 import { SVGFTemporalResolvePass } from "./pass/SVGFTemporalResolvePass.js"
 import { defaultTemporalResolvePassOptions } from "./temporal-resolve/TemporalResolvePass.js"
-import { isWebGL2Available } from "./utils/Utils"
 
-const isWebGL2 = isWebGL2Available()
 const requiredTextures = ["inputTexture", "depthTexture", "normalTexture"]
 
+const defaultSVGFOptions = {
+	...defaultTemporalResolvePassOptions,
+	moments: true
+}
+
 export class SVGF {
-	constructor(scene, camera, options = defaultTemporalResolvePassOptions) {
-		options = { ...defaultTemporalResolvePassOptions, ...options }
+	constructor(scene, camera, options = defaultSVGFOptions) {
+		options = { ...defaultSVGFOptions, ...options }
 
 		this.svgfTemporalResolvePass = new SVGFTemporalResolvePass(scene, camera, options)
 
@@ -17,7 +20,7 @@ export class SVGF {
 
 		this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = this.denoisePass.texture
 
-		if (isWebGL2) {
+		if (options.moments) {
 			this.copyPass = new CopyPass()
 			this.copyPass.fullscreenMaterial.uniforms.inputTexture.value = this.svgfTemporalResolvePass.momentsTexture
 			this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.momentsTexture.value = this.copyPass.renderTarget.texture

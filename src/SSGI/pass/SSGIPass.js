@@ -22,7 +22,6 @@ const backgroundColor = new Color(0)
 export class SSGIPass extends Pass {
 	cachedMaterials = new WeakMap()
 	visibleMeshes = []
-	pointsIndex = 0
 
 	constructor(ssgiEffect) {
 		super("SSGIPass")
@@ -48,6 +47,7 @@ export class SSGIPass extends Pass {
 		this.fullscreenMaterial.uniforms.cameraMatrixWorldInverse.value = this._camera.matrixWorldInverse
 		this.fullscreenMaterial.uniforms.projectionMatrix.value = this._camera.projectionMatrix
 		this.fullscreenMaterial.uniforms.inverseProjectionMatrix.value = this._camera.projectionMatrixInverse
+		this.fullscreenMaterial.uniforms.camPos.value = this._camera.position
 	}
 
 	initialize(renderer, ...args) {
@@ -88,6 +88,11 @@ export class SSGIPass extends Pass {
 			this.depthTexture = this.gBuffersRenderTarget.texture[0]
 			this.normalTexture = this.gBuffersRenderTarget.texture[1]
 			this.diffuseTexture = this.gBuffersRenderTarget.texture[2]
+
+			this.diffuseTexture.minFilter = LinearFilter
+			this.diffuseTexture.magFilter = LinearFilter
+			this.diffuseTexture.encoding = sRGBEncoding
+			this.diffuseTexture.needsUpdate = true
 		} else {
 			// depth pass
 			this.webgl1DepthPass = new DepthPass(this._scene, this._camera)
