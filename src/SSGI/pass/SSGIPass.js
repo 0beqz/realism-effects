@@ -1,4 +1,4 @@
-﻿import { DepthPass, Pass, RenderPass } from "postprocessing"
+﻿import { Pass, RenderPass } from "postprocessing"
 import {
 	Color,
 	HalfFloatType,
@@ -14,9 +14,8 @@ import {
 import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader.js"
 import { MRTMaterial } from "../material/MRTMaterial.js"
 import { SSGIMaterial } from "../material/SSGIMaterial.js"
-import { getVisibleChildren, isWebGL2Available, keepMaterialMapUpdated } from "../utils/Utils.js"
+import { getVisibleChildren, keepMaterialMapUpdated } from "../utils/Utils.js"
 
-const isWebGL2 = isWebGL2Available()
 const backgroundColor = new Color(0)
 
 export class SSGIPass extends Pass {
@@ -72,47 +71,25 @@ export class SSGIPass extends Pass {
 	initMRTRenderTarget() {
 		if (this.gBuffersRenderTarget) this.gBuffersRenderTarget.dispose()
 		this.webgl1DepthPass?.dispose()
-		this.diffuseRenderTarget?.dispose()
 
-		this.renderVelocitySeparate = !isWebGL2 || this.ssgiEffect.antialias
+		this.renderVelocitySeparate = this.ssgiEffect.antialias
 
-		if (isWebGL2) {
-			let bufferCount = 3
-			if (!this.renderVelocitySeparate) bufferCount++
+		let bufferCount = 3
+		if (!this.renderVelocitySeparate) bufferCount++
 
-			this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(1, 1, bufferCount, {
-				minFilter: NearestFilter,
-				magFilter: NearestFilter
-			})
+		this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(1, 1, bufferCount, {
+			minFilter: NearestFilter,
+			magFilter: NearestFilter
+		})
 
-			this.depthTexture = this.gBuffersRenderTarget.texture[0]
-			this.normalTexture = this.gBuffersRenderTarget.texture[1]
-			this.diffuseTexture = this.gBuffersRenderTarget.texture[2]
+		this.depthTexture = this.gBuffersRenderTarget.texture[0]
+		this.normalTexture = this.gBuffersRenderTarget.texture[1]
+		this.diffuseTexture = this.gBuffersRenderTarget.texture[2]
 
-			this.diffuseTexture.minFilter = LinearFilter
-			this.diffuseTexture.magFilter = LinearFilter
-			this.diffuseTexture.encoding = sRGBEncoding
-			this.diffuseTexture.needsUpdate = true
-		} else {
-			// depth pass
-			this.webgl1DepthPass = new DepthPass(this._scene, this._camera)
-
-			// render normals (in the rgb channel) and roughness (in the alpha channel) in gBuffersRenderTarget
-			this.gBuffersRenderTarget = new WebGLRenderTarget(1, 1, {
-				minFilter: NearestFilter,
-				magFilter: NearestFilter
-			})
-
-			this.diffuseRenderTarget = new WebGLRenderTarget(1, 1, {
-				minFilter: LinearFilter,
-				magFilter: LinearFilter,
-				encoding: sRGBEncoding
-			})
-
-			this.normalTexture = this.gBuffersRenderTarget.texture
-			this.depthTexture = this.webgl1DepthPass.texture
-			this.diffuseTexture = this.diffuseRenderTarget.texture
-		}
+		this.diffuseTexture.minFilter = LinearFilter
+		this.diffuseTexture.magFilter = LinearFilter
+		this.diffuseTexture.encoding = sRGBEncoding
+		this.diffuseTexture.needsUpdate = true
 
 		this.fullscreenMaterial.uniforms.normalTexture.value = this.normalTexture
 		this.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
@@ -140,12 +117,6 @@ export class SSGIPass extends Pass {
 
 		this.renderTarget.setSize(width * this.ssgiEffect.resolutionScale, height * this.ssgiEffect.resolutionScale)
 		this.gBuffersRenderTarget.setSize(width, height)
-		if (this.diffuseRenderTarget) this.diffuseRenderTarget.setSize(width, height)
-
-		// setting the size for the webgl1DepthPass currently causes a stack overflow due to recursive calling
-		if (!isWebGL2) {
-			this.webgl1DepthPass.renderTarget.setSize(width, height)
-		}
 
 		this.fullscreenMaterial.uniforms.invTexSize.value.set(1 / width, 1 / height)
 
@@ -158,8 +129,6 @@ export class SSGIPass extends Pass {
 		this.renderTarget.dispose()
 		this.gBuffersRenderTarget.dispose()
 		this.renderPass.dispose()
-		this.webgl1DepthPass?.dispose()
-		this.diffuseRenderTarget?.dispose()
 
 		this.fullscreenMaterial.dispose()
 
@@ -182,8 +151,6 @@ export class SSGIPass extends Pass {
 				if (mrtMaterial) mrtMaterial.dispose()
 
 				mrtMaterial = new MRTMaterial()
-
-				if (isWebGL2) mrtMaterial.defines.isWebGL2 = ""
 
 				mrtMaterial.normalScale = originalMaterial.normalScale
 				mrtMaterial.uniforms.normalScale.value = originalMaterial.normalScale
@@ -296,14 +263,6 @@ export class SSGIPass extends Pass {
 		this.renderPass.render(renderer, this.gBuffersRenderTarget)
 
 		this.unsetMRTMaterialInScene()
-
-		if (!isWebGL2) {
-			this.webgl1DepthPass.renderPass.render(renderer, this.webgl1DepthPass.renderTarget)
-
-			this.setDiffuseMaterialInScene()
-			this.renderPass.render(renderer, this.diffuseRenderTarget)
-			this.unsetDiffuseMaterialInScene()
-		}
 
 		// update uniforms
 

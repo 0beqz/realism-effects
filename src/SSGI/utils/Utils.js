@@ -41,16 +41,6 @@ export const setupEnvMap = (ssgiMaterial, envMap, envMapCubeUVHeight) => {
 	ssgiMaterial.needsUpdate = true
 }
 
-// from https://github.com/mrdoob/three.js/blob/dev/examples/jsm/capabilities/WebGL.js#L18
-export const isWebGL2Available = () => {
-	try {
-		const canvas = document.createElement("canvas")
-		return !!(window.WebGL2RenderingContext && canvas.getContext("webgl2"))
-	} catch (e) {
-		return false
-	}
-}
-
 export const keepMaterialMapUpdated = (mrtMaterial, originalMaterial, prop, define, useKey) => {
 	if (useKey) {
 		if (originalMaterial[prop] !== mrtMaterial[prop]) {

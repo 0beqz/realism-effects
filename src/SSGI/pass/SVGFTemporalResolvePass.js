@@ -34,7 +34,7 @@ export class SVGFTemporalResolvePass extends TemporalResolvePass {
 
 		super(scene, camera, options)
 
-		const webGl2Buffers = options.moments
+		const momentsBuffers = options.moments
 			? /* glsl */ `
 		layout(location = 0) out vec4 gOutput;
 		layout(location = 1) out vec4 gMoment;
@@ -44,9 +44,9 @@ export class SVGFTemporalResolvePass extends TemporalResolvePass {
 		`
 			: ""
 
-		this.fullscreenMaterial.fragmentShader = webGl2Buffers + this.fullscreenMaterial.fragmentShader
+		this.fullscreenMaterial.fragmentShader = momentsBuffers + this.fullscreenMaterial.fragmentShader
 
-		const webgl2Uniforms = options.moments
+		const momentsUniforms = options.moments
 			? {
 					momentsTexture: new Uniform(null),
 					rawInputTexture: new Uniform(null)
@@ -55,7 +55,7 @@ export class SVGFTemporalResolvePass extends TemporalResolvePass {
 
 		this.fullscreenMaterial.uniforms = {
 			...this.fullscreenMaterial.uniforms,
-			...webgl2Uniforms
+			...momentsUniforms
 		}
 
 		if (options.moments) this.fullscreenMaterial.glslVersion = GLSL3

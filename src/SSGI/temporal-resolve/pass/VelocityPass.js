@@ -1,4 +1,4 @@
-﻿import { DepthPass, Pass, RenderPass } from "postprocessing"
+﻿import { Pass, RenderPass } from "postprocessing"
 import {
 	Color,
 	DataTexture,
@@ -7,13 +7,10 @@ import {
 	Quaternion,
 	RGBAFormat,
 	Vector3,
-	WebGLMultipleRenderTargets,
-	WebGLRenderTarget
+	WebGLMultipleRenderTargets
 } from "three"
-import { getVisibleChildren, isWebGL2Available } from "../../utils/Utils.js"
+import { getVisibleChildren } from "../../utils/Utils.js"
 import { VelocityMaterial } from "../material/VelocityMaterial.js"
-
-const isWebGL2 = isWebGL2Available()
 
 const backgroundColor = new Color(0)
 const updateProperties = ["visible", "wireframe", "side"]
@@ -34,20 +31,11 @@ export class VelocityPass extends Pass {
 
 		this.renderPass = new RenderPass(this._scene, this._camera)
 
-		if (isWebGL2) {
-			const bufferCount = renderDepth ? 2 : 1
-			this.renderTarget = new WebGLMultipleRenderTargets(1, 1, bufferCount, {
-				minFilter: NearestFilter,
-				magFilter: NearestFilter
-			})
-		} else {
-			this.renderTarget = new WebGLRenderTarget(1, 1, {
-				minFilter: NearestFilter,
-				magFilter: NearestFilter
-			})
-
-			if (renderDepth) this.webgl1DepthPass = new DepthPass(this._scene, this._camera)
-		}
+		const bufferCount = renderDepth ? 2 : 1
+		this.renderTarget = new WebGLMultipleRenderTargets(1, 1, bufferCount, {
+			minFilter: NearestFilter,
+			magFilter: NearestFilter
+		})
 
 		this.renderDepth = renderDepth
 	}
@@ -72,7 +60,7 @@ export class VelocityPass extends Pass {
 
 			c.material = velocityMaterial
 
-			if (this.renderDepth && isWebGL2) velocityMaterial.defines.renderDepth = ""
+			if (this.renderDepth) velocityMaterial.defines.renderDepth = ""
 
 			this.updateVelocityMaterialBeforeRender(c, originalMaterial)
 		}
@@ -137,15 +125,15 @@ export class VelocityPass extends Pass {
 	}
 
 	get texture() {
-		return isWebGL2 ? this.renderTarget.texture[1] : this.renderTarget.texture
+		return this.renderTarget.texture[1]
 	}
 
 	get depthTexture() {
-		return isWebGL2 ? this.renderTarget.texture[0] : this.webgl1DepthPass.texture
+		return this.renderTarget.texture[0]
 	}
 
 	get depthRenderTarget() {
-		return isWebGL2 ? this.renderTarget : this.webgl1DepthPass.renderTarget
+		return this.renderTarget
 	}
 
 	render(renderer) {
@@ -156,10 +144,6 @@ export class VelocityPass extends Pass {
 		this._scene.background = backgroundColor
 
 		this.renderPass.render(renderer, this.renderTarget)
-
-		if (!isWebGL2) {
-			this.webgl1DepthPass.renderPass.render(renderer, this.webgl1DepthPass.renderTarget)
-		}
 
 		this._scene.background = background
 

@@ -9,8 +9,7 @@ import {
 	velocity_vertex_pars
 } from "../temporal-resolve/material/VelocityMaterial"
 
-// WebGL1: will render normals to RGB channel and roughness to A channel
-// WebGL2: will render normals to RGB channel of "gNormal" buffer, roughness to A channel of "gNormal" buffer, depth to RGBA channel of "gDepth" buffer
+// will render normals to RGB channel of "gNormal" buffer, roughness to A channel of "gNormal" buffer, depth to RGBA channel of "gDepth" buffer
 // and velocity to "gVelocity" buffer
 
 export class MRTMaterial extends ShaderMaterial {
@@ -37,9 +36,8 @@ export class MRTMaterial extends ShaderMaterial {
 				...UniformsUtils.clone(velocity_uniforms)
 			},
 			vertexShader: /* glsl */ `
-                #ifdef isWebGL2
-                 varying vec2 vHighPrecisionZW;
-                #endif
+                varying vec2 vHighPrecisionZW;
+
                 #define NORMAL
                 #if defined( FLAT_SHADED ) || defined( USE_BUMPMAP ) || defined( TANGENTSPACE_NORMALMAP )
                     varying vec3 vViewPosition;
@@ -82,9 +80,7 @@ export class MRTMaterial extends ShaderMaterial {
                         vUv = ( uvTransform * vec3( uv, 1 ) ).xy;
                     #endif
 
-                    #ifdef isWebGL2
-                        vHighPrecisionZW = gl_Position.zw;
-                    #endif
+                    vHighPrecisionZW = gl_Position.zw;
 
                     #ifdef renderVelocity
                     ${velocity_vertex_main}
@@ -104,9 +100,7 @@ export class MRTMaterial extends ShaderMaterial {
                 #include <normalmap_pars_fragment>
                 #include <logdepthbuf_pars_fragment>
                 #include <clipping_planes_pars_fragment>
-                #include <roughnessmap_pars_fragment>
                 
-                #ifdef isWebGL2
                 layout(location = 0) out vec4 gDepth;
                 layout(location = 1) out vec4 gNormal;
                 layout(location = 2) out vec4 gDiffuse;
@@ -126,11 +120,8 @@ export class MRTMaterial extends ShaderMaterial {
 
                 #include <metalnessmap_pars_fragment>
                 uniform float metalness;
-                #else
-                // webgl 1
-                #define gNormal gl_FragColor
-                #endif
-                
+
+                #include <roughnessmap_pars_fragment>
                 uniform float roughness;
 
                 void main() {
@@ -139,10 +130,8 @@ export class MRTMaterial extends ShaderMaterial {
                     #include <normal_fragment_begin>
                     #include <normal_fragment_maps>
 
-
                     float roughnessFactor = roughness;
                     bool isDeselected = roughness > 10.0e9;
-
                     
                     if(isDeselected){
                         roughnessFactor = 1.;
@@ -162,49 +151,40 @@ export class MRTMaterial extends ShaderMaterial {
                     }
                     
 
-                    #ifdef isWebGL2
-                        if(isDeselected){
-                            gDepth = vec4(0.);
-                            gDiffuse = vec4(0.);
-                            
-                            #ifdef renderVelocity
-                            gVelocity = vec4(0.);
-                            #endif
-
-                            return;
-                        }
-
-                        float fragCoordZ = 0.5 * vHighPrecisionZW[0] / vHighPrecisionZW[1] + 0.5;
-
-                        vec4 depthColor = packDepthToRGBA( fragCoordZ );
-                        gDepth = depthColor;
-
-                        #include <metalnessmap_fragment>
-
-                        vec4 diffuseColor = vec4(color, metalnessFactor);
-
-                        #include <map_fragment>
-
-                        gDiffuse = diffuseColor;
-
+                    if(isDeselected){
+                        gDepth = vec4(0.);
+                        gDiffuse = vec4(0.);
+                        
                         #ifdef renderVelocity
-                        ${velocity_fragment_main.replaceAll("gl_FragColor", "gVelocity")}
+                        gVelocity = vec4(0.);
                         #endif
+
+                        return;
+                    }
+
+                    float fragCoordZ = 0.5 * vHighPrecisionZW[0] / vHighPrecisionZW[1] + 0.5;
+
+                    vec4 depthColor = packDepthToRGBA( fragCoordZ );
+                    gDepth = depthColor;
+
+                    #include <metalnessmap_fragment>
+
+                    vec4 diffuseColor = vec4(color, metalnessFactor);
+
+                    #include <map_fragment>
+
+                    gDiffuse = diffuseColor;
+
+                    #ifdef renderVelocity
+                    ${velocity_fragment_main.replaceAll("gl_FragColor", "gVelocity")}
                     #endif
                 }
             `,
-
+			glslVersion: GLSL3,
 			toneMapped: false
 		})
 
 		this.normalMapType = TangentSpaceNormalMap
 		this.normalScale = new Vector2(1, 1)
-
-		Object.defineProperty(this, "glslVersion", {
-			get() {
-				return "isWebGL2" in this.defines ? GLSL3 : null
-			},
-			set(_) {}
-		})
 	}
 }

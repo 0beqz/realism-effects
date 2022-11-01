@@ -16,7 +16,7 @@ export class SVGF {
 
 		this.svgfTemporalResolvePass = new SVGFTemporalResolvePass(scene, camera, options)
 
-		this.denoisePass = new DenoisePass(camera)
+		this.denoisePass = new DenoisePass(camera, null, options)
 
 		this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = this.denoisePass.texture
 

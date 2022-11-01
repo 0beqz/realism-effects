@@ -2,19 +2,21 @@
 import { LinearFilter, ShaderMaterial, sRGBEncoding, Uniform, Vector2, WebGLRenderTarget } from "three"
 import basicVertexShader from "../shader/basic.vert"
 import fragmentShader from "../shader/denoise.frag"
-import { isWebGL2Available } from "../utils/Utils"
 
 // https://research.nvidia.com/sites/default/files/pubs/2017-07_Spatiotemporal-Variance-Guided-Filtering%3A//svgf_preprint.pdf
 // https://diharaw.github.io/post/adventures_in_hybrid_rendering/
 // https://github.com/NVIDIAGameWorks/Falcor/tree/master/Source/RenderPasses/SVGFPass
 
-const isWebGL2 = isWebGL2Available()
-
+const defaultDenoisePassOptions = {
+	moments: true
+}
 export class DenoisePass extends Pass {
 	iterations = 1
 
-	constructor(camera, inputTexture) {
+	constructor(camera, inputTexture, options = defaultDenoisePassOptions) {
 		super("DenoisePass")
+
+		options = { ...defaultDenoisePassOptions, ...options }
 
 		this.fullscreenMaterial = new ShaderMaterial({
 			fragmentShader,
@@ -37,17 +39,17 @@ export class DenoisePass extends Pass {
 			}
 		})
 
-		const options = {
+		const renderTargetOptions = {
 			minFilter: LinearFilter,
 			magFilter: LinearFilter,
 			encoding: sRGBEncoding,
 			depthBuffer: false
 		}
 
-		this.renderTargetA = new WebGLRenderTarget(1, 1, options)
-		this.renderTargetB = new WebGLRenderTarget(1, 1, options)
+		this.renderTargetA = new WebGLRenderTarget(1, 1, renderTargetOptions)
+		this.renderTargetB = new WebGLRenderTarget(1, 1, renderTargetOptions)
 
-		if (isWebGL2) this.fullscreenMaterial.defines.USE_MOMENT = ""
+		if (options.moments) this.fullscreenMaterial.defines.USE_MOMENT = ""
 	}
 
 	setSize(width, height) {
