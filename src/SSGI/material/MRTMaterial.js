@@ -75,10 +75,6 @@ export class MRTMaterial extends ShaderMaterial {
                     #if defined( FLAT_SHADED ) || defined( USE_BUMPMAP ) || defined( TANGENTSPACE_NORMALMAP )
                         vViewPosition = - mvPosition.xyz;
                     #endif
-                
-                    #ifdef USE_UV
-                        vUv = ( uvTransform * vec3( uv, 1 ) ).xy;
-                    #endif
 
                     vHighPrecisionZW = gl_Position.zw;
 
@@ -89,7 +85,7 @@ export class MRTMaterial extends ShaderMaterial {
             `,
 
 			fragmentShader: /* glsl */ `
-                 #define NORMAL
+                #define NORMAL
                 #if defined( FLAT_SHADED ) || defined( USE_BUMPMAP ) || defined( TANGENTSPACE_NORMALMAP )
                     varying vec3 vViewPosition;
                 #endif

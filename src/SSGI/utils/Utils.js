@@ -49,6 +49,10 @@ export const keepMaterialMapUpdated = (mrtMaterial, originalMaterial, prop, defi
 
 			if (originalMaterial[prop]) {
 				mrtMaterial.defines[define] = ""
+
+				if (define === "USE_NORMALMAP") {
+					mrtMaterial.defines.TANGENTSPACE_NORMALMAP = ""
+				}
 			} else {
 				delete mrtMaterial.defines[define]
 			}

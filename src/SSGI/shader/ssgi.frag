@@ -245,6 +245,8 @@ vec2 RayMarch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference)
 
     for (int i = 1; i <= steps; i++) {
         hitPos += dir;
+        if (hitPos.z > 0.0) return INVALID_RAY_COORDS;
+
         uv = viewSpaceToScreenSpace(hitPos);
 
         unpackedDepth = unpackRGBAToDepth(textureLod(depthTexture, uv, 2.0));

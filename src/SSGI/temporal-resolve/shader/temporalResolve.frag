@@ -9,8 +9,10 @@ uniform sampler2D hitPositionsTexture;
 uniform sampler2D depthTexture;
 uniform sampler2D lastDepthTexture;
 
+uniform sampler2D worldNormalTexture;
+uniform sampler2D lastWorldNormalTexture;
+
 uniform float blend;
-uniform float correction;
 uniform float samples;
 uniform vec2 invTexSize;
 
@@ -66,8 +68,24 @@ vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth) {
     return view.xyz;
 }
 
-vec2 getVirtualHitPointUV(float rayLength, vec2 uv, float depth) {
-    vec3 rayOrig = screenSpaceToWorldSpace(uv, depth);
+#define PLANE_DISTANCE  1.0
+#define NORMAL_DISTANCE 0.1
+
+bool planeDistanceDisocclusionCheck(vec3 worldPos, vec3 lastWorldPos, vec3 worldNormal) {
+    vec3 toCurrent = worldPos - lastWorldPos;
+    float distToPlane = abs(dot(toCurrent, worldNormal));
+
+    return distToPlane > PLANE_DISTANCE;
+}
+
+bool normalsDisocclusionCheck(vec3 currentNormal, vec3 lastNormal) {
+    if (pow(abs(dot(currentNormal, lastNormal)), 2.0) > NORMAL_DISTANCE)
+        return false;
+    else
+        return true;
+}
+
+vec2 getVirtualHitPointUV(vec3 rayOrig, float rayLength, vec2 uv, float depth) {
     vec3 cameraRay = normalize(rayOrig - cameraPos);
 
     vec3 parallaxHitPoint = cameraPos + cameraRay * rayLength;
@@ -95,21 +113,24 @@ void getNeighborhoodAABB(sampler2D tex, vec2 uv, inout vec3 minNeighborColor, in
     }
 }
 
-bool validateReprojectedUV(vec2 reprojectedUv, float depth) {
+bool validateReprojectedUV(vec2 reprojectedUv, float depth, vec3 worldPos) {
+    vec3 worldNormal = unpackRGBToNormal(textureLod(worldNormalTexture, vUv, 0.).xyz);
+    vec3 lastWorldNormal = unpackRGBToNormal(textureLod(lastWorldNormalTexture, reprojectedUv, 0.).xyz);
+
+    if (!(all(greaterThanEqual(reprojectedUv, vec2(0.))) && all(lessThanEqual(reprojectedUv, vec2(1.))))) return false;
+    if (normalsDisocclusionCheck(worldNormal, lastWorldNormal)) return false;
+
     // the reprojected UV coordinates are inside the view
-    if (all(greaterThanEqual(reprojectedUv, vec2(0.))) && all(lessThanEqual(reprojectedUv, vec2(1.)))) {
-        float lastDepth = unpackRGBAToDepth(textureLod(lastDepthTexture, reprojectedUv, 0.));
+    float lastDepth = unpackRGBAToDepth(textureLod(lastDepthTexture, reprojectedUv, 0.));
+    vec3 lastWorldPos = screenSpaceToWorldSpace(reprojectedUv, lastDepth);
 
-        float depthDiff = abs(depth - lastDepth);
+    if (planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal)) return false;
 
-        // reproject the last frame if there was no disocclusion
-        if (depthDiff < maxNeighborDepthDifference) {
-            return true;
-        }
-    }
+    float depthDiff = abs(depth - lastDepth);
 
-    return false;
-    // return true;
+    if (depthDiff > maxNeighborDepthDifference) return false;
+
+    return true;
 }
 
 void main() {
@@ -132,11 +153,13 @@ void main() {
         velocity.xy = vec2(0.);
     }
 
+    vec3 worldPos = screenSpaceToWorldSpace(vUv, depth);
+
     vec2 reprojectedUv = vUv - velocity.xy;
-    // vec2 virtualHitPointUv = getVirtualHitPointUV(textureLod(rawInputTexture, vUv, 0.).a, vUv, depth);
+    // vec2 virtualHitPointUv = getVirtualHitPointUV(worldPos, textureLod(rawInputTexture, vUv, 0.).a, vUv, depth);
     // reprojectedUv = virtualHitPointUv;
 
-    if (validateReprojectedUV(reprojectedUv, depth)) {
+    if (validateReprojectedUV(reprojectedUv, depth, worldPos)) {
         accumulatedTexel = textureLod(accumulatedTexture, reprojectedUv, 0.0);
 
         alpha = accumulatedTexel.a;
@@ -150,11 +173,14 @@ void main() {
         vec3 maxNeighborColor = inputColor;
         getNeighborhoodAABB(inputTexture, vUv, minNeighborColor, maxNeighborColor);
 
-        vec3 clampedColor = clamp(accumulatedColor, minNeighborColor, maxNeighborColor);
+        accumulatedColor = clamp(accumulatedColor, minNeighborColor, maxNeighborColor);
 
-        accumulatedColor = mix(accumulatedColor, clampedColor, correction);
 #endif
     } else {
+        // gOutput = vec4(0., 1., 0., 1.);
+        // gMoment = gOutput;
+        // return;
+
         accumulatedColor = inputColor;
         alpha = 0.0;
     }

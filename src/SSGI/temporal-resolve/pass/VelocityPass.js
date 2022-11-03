@@ -9,7 +9,7 @@ import {
 	Vector3,
 	WebGLMultipleRenderTargets
 } from "three"
-import { getVisibleChildren } from "../../utils/Utils.js"
+import { getVisibleChildren, keepMaterialMapUpdated } from "../../utils/Utils.js"
 import { VelocityMaterial } from "../material/VelocityMaterial.js"
 
 const backgroundColor = new Color(0)
@@ -31,7 +31,7 @@ export class VelocityPass extends Pass {
 
 		this.renderPass = new RenderPass(this._scene, this._camera)
 
-		const bufferCount = renderDepth ? 2 : 1
+		const bufferCount = renderDepth ? 3 : 1
 		this.renderTarget = new WebGLMultipleRenderTargets(1, 1, bufferCount, {
 			minFilter: NearestFilter,
 			magFilter: NearestFilter
@@ -50,6 +50,8 @@ export class VelocityPass extends Pass {
 
 			if (originalMaterial !== cachedOriginalMaterial) {
 				velocityMaterial = new VelocityMaterial()
+				velocityMaterial.normalScale = originalMaterial.normalScale
+				velocityMaterial.uniforms.normalScale.value = originalMaterial.normalScale
 
 				c.material = velocityMaterial
 
@@ -61,6 +63,16 @@ export class VelocityPass extends Pass {
 			c.material = velocityMaterial
 
 			if (this.renderDepth) velocityMaterial.defines.renderDepth = ""
+
+			keepMaterialMapUpdated(velocityMaterial, originalMaterial, "normalMap", "USE_NORMALMAP", true)
+
+			const map =
+				originalMaterial.map ||
+				originalMaterial.normalMap ||
+				originalMaterial.roughnessMap ||
+				originalMaterial.metalnessMap
+
+			if (map) velocityMaterial.uniforms.uvTransform.value = map.matrix
 
 			this.updateVelocityMaterialBeforeRender(c, originalMaterial)
 		}
@@ -130,6 +142,10 @@ export class VelocityPass extends Pass {
 
 	get depthTexture() {
 		return this.renderTarget.texture[0]
+	}
+
+	get worldNormalTexture() {
+		return this.renderTarget.texture[2]
 	}
 
 	get depthRenderTarget() {

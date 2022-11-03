@@ -174,9 +174,9 @@ export class SSGIPass extends Pass {
 			if (!this.ssgiEffect.reflectionsOnly) originalMaterial.envMapIntensity = 0
 
 			// update the child's MRT material
-			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "normalMap", "USE_NORMAL_MAP", true)
-			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "roughnessMap", "USE_ROUGHNESS_MAP", true)
-			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "metalnessMap", "USE_	METALNESS_MAP", true)
+			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "normalMap", "USE_NORMALMAP", true)
+			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "roughnessMap", "USE_ROUGHNESSMAP", true)
+			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "metalnessMap", "USE_	METALNESSMAP", true)
 			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "map", "USE_MAP", true)
 
 			if ("renderVelocity" in mrtMaterial.defines) {

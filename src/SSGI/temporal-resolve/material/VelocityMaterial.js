@@ -1,6 +1,8 @@
 ﻿// this shader is from: https://github.com/gkjohnson/threejs-sandbox
 /* eslint-disable camelcase */
 
+import { Vector2 } from "three"
+import { Matrix3 } from "three"
 import { GLSL3, UniformsUtils } from "three"
 import { Matrix4, ShaderChunk, ShaderMaterial } from "three"
 
@@ -105,51 +107,71 @@ export const velocity_uniforms = {
 	prevVelocityMatrix: { value: new Matrix4() },
 	velocityMatrix: { value: new Matrix4() },
 	prevBoneTexture: { value: null },
-	boneTexture: { value: null }
+	boneTexture: { value: null },
+	normalMap: { value: null },
+	normalScale: { value: new Vector2() },
+	uvTransform: { value: new Matrix3() }
 }
 
 export class VelocityMaterial extends ShaderMaterial {
 	constructor() {
 		super({
 			uniforms: UniformsUtils.clone(velocity_uniforms),
-
+			glslVersion: GLSL3,
 			vertexShader: /* glsl */ `
+					#include <uv_pars_vertex>
+					#include <packing>
+					#include <normal_pars_vertex>
+					
                     ${velocity_vertex_pars}
         
                     void main() {
 						vec3 transformed;
+
+						#include <uv_vertex>
 
 						#include <skinbase_vertex>
 						#include <beginnormal_vertex>
 						#include <skinnormal_vertex>
 						#include <defaultnormal_vertex>
 
+						#include <normal_vertex>
+
+
 						${velocity_vertex_main}
+
                     }`,
 			fragmentShader: /* glsl */ `
 					#ifdef renderDepth
 					layout(location = 0) out vec4 gDepth;
 					layout(location = 1) out vec4 gVelocity;
+					layout(location = 2) out vec4 gNormal;
 					#else
 					#define gVelocity gl_FragColor
 					#endif
 
 					${velocity_fragment_pars}
 					#include <packing>
+
+					#include <uv_pars_fragment>
+					#include <normal_pars_fragment>
+					#include <bumpmap_pars_fragment>
+					#include <normalmap_pars_fragment>
         
                     void main() {
+						#include <normal_fragment_begin>
+                    	#include <normal_fragment_maps>
+
 						${velocity_fragment_main.replaceAll("gl_FragColor", "gVelocity")}
 
 						#ifdef renderDepth
 						gDepth = packDepthToRGBA(fragCoordZ);
+
+						normal *= mat3(viewMatrix);
+
+						gNormal = vec4(packNormalToRGB( normal ), 1.0);
 						#endif
                     }`
-		})
-
-		Object.defineProperty(this, "glslVersion", {
-			get() {
-				return "renderDepth" in this.defines ? GLSL3 : null
-			}
 		})
 
 		this.isVelocityMaterial = true

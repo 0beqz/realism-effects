@@ -13,6 +13,7 @@ import {
 import { TemporalResolveMaterial } from "./material/TemporalResolveMaterial"
 import { VelocityPass } from "./pass/VelocityPass"
 import { generateHalton23Points } from "./utils/generateHalton23Points"
+import { CopyPass } from "../pass/CopyPass"
 
 const zeroVec2 = new Vector2()
 
@@ -81,11 +82,18 @@ export class TemporalResolvePass extends Pass {
 		this.fullscreenMaterial.uniforms.projectionMatrix.value = camera.projectionMatrix
 		this.fullscreenMaterial.uniforms.prevViewMatrix.value = camera.matrixWorldInverse.clone()
 
+		this.copyPass = new CopyPass()
+		this.copyPass.fullscreenMaterial.uniforms.inputTexture.value = this.velocityPass.worldNormalTexture
+
+		this.fullscreenMaterial.uniforms.worldNormalTexture.value = this.velocityPass.worldNormalTexture
+		this.fullscreenMaterial.uniforms.lastWorldNormalTexture.value = this.copyPass.renderTarget.texture
+
 		this.setupFramebuffers(1, 1)
 	}
 
 	dispose() {
 		this.renderTarget.dispose()
+		this.copyPass.dispose()
 		this.accumulatedTexture.dispose()
 		this.lastDepthTexture.dispose()
 		this.fullscreenMaterial.dispose()
@@ -95,6 +103,7 @@ export class TemporalResolvePass extends Pass {
 
 	setSize(width, height) {
 		this.renderTarget.setSize(width, height)
+		this.copyPass.setSize(width, height)
 		if (this.usingOwnVelocityPass) this.velocityPass.setSize(width, height)
 
 		this.fullscreenMaterial.uniforms.invTexSize.value.set(1 / width, 1 / height)
@@ -157,6 +166,8 @@ export class TemporalResolvePass extends Pass {
 			? depthRenderTarget.texture[0]
 			: depthRenderTarget.texture
 		this.fullscreenMaterial.uniforms.lastDepthTexture.value = this.lastDepthTexture
+
+		this.copyPass.render(renderer)
 
 		this.fullscreenMaterial.uniforms.prevViewMatrix.value.copy(this._camera.matrixWorldInverse)
 	}
