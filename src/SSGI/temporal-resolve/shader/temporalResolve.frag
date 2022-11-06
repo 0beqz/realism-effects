@@ -22,6 +22,7 @@ uniform mat4 projectionMatrix;
 uniform mat4 cameraMatrixWorld;
 uniform mat4 prevViewMatrix;
 uniform vec3 cameraPos;
+uniform vec3 lastCameraPos;
 
 #define FLOAT_EPSILON           0.00001
 #define FLOAT_ONE_MINUS_EPSILON 0.9999
@@ -55,7 +56,7 @@ vec2 viewSpaceToScreenSpace(vec3 position) {
     return projectedCoord.xy;
 }
 
-vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth) {
+vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth, mat4 curMatrixWorld) {
     vec4 ndc = vec4(
         (uv.x - 0.5) * 2.0,
         (uv.y - 0.5) * 2.0,
@@ -63,12 +64,12 @@ vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth) {
         1.0);
 
     vec4 clip = inverse(projectionMatrix) * ndc;
-    vec4 view = cameraMatrixWorld * (clip / clip.w);
+    vec4 view = curMatrixWorld * (clip / clip.w);
 
     return view.xyz;
 }
 
-#define PLANE_DISTANCE  1.0
+#define PLANE_DISTANCE  0.25
 #define NORMAL_DISTANCE 0.1
 
 bool planeDistanceDisocclusionCheck(vec3 worldPos, vec3 lastWorldPos, vec3 worldNormal) {
@@ -79,25 +80,12 @@ bool planeDistanceDisocclusionCheck(vec3 worldPos, vec3 lastWorldPos, vec3 world
 }
 
 bool normalsDisocclusionCheck(vec3 currentNormal, vec3 lastNormal) {
-    if (pow(abs(dot(currentNormal, lastNormal)), 2.0) > NORMAL_DISTANCE)
-        return false;
-    else
-        return true;
-}
-
-vec2 getVirtualHitPointUV(vec3 rayOrig, float rayLength, vec2 uv, float depth) {
-    vec3 cameraRay = normalize(rayOrig - cameraPos);
-
-    vec3 parallaxHitPoint = cameraPos + cameraRay * rayLength;
-    vec4 reprojectedParallaxHitPoint = prevViewMatrix * vec4(parallaxHitPoint, 1.0);
-    vec2 hitPointUv = viewSpaceToScreenSpace(reprojectedParallaxHitPoint.xyz);
-
-    return hitPointUv;
+    return pow(abs(dot(currentNormal, lastNormal)), 2.0) <= NORMAL_DISTANCE;
 }
 
 void getNeighborhoodAABB(sampler2D tex, vec2 uv, inout vec3 minNeighborColor, inout vec3 maxNeighborColor) {
-    for (int x = -2; x <= 2; x++) {
-        for (int y = -2; y <= 2; y++) {
+    for (int x = -1; x <= 1; x++) {
+        for (int y = -1; y <= 1; y++) {
             if (x != 0 || y != 0) {
                 vec2 offset = vec2(x, y) * invTexSize;
                 vec2 neighborUv = uv + offset;
@@ -113,24 +101,48 @@ void getNeighborhoodAABB(sampler2D tex, vec2 uv, inout vec3 minNeighborColor, in
     }
 }
 
-bool validateReprojectedUV(vec2 reprojectedUv, float depth, vec3 worldPos) {
-    vec3 worldNormal = unpackRGBToNormal(textureLod(worldNormalTexture, vUv, 0.).xyz);
-    vec3 lastWorldNormal = unpackRGBToNormal(textureLod(lastWorldNormalTexture, reprojectedUv, 0.).xyz);
+bool validateReprojectedUV(vec2 reprojectedUv, float depth, vec3 worldPos, vec4 worldNormalTexel) {
+    vec3 worldNormal = unpackRGBToNormal(worldNormalTexel.xyz);
+
+    vec4 lastWorldNormalTexel = textureLod(lastWorldNormalTexture, reprojectedUv, 0.);
+    vec3 lastWorldNormal = unpackRGBToNormal(lastWorldNormalTexel.xyz);
 
     if (!(all(greaterThanEqual(reprojectedUv, vec2(0.))) && all(lessThanEqual(reprojectedUv, vec2(1.))))) return false;
     if (normalsDisocclusionCheck(worldNormal, lastWorldNormal)) return false;
 
     // the reprojected UV coordinates are inside the view
     float lastDepth = unpackRGBAToDepth(textureLod(lastDepthTexture, reprojectedUv, 0.));
-    vec3 lastWorldPos = screenSpaceToWorldSpace(reprojectedUv, lastDepth);
+    vec3 lastWorldPos = screenSpaceToWorldSpace(reprojectedUv, lastDepth, inverse(prevViewMatrix));
 
     if (planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal)) return false;
 
     float depthDiff = abs(depth - lastDepth);
-
     if (depthDiff > maxNeighborDepthDifference) return false;
 
     return true;
+}
+
+vec2 reprojectVelocity() {
+    vec4 velocity = textureLod(velocityTexture, vUv, 0.0);
+    velocity.xy = unpackRGBATo2Half(velocity) * 2. - 1.;
+
+    if (all(lessThan(abs(velocity.xy), invTexSize * 0.25))) {
+        velocity.xy = vec2(0.);
+    }
+
+    return vUv - velocity.xy;
+}
+
+vec2 reprojectHitPoint(vec3 rayOrig, float rayLength, vec2 uv, float depth) {
+    vec3 cameraRay = normalize(rayOrig - cameraPos);
+    float cameraRayLength = distance(rayOrig, cameraPos);
+
+    vec3 parallaxHitPoint = cameraPos + cameraRay * (cameraRayLength + rayLength);
+
+    vec4 reprojectedParallaxHitPoint = prevViewMatrix * vec4(parallaxHitPoint, 1.0);
+    vec2 hitPointUv = viewSpaceToScreenSpace(reprojectedParallaxHitPoint.xyz);
+
+    return hitPointUv;
 }
 
 void main() {
@@ -145,21 +157,22 @@ void main() {
     vec4 accumulatedTexel;
     vec3 accumulatedColor;
 
-    // velocity
-    vec4 velocity = textureLod(velocityTexture, vUv, 0.0);
-    velocity.xy = unpackRGBATo2Half(velocity) * 2. - 1.;
+    vec3 worldPos = screenSpaceToWorldSpace(vUv, depth, cameraMatrixWorld);
 
-    if (all(lessThan(abs(velocity.xy), invTexSize * 0.25))) {
-        velocity.xy = vec2(0.);
+    vec4 worldNormalTexel = textureLod(worldNormalTexture, vUv, 0.);
+    float curvature = worldNormalTexel.a;
+
+    vec2 reprojectedUv;
+    float rayLength;
+    if (curvature == 0.0 && (rayLength = textureLod(inputTexture, vUv, 0.).a) != 0.0) {
+        reprojectedUv = reprojectHitPoint(worldPos, rayLength, vUv, depth);
+    } else {
+        reprojectedUv = reprojectVelocity();
     }
 
-    vec3 worldPos = screenSpaceToWorldSpace(vUv, depth);
+    bool isReprojectedUvValid = validateReprojectedUV(reprojectedUv, depth, worldPos, worldNormalTexel);
 
-    vec2 reprojectedUv = vUv - velocity.xy;
-    // vec2 virtualHitPointUv = getVirtualHitPointUV(worldPos, textureLod(rawInputTexture, vUv, 0.).a, vUv, depth);
-    // reprojectedUv = virtualHitPointUv;
-
-    if (validateReprojectedUV(reprojectedUv, depth, worldPos)) {
+    if (isReprojectedUvValid) {
         accumulatedTexel = textureLod(accumulatedTexture, reprojectedUv, 0.0);
 
         alpha = accumulatedTexel.a;

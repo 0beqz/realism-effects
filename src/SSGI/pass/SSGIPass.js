@@ -43,10 +43,10 @@ export class SSGIPass extends Pass {
 
 		// set up basic uniforms that we don't have to update
 		this.fullscreenMaterial.uniforms.cameraMatrixWorld.value = this._camera.matrixWorld
-		this.fullscreenMaterial.uniforms.cameraMatrixWorldInverse.value = this._camera.matrixWorldInverse
+		this.fullscreenMaterial.uniforms._viewMatrix.value = this._camera.matrixWorldInverse
 		this.fullscreenMaterial.uniforms.projectionMatrix.value = this._camera.projectionMatrix
 		this.fullscreenMaterial.uniforms.inverseProjectionMatrix.value = this._camera.projectionMatrixInverse
-		this.fullscreenMaterial.uniforms.camPos.value = this._camera.position
+		this.fullscreenMaterial.uniforms.cameraPos.value = this._camera.position
 	}
 
 	initialize(renderer, ...args) {

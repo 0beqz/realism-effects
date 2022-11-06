@@ -79,9 +79,6 @@ const setAA = value => {
 	composer.removePass(traaPass)
 	composer.removePass(fxaaPass)
 
-	delete scene.userData.velocityTexture
-	delete scene.userData.lastVelocityTexture
-
 	switch (value) {
 		case "TRAA":
 			composer.addPass(traaPass)
@@ -164,7 +161,7 @@ const params = {}
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
 pmremGenerator.compileEquirectangularShader()
 
-new RGBELoader().load("modern_buildings_2_4k.hdr", envMap => {
+new RGBELoader().load("quarry_02_4k.hdr", envMap => {
 	envMap.mapping = THREE.EquirectangularReflectionMapping
 
 	scene.environment = envMap
@@ -243,7 +240,7 @@ const initScene = () => {
 		spp: 1,
 		missedRays: false,
 		resolutionScale: 1,
-		antialias: true
+		antialias: false
 	}
 
 	options = {

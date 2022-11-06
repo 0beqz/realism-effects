@@ -23,7 +23,8 @@ export class TemporalResolveMaterial extends ShaderMaterial {
 				projectionMatrix: new Uniform(new Matrix4()),
 				cameraMatrixWorld: new Uniform(new Matrix4()),
 				prevViewMatrix: new Uniform(new Matrix4()),
-				cameraPos: new Uniform(new Vector3())
+				cameraPos: new Uniform(new Vector3()),
+				lastCameraPos: new Uniform(new Vector3())
 			},
 			defines: {
 				maxNeighborDepthDifference: "0.00001"

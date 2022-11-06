@@ -21,7 +21,7 @@ export class SSGIMaterial extends ShaderMaterial {
 				projectionMatrix: new Uniform(new Matrix4()),
 				inverseProjectionMatrix: new Uniform(new Matrix4()),
 				cameraMatrixWorld: new Uniform(new Matrix4()),
-				cameraMatrixWorldInverse: new Uniform(new Matrix4()),
+				_viewMatrix: new Uniform(new Matrix4()),
 				cameraNear: new Uniform(0),
 				cameraFar: new Uniform(0),
 				rayDistance: new Uniform(0),
@@ -40,7 +40,7 @@ export class SSGIMaterial extends ShaderMaterial {
 				invTexSize: new Uniform(new Vector2()),
 				blueNoiseRepeat: new Uniform(new Vector2()),
 				envMapSize: new Uniform(new Vector3()),
-				camPos: new Uniform(new Vector3())
+				cameraPos: new Uniform(new Vector3())
 			},
 
 			defines: {

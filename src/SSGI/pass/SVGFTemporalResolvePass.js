@@ -40,7 +40,6 @@ export class SVGFTemporalResolvePass extends TemporalResolvePass {
 		layout(location = 1) out vec4 gMoment;
 
 		uniform sampler2D momentsTexture;
-		uniform sampler2D rawInputTexture;
 		`
 			: ""
 
@@ -48,8 +47,7 @@ export class SVGFTemporalResolvePass extends TemporalResolvePass {
 
 		const momentsUniforms = options.moments
 			? {
-					momentsTexture: new Uniform(null),
-					rawInputTexture: new Uniform(null)
+					momentsTexture: new Uniform(null)
 			  }
 			: {}
 

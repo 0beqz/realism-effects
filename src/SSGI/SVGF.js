@@ -35,9 +35,6 @@ export class SVGF {
 	}
 
 	setInputTexture(texture) {
-		const { uniforms } = this.svgfTemporalResolvePass.fullscreenMaterial
-		if ("rawInputTexture" in uniforms) uniforms.rawInputTexture.value = texture
-
 		this.denoisePass.fullscreenMaterial.uniforms.inputTexture.value = texture
 	}
 

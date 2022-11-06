@@ -12,11 +12,11 @@ uniform sampler2D envMap;
 uniform mat4 projectionMatrix;
 uniform mat4 inverseProjectionMatrix;
 uniform mat4 cameraMatrixWorld;
-uniform mat4 cameraMatrixWorldInverse;
+uniform mat4 _viewMatrix;
 uniform float cameraNear;
 uniform float cameraFar;
 uniform float maxEnvMapMipLevel;
-uniform vec3 camPos;
+uniform vec3 cameraPos;
 
 uniform float rayDistance;
 uniform float maxRoughness;
@@ -33,9 +33,9 @@ uniform float jitter;
 uniform float jitterRoughness;
 
 #define INVALID_RAY_COORDS vec2(-1.0);
-#define EARLY_OUT_COLOR    vec4(0.0, 0.0, 0.0, 1.0)
+#define EARLY_OUT_COLOR    vec4(0.0, 0.0, 0.0, 0.0)
 #define FLOAT_EPSILON      0.00001
-#define TRANSFORM_FACTOR   0.5
+#define TRANSFORM_FACTOR   1.0
 
 float nearMinusFar;
 float nearMulFar;
@@ -49,7 +49,7 @@ float farMinusNear;
 vec2 RayMarch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
 vec2 BinarySearch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
 float fastGetViewZ(const in float depth);
-vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float spread, vec3 Fresnel, inout vec3 reflected, inout vec3 hitPos);
+vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, float roughness, float spread, vec3 Fresnel, inout vec3 reflected, inout vec3 hitPos, out bool isMissedRay);
 
 void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.0);
@@ -83,12 +83,12 @@ void main() {
     // view-space depth
     float depth = fastGetViewZ(unpackedDepth);
 
-    vec3 worldPos = screenSpaceToWorldSpace(vUv, unpackedDepth);
-
     // view-space position of the current texel
     vec3 viewPos = getViewPosition(depth);
     vec3 viewDir = normalize(viewPos);
     vec3 viewNormal = normalTexel.xyz;
+
+    vec3 worldPos = vec4(_viewMatrix * vec4(viewPos, 1.)).xyz;
 
     float spread = jitter + roughness * jitterRoughness;
     spread = min(1.0, spread);
@@ -98,22 +98,21 @@ void main() {
     float metalness = diffuseTexel.a;
 
     vec3 SSGI;
-    vec3 diffuseSSGI;
-    vec3 specularSSGI;
     vec3 reflected;
     vec3 hitPos;
 
-    float fresnelFactor;
+    float ior = mix(3.0, 1.0, max(0., spread - metalness));
+
+    bool isMissedRay = false;
 
     for (int s = 0; s < spp; s++) {
         float sF = float(s);
         float m = 1. / (sF + 1.0);
 
-        diffuseSSGI = doSample(viewPos, viewDir, viewNormal, roughness, 1.0, vec3(1.0), reflected, hitPos);
-        specularSSGI = doSample(viewPos, viewDir, viewNormal, roughness, min(spread, 0.99), vec3(1.0), reflected, hitPos);
+        vec3 diffuseSSGI = doSample(viewPos, viewDir, viewNormal, worldPos, roughness, 1.0, vec3(1.0), reflected, hitPos, isMissedRay);
+        vec3 specularSSGI = doSample(viewPos, viewDir, viewNormal, worldPos, roughness, min(spread, 0.99), vec3(1.0), reflected, hitPos, isMissedRay);
 
-        float ior = mix(3.0, 1.0, max(0., spread - metalness));
-        fresnelFactor = fresnel_dielectric(viewDir, reflected, ior);
+        float fresnelFactor = fresnel_dielectric(viewDir, reflected, ior);
 
         diffuseSSGI *= (1. - metalness);
         specularSSGI *= fresnelFactor;
@@ -127,15 +126,16 @@ void main() {
 
     SSGI *= intensity;
 
-    mat3 screenToWorldMatrix = mat3(cameraMatrixWorldInverse);
-
-    hitPos *= screenToWorldMatrix;
-    float rayLength = distance(worldPos, hitPos);
+    float rayLength = 0.0;
+    if (!isMissedRay && spread < 0.5) {
+        hitPos = (_viewMatrix * vec4(hitPos, 1.)).xyz;
+        rayLength = distance(worldPos, hitPos);
+    }
 
     gl_FragColor = vec4(SSGI, rayLength);
 }
 
-vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, float spread, vec3 Fresnel, inout vec3 reflected, inout vec3 hitPos) {
+vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, float roughness, float spread, vec3 Fresnel, inout vec3 reflected, inout vec3 hitPos, out bool isMissedRay) {
     vec2 blueNoiseUv = (vUv + rand2()) * blueNoiseRepeat;
     vec2 random = textureLod(blueNoiseTexture, blueNoiseUv, 0.).rg;
 
@@ -147,16 +147,6 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
 
     vec3 SSGI;
     vec3 m = vec3(TRANSFORM_FACTOR);
-
-    // if (dot(reflected, viewNormal) < 0.) {
-    //     vec4 velocity = textureLod(velocityTexture, vUv, 0.0);
-    //     velocity.xy = unpackRGBATo2Half(velocity) * 2. - 1.;
-
-    //     vec2 reprojectedUv = vUv - velocity.xy;
-
-    //     SSGI = textureLod(accumulatedTexture, reprojectedUv, 0.).rgb;
-    //     return m * SSGI;
-    // }
 
     vec3 dir = normalize(reflected * -viewPos.z);
 
@@ -171,11 +161,13 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     vec2 coords = RayMarch(dir, hitPos, rayHitDepthDifference);
 #endif
 
-    // if (spread != 1.) {
-    //     gHitPositions = vec4(coords, 0., 1.);
-    // }
+    bool allowMissedRays = false;
+#ifdef missedRays
+    allowMissedRays = true;
+#endif
 
-    bool isAllowedMissedRay = rayHitDepthDifference == -1.0;
+    isMissedRay = rayHitDepthDifference == -1.0;
+    bool isAllowedMissedRay = allowMissedRays && isMissedRay;
     bool isInvalidRay = coords.x == -1.0;
 
     vec3 envMapSample = vec3(0.);
@@ -184,12 +176,11 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
     // invalid ray, use environment lighting as fallback
     if (isInvalidRay || isAllowedMissedRay) {
         // world-space reflected ray
-        vec4 reflectedWS = vec4(reflected, 1.) * cameraMatrixWorldInverse;
+        vec4 reflectedWS = vec4(reflected, 1.) * _viewMatrix;
         reflectedWS.xyz = normalize(reflectedWS.xyz);
 
     #ifdef BOX_PROJECTED_ENV_MAP
         float depth = unpackRGBAToDepth(textureLod(depthTexture, vUv, 0.));
-        vec3 worldPosition = screenSpaceToWorldSpace(vUv, depth);
         reflectedWS.xyz = parallaxCorrectNormal(reflectedWS.xyz, envMapSize, envMapPosition, worldPosition);
         reflectedWS.xyz = normalize(reflectedWS.xyz);
     #endif
@@ -202,7 +193,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, float roughness, floa
         // we won't deal with calculating direct sun light from the env map as it is too noisy
         if (dot(envMapSample, envMapSample) > 3.) envMapSample = vec3(1.);
 
-        if (!isAllowedMissedRay) return m * envMapSample;
+        return m * envMapSample;
     }
 #endif
 
@@ -243,13 +234,13 @@ vec2 RayMarch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference)
     float unpackedDepth;
     vec2 uv;
 
-    for (int i = 1; i <= steps; i++) {
+    for (int i = 0; i < steps; i++) {
         hitPos += dir;
         if (hitPos.z > 0.0) return INVALID_RAY_COORDS;
 
         uv = viewSpaceToScreenSpace(hitPos);
 
-        unpackedDepth = unpackRGBAToDepth(textureLod(depthTexture, uv, 2.0));
+        unpackedDepth = unpackRGBAToDepth(textureLod(depthTexture, uv, 0.0));
         depth = fastGetViewZ(unpackedDepth);
 
         rayHitDepthDifference = depth - hitPos.z;
@@ -265,11 +256,11 @@ vec2 RayMarch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference)
         }
     }
 
+    rayHitDepthDifference = -1.0;
+
 #ifndef missedRays
     return INVALID_RAY_COORDS;
 #endif
-
-    rayHitDepthDifference = -1.0;
 
     return uv;
 }

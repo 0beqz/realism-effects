@@ -53,6 +53,15 @@ void main() {
     float kernel = denoiseKernel;
     vec3 neighborNormal;
 
+#ifdef USE_MOMENT
+    vec2 moment = textureLod(momentsTexture, vUv, 0.).rg;
+    float variance = max(0.0, moment.g - moment.r * moment.r);
+
+    float colorPhi = lumaPhi * sqrt(FLOAT_EPSILON + variance);
+#else
+    float colorPhi = lumaPhi;
+#endif
+
     for (float i = -kernel; i <= kernel; i++) {
         if (i != 0.) {
             vec2 neighborVec = horizontal ? vec2(i, 0.) : vec2(0., i);
@@ -61,36 +70,33 @@ void main() {
             vec4 neighborDepthTexel = textureLod(depthTexture, neighborUv, 0.);
 
             float neighborDepth = unpackRGBAToDepth(neighborDepthTexel);
-            vec3 neighborColor = textureLod(inputTexture, neighborUv, 0.).rgb;
-            float neighborLuma = dot(W, neighborColor);
 
             float depthDiff = abs(depth - neighborDepth) * 50000.;
-            float lumaDiff = abs(luma - neighborLuma);
-
-            vec4 neighborNormalTexel = textureLod(normalTexture, neighborUv, 0.);
-            neighborNormal = unpackRGBToNormal(neighborNormalTexel.rgb);
-            neighborNormal *= screenToWorldMatrix;
-            neighborNormal = normalize(neighborNormal);
-
-#ifdef USE_MOMENT
-            vec2 moment = textureLod(momentsTexture, neighborUv, 0.).rg;
-            float variance = max(0.0, moment.g - moment.r * moment.r);
-
-            float colorPhi = lumaPhi * sqrt(FLOAT_EPSILON + variance);
-#else
-            float colorPhi = lumaPhi;
-#endif
-
-            float normalSimilarity = pow(max(0., dot(neighborNormal, normal)), normalPhi);
-            float lumaSimilarity = max(1.0 - lumaDiff / colorPhi, 0.0);
             float depthSimilarity = 1.0 - min(1.0, depthDiff * depthPhi);
 
-            float weight = normalSimilarity * lumaSimilarity * depthSimilarity;
+            if (depthSimilarity > 0.) {
+                vec4 neighborNormalTexel = textureLod(normalTexture, neighborUv, 0.);
+                neighborNormal = unpackRGBToNormal(neighborNormalTexel.rgb);
+                neighborNormal *= screenToWorldMatrix;
+                neighborNormal = normalize(neighborNormal);
 
-            if (weight > 0.) {
-                color += neighborColor * weight;
+                float normalSimilarity = pow(max(0., dot(neighborNormal, normal)), normalPhi);
 
-                totalWeight += weight;
+                if (normalSimilarity > 0.) {
+                    vec3 neighborColor = textureLod(inputTexture, neighborUv, 0.).rgb;
+                    float neighborLuma = dot(W, neighborColor);
+
+                    float lumaDiff = abs(luma - neighborLuma);
+                    float lumaSimilarity = max(1.0 - lumaDiff / (colorPhi * 10.0), 0.0);
+
+                    float weight = normalSimilarity * lumaSimilarity * depthSimilarity;
+
+                    if (weight > 0.) {
+                        color += neighborColor * weight;
+
+                        totalWeight += weight;
+                    }
+                }
             }
         }
     }

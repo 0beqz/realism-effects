@@ -6,6 +6,12 @@ vec3 getViewPosition(const float depth) {
     return (inverseProjectionMatrix * clipPosition).xyz;
 }
 
+vec3 screenSpaceToWorldSpace(vec2 uv, float depth, mat4 camMatrixWorld) {
+    vec3 viewPos = getViewPosition(depth);
+
+    return vec4(camMatrixWorld * vec4(viewPos, 1.)).xyz;
+}
+
 // source: https://github.com/mrdoob/three.js/blob/342946c8392639028da439b6dc0597e58209c696/examples/js/shaders/SAOShader.js#L123
 float getViewZ(const in float depth) {
 #ifdef PERSPECTIVE_CAMERA
@@ -13,20 +19,6 @@ float getViewZ(const in float depth) {
 #else
     return orthographicDepthToViewZ(depth, cameraNear, cameraFar);
 #endif
-}
-
-// credits for transforming screen position to world position: https://discourse.threejs.org/t/reconstruct-world-position-in-screen-space-from-depth-buffer/5532/2
-vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth) {
-    vec4 ndc = vec4(
-        (uv.x - 0.5) * 2.0,
-        (uv.y - 0.5) * 2.0,
-        (depth - 0.5) * 2.0,
-        1.0);
-
-    vec4 clip = inverseProjectionMatrix * ndc;
-    vec4 view = cameraMatrixWorld * (clip / clip.w);
-
-    return view.xyz;
 }
 
 vec2 viewSpaceToScreenSpace(vec3 position) {
@@ -38,13 +30,11 @@ vec2 viewSpaceToScreenSpace(vec3 position) {
     return projectedCoord.xy;
 }
 
-// vec2 worldSpaceToScreenSpace(vec3 worldPos){
-//     vec4 ssPos = projectionMatrix * inverse(cameraMatrixWorld) * vec4(worldPos, 1.0);
-//     ssPos.xy /= ssPos.w;
-//     ssPos.xy = ssPos.xy * 0.5 + 0.5;
+vec2 worldSpaceToScreenSpace(vec3 worldPos) {
+    vec4 vsPos = vec4(worldPos, 1.0) * cameraMatrixWorld;
 
-//     return ssPos.xy;
-// }
+    return viewSpaceToScreenSpace(vsPos.xyz);
+}
 
 #ifdef BOX_PROJECTED_ENV_MAP
 uniform vec3 envMapSize;

@@ -170,6 +170,7 @@ export class TemporalResolvePass extends Pass {
 		this.copyPass.render(renderer)
 
 		this.fullscreenMaterial.uniforms.prevViewMatrix.value.copy(this._camera.matrixWorldInverse)
+		this.fullscreenMaterial.uniforms.lastCameraPos.value.copy(this._camera.position)
 	}
 
 	jitter(jitterScale = 1) {

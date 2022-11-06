@@ -1,4 +1,4 @@
-﻿#define TRANSFORM_FACTOR 0.5
+﻿#define TRANSFORM_FACTOR 1.0
 
 vec4 directLightTexel = textureLod(directLightTexture, vUv, 0.0);
 

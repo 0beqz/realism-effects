@@ -122,6 +122,10 @@ export class VelocityMaterial extends ShaderMaterial {
 					#include <uv_pars_vertex>
 					#include <packing>
 					#include <normal_pars_vertex>
+
+					#if defined( FLAT_SHADED ) || defined( USE_BUMPMAP ) || defined( TANGENTSPACE_NORMALMAP )
+						varying vec3 vViewPosition;
+					#endif
 					
                     ${velocity_vertex_pars}
         
@@ -135,13 +139,28 @@ export class VelocityMaterial extends ShaderMaterial {
 						#include <skinnormal_vertex>
 						#include <defaultnormal_vertex>
 
-						#include <normal_vertex>
 
+						#include <morphnormal_vertex>
+						#include <normal_vertex>
+						#include <morphtarget_vertex>
+						#include <skinning_vertex>
+						#include <displacementmap_vertex>
+						#include <project_vertex>
+						#include <logdepthbuf_vertex>
+						#include <clipping_planes_vertex>
 
 						${velocity_vertex_main}
 
+						#if defined( FLAT_SHADED ) || defined( USE_BUMPMAP ) || defined( TANGENTSPACE_NORMALMAP )
+							vViewPosition = - mvPosition.xyz;
+						#endif
+
                     }`,
 			fragmentShader: /* glsl */ `
+					#if defined( FLAT_SHADED ) || defined( USE_BUMPMAP ) || defined( TANGENTSPACE_NORMALMAP )
+						varying vec3 vViewPosition;
+					#endif
+
 					#ifdef renderDepth
 					layout(location = 0) out vec4 gDepth;
 					layout(location = 1) out vec4 gVelocity;
@@ -169,7 +188,16 @@ export class VelocityMaterial extends ShaderMaterial {
 
 						normal *= mat3(viewMatrix);
 
-						gNormal = vec4(packNormalToRGB( normal ), 1.0);
+						vec3 dx = dFdx(normal);
+						vec3 dy = dFdy(normal);
+
+						float x = dot(dx, dx);
+						float y = dot(dy, dy);
+
+						float curvature = sqrt(max(x, y));
+
+
+						gNormal = vec4(packNormalToRGB( normal ), curvature * 100.);
 						#endif
                     }`
 		})
