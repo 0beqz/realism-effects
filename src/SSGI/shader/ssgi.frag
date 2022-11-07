@@ -71,14 +71,14 @@ void main() {
         return;
     }
 
+    normalTexel.xyz = unpackRGBToNormal(normalTexel.rgb);
+
     rng_initialize(vUv, seed);
 
     // pre-calculated variables for the "fastGetViewZ" function
     nearMinusFar = cameraNear - cameraFar;
     nearMulFar = cameraNear * cameraFar;
     farMinusNear = cameraFar - cameraNear;
-
-    normalTexel.rgb = unpackRGBToNormal(normalTexel.rgb);
 
     // view-space depth
     float depth = fastGetViewZ(unpackedDepth);
@@ -109,27 +109,27 @@ void main() {
         float sF = float(s);
         float m = 1. / (sF + 1.0);
 
-        vec3 diffuseSSGI = doSample(viewPos, viewDir, viewNormal, worldPos, roughness, 1.0, vec3(1.0), reflected, hitPos, isMissedRay);
+        // vec3 diffuseSSGI = doSample(viewPos, viewDir, viewNormal, worldPos, roughness, 1.0, vec3(1.0), reflected, hitPos, isMissedRay);
         vec3 specularSSGI = doSample(viewPos, viewDir, viewNormal, worldPos, roughness, min(spread, 0.99), vec3(1.0), reflected, hitPos, isMissedRay);
 
         float fresnelFactor = fresnel_dielectric(viewDir, reflected, ior);
 
-        diffuseSSGI *= (1. - metalness);
-        specularSSGI *= fresnelFactor;
+        // diffuseSSGI *= (1. - metalness);
+        // specularSSGI *= fresnelFactor;
 
-        vec3 gi = diffuseSSGI + specularSSGI;
+        // vec3 gi = diffuseSSGI + specularSSGI;
 
-        SSGI = mix(SSGI, gi, m);
+        SSGI = mix(SSGI, specularSSGI, m);
     }
 
     if (power != 1.0) SSGI = pow(SSGI, vec3(power));
 
-    SSGI *= intensity;
+    SSGI *= intensity * 0.5;
 
     float rayLength = 0.0;
     if (!isMissedRay && spread < 0.5) {
-        hitPos = (_viewMatrix * vec4(hitPos, 1.)).xyz;
-        rayLength = distance(worldPos, hitPos);
+        vec3 hitPosWS = (_viewMatrix * vec4(hitPos, 1.)).xyz;
+        rayLength = distance(worldPos, hitPosWS);
     }
 
     gl_FragColor = vec4(SSGI, rayLength);
@@ -191,7 +191,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
         envMapSample = sampleEquirectEnvMapColor(sampleDir, envMap, mip);
 
         // we won't deal with calculating direct sun light from the env map as it is too noisy
-        if (dot(envMapSample, envMapSample) > 3.) envMapSample = vec3(1.);
+        if (dot(envMapSample, envMapSample) > 3.) envMapSample = min(envMapSample, vec3(10.));
 
         return m * envMapSample;
     }
@@ -205,7 +205,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
 
     // check if the reprojected coordinates are within the screen
     if (all(greaterThanEqual(reprojectedUv, vec2(0.))) && all(lessThanEqual(reprojectedUv, vec2(1.)))) {
-        SSGI = textureLod(accumulatedTexture, reprojectedUv, 0.).rgb + textureLod(directLightTexture, reprojectedUv, 0.).rgb;
+        SSGI = textureLod(accumulatedTexture, reprojectedUv, 0.).rgb;
     } else {
         SSGI = textureLod(directLightTexture, vUv, 0.).rgb;
     }

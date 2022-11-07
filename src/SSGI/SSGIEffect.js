@@ -29,11 +29,11 @@ export class SSGIEffect extends Effect {
 		this._scene = scene
 		this._camera = camera
 
-		this.svgf = new SVGF(scene, camera, { antialias: options.antialias, renderVelocity: options.antialias })
+		this.svgf = new SVGF(scene, camera, { antialias: options.antialias })
 
 		// ssgi pass
 		this.ssgiPass = new SSGIPass(this)
-		this.svgf.setInputTexture(this.ssgiPass.renderTarget.texture)
+		// this.svgf.setInputTexture(this.ssgiPass.renderTarget.texture)
 
 		// modify the temporal resolve pass of SVGF denoiser for the SSGI effect
 		this.svgf.svgfTemporalResolvePass.fullscreenMaterial.fragmentShader =
@@ -250,8 +250,11 @@ export class SSGIEffect extends Effect {
 	update(renderer, inputBuffer) {
 		this.keepEnvMapUpdated()
 
+		this.svgf.svgfTemporalResolvePass.doJitter(renderer)
+
 		this.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.directLightTexture.value = inputBuffer.texture
 		this.ssgiPass.fullscreenMaterial.uniforms.directLightTexture.value = inputBuffer.texture
+		this.svgf.denoisePass.fullscreenMaterial.uniforms.directLightTexture.value = inputBuffer.texture
 
 		this.ssgiPass.render(renderer, inputBuffer)
 

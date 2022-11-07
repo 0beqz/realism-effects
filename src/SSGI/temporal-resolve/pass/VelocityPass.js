@@ -62,6 +62,9 @@ export class VelocityPass extends Pass {
 
 			c.material = velocityMaterial
 
+			const visible = originalMaterial.visible && !c.constructor.name.includes("GroundProjectedEnv")
+			c.visible = visible
+
 			if (this.renderDepth) velocityMaterial.defines.renderDepth = ""
 
 			keepMaterialMapUpdated(velocityMaterial, originalMaterial, "normalMap", "USE_NORMALMAP", true)

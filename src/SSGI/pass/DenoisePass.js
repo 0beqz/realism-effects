@@ -1,5 +1,5 @@
 ﻿import { Pass } from "postprocessing"
-import { HalfFloatType, LinearFilter, ShaderMaterial, sRGBEncoding, Uniform, Vector2, WebGLRenderTarget } from "three"
+import { LinearFilter, ShaderMaterial, sRGBEncoding, Uniform, Vector2, WebGLRenderTarget } from "three"
 import basicVertexShader from "../shader/basic.vert"
 import fragmentShader from "../shader/denoise.frag"
 
@@ -23,6 +23,8 @@ export class DenoisePass extends Pass {
 			vertexShader: basicVertexShader,
 			uniforms: {
 				inputTexture: new Uniform(inputTexture),
+				diffuseTexture: new Uniform(null),
+				directLightTexture: new Uniform(null),
 				depthTexture: new Uniform(null),
 				normalTexture: new Uniform(null),
 				momentsTexture: new Uniform(null),
@@ -34,6 +36,7 @@ export class DenoisePass extends Pass {
 				normalPhi: new Uniform(1),
 				roughnessPhi: new Uniform(1),
 				stepSize: new Uniform(1),
+				isLastIteration: new Uniform(false),
 				_viewMatrix: new Uniform(camera.matrixWorldInverse),
 				_projectionMatrixInverse: new Uniform(camera.projectionMatrixInverse)
 			}
@@ -42,7 +45,7 @@ export class DenoisePass extends Pass {
 		const renderTargetOptions = {
 			minFilter: LinearFilter,
 			magFilter: LinearFilter,
-			type: HalfFloatType,
+			encoding: sRGBEncoding,
 			depthBuffer: false
 		}
 
@@ -73,6 +76,8 @@ export class DenoisePass extends Pass {
 
 			this.fullscreenMaterial.uniforms.horizontal.value = horizontal
 			this.fullscreenMaterial.uniforms.stepSize.value = stepSize
+			this.fullscreenMaterial.uniforms.isLastIteration.value = i === 2 * this.iterations - 1
+
 			const renderTarget = horizontal ? this.renderTargetA : this.renderTargetB
 
 			this.fullscreenMaterial.uniforms.inputTexture.value = horizontal

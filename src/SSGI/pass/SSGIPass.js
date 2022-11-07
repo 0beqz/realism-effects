@@ -21,6 +21,7 @@ const backgroundColor = new Color(0)
 export class SSGIPass extends Pass {
 	cachedMaterials = new WeakMap()
 	visibleMeshes = []
+	samples = 0
 
 	constructor(ssgiEffect) {
 		super("SSGIPass")
@@ -120,7 +121,7 @@ export class SSGIPass extends Pass {
 
 		this.fullscreenMaterial.uniforms.invTexSize.value.set(1 / width, 1 / height)
 
-		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.ssgiEffect.svgf.svgfTemporalResolvePass.texture
+		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.ssgiEffect.svgf.denoisePass.texture
 
 		this.fullscreenMaterial.needsUpdate = true
 	}
@@ -264,9 +265,14 @@ export class SSGIPass extends Pass {
 
 		this.unsetMRTMaterialInScene()
 
+		this.ssgiEffect.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value =
+			this.renderTarget.texture
+
+		this.ssgiEffect.svgf.denoisePass.fullscreenMaterial.uniforms.diffuseTexture.value = this.diffuseTexture
+
 		// update uniforms
 
-		this.fullscreenMaterial.uniforms.samples.value = this.ssgiEffect.svgf.svgfTemporalResolvePass.samples
+		this.fullscreenMaterial.uniforms.samples.value = this.samples++
 		this.fullscreenMaterial.uniforms.seed.value++
 		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
 		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far

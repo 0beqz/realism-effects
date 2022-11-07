@@ -40,7 +40,8 @@ export class SSGIMaterial extends ShaderMaterial {
 				invTexSize: new Uniform(new Vector2()),
 				blueNoiseRepeat: new Uniform(new Vector2()),
 				envMapSize: new Uniform(new Vector3()),
-				cameraPos: new Uniform(new Vector3())
+				cameraPos: new Uniform(new Vector3()),
+				renderDiffuseThisFrame: new Uniform(false)
 			},
 
 			defines: {

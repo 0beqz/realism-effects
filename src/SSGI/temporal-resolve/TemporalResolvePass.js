@@ -141,16 +141,18 @@ export class TemporalResolvePass extends Pass {
 		return this.renderTarget.texture
 	}
 
-	render(renderer) {
-		this.samples++
-		this.checkNeedsResample()
-		this.fullscreenMaterial.uniforms.samples.value = this.samples
-
+	doJitter(renderer) {
 		if (this.traa) this.unjitter()
 
 		if (this.renderVelocity && this.usingOwnVelocityPass) this.velocityPass.render(renderer)
 
 		if (this.traa) this.jitter()
+	}
+
+	render(renderer) {
+		this.samples++
+		this.checkNeedsResample()
+		this.fullscreenMaterial.uniforms.samples.value = this.samples
 
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)

@@ -120,7 +120,7 @@ composer.addPass(renderPass)
 const lightParams = {
 	yaw: 55,
 	pitch: 27,
-	intensity: 1.7
+	intensity: 0
 }
 
 const light = new DirectionalLight(0xffffff, lightParams.intensity)
@@ -161,7 +161,7 @@ const params = {}
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
 pmremGenerator.compileEquirectangularShader()
 
-new RGBELoader().load("quarry_02_4k.hdr", envMap => {
+new RGBELoader().load("blouberg_sunrise_2_4k.hdr", envMap => {
 	envMap.mapping = THREE.EquirectangularReflectionMapping
 
 	scene.environment = envMap
@@ -219,51 +219,27 @@ const refreshLighting = () => {
 }
 
 const initScene = () => {
-	let options = {
-		intensity: 0.9999999999999989,
-		power: 0.9999999999999999,
-		distance: 5.440000000000008,
-		thickness: 5.219999999999997,
-		ior: 1.45,
-		maxRoughness: 1,
-		blend: 0.9,
-		denoiseIterations: 3,
-		denoiseKernel: 2,
-		lumaPhi: 10,
-		depthPhi: 14.200000000000001,
-		normalPhi: 56.74,
-		roughnessPhi: 1,
-		jitter: 1.5612511283791264e-17,
-		jitterRoughness: 1,
-		steps: 50,
-		refineSteps: 4,
-		spp: 1,
-		missedRays: false,
-		resolutionScale: 1,
-		antialias: false
-	}
-
-	options = {
+	const options = {
 		intensity: 0.999999999999999,
 		power: 0.9999999999999999,
-		distance: 14.670000000000009,
-		thickness: 7.389999999999998,
+		distance: 5.440000000000009,
+		thickness: 2.1699999999999977,
 		maxRoughness: 1,
-		blend: 0.9,
+		blend: 0.9500000000000001,
 		denoiseIterations: 3,
-		denoiseKernel: 1,
-		lumaPhi: 13.590000000000003,
-		depthPhi: 6.7,
-		normalPhi: 20.649999999999995,
+		denoiseKernel: 3,
+		lumaPhi: 10.880000000000011,
+		depthPhi: 8.7,
+		normalPhi: 27.170000000000012,
 		roughnessPhi: 1,
-		jitter: 2.6020852139652106e-17,
+		jitter: 0,
 		jitterRoughness: 1,
-		steps: 32,
+		steps: 20,
 		refineSteps: 4,
-		spp: 2,
-		resolutionScale: 0.5,
+		spp: 1,
+		resolutionScale: 1,
 		missedRays: false,
-		antialias: true
+		antialias: false
 	}
 
 	traaEffect = new TRAAEffect(scene, camera, params)
@@ -329,7 +305,7 @@ const initScene = () => {
 		})
 
 		composer.addPass(ssgiPass)
-		composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect, bloomEffect, vignetteEffect, lutEffect))
+		composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect, bloomEffect, vignetteEffect))
 
 		const smaaEffect = new POSTPROCESSING.SMAAEffect()
 

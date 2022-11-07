@@ -69,8 +69,8 @@ vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth, mat4 curMatrixWor
     return view.xyz;
 }
 
-#define PLANE_DISTANCE  0.25
-#define NORMAL_DISTANCE 0.1
+#define PLANE_DISTANCE  0.1
+#define NORMAL_DISTANCE 10.0
 
 bool planeDistanceDisocclusionCheck(vec3 worldPos, vec3 lastWorldPos, vec3 worldNormal) {
     vec3 toCurrent = worldPos - lastWorldPos;
@@ -80,7 +80,7 @@ bool planeDistanceDisocclusionCheck(vec3 worldPos, vec3 lastWorldPos, vec3 world
 }
 
 bool normalsDisocclusionCheck(vec3 currentNormal, vec3 lastNormal) {
-    return pow(abs(dot(currentNormal, lastNormal)), 2.0) <= NORMAL_DISTANCE;
+    return pow(abs(dot(currentNormal, lastNormal)), 2.0) > NORMAL_DISTANCE;
 }
 
 void getNeighborhoodAABB(sampler2D tex, vec2 uv, inout vec3 minNeighborColor, inout vec3 maxNeighborColor) {
