@@ -109,14 +109,17 @@ void main() {
         float sF = float(s);
         float m = 1. / (sF + 1.0);
 
-        vec3 diffuseSSGI = doSample(viewPos, viewDir, viewNormal, worldPos, roughness, 1.0, vec3(1.0), reflected, hitPos, isMissedRay);
-        vec3 specularSSGI = doSample(viewPos, viewDir, viewNormal, worldPos, roughness, min(spread, 0.99), vec3(1.0), reflected, hitPos, isMissedRay);
-
         float fresnelFactor = fresnel_dielectric(viewDir, reflected, 1.45);
 
-        vec3 gi = diffuseSSGI + specularSSGI;
+        float diffuseFactor = 1. - metalness;
+        float specularFactor = fresnelFactor * mix(1., 0.5, 1. - metalness);
 
-        SSGI = mix(SSGI, specularSSGI, m);
+        vec3 diffuseSSGI = diffuseFactor > 0.01 ? doSample(viewPos, viewDir, viewNormal, worldPos, roughness, 1.0, vec3(1.0), reflected, hitPos, isMissedRay) : vec3(0.);
+        vec3 specularSSGI = specularFactor > 0.01 ? doSample(viewPos, viewDir, viewNormal, worldPos, roughness, min(spread, 0.99), vec3(1.0), reflected, hitPos, isMissedRay) : vec3(0.);
+
+        vec3 gi = diffuseSSGI * diffuseFactor + specularSSGI * specularFactor;
+
+        SSGI = mix(SSGI, gi, m);
     }
 
     if (power != 1.0) SSGI = pow(SSGI, vec3(power));

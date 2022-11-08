@@ -190,9 +190,10 @@ void main() {
         fresnelFactor = fresnel_dielectric(viewDir, reflected, 1.45);
 
         float diffuseFactor = 1. - metalness;
-        float specularFactor = fresnelFactor * mix(1., 0.5, 1. - metalness);
+        float specularFactor = fresnelFactor * mix(1., 0.5, 1. - metalness) * 0.125;
+        float relativeDiffuseFactor = diffuseFactor / (diffuseFactor + specularFactor);
 
-        color *= fresnelFactor;
+        color = mix(color, color * diffuse, relativeDiffuseFactor);
     }
 
     gl_FragColor = vec4(color, sumVariance);
