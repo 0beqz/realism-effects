@@ -58,6 +58,13 @@ float fresnel_dielectric(vec3 Incoming, vec3 Normal, float eta) {
     return min(1.0, 5.0 * fresnel_dielectric_cos(cosine, eta));
 }
 
+// source: https://github.com/CesiumGS/cesium/blob/main/Source/Shaders/Builtin/Functions/luminance.glsl
+float czm_luminance(vec3 rgb) {
+    // Algorithm from Chapter 10 of Graphics Shaders.
+    const vec3 W = vec3(0.2125, 0.7154, 0.0721);
+    return dot(rgb, W);
+}
+
 // source: https://github.com/mrdoob/three.js/blob/dev/examples/js/shaders/SSAOShader.js
 vec3 getViewPosition(const float depth) {
     float clipW = projectionMatrix[2][3] * depth + projectionMatrix[3][3];
@@ -182,11 +189,10 @@ void main() {
 
         fresnelFactor = fresnel_dielectric(viewDir, reflected, 1.45);
 
-        // color *= diffuse * (1.0 - metalness);
-        // color = mix(color, color * diffuse, metalness * (1. - fresnelFactor));
-        color *= fresnelFactor * mix(1., 0.5, 1. - metalness);
+        float diffuseFactor = 1. - metalness;
+        float specularFactor = fresnelFactor * mix(1., 0.5, 1. - metalness);
 
-        color += directLight;
+        color *= fresnelFactor;
     }
 
     gl_FragColor = vec4(color, sumVariance);
