@@ -189,17 +189,19 @@ void main() {
         vec3 viewNormal = normal;
         vec3 reflected = reflect(viewNormal, viewDir);
 
-        float ior = 2.;
+        float ior = 1.75;
         fresnelFactor = fresnel_dielectric(viewDir, viewNormal, ior);
 
         float diffuseFactor = 1. - metalness;
-        float specularFactor = fresnelFactor * mix(totalSpread * 0.25, 1., metalness) * (1. - totalSpread) * .5;
+        float specularFactor = fresnelFactor * mix(0.125, 1., metalness * 0.25 + roughness * 0.25) * .375;
 
         float diffuseInfluence = 1. - 1. * specularFactor;
         vec3 diffuseColor = diffuse * diffuseInfluence + (1. - diffuseInfluence);
 
         color *= diffuseColor;
         color += directLight;
+
+        sumVariance = 1.;
     }
 
     gl_FragColor = vec4(color, sumVariance);

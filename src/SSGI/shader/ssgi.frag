@@ -21,8 +21,6 @@ uniform vec3 cameraPos;
 uniform float rayDistance;
 uniform float maxRoughness;
 uniform float thickness;
-uniform float power;
-uniform float intensity;
 uniform vec2 invTexSize;
 uniform vec2 blueNoiseRepeat;
 
@@ -35,7 +33,7 @@ uniform float jitterRoughness;
 #define INVALID_RAY_COORDS vec2(-1.0);
 #define EARLY_OUT_COLOR    vec4(0.0, 0.0, 0.0, 0.0)
 #define FLOAT_EPSILON      0.00001
-#define TRANSFORM_FACTOR   1.0
+#define TRANSFORM_FACTOR   0.25
 
 float nearMinusFar;
 float nearMulFar;
@@ -105,7 +103,7 @@ void main() {
 
     bool isMissedRay = false;
 
-    float fresnelFactor = fresnel_dielectric(viewDir, viewNormal, 2.);
+    float fresnelFactor = fresnel_dielectric(viewDir, viewNormal, ior);
     float diffuseFactor = 1. - metalness;
     float specularFactor = fresnelFactor;
 
@@ -120,10 +118,6 @@ void main() {
 
         SSGI = mix(SSGI, gi, m);
     }
-
-    if (power != 1.0) SSGI = pow(SSGI, vec3(power));
-
-    SSGI *= intensity * 0.5;
 
     float rayLength = 0.0;
     if (!isMissedRay && spread < 0.5) {
@@ -190,7 +184,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
         envMapSample = sampleEquirectEnvMapColor(sampleDir, envMap, mip);
 
         // we won't deal with calculating direct sun light from the env map as it is too noisy
-        // if (dot(envMapSample, envMapSample) > 3.) envMapSample = min(envMapSample, vec3(10.));
+        if (dot(envMapSample, envMapSample) > 3.) envMapSample = min(envMapSample, vec3(1.));
 
         return m * envMapSample;
     }
@@ -204,7 +198,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
 
     // check if the reprojected coordinates are within the screen
     if (all(greaterThanEqual(reprojectedUv, vec2(0.))) && all(lessThanEqual(reprojectedUv, vec2(1.)))) {
-        SSGI = textureLod(accumulatedTexture, reprojectedUv, 0.).rgb + textureLod(directLightTexture, reprojectedUv, 0.).rgb;
+        SSGI = 2. * textureLod(accumulatedTexture, reprojectedUv, 0.).rgb;
     } else {
         SSGI = textureLod(directLightTexture, vUv, 0.).rgb;
     }

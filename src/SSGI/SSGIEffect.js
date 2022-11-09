@@ -23,7 +23,11 @@ export class SSGIEffect extends Effect {
 
 		super("SSGIEffect", finalFragmentShader, {
 			type: "FinalSSGIMaterial",
-			uniforms: new Map([["inputTexture", new Uniform(null)]])
+			uniforms: new Map([
+				["inputTexture", new Uniform(null)],
+				["intensity", new Uniform(1)],
+				["power", new Uniform(1)]
+			])
 		})
 
 		this._scene = scene
@@ -110,8 +114,9 @@ export class SSGIEffect extends Effect {
 							this.setSize(this.lastSize.width, this.lastSize.height)
 							break
 
-						case "blur":
-							this.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.blur.value = value
+						case "intensity":
+						case "power":
+							this.uniforms.get(key).value = value
 							break
 
 						case "antialias":
