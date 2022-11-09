@@ -66,7 +66,7 @@ window.renderer = renderer
 // renderer.autoClearDepth = false
 // renderer.autoClearStencil = false
 
-renderer.toneMapping = ACESFilmicToneMapping
+// renderer.toneMapping = ACESFilmicToneMapping
 renderer.outputEncoding = THREE.sRGBEncoding
 const dpr = window.devicePixelRatio || 1
 renderer.setPixelRatio(dpr)
@@ -227,11 +227,11 @@ const initScene = () => {
 		maxRoughness: 1,
 		blend: 0.9500000000000001,
 		denoiseIterations: 3,
-		denoiseKernel: 3,
-		lumaPhi: 11.960000000000012,
-		depthPhi: 11.5,
-		normalPhi: 39.13000000000002,
-		roughnessPhi: 40.76,
+		denoiseKernel: 1,
+		lumaPhi: 5.440000000000012,
+		depthPhi: 12.200000000000001,
+		normalPhi: 69.57000000000002,
+		roughnessPhi: 0,
 		jitter: 3.469446951953614e-18,
 		jitterRoughness: 1,
 		steps: 20,
@@ -274,7 +274,7 @@ const initScene = () => {
 	sceneFolder.addInput(light, "intensity", { min: 0, max: 10, step: 0.1 }).on("change", refreshLighting)
 
 	const bloomEffect = new POSTPROCESSING.BloomEffect({
-		intensity: 0,
+		intensity: 1,
 		mipmapBlur: true,
 		luminanceSmoothing: 0.5,
 		luminanceThreshold: 0.5,
@@ -305,7 +305,7 @@ const initScene = () => {
 		})
 
 		composer.addPass(ssgiPass)
-		composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect, bloomEffect, vignetteEffect))
+		// composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect, bloomEffect, vignetteEffect, lutEffect))
 
 		const smaaEffect = new POSTPROCESSING.SMAAEffect()
 

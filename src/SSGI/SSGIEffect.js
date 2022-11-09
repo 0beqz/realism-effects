@@ -64,11 +64,10 @@ export class SSGIEffect extends Effect {
 			/* glsl */ `
 		uniform float jitter;
 		uniform float jitterRoughness;
-		` +
-			this.svgf.denoisePass.fullscreenMaterial.fragmentShader.replace(
+		` + this.svgf.denoisePass.fullscreenMaterial.fragmentShader /* .replace(
 				"float kernel = denoiseKernel;",
 				"float kernel = ceil(denoiseKernel * roughnessFactor + FLOAT_EPSILON);"
-			)
+			)*/
 
 		this.svgf.denoisePass.fullscreenMaterial.uniforms = {
 			...this.svgf.denoisePass.fullscreenMaterial.uniforms,
