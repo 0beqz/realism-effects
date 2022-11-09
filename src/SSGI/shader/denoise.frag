@@ -193,7 +193,8 @@ void main() {
         fresnelFactor = fresnel_dielectric(viewDir, viewNormal, ior);
 
         float diffuseFactor = 1. - metalness;
-        float specularFactor = fresnelFactor * mix(0.125, 1., metalness * 0.25 + roughness * 0.25) * .375;
+        float specularMix = min(1., diffuseFactor * 0.25 + roughness * 0.25);
+        float specularFactor = fresnelFactor * mix(0.125, 1., specularMix) * 0.1;
 
         float diffuseInfluence = 1. - 1. * specularFactor;
         vec3 diffuseColor = diffuse * diffuseInfluence + (1. - diffuseInfluence);
