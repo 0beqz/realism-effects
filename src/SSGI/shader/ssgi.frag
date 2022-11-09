@@ -105,14 +105,13 @@ void main() {
 
     bool isMissedRay = false;
 
+    float fresnelFactor = fresnel_dielectric(viewDir, viewNormal, 2.);
+    float diffuseFactor = 1. - metalness;
+    float specularFactor = fresnelFactor;
+
     for (int s = 0; s < spp; s++) {
         float sF = float(s);
         float m = 1. / (sF + 1.0);
-
-        float fresnelFactor = fresnel_dielectric(viewDir, reflected, 1.45);
-
-        float diffuseFactor = 1. - metalness;
-        float specularFactor = fresnelFactor * mix(1., 0.5, 1. - metalness);
 
         vec3 diffuseSSGI = diffuseFactor > 0.01 ? doSample(viewPos, viewDir, viewNormal, worldPos, roughness, 1.0, vec3(1.0), reflected, hitPos, isMissedRay) : vec3(0.);
         vec3 specularSSGI = specularFactor > 0.01 ? doSample(viewPos, viewDir, viewNormal, worldPos, roughness, min(spread, 0.99), vec3(1.0), reflected, hitPos, isMissedRay) : vec3(0.);
@@ -191,7 +190,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
         envMapSample = sampleEquirectEnvMapColor(sampleDir, envMap, mip);
 
         // we won't deal with calculating direct sun light from the env map as it is too noisy
-        if (dot(envMapSample, envMapSample) > 3.) envMapSample = min(envMapSample, vec3(10.));
+        // if (dot(envMapSample, envMapSample) > 3.) envMapSample = min(envMapSample, vec3(10.));
 
         return m * envMapSample;
     }
@@ -205,7 +204,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
 
     // check if the reprojected coordinates are within the screen
     if (all(greaterThanEqual(reprojectedUv, vec2(0.))) && all(lessThanEqual(reprojectedUv, vec2(1.)))) {
-        SSGI = textureLod(accumulatedTexture, reprojectedUv, 0.).rgb;
+        SSGI = textureLod(accumulatedTexture, reprojectedUv, 0.).rgb + textureLod(directLightTexture, reprojectedUv, 0.).rgb;
     } else {
         SSGI = textureLod(directLightTexture, vUv, 0.).rgb;
     }

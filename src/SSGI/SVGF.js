@@ -84,8 +84,8 @@ export class SVGF {
 		this.denoisePass.fullscreenMaterial.uniforms.depthTexture.value =
 			this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.depthTexture.value
 
-		this.denoisePass.fullscreenMaterial.uniforms.normalTexture.value =
-			this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.worldNormalTexture.value
+		// this.denoisePass.fullscreenMaterial.uniforms.normalTexture.value =
+		// 	this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.worldNormalTexture.value
 
 		this.svgfTemporalResolvePass.render(renderer)
 

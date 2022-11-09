@@ -95,7 +95,8 @@ void main() {
     vec2 pixelStepOffset = invTexSize * stepSize;
 
     float roughness = normalTexel.a;
-    float roughnessFactor = min(1., (jitterRoughness * roughness + jitter) * 4.);
+    float totalSpread = jitterRoughness * roughness + jitter;
+    float roughnessFactor = min(1., totalSpread * 4.);
     roughnessFactor = mix(1., roughnessFactor, 1.);
 
     float kernel = denoiseKernel;
@@ -184,16 +185,21 @@ void main() {
 
         vec3 viewPos = getViewPosition(depth);
         vec3 viewDir = normalize(viewPos);
-        vec3 viewNormal = (vec4(normal, 1.) * cameraMatrixWorld).xyz;
+        // vec3 viewNormal = (vec4(normal, 1.) * cameraMatrixWorld).xyz;
+        vec3 viewNormal = normal;
         vec3 reflected = reflect(viewNormal, viewDir);
 
-        fresnelFactor = fresnel_dielectric(viewDir, reflected, 1.45);
+        float ior = 2.;
+        fresnelFactor = fresnel_dielectric(viewDir, viewNormal, ior);
 
         float diffuseFactor = 1. - metalness;
-        float specularFactor = fresnelFactor * mix(1., 0.5, 1. - metalness) * 0.125;
-        float relativeDiffuseFactor = diffuseFactor / (diffuseFactor + specularFactor);
+        float specularFactor = fresnelFactor * mix(totalSpread * 0.25, 1., metalness) * (1. - totalSpread) * .5;
 
-        color = mix(color, color * diffuse, relativeDiffuseFactor);
+        float diffuseInfluence = 1. - 1. * specularFactor;
+        vec3 diffuseColor = diffuse * diffuseInfluence + (1. - diffuseInfluence);
+
+        color *= diffuseColor;
+        color += directLight;
     }
 
     gl_FragColor = vec4(color, sumVariance);

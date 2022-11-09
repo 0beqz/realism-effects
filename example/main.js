@@ -220,7 +220,7 @@ const refreshLighting = () => {
 
 const initScene = () => {
 	const options = {
-		intensity: 0.999999999999999,
+		intensity: 1.5,
 		power: 0.9999999999999999,
 		distance: 5.440000000000009,
 		thickness: 2.1699999999999977,
@@ -232,7 +232,7 @@ const initScene = () => {
 		depthPhi: 8.7,
 		normalPhi: 27.170000000000012,
 		roughnessPhi: 1,
-		jitter: 0,
+		jitter: 3.469446951953614e-18,
 		jitterRoughness: 1,
 		steps: 20,
 		refineSteps: 4,
@@ -274,7 +274,7 @@ const initScene = () => {
 	sceneFolder.addInput(light, "intensity", { min: 0, max: 10, step: 0.1 }).on("change", refreshLighting)
 
 	const bloomEffect = new POSTPROCESSING.BloomEffect({
-		intensity: 2,
+		intensity: 0,
 		mipmapBlur: true,
 		luminanceSmoothing: 0.5,
 		luminanceThreshold: 0.5,
