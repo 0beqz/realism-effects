@@ -1,4 +1,4 @@
-﻿#define INV_TRANSFORM_FACTOR 4.0
+﻿#define INV_TRANSFORM_FACTOR 6.0
 
 uniform sampler2D inputTexture;
 uniform float intensity;

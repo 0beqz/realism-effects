@@ -189,14 +189,20 @@ void main() {
         vec3 viewNormal = normal;
         vec3 reflected = reflect(viewNormal, viewDir);
 
-        float ior = 1.75;
+        float ior = 2.33;
         fresnelFactor = fresnel_dielectric(viewDir, viewNormal, ior);
+
+        float fresnelFactor2 = fresnel_dielectric(viewDir, viewNormal, 1.75);
 
         float diffuseFactor = 1. - metalness;
         float specularMix = min(1., diffuseFactor * 0.25 + roughness * 0.25);
-        float specularFactor = fresnelFactor * mix(0.125, 1., specularMix) * 0.1;
+        float specularFactor = fresnelFactor * mix(0.125, 1., specularMix - roughness + metalness + fresnelFactor) * 0.05;
 
-        float diffuseInfluence = 1. - 1. * specularFactor;
+        float f = 1.;
+        float n = metalness + fresnelFactor2 * 0.05;
+        float diffuseInfluence = f - 1. * specularFactor;
+        float lum = dot(diffuse, W);
+        diffuse = mix(diffuse, color, n * metalness * (1. - roughness));
         vec3 diffuseColor = diffuse * diffuseInfluence + (1. - diffuseInfluence);
 
         color *= diffuseColor;

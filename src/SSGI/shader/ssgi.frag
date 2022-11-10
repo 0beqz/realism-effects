@@ -30,10 +30,10 @@ uniform int seed;
 uniform float jitter;
 uniform float jitterRoughness;
 
-#define INVALID_RAY_COORDS vec2(-1.0);
+#define INVALID_RAY_COORDS vec2(-1.0)
 #define EARLY_OUT_COLOR    vec4(0.0, 0.0, 0.0, 0.0)
 #define FLOAT_EPSILON      0.00001
-#define TRANSFORM_FACTOR   0.25
+#define TRANSFORM_FACTOR   1. / 6.
 
 float nearMinusFar;
 float nearMulFar;
@@ -103,9 +103,10 @@ void main() {
 
     bool isMissedRay = false;
 
-    float fresnelFactor = fresnel_dielectric(viewDir, viewNormal, ior);
-    float diffuseFactor = 1. - metalness * 4.;
-    float specularFactor = 1.;
+    float fresnelFactor = fresnel_dielectric(viewDir, viewNormal, 2.);
+    float diffuseFactor = 1. - metalness;
+    float specularFactor = 1. + sqrt(fresnelFactor);
+    spread = sqrt(spread);
 
     for (int s = 0; s < spp; s++) {
         float sF = float(s);
