@@ -30,10 +30,10 @@ uniform int seed;
 uniform float jitter;
 uniform float jitterRoughness;
 
-#define INVALID_RAY_COORDS vec2(-1.0)
+#define INVALID_RAY_COORDS vec2(-1.0);
 #define EARLY_OUT_COLOR    vec4(0.0, 0.0, 0.0, 0.0)
 #define FLOAT_EPSILON      0.00001
-#define TRANSFORM_FACTOR   1. / 6.
+#define TRANSFORM_FACTOR   0.25
 
 float nearMinusFar;
 float nearMulFar;
@@ -103,11 +103,9 @@ void main() {
 
     bool isMissedRay = false;
 
-    float fresnelFactor = fresnel_dielectric(viewDir, viewNormal, 2.);
+    float fresnelFactor = fresnel_dielectric(viewDir, viewNormal, ior);
     float diffuseFactor = 1. - metalness;
-    float specularFactor = 1. + sqrt(fresnelFactor);
-    spread = pow(spread, 1. / 1.65);
-    spread = pow(spread, 1. / 1.65);
+    float specularFactor = fresnelFactor;
 
     for (int s = 0; s < spp; s++) {
         float sF = float(s);
@@ -115,8 +113,7 @@ void main() {
 
         vec3 diffuseSSGI = diffuseFactor > 0.01 ? doSample(viewPos, viewDir, viewNormal, worldPos, roughness, 1.0, vec3(1.0), reflected, hitPos, isMissedRay) : vec3(0.);
         vec3 specularSSGI = specularFactor > 0.01 ? doSample(viewPos, viewDir, viewNormal, worldPos, roughness, min(spread, 0.99), vec3(1.0), reflected, hitPos, isMissedRay) : vec3(0.);
-        // if (!isMissedRay) specularSSGI *= 2.;
-        float f = diffuseFactor + (diffuseFactor + specularFactor);
+
         vec3 gi = diffuseSSGI * diffuseFactor + specularSSGI * specularFactor;
 
         SSGI = mix(SSGI, gi, m);

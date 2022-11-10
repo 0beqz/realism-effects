@@ -198,11 +198,11 @@ void main() {
         float specularMix = min(1., diffuseFactor * 0.25 + roughness * 0.25);
         float specularFactor = fresnelFactor * mix(0.125, 1., specularMix - roughness + metalness + fresnelFactor) * 0.05;
 
-        float f = 0.995;
+        float f = 1.;
         float n = metalness + fresnelFactor2 * 0.05;
         float diffuseInfluence = f - 1. * specularFactor;
         float lum = dot(diffuse, W);
-        diffuse = mix(diffuse, color, n * metalness * (1. - roughness));
+        diffuse = mix(diffuse, color * (1. + roughness), n * metalness * (1. - roughness));
         vec3 diffuseColor = diffuse * diffuseInfluence + (1. - diffuseInfluence);
 
         color *= diffuseColor;
