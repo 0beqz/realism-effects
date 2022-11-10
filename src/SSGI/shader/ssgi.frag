@@ -106,7 +106,8 @@ void main() {
     float fresnelFactor = fresnel_dielectric(viewDir, viewNormal, 2.);
     float diffuseFactor = 1. - metalness;
     float specularFactor = 1. + sqrt(fresnelFactor);
-    spread = sqrt(spread);
+    spread = pow(spread, 1. / 1.65);
+    spread = pow(spread, 1. / 1.65);
 
     for (int s = 0; s < spp; s++) {
         float sF = float(s);

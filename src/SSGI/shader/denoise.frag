@@ -198,7 +198,7 @@ void main() {
         float specularMix = min(1., diffuseFactor * 0.25 + roughness * 0.25);
         float specularFactor = fresnelFactor * mix(0.125, 1., specularMix - roughness + metalness + fresnelFactor) * 0.05;
 
-        float f = 1.;
+        float f = 0.995;
         float n = metalness + fresnelFactor2 * 0.05;
         float diffuseInfluence = f - 1. * specularFactor;
         float lum = dot(diffuse, W);

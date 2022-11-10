@@ -66,7 +66,7 @@ window.renderer = renderer
 // renderer.autoClearDepth = false
 // renderer.autoClearStencil = false
 
-// renderer.toneMapping = ACESFilmicToneMapping
+renderer.toneMapping = ACESFilmicToneMapping
 renderer.outputEncoding = THREE.sRGBEncoding
 const dpr = window.devicePixelRatio || 1
 renderer.setPixelRatio(dpr)
