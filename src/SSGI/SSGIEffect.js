@@ -91,13 +91,12 @@ export class SSGIEffect extends Effect {
 				float fresnelFactor = fresnel_dielectric(viewDir, viewNormal, 2.33);
 				float fresnelFactor2 = fresnel_dielectric(viewDir, viewNormal, 1.75);
 		
-				float diffuseFactor = 1.;
-				float specularMix = min(1., diffuseFactor * 0.25 + roughness * 0.5);
-				float specularFactor = fresnelFactor * mix(0.125, 1., specularMix - roughness + metalness + fresnelFactor) * 0.05;
+				float specularFactor = (roughness * 0.75 + fresnelFactor * fresnelFactor * 0.5) * 0.05;
 		
-				float n = metalness + fresnelFactor2 * 0.05;
-				float diffuseInfluence = 1.0 - specularFactor;
-				diffuse = mix(diffuse, color * (1. + roughness), n * metalness * 0.25);
+				float l = czm_luminance(diffuse);
+				float diffuseInfluence = 1.0 - specularFactor;// * mix(l, 1., roughness - metalness * 0.5 + 0.5);
+				// diffuse = mix(diffuse, color * (1. + roughness), metalness * 0.125);
+				diffuse *= (1. + metalness * fresnelFactor);
 				vec3 diffuseColor = diffuse * diffuseInfluence + (1. - diffuseInfluence);
 		
 				color *= diffuseColor;
