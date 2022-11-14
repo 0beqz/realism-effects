@@ -5,6 +5,7 @@ uniform sampler2D accumulatedTexture;
 uniform sampler2D normalTexture;
 uniform sampler2D depthTexture;
 uniform sampler2D diffuseTexture;
+uniform sampler2D emissiveTexture;
 uniform sampler2D blueNoiseTexture;
 uniform sampler2D velocityTexture;
 uniform sampler2D envMap;
@@ -26,6 +27,7 @@ uniform vec2 blueNoiseRepeat;
 
 uniform float samples;
 uniform int seed;
+uniform vec2 blueNoiseOffset;
 
 uniform float jitter;
 uniform float jitterRoughness;
@@ -47,7 +49,7 @@ float farMinusNear;
 vec2 RayMarch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
 vec2 BinarySearch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
 float fastGetViewZ(const in float depth);
-vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, float roughness, float spread, vec3 Fresnel, inout vec3 reflected, inout vec3 hitPos, out bool isMissedRay);
+vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, float roughness, float spread, vec2 sampleOffset, inout vec3 reflected, inout vec3 hitPos, out bool isMissedRay);
 
 void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.0);
@@ -71,7 +73,7 @@ void main() {
 
     normalTexel.xyz = unpackRGBToNormal(normalTexel.rgb);
 
-    rng_initialize(vUv, seed);
+    rng_initialize(vec2(0.), seed);
 
     // pre-calculated variables for the "fastGetViewZ" function
     nearMinusFar = cameraNear - cameraFar;
@@ -98,6 +100,7 @@ void main() {
     vec3 SSGI;
     vec3 reflected;
     vec3 hitPos;
+    vec2 sampleOffset;
 
     float ior = mix(3.0, 1.0, max(0., spread - metalness));
 
@@ -111,12 +114,14 @@ void main() {
         float sF = float(s);
         float m = 1. / (sF + 1.0);
 
-        vec3 diffuseSSGI = diffuseFactor > 0.01 ? doSample(viewPos, viewDir, viewNormal, worldPos, roughness, 1.0, vec3(1.0), reflected, hitPos, isMissedRay) : vec3(0.);
-        vec3 specularSSGI = specularFactor > 0.01 ? doSample(viewPos, viewDir, viewNormal, worldPos, roughness, min(spread, 0.99), vec3(1.0), reflected, hitPos, isMissedRay) : vec3(0.);
+        vec3 diffuseSSGI = diffuseFactor > 0.01 ? doSample(viewPos, viewDir, viewNormal, worldPos, roughness, 1.0, sampleOffset, reflected, hitPos, isMissedRay) : vec3(0.);
+        vec3 specularSSGI = specularFactor > 0.01 ? doSample(viewPos, viewDir, viewNormal, worldPos, roughness, min(spread, 0.99), sampleOffset, reflected, hitPos, isMissedRay) : vec3(0.);
 
         vec3 gi = diffuseSSGI * diffuseFactor + specularSSGI * specularFactor;
 
         SSGI = mix(SSGI, gi, m);
+
+        sampleOffset = rand2();
     }
 
     float rayLength = 0.0;
@@ -128,8 +133,8 @@ void main() {
     gl_FragColor = vec4(SSGI, rayLength);
 }
 
-vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, float roughness, float spread, vec3 Fresnel, inout vec3 reflected, inout vec3 hitPos, out bool isMissedRay) {
-    vec2 blueNoiseUv = (vUv + rand2()) * blueNoiseRepeat;
+vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, float roughness, float spread, vec2 sampleOffset, inout vec3 reflected, inout vec3 hitPos, out bool isMissedRay) {
+    vec2 blueNoiseUv = (vUv + blueNoiseOffset + sampleOffset) * blueNoiseRepeat;
     vec2 random = textureLod(blueNoiseTexture, blueNoiseUv, 0.).rg;
 
     reflected = spread == 1.0 ? SampleLambert(viewNormal, random) : SampleGGX(viewDir, viewNormal, spread, random);
@@ -199,7 +204,11 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
 
     // check if the reprojected coordinates are within the screen
     if (all(greaterThanEqual(reprojectedUv, vec2(0.))) && all(lessThanEqual(reprojectedUv, vec2(1.)))) {
-        SSGI = 2. * textureLod(accumulatedTexture, reprojectedUv, 0.).rgb;
+        vec4 emissiveTexel = textureLod(emissiveTexture, coords.xy, 0.);
+        vec3 emissiveColor = emissiveTexel.rgb;
+        float emissiveIntensity = emissiveTexel.a;
+
+        SSGI = 2. * textureLod(accumulatedTexture, reprojectedUv, 0.).rgb + emissiveColor * emissiveIntensity;
     } else {
         SSGI = textureLod(directLightTexture, vUv, 0.).rgb;
     }

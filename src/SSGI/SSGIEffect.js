@@ -25,19 +25,21 @@ export class SSGIEffect extends Effect {
 			type: "FinalSSGIMaterial",
 			uniforms: new Map([
 				["inputTexture", new Uniform(null)],
-				["intensity", new Uniform(1)],
-				["power", new Uniform(1)]
+				["intensity", new Uniform(1)]
 			])
 		})
 
 		this._scene = scene
 		this._camera = camera
 
-		this.svgf = new SVGF(scene, camera, { antialias: options.antialias })
+		this.svgf = new SVGF(scene, camera, { reprojectReflectionHitPoints: true })
 
 		// ssgi pass
 		this.ssgiPass = new SSGIPass(this)
-		// this.svgf.setInputTexture(this.ssgiPass.renderTarget.texture)
+		this.svgf.setInputTexture(this.ssgiPass.renderTarget.texture)
+		this.svgf.setNormalTexture(this.ssgiPass.normalTexture)
+		this.svgf.setDepthTexture(this.ssgiPass.depthTexture)
+		this.svgf.setVelocityTexture(this.ssgiPass.velocityTexture)
 
 		// modify the temporal resolve pass of SVGF denoiser for the SSGI effect
 		this.svgf.svgfTemporalResolvePass.fullscreenMaterial.fragmentShader =
@@ -62,20 +64,106 @@ export class SSGIEffect extends Effect {
 
 		this.svgf.denoisePass.fullscreenMaterial.fragmentShader =
 			/* glsl */ `
+		uniform sampler2D diffuseTexture;
+		uniform sampler2D directLightTexture;
 		uniform float jitter;
 		uniform float jitterRoughness;
-		` + this.svgf.denoisePass.fullscreenMaterial.fragmentShader /* .replace(
-				"float kernel = denoiseKernel;",
-				"float kernel = ceil(denoiseKernel * roughnessFactor + FLOAT_EPSILON);"
-			)*/
+		` +
+			this.svgf.denoisePass.fullscreenMaterial.fragmentShader
+				.replace(
+					"float kernel = denoiseKernel;",
+					"float kernel = ceil(denoiseKernel * roughnessFactor + FLOAT_EPSILON);"
+				)
+				.replace(
+					"gl_FragColor = vec4(color, sumVariance);",
+					/* glsl */ `
+			if (isLastIteration) {
+				vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.);
+				vec3 diffuse = diffuseTexel.rgb;
+				vec3 directLight = textureLod(directLightTexture, vUv, 0.).rgb;
+				float metalness = diffuseTexel.a;
+		
+				vec3 viewPos = getViewPosition(depth);
+				vec3 viewDir = normalize(viewPos);
+				vec3 viewNormal = normal;
+				vec3 reflected = reflect(viewNormal, viewDir);
+		
+				float fresnelFactor = fresnel_dielectric(viewDir, viewNormal, 2.33);
+				float fresnelFactor2 = fresnel_dielectric(viewDir, viewNormal, 1.75);
+		
+				float diffuseFactor = 1.;
+				float specularMix = min(1., diffuseFactor * 0.25 + roughness * 0.5);
+				float specularFactor = fresnelFactor * mix(0.125, 1., specularMix - roughness + metalness + fresnelFactor) * 0.05;
+		
+				float n = metalness + fresnelFactor2 * 0.05;
+				float diffuseInfluence = 1.0 - specularFactor;
+				diffuse = mix(diffuse, color * (1. + roughness), n * metalness * 0.25);
+				vec3 diffuseColor = diffuse * diffuseInfluence + (1. - diffuseInfluence);
+		
+				color *= diffuseColor;
+				color += directLight;
+		
+				sumVariance = 1.;
+			}
+
+			gl_FragColor = vec4(color, sumVariance);
+			`
+				)
+				.replace(
+					"void main()",
+					/* glsl */ `
+			// source: https://github.com/blender/blender/blob/594f47ecd2d5367ca936cf6fc6ec8168c2b360d0/source/blender/gpu/shaders/material/gpu_shader_material_fresnel.glsl
+			float fresnel_dielectric_cos(float cosi, float eta) {
+				/* compute fresnel reflectance without explicitly computing
+				* the refracted direction */
+				float c = abs(cosi);
+				float g = eta * eta - 1.0 + c * c;
+				float result;
+
+				if (g > 0.0) {
+					g = sqrt(g);
+					float A = (g - c) / (g + c);
+					float B = (c * (g + c) - 1.0) / (c * (g - c) + 1.0);
+					result = 0.5 * A * A * (1.0 + B * B);
+				} else {
+					result = 1.0; /* TIR (no refracted component) */
+				}
+
+				return result;
+			}
+
+			// source: https://github.com/blender/blender/blob/594f47ecd2d5367ca936cf6fc6ec8168c2b360d0/source/blender/gpu/shaders/material/gpu_shader_material_fresnel.glsl
+			float fresnel_dielectric(vec3 Incoming, vec3 Normal, float eta) {
+				/* compute fresnel reflectance without explicitly computing
+				* the refracted direction */
+
+				float cosine = dot(Incoming, Normal);
+				return min(1.0, 5.0 * fresnel_dielectric_cos(cosine, eta));
+			}
+
+			// source: https://github.com/mrdoob/three.js/blob/dev/examples/js/shaders/SSAOShader.js
+			vec3 getViewPosition(const float depth) {
+				float clipW = projectionMatrix[2][3] * depth + projectionMatrix[3][3];
+				vec4 clipPosition = vec4((vec3(vUv, depth) - 0.5) * 2.0, 1.0);
+				clipPosition *= clipW;
+				return (_projectionMatrixInverse * clipPosition).xyz;
+			}
+
+			void main()
+			`
+				)
 
 		this.svgf.denoisePass.fullscreenMaterial.uniforms = {
 			...this.svgf.denoisePass.fullscreenMaterial.uniforms,
 			...{
+				directLightTexture: new Uniform(null),
+				diffuseTexture: new Uniform(null),
 				jitter: new Uniform(0),
 				jitterRoughness: new Uniform(0)
 			}
 		}
+
+		this.svgf.denoisePass.fullscreenMaterial.uniforms.diffuseTexture.value = this.ssgiPass.diffuseTexture
 
 		this.lastSize = {
 			width: options.width,
@@ -114,12 +202,7 @@ export class SSGIEffect extends Effect {
 							break
 
 						case "intensity":
-						case "power":
 							this.uniforms.get(key).value = value
-							break
-
-						case "antialias":
-							this.svgf.svgfTemporalResolvePass.traa = value
 							break
 
 						case "denoiseIterations":
@@ -253,8 +336,6 @@ export class SSGIEffect extends Effect {
 
 	update(renderer, inputBuffer) {
 		this.keepEnvMapUpdated()
-
-		this.svgf.svgfTemporalResolvePass.doJitter(renderer)
 
 		this.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.directLightTexture.value = inputBuffer.texture
 		this.ssgiPass.fullscreenMaterial.uniforms.directLightTexture.value = inputBuffer.texture

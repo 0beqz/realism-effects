@@ -2,7 +2,6 @@
  * Options of the SSGI effect
  * @typedef {Object} SSGIOptions
  * @property {Number} [intensity] intensity of the ssgi
- * @property {Number} [power] the exponent by which the final ssgi color will be potentiated
  * @property {Number} [distance] maximum distance a ssgi ray can travel to find what it reflects
  * @property {Number} [thickness] maximum depth difference between a ray and the particular depth at its screen position before refining with binary search; higher values will result in better performance
  * @property {Number} [maxRoughness] maximum roughness a texel can have to have ssgi calculated for it
@@ -20,7 +19,6 @@
  * @property {Number} [spp] number of samples per pixel
  * @property {boolean} [missedRays] if there should still be ssgi for rays for which a reflecting point couldn't be found; enabling this will result in stretched looking ssgi which can look good or bad depending on the angle
  * @property {Number} [resolutionScale] resolution of the SSGI effect, a resolution of 0.5 means the effect will be rendered at half resolution
- * @property {Boolean} [antialias] if enabled, integrated TRAA will be applied to the scene each frame resulting in smoother look and less jagging; enabling this setting is recommended if the scene needs anti-aliasing as it has practically no cost
  */
 
 /**
@@ -29,7 +27,6 @@
  */
 export const defaultSSGIOptions = {
 	intensity: 1,
-	power: 1,
 	distance: 10,
 	thickness: 10,
 	maxRoughness: 1,

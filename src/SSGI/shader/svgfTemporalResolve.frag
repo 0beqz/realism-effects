@@ -9,7 +9,7 @@ if (isReprojectedUvValid) {
     moments.r = dot(rawColor, W);
     moments.g = moments.r * moments.r;
 
-    vec4 historyMoments = textureLod(momentsTexture, reprojectedUv, 0.);
+    vec4 historyMoments = textureLod(lastMomentsTexture, reprojectedUv, 0.);
 
     float momentsAlpha = 0.;
     if (alpha > FLOAT_EPSILON) {

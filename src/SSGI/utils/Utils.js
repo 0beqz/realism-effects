@@ -1,4 +1,6 @@
-﻿export const getVisibleChildren = object => {
+﻿import { DataTexture, FloatType, RGBAFormat } from "three"
+
+export const getVisibleChildren = object => {
 	const queue = [object]
 	const objects = []
 
@@ -71,4 +73,40 @@ export const getMaxMipLevel = texture => {
 	const { width, height } = texture.image
 
 	return Math.floor(Math.log2(Math.max(width, height))) + 1
+}
+
+export const saveBoneTexture = object => {
+	let boneTexture = object.material.uniforms.prevBoneTexture.value
+
+	if (boneTexture && boneTexture.image.width === object.skeleton.boneTexture.width) {
+		boneTexture = object.material.uniforms.prevBoneTexture.value
+		boneTexture.image.data.set(object.skeleton.boneTexture.image.data)
+	} else {
+		boneTexture?.dispose()
+
+		const boneMatrices = object.skeleton.boneTexture.image.data.slice()
+		const size = object.skeleton.boneTexture.image.width
+
+		boneTexture = new DataTexture(boneMatrices, size, size, RGBAFormat, FloatType)
+		object.material.uniforms.prevBoneTexture.value = boneTexture
+
+		boneTexture.needsUpdate = true
+	}
+}
+
+export const updateVelocityMaterialBeforeRender = (c, projectionMatrix) => {
+	if (c.skeleton?.boneTexture) {
+		c.material.defines.USE_SKINNING = ""
+		c.material.defines.BONE_TEXTURE = ""
+
+		c.material.uniforms.boneTexture.value = c.skeleton.boneTexture
+	}
+
+	c.material.uniforms.velocityMatrix.value.multiplyMatrices(projectionMatrix, c.modelViewMatrix)
+}
+
+export const updateVelocityMaterialAfterRender = (c, projectionMatrix) => {
+	c.material.uniforms.prevVelocityMatrix.value.multiplyMatrices(projectionMatrix, c.modelViewMatrix)
+
+	if (c.skeleton?.boneTexture) saveBoneTexture(c)
 }

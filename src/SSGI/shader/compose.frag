@@ -2,7 +2,6 @@
 
 uniform sampler2D inputTexture;
 uniform float intensity;
-uniform float power;
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
     vec4 ssgiTexel = textureLod(inputTexture, vUv, 0.);
@@ -15,7 +14,6 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
         ssgiClr = inputColor.rgb;
     } else {
         ssgiClr *= intensity;
-        ssgiClr = pow(ssgiClr, vec3(power));
     }
 
     outputColor = vec4(ssgiClr, 1.0);

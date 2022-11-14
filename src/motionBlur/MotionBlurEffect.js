@@ -1,6 +1,7 @@
 ﻿import { Effect } from "postprocessing"
-import { LinearEncoding, LinearFilter, NearestFilter, RepeatWrapping, Uniform, Vector2 } from "three"
+import { LinearEncoding, NearestFilter, RepeatWrapping, Uniform, Vector2 } from "three"
 import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader"
+import { generateHalton23Points } from "../SSGI/temporal-resolve/utils/generateHalton23Points"
 import motionBlur from "./motionBlur.glsl"
 
 // https://www.nvidia.com/docs/io/8230/gdc2003_openglshadertricks.pdf
@@ -8,8 +9,11 @@ import motionBlur from "./motionBlur.glsl"
 // reference code: https://github.com/gkjohnson/threejs-sandbox/blob/master/motionBlurPass/src/CompositeShader.js
 
 const defaultOptions = { intensity: 1, jitter: 5, samples: 16 }
+const points = generateHalton23Points(1024)
 
 export class MotionBlurEffect extends Effect {
+	haltonIndex = 0
+
 	constructor(velocityTexture, options = defaultOptions) {
 		options = { ...defaultOptions, ...options }
 
@@ -20,6 +24,7 @@ export class MotionBlurEffect extends Effect {
 				["velocityTexture", new Uniform(velocityTexture)],
 				["blueNoiseTexture", new Uniform(null)],
 				["blueNoiseRepeat", new Uniform(new Vector2())],
+				["blueNoiseOffset", new Uniform(new Vector2())],
 				["intensity", new Uniform(1)],
 				["jitter", new Uniform(1)],
 				["seed", new Uniform(0)],
@@ -81,7 +86,8 @@ export class MotionBlurEffect extends Effect {
 		this.uniforms.get("inputTexture").value = inputBuffer.texture
 		this.uniforms.get("deltaTime").value = Math.max(1 / 1000, deltaTime)
 
-		this.uniforms.get("seed").value++
+		this.haltonIndex = (this.haltonIndex + 1) % points.length
+		this.uniforms.get("blueNoiseOffset").value.fromArray(points[this.haltonIndex])
 
 		const noiseTexture = this.uniforms.get("blueNoiseTexture").value
 		if (noiseTexture) {

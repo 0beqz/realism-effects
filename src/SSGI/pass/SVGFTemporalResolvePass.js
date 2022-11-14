@@ -1,4 +1,4 @@
-﻿import { GLSL3, HalfFloatType, LinearFilter, NearestFilter, Uniform, WebGLMultipleRenderTargets } from "three"
+﻿import { GLSL3, HalfFloatType, NearestFilter, Uniform, WebGLMultipleRenderTargets } from "three"
 import svgfTemporalResolve from "../shader/svgfTemporalResolve.frag"
 import { TemporalResolvePass } from "../temporal-resolve/TemporalResolvePass"
 
@@ -9,8 +9,8 @@ export class SVGFTemporalResolvePass extends TemporalResolvePass {
 	constructor(scene, camera, options = defaultSVGFTemporalResolvePassOptions) {
 		const temporalResolvePassRenderTarget = options.moments
 			? new WebGLMultipleRenderTargets(1, 1, 2, {
-					minFilter: LinearFilter,
-					magFilter: LinearFilter,
+					minFilter: NearestFilter,
+					magFilter: NearestFilter,
 					type: HalfFloatType,
 					depthBuffer: false
 			  })
@@ -22,14 +22,8 @@ export class SVGFTemporalResolvePass extends TemporalResolvePass {
 			...{
 				customComposeShader: options.moments ? svgfTemporalResolve : null,
 				renderTarget: temporalResolvePassRenderTarget,
-				neighborhoodClamping: false
+				renderVelocity: false
 			}
-		}
-
-		if (options.moments) {
-			temporalResolvePassRenderTarget.texture[1].minFilter = NearestFilter
-			temporalResolvePassRenderTarget.texture[1].magFilter = NearestFilter
-			temporalResolvePassRenderTarget.texture[1].needsUpdate = true
 		}
 
 		super(scene, camera, options)
@@ -39,7 +33,7 @@ export class SVGFTemporalResolvePass extends TemporalResolvePass {
 		layout(location = 0) out vec4 gOutput;
 		layout(location = 1) out vec4 gMoment;
 
-		uniform sampler2D momentsTexture;
+		uniform sampler2D lastMomentsTexture;
 		`
 			: ""
 
@@ -47,7 +41,7 @@ export class SVGFTemporalResolvePass extends TemporalResolvePass {
 
 		const momentsUniforms = options.moments
 			? {
-					momentsTexture: new Uniform(null)
+					lastMomentsTexture: new Uniform(null)
 			  }
 			: {}
 

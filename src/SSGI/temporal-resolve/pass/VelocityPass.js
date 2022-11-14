@@ -9,7 +9,13 @@ import {
 	Vector3,
 	WebGLMultipleRenderTargets
 } from "three"
-import { getVisibleChildren, keepMaterialMapUpdated } from "../../utils/Utils.js"
+import {
+	getVisibleChildren,
+	keepMaterialMapUpdated,
+	saveBoneTexture,
+	updateVelocityMaterialAfterRender,
+	updateVelocityMaterialBeforeRender
+} from "../../utils/Utils.js"
 import { VelocityMaterial } from "../material/VelocityMaterial.js"
 
 const backgroundColor = new Color(0)
@@ -55,7 +61,7 @@ export class VelocityPass extends Pass {
 
 				c.material = velocityMaterial
 
-				if (c.skeleton?.boneTexture) this.saveBoneTexture(c)
+				if (c.skeleton?.boneTexture) saveBoneTexture(c)
 
 				this.cachedMaterials.set(c, [originalMaterial, velocityMaterial])
 			}
@@ -77,45 +83,7 @@ export class VelocityPass extends Pass {
 
 			if (map) velocityMaterial.uniforms.uvTransform.value = map.matrix
 
-			this.updateVelocityMaterialBeforeRender(c, originalMaterial)
-		}
-	}
-
-	updateVelocityMaterialBeforeRender(c, originalMaterial) {
-		for (const prop of updateProperties) c.material[prop] = originalMaterial[prop]
-
-		if (c.skeleton?.boneTexture) {
-			c.material.defines.USE_SKINNING = ""
-			c.material.defines.BONE_TEXTURE = ""
-
-			c.material.uniforms.boneTexture.value = c.skeleton.boneTexture
-		}
-
-		c.material.uniforms.velocityMatrix.value.multiplyMatrices(this._camera.projectionMatrix, c.modelViewMatrix)
-	}
-
-	updateVelocityMaterialAfterRender(c) {
-		c.material.uniforms.prevVelocityMatrix.value.multiplyMatrices(this._camera.projectionMatrix, c.modelViewMatrix)
-
-		if (c.skeleton?.boneTexture) this.saveBoneTexture(c)
-	}
-
-	saveBoneTexture(object) {
-		let boneTexture = object.material.uniforms.prevBoneTexture.value
-
-		if (boneTexture && boneTexture.image.width === object.skeleton.boneTexture.width) {
-			boneTexture = object.material.uniforms.prevBoneTexture.value
-			boneTexture.image.data.set(object.skeleton.boneTexture.image.data)
-		} else {
-			boneTexture?.dispose()
-
-			const boneMatrices = object.skeleton.boneTexture.image.data.slice()
-			const size = object.skeleton.boneTexture.image.width
-
-			boneTexture = new DataTexture(boneMatrices, size, size, RGBAFormat, FloatType)
-			object.material.uniforms.prevBoneTexture.value = boneTexture
-
-			boneTexture.needsUpdate = true
+			updateVelocityMaterialBeforeRender(c, this._camera.projectionMatrix)
 		}
 	}
 
@@ -123,7 +91,7 @@ export class VelocityPass extends Pass {
 		for (const c of this.visibleMeshes) {
 			c.visible = true
 
-			this.updateVelocityMaterialAfterRender(c)
+			updateVelocityMaterialAfterRender(c, this._camera.projectionMatrix)
 
 			c.material = this.cachedMaterials.get(c)[0]
 		}
@@ -147,7 +115,7 @@ export class VelocityPass extends Pass {
 		return this.renderTarget.texture[0]
 	}
 
-	get worldNormalTexture() {
+	get normalTexture() {
 		return this.renderTarget.texture[2]
 	}
 

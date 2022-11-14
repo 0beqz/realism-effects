@@ -23,16 +23,19 @@ export class MRTMaterial extends ShaderMaterial {
 			},
 
 			uniforms: {
-				normalMap: new Uniform(null),
-				normalScale: new Uniform(new Vector2(1, 1)),
-				uvTransform: new Uniform(new Matrix3()),
-				roughness: new Uniform(0),
-				metalness: new Uniform(0),
+				color: new Uniform(new Color()),
+				emissive: new Uniform(new Color()),
+				map: new Uniform(null),
 				roughnessMap: new Uniform(null),
 				metalnessMap: new Uniform(null),
+				emissiveMap: new Uniform(null),
+				normalMap: new Uniform(null),
+				normalScale: new Uniform(new Vector2(1, 1)),
+				roughness: new Uniform(0),
+				metalness: new Uniform(0),
+				emissiveIntensity: new Uniform(0),
+				uvTransform: new Uniform(new Matrix3()),
 				boneTexture: new Uniform(null),
-				map: new Uniform(null),
-				color: new Uniform(new Color()),
 				...UniformsUtils.clone(velocity_uniforms)
 			},
 			vertexShader: /* glsl */ `
@@ -47,13 +50,10 @@ export class MRTMaterial extends ShaderMaterial {
                 #include <displacementmap_pars_vertex>
                 #include <normal_pars_vertex>
                 #include <morphtarget_pars_vertex>
-                #include <skinning_pars_vertex>
                 #include <logdepthbuf_pars_vertex>
                 #include <clipping_planes_pars_vertex>
 
-                #ifdef renderVelocity
-                    ${velocity_vertex_pars}
-                #endif
+                ${velocity_vertex_pars}
 
                 void main() {
                     #include <uv_vertex>
@@ -67,7 +67,6 @@ export class MRTMaterial extends ShaderMaterial {
                     #include <normal_vertex>
                     #include <begin_vertex>
                     #include <morphtarget_vertex>
-                    #include <skinning_vertex>
                     #include <displacementmap_vertex>
                     #include <project_vertex>
                     #include <logdepthbuf_vertex>
@@ -78,9 +77,7 @@ export class MRTMaterial extends ShaderMaterial {
 
                     vHighPrecisionZW = gl_Position.zw;
 
-                    #ifdef renderVelocity
                     ${velocity_vertex_main}
-                    #endif
                 }
             `,
 
@@ -100,16 +97,12 @@ export class MRTMaterial extends ShaderMaterial {
                 layout(location = 0) out vec4 gDepth;
                 layout(location = 1) out vec4 gNormal;
                 layout(location = 2) out vec4 gDiffuse;
+                layout(location = 3) out vec4 gEmissive;
+                layout(location = 4) out vec4 gVelocity;
 
-                #ifdef renderVelocity
-                layout(location = 3) out vec4 gVelocity;
-                #endif
-
-                #ifdef renderVelocity
                 ${velocity_fragment_pars}
-                #endif
 
-                uniform sampler2D map;
+                #include <map_pars_fragment>
                 uniform vec3 color;
 
                 varying vec2 vHighPrecisionZW;
@@ -119,6 +112,10 @@ export class MRTMaterial extends ShaderMaterial {
 
                 #include <roughnessmap_pars_fragment>
                 uniform float roughness;
+
+                #include <emissivemap_pars_fragment>
+                uniform vec3 emissive;
+                uniform float emissiveIntensity;
 
                 void main() {
                     #include <clipping_planes_fragment>
@@ -150,10 +147,7 @@ export class MRTMaterial extends ShaderMaterial {
                     if(isDeselected){
                         gDepth = vec4(0.);
                         gDiffuse = vec4(0.);
-                        
-                        #ifdef renderVelocity
                         gVelocity = vec4(0.);
-                        #endif
 
                         return;
                     }
@@ -171,9 +165,12 @@ export class MRTMaterial extends ShaderMaterial {
 
                     gDiffuse = diffuseColor;
 
-                    #ifdef renderVelocity
+                    vec3 totalEmissiveRadiance = emissive;
+                    #include <emissivemap_fragment>
+
+                    gEmissive = vec4(totalEmissiveRadiance, emissiveIntensity);
+
                     ${velocity_fragment_main.replaceAll("gl_FragColor", "gVelocity")}
-                    #endif
                 }
             `,
 			glslVersion: GLSL3,

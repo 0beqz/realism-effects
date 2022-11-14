@@ -10,7 +10,6 @@ export const defaultTRAAOptions = {
 	blend: 0.9,
 	logTransform: true,
 	neighborhoodClamping: true,
-	dilation: true,
 	traa: true
 }
 
@@ -60,7 +59,6 @@ export class TRAAEffect extends Effect {
 							this.temporalResolvePass.fullscreenMaterial.uniforms[key].value = value
 							break
 
-						case "dilation":
 						case "logTransform":
 						case "neighborhoodClamping":
 							if (value) {

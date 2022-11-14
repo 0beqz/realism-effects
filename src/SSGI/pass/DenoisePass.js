@@ -1,5 +1,5 @@
 ﻿import { Pass } from "postprocessing"
-import { HalfFloatType, LinearFilter, ShaderMaterial, sRGBEncoding, Uniform, Vector2, WebGLRenderTarget } from "three"
+import { HalfFloatType, LinearFilter, ShaderMaterial, Uniform, Vector2, WebGLRenderTarget } from "three"
 import basicVertexShader from "../shader/basic.vert"
 import fragmentShader from "../shader/denoise.frag"
 
@@ -24,7 +24,6 @@ export class DenoisePass extends Pass {
 			uniforms: {
 				inputTexture: new Uniform(inputTexture),
 				diffuseTexture: new Uniform(null),
-				directLightTexture: new Uniform(null),
 				depthTexture: new Uniform(null),
 				normalTexture: new Uniform(null),
 				momentsTexture: new Uniform(null),
@@ -39,8 +38,7 @@ export class DenoisePass extends Pass {
 				isLastIteration: new Uniform(false),
 				_viewMatrix: new Uniform(camera.matrixWorldInverse),
 				projectionMatrix: new Uniform(camera.projectionMatrix),
-				_projectionMatrixInverse: new Uniform(camera.projectionMatrixInverse),
-				cameraMatrixWorld: new Uniform(camera.matrixWorld)
+				_projectionMatrixInverse: new Uniform(camera.projectionMatrixInverse)
 			}
 		})
 

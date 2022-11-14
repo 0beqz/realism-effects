@@ -276,8 +276,8 @@ const initScene = () => {
 	const bloomEffect = new POSTPROCESSING.BloomEffect({
 		intensity: 1,
 		mipmapBlur: true,
-		luminanceSmoothing: 0.5,
-		luminanceThreshold: 0.5,
+		luminanceSmoothing: 0.75,
+		luminanceThreshold: 0.75,
 		kernelSize: POSTPROCESSING.KernelSize.HUGE
 	})
 
@@ -300,12 +300,12 @@ const initScene = () => {
 	new POSTPROCESSING.LUTCubeLoader().load("lut.cube").then(lutTexture => {
 		const lutEffect = new POSTPROCESSING.LUT3DEffect(lutTexture)
 
-		const motionBlurEffect = new MotionBlurEffect(ssgiEffect.svgf.svgfTemporalResolvePass.velocityPass.texture, {
+		const motionBlurEffect = new MotionBlurEffect(ssgiEffect.ssgiPass.velocityTexture, {
 			jitter: 5
 		})
 
 		composer.addPass(ssgiPass)
-		// composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect, bloomEffect, vignetteEffect, lutEffect))
+		composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect, bloomEffect, vignetteEffect))
 
 		const smaaEffect = new POSTPROCESSING.SMAAEffect()
 

@@ -10,7 +10,7 @@ const halton = function halton(index, base) {
 	return result
 }
 
-// generates Halton tuples in the range [-0.5:0.5]
+// generates Halton tuples in the range [0:1]
 export const generateHalton23Points = count => {
 	const data = []
 
@@ -18,7 +18,7 @@ export const generateHalton23Points = count => {
 	const end = i + count
 
 	for (; i < end; i++) {
-		data.push([halton(i, 2) - 0.5, halton(i, 3) - 0.5])
+		data.push([halton(i, 2), halton(i, 3)])
 	}
 
 	return data

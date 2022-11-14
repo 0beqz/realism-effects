@@ -1,9 +1,8 @@
-﻿import { CopyPass } from "./pass/CopyPass.js"
-import { DenoisePass } from "./pass/DenoisePass.js"
+﻿import { DenoisePass } from "./pass/DenoisePass.js"
 import { SVGFTemporalResolvePass } from "./pass/SVGFTemporalResolvePass.js"
 import { defaultTemporalResolvePassOptions } from "./temporal-resolve/TemporalResolvePass.js"
 
-const requiredTextures = ["inputTexture", "depthTexture", "normalTexture"]
+const requiredTextures = ["inputTexture", "depthTexture", "normalTexture", "velocityTexture"]
 
 const defaultSVGFOptions = {
 	...defaultTemporalResolvePassOptions,
@@ -17,18 +16,20 @@ export class SVGF {
 		this.svgfTemporalResolvePass = new SVGFTemporalResolvePass(scene, camera, options)
 
 		this.denoisePass = new DenoisePass(camera, null, options)
-
-		// this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = this.denoisePass.texture
+		this.denoisePass.fullscreenMaterial.uniforms.inputTexture.value = this.svgfTemporalResolvePass.texture
 
 		if (options.moments) {
-			this.copyPass = new CopyPass()
-			this.copyPass.fullscreenMaterial.uniforms.inputTexture.value = this.svgfTemporalResolvePass.momentsTexture
-			this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.momentsTexture.value = this.copyPass.renderTarget.texture
-
 			this.denoisePass.fullscreenMaterial.uniforms.momentsTexture.value = this.svgfTemporalResolvePass.momentsTexture
-		}
+			this.svgfTemporalResolvePass.copyPass.fullscreenMaterial.uniforms.inputTexture3.value =
+				this.svgfTemporalResolvePass.momentsTexture
 
-		this.denoisePass.fullscreenMaterial.uniforms.inputTexture.value = this.svgfTemporalResolvePass.texture
+			const lastMomentsTexture = this.svgfTemporalResolvePass.copyPass.renderTarget.texture[0].clone()
+			lastMomentsTexture.isRenderTargetTexture = true
+			this.svgfTemporalResolvePass.copyPass.renderTarget.texture.push(lastMomentsTexture)
+			this.svgfTemporalResolvePass.copyPass.fullscreenMaterial.defines.textureCount++
+
+			this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.lastMomentsTexture.value = lastMomentsTexture
+		}
 	}
 
 	// the denoised texture
@@ -37,33 +38,37 @@ export class SVGF {
 	}
 
 	setInputTexture(texture) {
-		this.denoisePass.fullscreenMaterial.uniforms.inputTexture.value = this.svgfTemporalResolvePass.texture
+		this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = texture
 	}
 
 	setDepthTexture(texture) {
 		this.denoisePass.fullscreenMaterial.uniforms.depthTexture.value = texture
+		this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.depthTexture.value = texture
 	}
 
 	setNormalTexture(texture) {
 		this.denoisePass.fullscreenMaterial.uniforms.normalTexture.value = texture
+		this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.normalTexture.value = texture
+	}
+
+	setVelocityTexture(texture) {
+		this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.velocityTexture.value = texture
 	}
 
 	setSize(width, height) {
 		this.denoisePass.setSize(width, height)
 
 		this.svgfTemporalResolvePass.setSize(width, height)
-		this.copyPass?.setSize(width, height)
 	}
 
 	dispose() {
 		this.denoisePass.dispose()
 		this.svgfTemporalResolvePass.dispose()
-		this.copyPass?.dispose()
 	}
 
 	ensureAllTexturesSet() {
 		requiredTextures.forEach(bufferName => {
-			if (!this.denoisePass.fullscreenMaterial.uniforms[bufferName].value?.isTexture) {
+			if (!this.svgfTemporalResolvePass.fullscreenMaterial.uniforms[bufferName].value?.isTexture) {
 				const functionName = "set" + bufferName[0].toUpperCase() + bufferName.slice(1)
 				console.error("SVGF has no " + bufferName + ". Set a " + bufferName + " through " + functionName + "().")
 			}
@@ -75,20 +80,11 @@ export class SVGF {
 
 		if (this.denoisePass.iterations > 0) {
 			this.denoisePass.render(renderer)
-			// this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = this.denoisePass.texture
 		} else {
 			this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value =
 				this.denoisePass.fullscreenMaterial.uniforms.inputTexture.value
 		}
 
-		this.denoisePass.fullscreenMaterial.uniforms.depthTexture.value =
-			this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.depthTexture.value
-
-		// this.denoisePass.fullscreenMaterial.uniforms.normalTexture.value =
-		// 	this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.worldNormalTexture.value
-
 		this.svgfTemporalResolvePass.render(renderer)
-
-		this.copyPass?.render(renderer)
 	}
 }

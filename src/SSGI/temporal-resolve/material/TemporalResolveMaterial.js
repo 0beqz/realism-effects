@@ -15,17 +15,18 @@ export class TemporalResolveMaterial extends ShaderMaterial {
 				hitPositionsTexture: new Uniform(null),
 				depthTexture: new Uniform(null),
 				lastDepthTexture: new Uniform(null),
-				worldNormalTexture: new Uniform(null),
-				lastWorldNormalTexture: new Uniform(null),
-				samples: new Uniform(1),
+				normalTexture: new Uniform(null),
+				lastNormalTexture: new Uniform(null),
 				blend: new Uniform(0.9),
 				invTexSize: new Uniform(new Vector2()),
 				projectionMatrix: new Uniform(new Matrix4()),
+				projectionMatrixInverse: new Uniform(new Matrix4()),
 				cameraMatrixWorld: new Uniform(new Matrix4()),
+				_viewMatrix: new Uniform(new Matrix4()),
 				prevViewMatrix: new Uniform(new Matrix4()),
+				prevCameraMatrixWorld: new Uniform(new Matrix4()),
 				cameraPos: new Uniform(new Vector3()),
-				lastCameraPos: new Uniform(new Vector3()),
-				prevPrevViewMatrix: new Uniform(new Matrix4())
+				lastCameraPos: new Uniform(new Vector3())
 			},
 			defines: {
 				maxNeighborDepthDifference: "0.00001"

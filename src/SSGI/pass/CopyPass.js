@@ -1,35 +1,64 @@
 ﻿import { Pass } from "postprocessing"
-import { HalfFloatType, NearestFilter, WebGLRenderTarget } from "three"
-import { Uniform } from "three"
-import { ShaderMaterial } from "three"
+import { GLSL3, NearestFilter, ShaderMaterial, Uniform, WebGLMultipleRenderTargets, WebGLRenderTarget } from "three"
 import basicVertexShader from "../shader/basic.vert"
 
 export class CopyPass extends Pass {
-	constructor() {
+	constructor(textureCount = 1) {
 		super("CopyPass")
 
 		this.fullscreenMaterial = new ShaderMaterial({
 			fragmentShader: /* glsl */ `
             varying vec2 vUv;
 
-            uniform sampler2D inputTexture;
+
+			uniform sampler2D inputTexture;
+			layout(location = 0) out vec4 gOutput0;
+			
+			#if textureCount > 1
+			uniform sampler2D inputTexture2;
+			layout(location = 1) out vec4 gOutput1;
+			#endif
+
+			#if textureCount > 2
+			uniform sampler2D inputTexture3;
+			layout(location = 2) out vec4 gOutput2;
+			#endif
 
             void main() {
-                gl_FragColor = textureLod(inputTexture, vUv, 0.);
+                gOutput0 = textureLod(inputTexture, vUv, 0.);
+
+				#if textureCount > 1
+				gOutput1 = textureLod(inputTexture2, vUv, 0.);
+				#endif
+
+				#if textureCount > 2
+				gOutput2 = textureLod(inputTexture3, vUv, 0.);
+				#endif
             }
             `,
 			vertexShader: basicVertexShader,
 			uniforms: {
-				inputTexture: new Uniform(null)
-			}
+				inputTexture: new Uniform(null),
+				inputTexture2: new Uniform(null),
+				inputTexture3: new Uniform(null)
+			},
+			defines: {
+				textureCount
+			},
+			glslVersion: GLSL3
 		})
 
-		this.renderTarget = new WebGLRenderTarget(1, 1, {
+		const renderTargetOptions = {
 			minFilter: NearestFilter,
 			magFilter: NearestFilter,
-			type: HalfFloatType,
+			// type: HalfFloatType,
 			depthBuffer: false
-		})
+		}
+
+		this.renderTarget =
+			textureCount === 1
+				? new WebGLRenderTarget(1, 1, renderTargetOptions)
+				: new WebGLMultipleRenderTargets(1, 1, textureCount)
 	}
 
 	setSize(width, height) {

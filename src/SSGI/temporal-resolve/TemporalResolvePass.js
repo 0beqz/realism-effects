@@ -20,19 +20,16 @@ const zeroVec2 = new Vector2()
 export const defaultTemporalResolvePassOptions = {
 	blend: 0.9,
 	renderVelocity: true,
-	dilation: false,
 	neighborhoodClamping: false,
 	logTransform: false,
+	reprojectReflectionHitPoints: false,
 	customComposeShader: null,
-	traa: false,
-	velocityPass: null,
 	renderTarget: null
 }
 
 export class TemporalResolvePass extends Pass {
 	haltonSequence = []
 	haltonIndex = 0
-	samples = 1
 	lastCameraTransform = {
 		position: new Vector3(),
 		quaternion: new Quaternion()
@@ -48,15 +45,11 @@ export class TemporalResolvePass extends Pass {
 		this.renderTarget =
 			options.renderTarget ||
 			new WebGLRenderTarget(1, 1, {
-				minFilter: LinearFilter,
-				magFilter: LinearFilter,
+				minFilter: NearestFilter,
+				magFilter: NearestFilter,
 				type: HalfFloatType,
 				depthBuffer: false
 			})
-
-		this.renderVelocity = options.renderVelocity
-		this.velocityPass = options.velocityPass || new VelocityPass(scene, camera, { renderDepth: true })
-		this.usingOwnVelocityPass = options.velocityPass !== this.velocityPass
 
 		this.fullscreenMaterial = new TemporalResolveMaterial()
 		if (typeof options.customComposeShader === "string") {
@@ -68,25 +61,29 @@ export class TemporalResolvePass extends Pass {
 			)
 		}
 
-		if (options.dilation) this.fullscreenMaterial.defines.dilation = ""
 		if (options.neighborhoodClamping) this.fullscreenMaterial.defines.neighborhoodClamping = ""
 		if (options.logTransform) this.fullscreenMaterial.defines.logTransform = ""
+		if (options.reprojectReflectionHitPoints) this.fullscreenMaterial.defines.reprojectReflectionHitPoints = ""
 
-		this.traa = options.traa
-
-		this.fullscreenMaterial.uniforms.velocityTexture.value = this.velocityPass.texture
-		this.fullscreenMaterial.uniforms.depthTexture.value = this.velocityPass.depthTexture
 		this.fullscreenMaterial.uniforms.projectionMatrix.value = camera.projectionMatrix
+		this.fullscreenMaterial.uniforms.projectionMatrixInverse.value = camera.projectionMatrixInverse
 		this.fullscreenMaterial.uniforms.cameraMatrixWorld.value = camera.matrixWorld
+		this.fullscreenMaterial.uniforms._viewMatrix.value = camera.matrixWorldInverse
 		this.fullscreenMaterial.uniforms.cameraPos.value = camera.position
-		this.fullscreenMaterial.uniforms.projectionMatrix.value = camera.projectionMatrix
 		this.fullscreenMaterial.uniforms.prevViewMatrix.value = camera.matrixWorldInverse.clone()
+		this.fullscreenMaterial.uniforms.prevCameraMatrixWorld.value = camera.matrixWorld.clone()
 
-		this.copyPass = new CopyPass()
-		this.copyPass.fullscreenMaterial.uniforms.inputTexture.value = this.velocityPass.worldNormalTexture
+		this.copyPass = new CopyPass(2)
+		this.fullscreenMaterial.uniforms.lastDepthTexture.value = this.copyPass.renderTarget.texture[0]
+		this.fullscreenMaterial.uniforms.lastNormalTexture.value = this.copyPass.renderTarget.texture[1]
 
-		this.fullscreenMaterial.uniforms.worldNormalTexture.value = this.velocityPass.worldNormalTexture
-		this.fullscreenMaterial.uniforms.lastWorldNormalTexture.value = this.copyPass.renderTarget.texture
+		if (options.renderVelocity) {
+			this.velocityPass = new VelocityPass(scene, camera, { renderDepth: true })
+
+			this.fullscreenMaterial.uniforms.velocityTexture.value = this.velocityPass.texture
+			this.fullscreenMaterial.uniforms.depthTexture.value = this.velocityPass.depthTexture
+			this.fullscreenMaterial.uniforms.normalTexture.value = this.velocityPass.normalTexture
+		}
 
 		this.setupFramebuffers(1, 1)
 	}
@@ -95,16 +92,15 @@ export class TemporalResolvePass extends Pass {
 		this.renderTarget.dispose()
 		this.copyPass.dispose()
 		this.accumulatedTexture.dispose()
-		this.lastDepthTexture.dispose()
 		this.fullscreenMaterial.dispose()
 
-		if (this.usingOwnVelocityPass) this.velocityPass.dispose()
+		this.velocityPass?.dispose()
 	}
 
 	setSize(width, height) {
 		this.renderTarget.setSize(width, height)
 		this.copyPass.setSize(width, height)
-		if (this.usingOwnVelocityPass) this.velocityPass.setSize(width, height)
+		this.velocityPass?.setSize(width, height)
 
 		this.fullscreenMaterial.uniforms.invTexSize.value.set(1 / width, 1 / height)
 		this.setupFramebuffers(width, height)
@@ -119,40 +115,14 @@ export class TemporalResolvePass extends Pass {
 		this.accumulatedTexture.type = HalfFloatType
 
 		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.accumulatedTexture
-
-		this.lastDepthTexture = new FramebufferTexture(width, height, RGBAFormat)
-		this.lastDepthTexture.minFilter = NearestFilter
-		this.lastDepthTexture.magFilter = NearestFilter
-	}
-
-	checkNeedsResample() {
-		const moveDist = this.lastCameraTransform.position.distanceToSquared(this._camera.position)
-		const rotateDist = 8 * (1 - this.lastCameraTransform.quaternion.dot(this._camera.quaternion))
-
-		if (moveDist > 0.000001 || rotateDist > 0.000001) {
-			this.samples = 1
-
-			this.lastCameraTransform.position.copy(this._camera.position)
-			this.lastCameraTransform.quaternion.copy(this._camera.quaternion)
-		}
 	}
 
 	get texture() {
 		return this.renderTarget.texture
 	}
 
-	doJitter(renderer) {
-		if (this.traa) this.unjitter()
-
-		if (this.renderVelocity && this.usingOwnVelocityPass) this.velocityPass.render(renderer)
-
-		if (this.traa) this.jitter()
-	}
-
 	render(renderer) {
-		this.samples++
-		this.checkNeedsResample()
-		this.fullscreenMaterial.uniforms.samples.value = this.samples
+		this.velocityPass?.render(renderer)
 
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)
@@ -160,25 +130,25 @@ export class TemporalResolvePass extends Pass {
 		// save the render target's texture for use in next frame
 		renderer.copyFramebufferToTexture(zeroVec2, this.accumulatedTexture)
 
-		const depthRenderTarget = this.customDepthRenderTarget || this.velocityPass.depthRenderTarget
-
-		renderer.setRenderTarget(depthRenderTarget)
-		renderer.copyFramebufferToTexture(zeroVec2, this.lastDepthTexture)
-		this.fullscreenMaterial.uniforms.depthTexture.value = Array.isArray(depthRenderTarget.texture)
-			? depthRenderTarget.texture[0]
-			: depthRenderTarget.texture
-		this.fullscreenMaterial.uniforms.lastDepthTexture.value = this.lastDepthTexture
+		// save the last depth and normal buffers
+		this.copyPass.fullscreenMaterial.uniforms.inputTexture.value = this.fullscreenMaterial.uniforms.depthTexture.value
+		this.copyPass.fullscreenMaterial.uniforms.inputTexture2.value = this.fullscreenMaterial.uniforms.normalTexture.value
 
 		this.copyPass.render(renderer)
 
 		this.fullscreenMaterial.uniforms.prevViewMatrix.value.copy(this._camera.matrixWorldInverse)
-		this.fullscreenMaterial.uniforms.lastCameraPos.value.copy(this._camera.position)
+		this.fullscreenMaterial.uniforms.prevCameraMatrixWorld.value.copy(this._camera.matrixWorld)
+
+		const { elements } = this._camera.matrixWorld
+		// https://github.com/mrdoob/three.js/blob/master/src/math/Matrix4.js#L722
+		this.fullscreenMaterial.uniforms.lastCameraPos.value.set(elements[12], elements[13], elements[14])
 	}
 
 	jitter(jitterScale = 1) {
 		this.unjitter()
 
-		if (this.haltonSequence.length === 0) this.haltonSequence = generateHalton23Points(16)
+		if (this.haltonSequence.length === 0)
+			this.haltonSequence = generateHalton23Points(16).map(([a, b]) => [a - 0.5, b - 0.5])
 
 		// cheap trick to get rid of aliasing on the final buffer (technique known from TAA)
 		this.haltonIndex = (this.haltonIndex + 1) % this.haltonSequence.length

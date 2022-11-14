@@ -9,18 +9,20 @@ uniform sampler2D hitPositionsTexture;
 uniform sampler2D depthTexture;
 uniform sampler2D lastDepthTexture;
 
-uniform sampler2D worldNormalTexture;
-uniform sampler2D lastWorldNormalTexture;
+uniform sampler2D normalTexture;
+uniform sampler2D lastNormalTexture;
 
 uniform float blend;
-uniform float samples;
 uniform vec2 invTexSize;
 
 varying vec2 vUv;
 
 uniform mat4 projectionMatrix;
+uniform mat4 projectionMatrixInverse;
 uniform mat4 cameraMatrixWorld;
+uniform mat4 _viewMatrix;
 uniform mat4 prevViewMatrix;
+uniform mat4 prevCameraMatrixWorld;
 uniform vec3 cameraPos;
 uniform vec3 lastCameraPos;
 
@@ -47,15 +49,6 @@ vec3 undoColorTransform(vec3 color) {
 #endif
 }
 
-vec2 viewSpaceToScreenSpace(vec3 position) {
-    vec4 projectedCoord = projectionMatrix * vec4(position, 1.0);
-    projectedCoord.xy /= projectedCoord.w;
-    // [-1, 1] --> [0, 1] (NDC to screen position)
-    projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;
-
-    return projectedCoord.xy;
-}
-
 vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth, mat4 curMatrixWorld) {
     vec4 ndc = vec4(
         (uv.x - 0.5) * 2.0,
@@ -63,7 +56,7 @@ vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth, mat4 curMatrixWor
         (depth - 0.5) * 2.0,
         1.0);
 
-    vec4 clip = inverse(projectionMatrix) * ndc;
+    vec4 clip = projectionMatrixInverse * ndc;
     vec4 view = curMatrixWorld * (clip / clip.w);
 
     return view.xyz;
@@ -103,16 +96,18 @@ void getNeighborhoodAABB(sampler2D tex, vec2 uv, inout vec3 minNeighborColor, in
 
 bool validateReprojectedUV(vec2 reprojectedUv, float depth, vec3 worldPos, vec4 worldNormalTexel) {
     vec3 worldNormal = unpackRGBToNormal(worldNormalTexel.xyz);
+    worldNormal = normalize((vec4(worldNormal, 1.) * _viewMatrix).xyz);
 
-    vec4 lastWorldNormalTexel = textureLod(lastWorldNormalTexture, reprojectedUv, 0.);
+    vec4 lastWorldNormalTexel = textureLod(lastNormalTexture, reprojectedUv, 0.);
     vec3 lastWorldNormal = unpackRGBToNormal(lastWorldNormalTexel.xyz);
+    lastWorldNormal = normalize((vec4(lastWorldNormal, 1.) * _viewMatrix).xyz);
 
     if (!(all(greaterThanEqual(reprojectedUv, vec2(0.))) && all(lessThanEqual(reprojectedUv, vec2(1.))))) return false;
     if (normalsDisocclusionCheck(worldNormal, lastWorldNormal)) return false;
 
     // the reprojected UV coordinates are inside the view
     float lastDepth = unpackRGBAToDepth(textureLod(lastDepthTexture, reprojectedUv, 0.));
-    vec3 lastWorldPos = screenSpaceToWorldSpace(reprojectedUv, lastDepth, inverse(prevViewMatrix));
+    vec3 lastWorldPos = screenSpaceToWorldSpace(reprojectedUv, lastDepth, prevCameraMatrixWorld);
 
     if (planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal)) return false;
 
@@ -133,6 +128,17 @@ vec2 reprojectVelocity() {
     return vUv - velocity.xy;
 }
 
+#ifdef reprojectReflectionHitPoints
+
+vec2 viewSpaceToScreenSpace(vec3 position) {
+    vec4 projectedCoord = projectionMatrix * vec4(position, 1.0);
+    projectedCoord.xy /= projectedCoord.w;
+    // [-1, 1] --> [0, 1] (NDC to screen position)
+    projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;
+
+    return projectedCoord.xy;
+}
+
 vec2 reprojectHitPoint(vec3 rayOrig, float rayLength, vec2 uv, float depth) {
     vec3 cameraRay = normalize(rayOrig - cameraPos);
     float cameraRayLength = distance(rayOrig, cameraPos);
@@ -144,6 +150,8 @@ vec2 reprojectHitPoint(vec3 rayOrig, float rayLength, vec2 uv, float depth) {
 
     return hitPointUv;
 }
+
+#endif
 
 void main() {
     vec4 inputTexel = textureLod(inputTexture, vUv, 0.0);
@@ -159,16 +167,20 @@ void main() {
 
     vec3 worldPos = screenSpaceToWorldSpace(vUv, depth, cameraMatrixWorld);
 
-    vec4 worldNormalTexel = textureLod(worldNormalTexture, vUv, 0.);
+    vec4 worldNormalTexel = textureLod(normalTexture, vUv, 0.);
     float curvature = worldNormalTexel.a;
 
     vec2 reprojectedUv;
+#ifdef reprojectReflectionHitPoints
     float rayLength;
     if (curvature == 0.0 && (rayLength = textureLod(inputTexture, vUv, 0.).a) != 0.0) {
         reprojectedUv = reprojectHitPoint(worldPos, rayLength, vUv, depth);
     } else {
         reprojectedUv = reprojectVelocity();
     }
+#else
+    reprojectedUv = reprojectVelocity();
+#endif
 
     bool isReprojectedUvValid = validateReprojectedUV(reprojectedUv, depth, worldPos, worldNormalTexel);
 
@@ -190,10 +202,6 @@ void main() {
 
 #endif
     } else {
-        // gOutput = vec4(0., 1., 0., 1.);
-        // gMoment = gOutput;
-        // return;
-
         accumulatedColor = inputColor;
         alpha = 0.0;
     }

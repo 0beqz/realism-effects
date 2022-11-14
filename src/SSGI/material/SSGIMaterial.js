@@ -1,8 +1,7 @@
-﻿import { GLSL3, Vector2 } from "three"
-import { Matrix4, ShaderMaterial, Uniform, Vector3 } from "three"
+﻿import { Matrix4, ShaderMaterial, Uniform, Vector2, Vector3 } from "three"
 import vertexShader from "../shader/basic.vert"
-import utils from "../shader/utils.frag"
 import fragmentShader from "../shader/ssgi.frag"
+import utils from "../shader/utils.frag"
 
 export class SSGIMaterial extends ShaderMaterial {
 	constructor() {
@@ -15,6 +14,7 @@ export class SSGIMaterial extends ShaderMaterial {
 				normalTexture: new Uniform(null),
 				depthTexture: new Uniform(null),
 				diffuseTexture: new Uniform(null),
+				emissiveTexture: new Uniform(null),
 				velocityTexture: new Uniform(null),
 				blueNoiseTexture: new Uniform(null),
 				envMap: new Uniform(null),
@@ -26,7 +26,6 @@ export class SSGIMaterial extends ShaderMaterial {
 				cameraFar: new Uniform(0),
 				rayDistance: new Uniform(0),
 				thickness: new Uniform(0),
-				power: new Uniform(0),
 				intensity: new Uniform(0),
 				jitter: new Uniform(0),
 				jitterRoughness: new Uniform(0),
@@ -39,6 +38,7 @@ export class SSGIMaterial extends ShaderMaterial {
 				viewMatrix: new Uniform(new Matrix4()),
 				invTexSize: new Uniform(new Vector2()),
 				blueNoiseRepeat: new Uniform(new Vector2()),
+				blueNoiseOffset: new Uniform(new Vector2()),
 				envMapSize: new Uniform(new Vector3()),
 				cameraPos: new Uniform(new Vector3()),
 				renderDiffuseThisFrame: new Uniform(false)
