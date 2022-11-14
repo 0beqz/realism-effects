@@ -9,8 +9,7 @@ const finalFragmentShader = compose.replace("#include <utils>", utils)
 export const defaultTRAAOptions = {
 	blend: 0.9,
 	logTransform: true,
-	neighborhoodClamping: true,
-	traa: true
+	neighborhoodClamping: true
 }
 
 export class TRAAEffect extends Effect {
@@ -100,8 +99,12 @@ export class TRAAEffect extends Effect {
 	}
 
 	update(renderer, inputBuffer) {
+		this.temporalResolvePass.unjitter()
+
 		this.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = inputBuffer.texture
 
 		this.temporalResolvePass.render(renderer)
+
+		this.temporalResolvePass.jitter()
 	}
 }

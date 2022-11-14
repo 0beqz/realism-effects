@@ -294,18 +294,23 @@ const initScene = () => {
 
 	ssgiPass = new POSTPROCESSING.EffectPass(camera, ssgiEffect)
 
-	traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
-	// composer.addPass(traaPass)
-
 	new POSTPROCESSING.LUTCubeLoader().load("lut.cube").then(lutTexture => {
 		const lutEffect = new POSTPROCESSING.LUT3DEffect(lutTexture)
 
-		const motionBlurEffect = new MotionBlurEffect(ssgiEffect.ssgiPass.velocityTexture, {
+		const { velocityTexture } = ssgiEffect.ssgiPass
+
+		const motionBlurEffect = new MotionBlurEffect(velocityTexture, {
 			jitter: 5
 		})
 
+		// ssgiEffect.svgf.setVelocityTexture(velocityTexture)
+		// ssgiEffect.ssgiPass.fullscreenMaterial.uniforms.velocityTexture.value = velocityTexture
+
 		composer.addPass(ssgiPass)
-		// composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect, bloomEffect, vignetteEffect))
+		composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect, bloomEffect, vignetteEffect))
+
+		traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
+		// composer.addPass(traaPass)
 
 		const smaaEffect = new POSTPROCESSING.SMAAEffect()
 
@@ -314,6 +319,7 @@ const initScene = () => {
 		const fxaaEffect = new POSTPROCESSING.FXAAEffect()
 
 		fxaaPass = new POSTPROCESSING.EffectPass(camera, fxaaEffect)
+		composer.addPass(fxaaPass)
 
 		loop()
 

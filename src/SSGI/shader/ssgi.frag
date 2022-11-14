@@ -208,7 +208,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
         vec3 emissiveColor = emissiveTexel.rgb;
         float emissiveIntensity = emissiveTexel.a;
 
-        SSGI = 2. * textureLod(accumulatedTexture, reprojectedUv, 0.).rgb + emissiveColor * emissiveIntensity;
+        SSGI = 2. * textureLod(accumulatedTexture, reprojectedUv, 0.).rgb + emissiveColor * emissiveIntensity * 4.;
     } else {
         SSGI = textureLod(directLightTexture, vUv, 0.).rgb;
     }

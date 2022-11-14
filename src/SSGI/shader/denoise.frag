@@ -41,8 +41,8 @@ void main() {
     }
 
     vec4 normalTexel = textureLod(normalTexture, vUv, 0.);
-    vec3 normal = unpackRGBToNormal(normalTexel.rgb);
-    normal = normalize((vec4(normal, 1.0) * _viewMatrix).xyz);
+    vec3 viewNormal = unpackRGBToNormal(normalTexel.rgb);
+    vec3 normal = normalize((vec4(viewNormal, 1.0) * _viewMatrix).xyz);
 
     float totalWeight = 1.;
     vec3 color = inputTexel.rgb;
@@ -52,9 +52,6 @@ void main() {
     vec2 pixelStepOffset = invTexSize * stepSize;
 
     float roughness = normalTexel.a;
-    float totalSpread = jitterRoughness * roughness + jitter;
-    float roughnessFactor = min(1., totalSpread * 4.);
-    roughnessFactor = mix(1., roughnessFactor, 1.);
 
     float kernel = denoiseKernel;
     float sumVariance;
@@ -130,8 +127,6 @@ void main() {
 
     sumVariance /= totalWeight * totalWeight;
     color /= totalWeight;
-
-    // if (roughnessFactor < 1.) color = mix(inputTexel.rgb, color, roughnessFactor);
 
     gl_FragColor = vec4(color, sumVariance);
 }

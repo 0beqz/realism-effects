@@ -71,13 +71,11 @@ export class SSGIEffect extends Effect {
 		` +
 			this.svgf.denoisePass.fullscreenMaterial.fragmentShader
 				.replace(
-					"float kernel = denoiseKernel;",
-					"float kernel = ceil(denoiseKernel * roughnessFactor + FLOAT_EPSILON);"
-				)
-				.replace(
 					"gl_FragColor = vec4(color, sumVariance);",
 					/* glsl */ `
 			if (isLastIteration) {
+				roughness = jitter + jitterRoughness * roughness;
+
 				vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.);
 				vec3 diffuse = diffuseTexel.rgb;
 				vec3 directLight = textureLod(directLightTexture, vUv, 0.).rgb;
@@ -85,18 +83,17 @@ export class SSGIEffect extends Effect {
 		
 				vec3 viewPos = getViewPosition(depth);
 				vec3 viewDir = normalize(viewPos);
-				vec3 viewNormal = normal;
 				vec3 reflected = reflect(viewNormal, viewDir);
 		
 				float fresnelFactor = fresnel_dielectric(viewDir, viewNormal, 2.33);
-				float fresnelFactor2 = fresnel_dielectric(viewDir, viewNormal, 1.75);
+				// float fresnelFactor2 = fresnel_dielectric(viewDir, viewNormal, 1.75);
 		
-				float specularFactor = (roughness * 0.75 + fresnelFactor * fresnelFactor * 0.5) * 0.05;
+				float specularFactor = (roughness * 0.5 + fresnelFactor * fresnelFactor * 0.5) * 0.05;
 		
 				float l = czm_luminance(diffuse);
 				float diffuseInfluence = 1.0 - specularFactor;// * mix(l, 1., roughness - metalness * 0.5 + 0.5);
 				// diffuse = mix(diffuse, color * (1. + roughness), metalness * 0.125);
-				diffuse *= (1. + metalness * fresnelFactor);
+				diffuse *= (1. + metalness * 0.675);
 				vec3 diffuseColor = diffuse * diffuseInfluence + (1. - diffuseInfluence);
 		
 				color *= diffuseColor;
@@ -178,9 +175,7 @@ export class SSGIEffect extends Effect {
 	makeOptionsReactive(options) {
 		let needsUpdate = false
 
-		if (options.reflectionsOnly) {
-			this.svgf.svgfTemporalResolvePass.fullscreenMaterial.defines.reflectionsOnly = ""
-		}
+		if (options.reflectionsOnly) this.svgf.svgfTemporalResolvePass.fullscreenMaterial.defines.reflectionsOnly = ""
 
 		const ssgiPassFullscreenMaterialUniforms = this.ssgiPass.fullscreenMaterial.uniforms
 		const ssgiPassFullscreenMaterialUniformsKeys = Object.keys(ssgiPassFullscreenMaterialUniforms)

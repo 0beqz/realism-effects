@@ -88,6 +88,10 @@ export class TemporalResolvePass extends Pass {
 		this.setupFramebuffers(1, 1)
 	}
 
+	get velocityTexture() {
+		return this.velocityPass?.texture
+	}
+
 	dispose() {
 		this.renderTarget.dispose()
 		this.copyPass.dispose()
