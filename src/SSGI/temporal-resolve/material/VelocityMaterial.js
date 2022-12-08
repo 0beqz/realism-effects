@@ -194,10 +194,9 @@ export class VelocityMaterial extends ShaderMaterial {
 						float x = dot(dx, dx);
 						float y = dot(dy, dy);
 
-						float curvature = sqrt(max(x, y));
+						float curvature = sqrt(max(x, y)) * 100.0;
 
-
-						gNormal = vec4(packNormalToRGB( normal ), curvature * 100.);
+						gNormal = vec4(packNormalToRGB( normal ), curvature);
 						#endif
                     }`
 		})

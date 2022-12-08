@@ -2,7 +2,7 @@ import dragDrop from "drag-drop"
 import * as POSTPROCESSING from "postprocessing"
 import Stats from "stats.js"
 import * as THREE from "three"
-import { ACESFilmicToneMapping, Box3, DirectionalLight, Vector3 } from "three"
+import { ACESFilmicToneMapping, Box3, DirectionalLight, SpotLight, Vector3 } from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader"
@@ -61,12 +61,13 @@ const renderer = new THREE.WebGLRenderer({
 
 window.renderer = renderer
 
-// renderer.autoClear = false
+renderer.autoClear = false
 // renderer.autoClearColor = false
 // renderer.autoClearDepth = false
 // renderer.autoClearStencil = false
 
 renderer.toneMapping = ACESFilmicToneMapping
+renderer.toneMappingExposure = 1
 renderer.outputEncoding = THREE.sRGBEncoding
 const dpr = window.devicePixelRatio || 1
 renderer.setPixelRatio(dpr)
@@ -161,12 +162,14 @@ const params = {}
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
 pmremGenerator.compileEquirectangularShader()
 
-new RGBELoader().load("blouberg_sunrise_2_4k.hdr", envMap => {
+new RGBELoader().load("quarry_02_4k.hdr", envMap => {
 	envMap.mapping = THREE.EquirectangularReflectionMapping
 
 	scene.environment = envMap
+	scene.background = envMap
 
 	envMesh = new GroundProjectedEnv(envMap)
+	console.log(envMesh)
 	envMesh.radius = 440
 	envMesh.height = 20
 	envMesh.scale.setScalar(100)
@@ -231,7 +234,7 @@ const initScene = () => {
 		lumaPhi: 5.440000000000012,
 		depthPhi: 12.200000000000001,
 		normalPhi: 69.57000000000002,
-		roughnessPhi: 0,
+		roughnessPhi: 50,
 		jitter: 3.469446951953614e-18,
 		jitterRoughness: 1,
 		steps: 20,
@@ -299,15 +302,19 @@ const initScene = () => {
 
 		const { velocityTexture } = ssgiEffect.ssgiPass
 
+		const { depthTexture, normalTexture } = traaEffect.temporalResolvePass.fullscreenMaterial.uniforms
+
 		const motionBlurEffect = new MotionBlurEffect(velocityTexture, {
 			jitter: 5
 		})
 
-		// ssgiEffect.svgf.setVelocityTexture(velocityTexture)
+		// ssgiEffect.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.velocityTexture.value = velocityTexture.value
+		// ssgiEffect.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.normalTexture.value = normalTexture.value
+		// ssgiEffect.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.depthTexture.value = depthTexture.value
 		// ssgiEffect.ssgiPass.fullscreenMaterial.uniforms.velocityTexture.value = velocityTexture
 
 		composer.addPass(ssgiPass)
-		composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect, bloomEffect, vignetteEffect))
+		composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, motionBlurEffect, vignetteEffect))
 
 		traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
 		// composer.addPass(traaPass)

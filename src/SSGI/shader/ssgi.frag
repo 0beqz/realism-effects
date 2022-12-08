@@ -35,7 +35,7 @@ uniform float jitterRoughness;
 #define INVALID_RAY_COORDS vec2(-1.0);
 #define EARLY_OUT_COLOR    vec4(0.0, 0.0, 0.0, 0.0)
 #define FLOAT_EPSILON      0.00001
-#define TRANSFORM_FACTOR   0.25
+#define TRANSFORM_FACTOR   0.16666666666666666
 
 float nearMinusFar;
 float nearMulFar;
@@ -111,6 +111,8 @@ void main() {
     float specularFactor = fresnelFactor;
 
     for (int s = 0; s < spp; s++) {
+        if (s != 0) sampleOffset = rand2();
+
         float sF = float(s);
         float m = 1. / (sF + 1.0);
 
@@ -120,14 +122,24 @@ void main() {
         vec3 gi = diffuseSSGI * diffuseFactor + specularSSGI * specularFactor;
 
         SSGI = mix(SSGI, gi, m);
-
-        sampleOffset = rand2();
     }
 
     float rayLength = 0.0;
-    if (!isMissedRay && spread < 0.5) {
-        vec3 hitPosWS = (_viewMatrix * vec4(hitPos, 1.)).xyz;
-        rayLength = distance(worldPos, hitPosWS);
+    if (!isMissedRay && spread < 0.675) {
+        vec3 normalWS = viewNormal * mat3(_viewMatrix);
+
+        vec3 dx = dFdx(normalWS);
+        vec3 dy = dFdy(normalWS);
+
+        float x = dot(dx, dx);
+        float y = dot(dy, dy);
+
+        float curvature = sqrt(max(x, y));
+
+        if (curvature < 0.05) {
+            vec3 hitPosWS = (_viewMatrix * vec4(hitPos, 1.)).xyz;
+            rayLength = distance(worldPos, hitPosWS);
+        }
     }
 
     gl_FragColor = vec4(SSGI, rayLength);
@@ -183,14 +195,14 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
         reflectedWS.xyz = normalize(reflectedWS.xyz);
     #endif
 
-        float mip = 8. / 13. * maxEnvMapMipLevel * spread;
+        // float mip = 7. / 13. * maxEnvMapMipLevel * spread;
 
         vec3 sampleDir = reflectedWS.xyz;
-        envMapSample = sampleEquirectEnvMapColor(sampleDir, envMap, mip);
+        envMapSample = sampleEquirectEnvMapColor(sampleDir, envMap, 0.0);
 
         // we won't deal with calculating direct sun light from the env map as it is too noisy
         float envLum = czm_luminance(envMapSample);
-        if (envLum > 5.0) envMapSample *= 5.0 / envLum;
+        if (envLum > 10.0) envMapSample *= 10.0 / envLum;
 
         return m * envMapSample;
     }

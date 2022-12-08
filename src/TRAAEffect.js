@@ -3,11 +3,15 @@ import { Uniform } from "three"
 import compose from "./shader/compose.frag"
 import utils from "./SSGI/shader/utils.frag"
 import { TemporalResolvePass } from "./SSGI/temporal-resolve/TemporalResolvePass.js"
+import { getVisibleChildren } from "./SSGI/utils/Utils"
 
 const finalFragmentShader = compose.replace("#include <utils>", utils)
 
 export const defaultTRAAOptions = {
 	blend: 0.9,
+	dilation: true,
+	catmullRomSampling: true,
+	constantBlend: true,
 	logTransform: true,
 	neighborhoodClamping: true
 }
@@ -25,8 +29,6 @@ export class TRAAEffect extends Effect {
 		this._camera = camera
 
 		options = { ...defaultTRAAOptions, ...options }
-
-		// set up passes
 
 		this.#lastSize = { width: options.width, height: options.height, resolutionScale: options.resolutionScale }
 
@@ -99,12 +101,46 @@ export class TRAAEffect extends Effect {
 	}
 
 	update(renderer, inputBuffer) {
+		// TODO: FIX RIGGED MESHES ISSUE
+
+		this.temporalResolvePass.jitter()
+		this.jitteredProjectionMatrix = this._camera.projectionMatrix.clone()
 		this.temporalResolvePass.unjitter()
+
+		const visibleMeshes = getVisibleChildren(this._scene)
+		for (const mesh of visibleMeshes) {
+			if (mesh.constructor.name === "GroundProjectedEnv") continue
+
+			const uniforms = Array.from(renderer.properties.get(mesh.material).programs.values())[0].getUniforms()
+
+			if (!uniforms._patchedProjectionMatrix) {
+				const oldSetValue = uniforms.setValue.bind(uniforms)
+				uniforms._oldSetValue = oldSetValue
+				uniforms.setValue = (gl, name, value, ...args) => {
+					if (name === "projectionMatrix") {
+						value = this.jitteredProjectionMatrix
+					}
+
+					oldSetValue(gl, name, value, ...args)
+				}
+
+				uniforms._patchedProjectionMatrix = true
+			}
+
+			cancelAnimationFrame(uniforms._destroyPatchRAF)
+			cancelAnimationFrame(uniforms._destroyPatchRAF2)
+
+			uniforms._destroyPatchRAF = requestAnimationFrame(() => {
+				uniforms._destroyPatchRAF2 = requestAnimationFrame(() => {
+					uniforms.setValue = uniforms._oldSetValue
+					delete uniforms._oldSetValue
+					delete uniforms._patchedProjectionMatrix
+				})
+			})
+		}
 
 		this.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = inputBuffer.texture
 
 		this.temporalResolvePass.render(renderer)
-
-		this.temporalResolvePass.jitter()
 	}
 }

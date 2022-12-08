@@ -18,6 +18,7 @@ export class TemporalResolveMaterial extends ShaderMaterial {
 				normalTexture: new Uniform(null),
 				lastNormalTexture: new Uniform(null),
 				blend: new Uniform(0.9),
+				constantBlend: new Uniform(false),
 				invTexSize: new Uniform(new Vector2()),
 				projectionMatrix: new Uniform(new Matrix4()),
 				projectionMatrixInverse: new Uniform(new Matrix4()),
@@ -27,9 +28,6 @@ export class TemporalResolveMaterial extends ShaderMaterial {
 				prevCameraMatrixWorld: new Uniform(new Matrix4()),
 				cameraPos: new Uniform(new Vector3()),
 				lastCameraPos: new Uniform(new Vector3())
-			},
-			defines: {
-				maxNeighborDepthDifference: "0.00001"
 			},
 			vertexShader,
 			fragmentShader

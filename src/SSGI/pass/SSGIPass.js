@@ -175,7 +175,7 @@ export class SSGIPass extends Pass {
 			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "map", "USE_MAP", true)
 			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "emissiveMap", "USE_EMISSIVEMAP", true)
 
-			const visible = originalMaterial.visible && !c.constructor.name.includes("GroundProjectedEnv")
+			const visible = originalMaterial.visible
 			c.visible &&= visible
 
 			mrtMaterial.uniforms.roughness.value =

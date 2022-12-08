@@ -40,12 +40,8 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
     endUv = min(vec2(1.), endUv);
 
     for (int i = 0; i < samples; i++) {
-        if (i == samples) {
-            neighborColor = inputColor.rgb;
-        } else {
-            reprojectedUv = mix(startUv, endUv, float(i) / samplesFloat);
-            neighborColor = textureLod(inputTexture, reprojectedUv, 0.0).rgb;
-        }
+        reprojectedUv = mix(startUv, endUv, float(i) / samplesFloat);
+        neighborColor = textureLod(inputTexture, reprojectedUv, 0.0).rgb;
 
         motionBlurredColor += neighborColor;
     }

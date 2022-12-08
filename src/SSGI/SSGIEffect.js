@@ -1,7 +1,6 @@
 ﻿import { Effect, Selection } from "postprocessing"
 import { EquirectangularReflectionMapping, LinearMipMapLinearFilter, Uniform } from "three"
 import { SSGIPass } from "./pass/SSGIPass.js"
-import applyDiffuse from "./shader/applyDiffuse.frag"
 import compose from "./shader/compose.frag"
 import utils from "./shader/utils.frag"
 import { defaultSSGIOptions } from "./SSGIOptions"
@@ -46,11 +45,7 @@ export class SSGIEffect extends Effect {
 			/* glsl */ `
 		uniform sampler2D diffuseTexture;
 		uniform sampler2D directLightTexture;
-		` +
-			this.svgf.svgfTemporalResolvePass.fullscreenMaterial.fragmentShader.replace(
-				"vec3 inputColor",
-				applyDiffuse + "vec3 inputColor"
-			)
+		` + this.svgf.svgfTemporalResolvePass.fullscreenMaterial.fragmentShader
 
 		this.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms = {
 			...this.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms,
@@ -86,15 +81,17 @@ export class SSGIEffect extends Effect {
 				vec3 reflected = reflect(viewNormal, viewDir);
 		
 				float fresnelFactor = fresnel_dielectric(viewDir, viewNormal, 2.33);
-				// float fresnelFactor2 = fresnel_dielectric(viewDir, viewNormal, 1.75);
+
+				float ior = mix(2.33, 1.45, metalness);
+				float fresnelFactor2 = fresnel_dielectric(viewDir, viewNormal, ior);
 		
-				float specularFactor = (roughness * 0.5 + fresnelFactor * fresnelFactor * 0.5) * 0.05;
+				float specularFactor = fresnelFactor * 0.05;
 		
 				float l = czm_luminance(diffuse);
-				float diffuseInfluence = 1.0 - specularFactor;// * mix(l, 1., roughness - metalness * 0.5 + 0.5);
-				// diffuse = mix(diffuse, color * (1. + roughness), metalness * 0.125);
+				float diffuseInfluence = 1.0 - specularFactor;
+				if(diffuseInfluence > 1.0) diffuseInfluence = 1.0;
 				diffuse *= (1. + metalness * 0.675);
-				vec3 diffuseColor = diffuse * diffuseInfluence + (1. - diffuseInfluence);
+				vec3 diffuseColor = diffuse * diffuseInfluence + (1. - diffuseInfluence) * mix(diffuse, vec3(1.0), fresnelFactor2);
 		
 				color *= diffuseColor;
 				color += directLight;

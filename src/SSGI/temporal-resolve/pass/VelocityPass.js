@@ -1,14 +1,5 @@
 ﻿import { Pass, RenderPass } from "postprocessing"
-import {
-	Color,
-	DataTexture,
-	FloatType,
-	NearestFilter,
-	Quaternion,
-	RGBAFormat,
-	Vector3,
-	WebGLMultipleRenderTargets
-} from "three"
+import { Color, NearestFilter, Quaternion, Vector3, WebGLMultipleRenderTargets } from "three"
 import {
 	getVisibleChildren,
 	keepMaterialMapUpdated,
@@ -19,7 +10,6 @@ import {
 import { VelocityMaterial } from "../material/VelocityMaterial.js"
 
 const backgroundColor = new Color(0)
-const updateProperties = ["visible", "wireframe", "side"]
 
 export class VelocityPass extends Pass {
 	cachedMaterials = new WeakMap()
@@ -68,7 +58,7 @@ export class VelocityPass extends Pass {
 
 			c.material = velocityMaterial
 
-			const visible = originalMaterial.visible && !c.constructor.name.includes("GroundProjectedEnv")
+			const visible = originalMaterial.visible
 			c.visible = visible
 
 			if (this.renderDepth) velocityMaterial.defines.renderDepth = ""

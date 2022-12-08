@@ -13,6 +13,7 @@ uniform sampler2D normalTexture;
 uniform sampler2D lastNormalTexture;
 
 uniform float blend;
+uniform bool constantBlend;
 uniform vec2 invTexSize;
 
 varying vec2 vUv;
@@ -62,20 +63,6 @@ vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth, mat4 curMatrixWor
     return view.xyz;
 }
 
-#define PLANE_DISTANCE  0.1
-#define NORMAL_DISTANCE 10.0
-
-bool planeDistanceDisocclusionCheck(vec3 worldPos, vec3 lastWorldPos, vec3 worldNormal) {
-    vec3 toCurrent = worldPos - lastWorldPos;
-    float distToPlane = abs(dot(toCurrent, worldNormal));
-
-    return distToPlane > PLANE_DISTANCE;
-}
-
-bool normalsDisocclusionCheck(vec3 currentNormal, vec3 lastNormal) {
-    return pow(abs(dot(currentNormal, lastNormal)), 2.0) > NORMAL_DISTANCE;
-}
-
 void getNeighborhoodAABB(sampler2D tex, vec2 uv, inout vec3 minNeighborColor, inout vec3 maxNeighborColor) {
     for (int x = -1; x <= 1; x++) {
         for (int y = -1; y <= 1; y++) {
@@ -85,7 +72,11 @@ void getNeighborhoodAABB(sampler2D tex, vec2 uv, inout vec3 minNeighborColor, in
 
                 vec4 neighborTexel = textureLod(tex, neighborUv, 0.0);
 
-                vec3 col = transformColor(neighborTexel.rgb);
+                vec3 col = neighborTexel.rgb;
+
+#ifdef logTransform
+                col = transformColor(col);
+#endif
 
                 minNeighborColor = min(col, minNeighborColor);
                 maxNeighborColor = max(col, maxNeighborColor);
@@ -94,7 +85,22 @@ void getNeighborhoodAABB(sampler2D tex, vec2 uv, inout vec3 minNeighborColor, in
     }
 }
 
+bool planeDistanceDisocclusionCheck(vec3 worldPos, vec3 lastWorldPos, vec3 worldNormal) {
+    vec3 toCurrent = worldPos - lastWorldPos;
+    float distToPlane = abs(dot(toCurrent, worldNormal));
+
+    return distToPlane > depthDistance;
+}
+
+bool normalsDisocclusionCheck(vec3 currentNormal, vec3 lastNormal) {
+    return pow(abs(dot(currentNormal, lastNormal)), 2.0) > normalDistance;
+}
+
 bool validateReprojectedUV(vec2 reprojectedUv, float depth, vec3 worldPos, vec4 worldNormalTexel) {
+#ifdef neighborhoodClamping
+    return true;
+#endif
+
     vec3 worldNormal = unpackRGBToNormal(worldNormalTexel.xyz);
     worldNormal = normalize((vec4(worldNormal, 1.) * _viewMatrix).xyz);
 
@@ -112,13 +118,12 @@ bool validateReprojectedUV(vec2 reprojectedUv, float depth, vec3 worldPos, vec4 
     if (planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal)) return false;
 
     float depthDiff = abs(depth - lastDepth);
-    if (depthDiff > maxNeighborDepthDifference) return false;
-
+    if (depthDiff > 0.0001) return false;
     return true;
 }
 
-vec2 reprojectVelocity() {
-    vec4 velocity = textureLod(velocityTexture, vUv, 0.0);
+vec2 reprojectVelocity(vec2 sampleUv) {
+    vec4 velocity = textureLod(velocityTexture, sampleUv, 0.0);
     velocity.xy = unpackRGBATo2Half(velocity) * 2. - 1.;
 
     if (all(lessThan(abs(velocity.xy), invTexSize * 0.25))) {
@@ -129,7 +134,6 @@ vec2 reprojectVelocity() {
 }
 
 #ifdef reprojectReflectionHitPoints
-
 vec2 viewSpaceToScreenSpace(vec3 position) {
     vec4 projectedCoord = projectionMatrix * vec4(position, 1.0);
     projectedCoord.xy /= projectedCoord.w;
@@ -150,67 +154,178 @@ vec2 reprojectHitPoint(vec3 rayOrig, float rayLength, vec2 uv, float depth) {
 
     return hitPointUv;
 }
+#endif
 
+#ifdef dilation
+vec2 getDilatedDepthUV(out float currentDepth, out vec4 closestDepthTexel) {
+    float closestDepth = 0.0;
+    vec2 uv;
+
+    for (int x = -1; x <= 1; x++) {
+        for (int y = -1; y <= 1; y++) {
+            vec2 offset = vec2(x, y) * invTexSize;
+            vec2 neighborUv = vUv + offset;
+
+            vec4 neighborDepthTexel = textureLod(depthTexture, neighborUv, 0.0);
+            float depth = unpackRGBAToDepth(neighborDepthTexel);
+
+            if (depth > closestDepth) {
+                closestDepth = depth;
+                closestDepthTexel = neighborDepthTexel;
+                uv = neighborUv;
+            }
+
+            if (x == 0 && y == 0) {
+                currentDepth = depth;
+            }
+        }
+    }
+
+    return uv;
+}
+#endif
+
+#ifdef catmullRomSampling
+vec4 SampleTextureCatmullRom(sampler2D tex, in vec2 uv, in vec2 texSize) {
+    vec4 center = textureLod(tex, uv, 0.);
+    float pixelSample = center.a / ALPHA_STEP + 1.0;
+
+    if (pixelSample < 100.) {
+        return center;
+    }
+
+    // We're going to sample a a 4x4 grid of texels surrounding the target UV coordinate. We'll do this by rounding
+    // down the sample location to get the exact center of our "starting" texel. The starting texel will be at
+    // location [1, 1] in the grid, where [0, 0] is the top left corner.
+    vec2 samplePos = uv * texSize;
+    vec2 texPos1 = floor(samplePos - 0.5f) + 0.5f;
+
+    // Compute the fractional offset from our starting texel to our original sample location, which we'll
+    // feed into the Catmull-Rom spline function to get our filter weights.
+    vec2 f = samplePos - texPos1;
+
+    // Compute the Catmull-Rom weights using the fractional offset that we calculated earlier.
+    // These equations are pre-expanded based on our knowledge of where the texels will be located,
+    // which lets us avoid having to evaluate a piece-wise function.
+    vec2 w0 = f * (-0.5f + f * (1.0f - 0.5f * f));
+    vec2 w1 = 1.0f + f * f * (-2.5f + 1.5f * f);
+    vec2 w2 = f * (0.5f + f * (2.0f - 1.5f * f));
+    vec2 w3 = f * f * (-0.5f + 0.5f * f);
+
+    // Work out weighting factors and sampling offsets that will let us use bilinear filtering to
+    // simultaneously evaluate the middle 2 samples from the 4x4 grid.
+    vec2 w12 = w1 + w2;
+    vec2 offset12 = w2 / (w1 + w2);
+
+    // Compute the final UV coordinates we'll use for sampling the texture
+    vec2 texPos0 = texPos1 - 1.;
+    vec2 texPos3 = texPos1 + 2.;
+    vec2 texPos12 = texPos1 + offset12;
+
+    texPos0 /= texSize;
+    texPos3 /= texSize;
+    texPos12 /= texSize;
+
+    vec4 result = vec4(0.0);
+    result += textureLod(tex, vec2(texPos0.x, texPos0.y), 0.0f) * w0.x * w0.y;
+    result += textureLod(tex, vec2(texPos12.x, texPos0.y), 0.0f) * w12.x * w0.y;
+    result += textureLod(tex, vec2(texPos3.x, texPos0.y), 0.0f) * w3.x * w0.y;
+    result += textureLod(tex, vec2(texPos0.x, texPos12.y), 0.0f) * w0.x * w12.y;
+    result += textureLod(tex, vec2(texPos12.x, texPos12.y), 0.0f) * w12.x * w12.y;
+    result += textureLod(tex, vec2(texPos3.x, texPos12.y), 0.0f) * w3.x * w12.y;
+    result += textureLod(tex, vec2(texPos0.x, texPos3.y), 0.0f) * w0.x * w3.y;
+    result += textureLod(tex, vec2(texPos12.x, texPos3.y), 0.0f) * w12.x * w3.y;
+    result += textureLod(tex, vec2(texPos3.x, texPos3.y), 0.0f) * w3.x * w3.y;
+
+    return result;
+}
 #endif
 
 void main() {
     vec4 inputTexel = textureLod(inputTexture, vUv, 0.0);
 
+#ifdef dilation
+    vec4 depthTexel;
+    float depth;
+    vec2 uv = getDilatedDepthUV(depth, depthTexel);
+#else
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.);
     float depth = unpackRGBAToDepth(depthTexel);
+    vec2 uv = vUv;
+#endif
 
-    vec3 inputColor = transformColor(inputTexel.rgb);
+    bool isBackground = dot(depthTexel.rgb, depthTexel.rgb) == 0.0;
+    bool isReprojectedUvValid;
+    vec2 reprojectedUv;
+
+    vec3 inputColor = inputTexel.rgb;
+
+#ifdef logTransform
+    inputColor = transformColor(inputColor);
+#endif
+
     float alpha = 1.0;
 
     vec4 accumulatedTexel;
     vec3 accumulatedColor;
 
-    vec3 worldPos = screenSpaceToWorldSpace(vUv, depth, cameraMatrixWorld);
-
-    vec4 worldNormalTexel = textureLod(normalTexture, vUv, 0.);
-    float curvature = worldNormalTexel.a;
-
-    vec2 reprojectedUv;
-#ifdef reprojectReflectionHitPoints
-    float rayLength;
-    if (curvature == 0.0 && (rayLength = textureLod(inputTexture, vUv, 0.).a) != 0.0) {
-        reprojectedUv = reprojectHitPoint(worldPos, rayLength, vUv, depth);
+    if (isBackground) {
+        accumulatedColor = inputColor;
     } else {
-        reprojectedUv = reprojectVelocity();
-    }
+        vec3 worldPos = screenSpaceToWorldSpace(vUv, depth, cameraMatrixWorld);
+
+        vec4 worldNormalTexel = textureLod(normalTexture, vUv, 0.);
+
+#ifdef reprojectReflectionHitPoints
+        float rayLength;
+        if ((rayLength = textureLod(inputTexture, vUv, 0.).a) != 0.0) {
+            reprojectedUv = reprojectHitPoint(worldPos, rayLength, uv, depth);
+        } else {
+            reprojectedUv = reprojectVelocity(uv);
+        }
 #else
-    reprojectedUv = reprojectVelocity();
+        reprojectedUv = reprojectVelocity(uv);
 #endif
 
-    bool isReprojectedUvValid = validateReprojectedUV(reprojectedUv, depth, worldPos, worldNormalTexel);
+        isReprojectedUvValid = validateReprojectedUV(reprojectedUv, depth, worldPos, worldNormalTexel);
 
-    if (isReprojectedUvValid) {
-        accumulatedTexel = textureLod(accumulatedTexture, reprojectedUv, 0.0);
+        if (isReprojectedUvValid) {
+#ifdef catmullRomSampling
+            accumulatedTexel = SampleTextureCatmullRom(accumulatedTexture, reprojectedUv, 1.0 / invTexSize);
+#else
+            accumulatedTexel = textureLod(accumulatedTexture, reprojectedUv, 0.0);
+#endif
 
-        alpha = accumulatedTexel.a;
-        alpha = min(alpha, blend);
-        accumulatedColor = transformColor(accumulatedTexel.rgb);
+            alpha = accumulatedTexel.a;
+            alpha = min(alpha, blend);
+            accumulatedColor = transformColor(accumulatedTexel.rgb);
 
-        alpha += ALPHA_STEP;
+            alpha += ALPHA_STEP;
 
 #ifdef neighborhoodClamping
-        vec3 minNeighborColor = inputColor;
-        vec3 maxNeighborColor = inputColor;
-        getNeighborhoodAABB(inputTexture, vUv, minNeighborColor, maxNeighborColor);
+            vec3 minNeighborColor = inputColor;
+            vec3 maxNeighborColor = inputColor;
+            getNeighborhoodAABB(inputTexture, vUv, minNeighborColor, maxNeighborColor);
 
-        accumulatedColor = clamp(accumulatedColor, minNeighborColor, maxNeighborColor);
+            accumulatedColor = clamp(accumulatedColor, minNeighborColor, maxNeighborColor);
+
+            if (isBackground) accumulatedColor = inputColor;
 
 #endif
-    } else {
-        accumulatedColor = inputColor;
-        alpha = 0.0;
+        } else {
+            accumulatedColor = inputColor;
+            alpha = 0.0;
+        }
     }
 
     vec3 outputColor = inputColor;
 
-    float pixelSample = alpha / ALPHA_STEP + 1.0;
-    float temporalResolveMix = 1. - 1. / pixelSample;
-    temporalResolveMix = min(temporalResolveMix, blend);
+    float temporalResolveMix = blend;
+
+    if (!constantBlend) {
+        float pixelSample = alpha / ALPHA_STEP + 1.0;
+        temporalResolveMix = min(1. - 1. / pixelSample, blend);
+    }
 
     outputColor = mix(inputColor, accumulatedColor, temporalResolveMix);
 

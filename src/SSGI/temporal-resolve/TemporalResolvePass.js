@@ -19,9 +19,14 @@ const zeroVec2 = new Vector2()
 
 export const defaultTemporalResolvePassOptions = {
 	blend: 0.9,
+	dilation: false,
+	constantBlend: false,
+	catmullRomSampling: true,
 	renderVelocity: true,
 	neighborhoodClamping: false,
 	logTransform: false,
+	depthDistance: 0.1,
+	normalDistance: 10,
 	reprojectReflectionHitPoints: false,
 	customComposeShader: null,
 	renderTarget: null
@@ -61,9 +66,13 @@ export class TemporalResolvePass extends Pass {
 			)
 		}
 
+		if (options.dilation) this.fullscreenMaterial.defines.dilation = ""
 		if (options.neighborhoodClamping) this.fullscreenMaterial.defines.neighborhoodClamping = ""
+		if (options.catmullRomSampling) this.fullscreenMaterial.defines.catmullRomSampling = ""
 		if (options.logTransform) this.fullscreenMaterial.defines.logTransform = ""
 		if (options.reprojectReflectionHitPoints) this.fullscreenMaterial.defines.reprojectReflectionHitPoints = ""
+		this.fullscreenMaterial.defines.depthDistance = options.depthDistance.toPrecision(5)
+		this.fullscreenMaterial.defines.normalDistance = options.normalDistance.toPrecision(5)
 
 		this.fullscreenMaterial.uniforms.projectionMatrix.value = camera.projectionMatrix
 		this.fullscreenMaterial.uniforms.projectionMatrixInverse.value = camera.projectionMatrixInverse
