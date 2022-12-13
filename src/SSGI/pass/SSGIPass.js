@@ -135,7 +135,7 @@ export class SSGIPass extends Pass {
 		this.visibleMeshes = getVisibleChildren(this._scene)
 
 		for (const c of this.visibleMeshes) {
-			c.visible = c.material.visible && c.material.colorWrite && !c.material.transparent
+			c.visible = c.material.visible
 
 			const originalMaterial = c.material
 

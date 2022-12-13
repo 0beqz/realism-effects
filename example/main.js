@@ -2,6 +2,8 @@ import dragDrop from "drag-drop"
 import * as POSTPROCESSING from "postprocessing"
 import Stats from "stats.js"
 import * as THREE from "three"
+import { Color, DoubleSide, NearestFilter } from "three"
+import { MeshNormalMaterial } from "three"
 import { ACESFilmicToneMapping, Box3, DirectionalLight, SpotLight, Vector3 } from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
@@ -162,19 +164,19 @@ const params = {}
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
 pmremGenerator.compileEquirectangularShader()
 
-new RGBELoader().load("quarry_02_4k.hdr", envMap => {
+new RGBELoader().load("monbachtal_riverbank_2k.hdr", envMap => {
 	envMap.mapping = THREE.EquirectangularReflectionMapping
 
 	scene.environment = envMap
-	scene.background = envMap
 
 	envMesh = new GroundProjectedEnv(envMap)
-	console.log(envMesh)
 	envMesh.radius = 440
 	envMesh.height = 20
 	envMesh.scale.setScalar(100)
 	envMesh.updateMatrixWorld()
 	scene.add(envMesh)
+
+	scene.background = new Color(0x4c7fe5)
 })
 
 const gltflLoader = new GLTFLoader()
@@ -228,7 +230,7 @@ const initScene = () => {
 		distance: 3.8100000000000094,
 		thickness: 4.349999999999998,
 		maxRoughness: 1,
-		blend: 0.9500000000000001,
+		blend: 0.975,
 		denoiseIterations: 3,
 		denoiseKernel: 1,
 		lumaPhi: 5.440000000000012,
@@ -300,24 +302,25 @@ const initScene = () => {
 	new POSTPROCESSING.LUTCubeLoader().load("lut.cube").then(lutTexture => {
 		const lutEffect = new POSTPROCESSING.LUT3DEffect(lutTexture)
 
-		const { velocityTexture } = ssgiEffect.ssgiPass
-
-		const { depthTexture, normalTexture } = traaEffect.temporalResolvePass.fullscreenMaterial.uniforms
+		const { depthTexture, normalTexture, velocityTexture } = traaEffect.temporalResolvePass.fullscreenMaterial.uniforms
 
 		const motionBlurEffect = new MotionBlurEffect(velocityTexture, {
 			jitter: 5
 		})
 
-		// ssgiEffect.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.velocityTexture.value = velocityTexture.value
-		// ssgiEffect.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.normalTexture.value = normalTexture.value
-		// ssgiEffect.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.depthTexture.value = depthTexture.value
-		// ssgiEffect.ssgiPass.fullscreenMaterial.uniforms.velocityTexture.value = velocityTexture
+		ssgiEffect.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.velocityTexture.value = velocityTexture.value
+		ssgiEffect.ssgiPass.fullscreenMaterial.uniforms.velocityTexture.value = velocityTexture.value
+		ssgiEffect.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.normalTexture.value = normalTexture.value
+		ssgiEffect.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.depthTexture.value = depthTexture.value
+		traaEffect.temporalResolvePass.velocityPass.renderToScreen = false
+		traaEffect.temporalResolvePass.velocityPass.needsSwap = false
+		composer.addPass(traaEffect.temporalResolvePass.velocityPass)
 
 		composer.addPass(ssgiPass)
-		composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, motionBlurEffect, vignetteEffect))
+		composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, motionBlurEffect, vignetteEffect, lutEffect))
 
 		traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
-		// composer.addPass(traaPass)
+		composer.addPass(traaPass)
 
 		const smaaEffect = new POSTPROCESSING.SMAAEffect()
 
@@ -326,7 +329,7 @@ const initScene = () => {
 		const fxaaEffect = new POSTPROCESSING.FXAAEffect()
 
 		fxaaPass = new POSTPROCESSING.EffectPass(camera, fxaaEffect)
-		composer.addPass(fxaaPass)
+		// composer.addPass(fxaaPass)
 
 		loop()
 
@@ -495,10 +498,92 @@ const setupAsset = asset => {
 	scene.add(asset.scene)
 	asset.scene.scale.setScalar(1)
 
+	const material = new THREE.ShaderMaterial({
+		vertexShader: /* glsl */ `
+		varying vec2 vUv;
+		void main() {
+		   vUv = uv;
+			gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+		}
+		`,
+
+		fragmentShader: /* glsl */ `
+		varying vec2 vUv;
+	  	void main() {
+			
+			float dist = distance(vUv, vec2(0., 1.));
+			dist = mod(dist, 0.05);
+			dist = step(dist, 0.025);
+				
+			vec3 color = vec3(dist);
+
+			gl_FragColor = vec4(color, 1.0);
+	  	}
+		`,
+		side: DoubleSide,
+		toneMapped: false
+	})
+
 	asset.scene.traverse(c => {
 		if (c.isMesh) {
 			c.castShadow = c.receiveShadow = true
 			c.material.depthWrite = true
+
+			if (c.name === "shader") c.material = material
+
+			if (c.name === "Cube") c.material = new MeshNormalMaterial()
+		}
+
+		if (c.name === "subpixel") {
+			const material = new THREE.LineBasicMaterial({
+				color: 0x0000ff
+			})
+
+			for (let i = 0; i < 10; i++) {
+				const points = []
+				points.push(new THREE.Vector3(0, 8 - i * 0.35, 0))
+				points.push(new THREE.Vector3(8, 8 + i * 0.275, 0))
+
+				const geometry = new THREE.BufferGeometry().setFromPoints(points)
+
+				const line = new THREE.Line(geometry, material)
+				scene.add(line)
+
+				line.position.set(6, 6, 0)
+			}
+
+			const points = []
+
+			for (let i = 0; i < 100; i++) {
+				const y = Math.abs(Math.cos(i * Math.PI * 0.1)) * 2
+				points.push(new THREE.Vector3((i / 100) * 8, y, 0))
+			}
+
+			const geometry = new THREE.BufferGeometry().setFromPoints(points)
+
+			const line = new THREE.Line(geometry, material)
+			scene.add(line)
+
+			line.position.set(6, 8, 0)
+
+			// let points = []
+
+			// let geometry = new THREE.BufferGeometry().setFromPoints(points)
+			// let line = new THREE.Line(geometry, material)
+
+			// for (let i = 0; i < 1000; i++) {
+			// 	const y = Math.abs(Math.cos(i * Math.PI * 0.01)) * 2
+			// 	points.push(new THREE.Vector3((i / 1000) * 8, y, 0))
+
+			// 	if (i % 2 === 0) {
+			// 		scene.add(line)
+			// 		geometry = new THREE.BufferGeometry().setFromPoints(points)
+			// 		line = new THREE.Line(geometry, material)
+			// 		line.position.set(6, 8, 0)
+
+			// 		points = []
+			// 	}
+			// }
 		}
 
 		c.frustumCulled = false

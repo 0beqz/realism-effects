@@ -114,6 +114,8 @@ export class VelocityPass extends Pass {
 	}
 
 	render(renderer) {
+		this._camera.clearViewOffset()
+
 		this.setVelocityMaterialInScene()
 
 		const { background } = this._scene
@@ -125,5 +127,8 @@ export class VelocityPass extends Pass {
 		this._scene.background = background
 
 		this.unsetVelocityMaterialInScene()
+
+		if (this._camera.view) this._camera.view.enabled = true
+		this._camera.updateProjectionMatrix()
 	}
 }

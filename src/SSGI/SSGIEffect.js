@@ -80,20 +80,29 @@ export class SSGIEffect extends Effect {
 				vec3 viewDir = normalize(viewPos);
 				vec3 reflected = reflect(viewNormal, viewDir);
 		
-				float fresnelFactor = fresnel_dielectric(viewDir, viewNormal, 2.33);
+				float fresnelFactor = fresnel_dielectric(viewDir, viewNormal, 1.1);
 
-				float ior = mix(2.33, 1.45, metalness);
+				float ior = mix(2.33, 1.75, metalness);
 				float fresnelFactor2 = fresnel_dielectric(viewDir, viewNormal, ior);
+				float f = fresnel_dielectric(viewDir, viewNormal, 1.75);
 		
-				float specularFactor = fresnelFactor * 0.05;
+				float specularFactor = fresnelFactor * 0.025;
 		
-				float l = czm_luminance(diffuse);
-				float diffuseInfluence = 1.0 - specularFactor;
-				if(diffuseInfluence > 1.0) diffuseInfluence = 1.0;
-				diffuse *= (1. + metalness * 0.675);
-				vec3 diffuseColor = diffuse * diffuseInfluence + (1. - diffuseInfluence) * mix(diffuse, vec3(1.0), fresnelFactor2);
-		
-				color *= diffuseColor;
+				float diffuseInfluence = 1.0 - specularFactor - f * (metalness * 0.75 + 0.25) * 0.1 * (1. - roughness);
+
+				specularFactor += 0.375 * metalness * fresnelFactor2;
+
+				float colorLum = czm_luminance(color);
+				float lightLum = max(0., colorLum) * 0.5 + 0.5;
+
+				vec3 spec = vec3((1. - diffuseInfluence) * fresnelFactor2 * lightLum * 2.0);
+				vec3 diffuseColor = diffuse;
+
+				float diffuseLum = czm_luminance(diffuseColor);
+
+				float factor = clamp(0.35 - roughness * 0.25 - f * metalness * (1. - roughness) * 0.25, 0., 1.);
+
+				color *= mix(diffuse * mix(colorLum, 1., 0.5), mix(color, vec3(colorLum), 0.5), factor);
 				color += directLight;
 		
 				sumVariance = 1.;

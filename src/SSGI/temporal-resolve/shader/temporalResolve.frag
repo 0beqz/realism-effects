@@ -64,8 +64,8 @@ vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth, mat4 curMatrixWor
 }
 
 void getNeighborhoodAABB(sampler2D tex, vec2 uv, inout vec3 minNeighborColor, inout vec3 maxNeighborColor) {
-    for (int x = -1; x <= 1; x++) {
-        for (int y = -1; y <= 1; y++) {
+    for (int x = -2; x <= 2; x++) {
+        for (int y = -2; y <= 2; y++) {
             if (x != 0 || y != 0) {
                 vec2 offset = vec2(x, y) * invTexSize;
                 vec2 neighborUv = uv + offset;
@@ -102,11 +102,11 @@ bool validateReprojectedUV(vec2 reprojectedUv, float depth, vec3 worldPos, vec4 
 #endif
 
     vec3 worldNormal = unpackRGBToNormal(worldNormalTexel.xyz);
-    worldNormal = normalize((vec4(worldNormal, 1.) * _viewMatrix).xyz);
+    worldNormal = normalize((_viewMatrix * vec4(worldNormal, 1.)).xyz);
 
     vec4 lastWorldNormalTexel = textureLod(lastNormalTexture, reprojectedUv, 0.);
     vec3 lastWorldNormal = unpackRGBToNormal(lastWorldNormalTexel.xyz);
-    lastWorldNormal = normalize((vec4(lastWorldNormal, 1.) * _viewMatrix).xyz);
+    lastWorldNormal = normalize((_viewMatrix * vec4(lastWorldNormal, 1.)).xyz);
 
     if (!(all(greaterThanEqual(reprojectedUv, vec2(0.))) && all(lessThanEqual(reprojectedUv, vec2(1.))))) return false;
     if (normalsDisocclusionCheck(worldNormal, lastWorldNormal)) return false;
@@ -118,7 +118,7 @@ bool validateReprojectedUV(vec2 reprojectedUv, float depth, vec3 worldPos, vec4 
     if (planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal)) return false;
 
     float depthDiff = abs(depth - lastDepth);
-    if (depthDiff > 0.0001) return false;
+    if (depthDiff > 0.00005) return false;
     return true;
 }
 
@@ -190,6 +190,7 @@ vec4 SampleTextureCatmullRom(sampler2D tex, in vec2 uv, in vec2 texSize) {
     vec4 center = textureLod(tex, uv, 0.);
     float pixelSample = center.a / ALPHA_STEP + 1.0;
 
+    // Catmull Rom Sampling will result in very glitchy sampling when the center texel is noisy over frame so use the center texel in that case
     if (pixelSample < 100.) {
         return center;
     }
@@ -272,13 +273,13 @@ void main() {
     if (isBackground) {
         accumulatedColor = inputColor;
     } else {
-        vec3 worldPos = screenSpaceToWorldSpace(vUv, depth, cameraMatrixWorld);
+        vec3 worldPos = screenSpaceToWorldSpace(uv, depth, cameraMatrixWorld);
 
-        vec4 worldNormalTexel = textureLod(normalTexture, vUv, 0.);
+        vec4 worldNormalTexel = textureLod(normalTexture, uv, 0.);
 
 #ifdef reprojectReflectionHitPoints
         float rayLength;
-        if ((rayLength = textureLod(inputTexture, vUv, 0.).a) != 0.0) {
+        if ((rayLength = textureLod(inputTexture, uv, 0.).a) != 0.0) {
             reprojectedUv = reprojectHitPoint(worldPos, rayLength, uv, depth);
         } else {
             reprojectedUv = reprojectVelocity(uv);
@@ -305,7 +306,7 @@ void main() {
 #ifdef neighborhoodClamping
             vec3 minNeighborColor = inputColor;
             vec3 maxNeighborColor = inputColor;
-            getNeighborhoodAABB(inputTexture, vUv, minNeighborColor, maxNeighborColor);
+            getNeighborhoodAABB(inputTexture, uv, minNeighborColor, maxNeighborColor);
 
             accumulatedColor = clamp(accumulatedColor, minNeighborColor, maxNeighborColor);
 

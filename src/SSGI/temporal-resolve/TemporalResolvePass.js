@@ -74,6 +74,9 @@ export class TemporalResolvePass extends Pass {
 		this.fullscreenMaterial.defines.depthDistance = options.depthDistance.toPrecision(5)
 		this.fullscreenMaterial.defines.normalDistance = options.normalDistance.toPrecision(5)
 
+		this.fullscreenMaterial.uniforms.blend.value = options.blend
+		this.fullscreenMaterial.uniforms.constantBlend.value = options.constantBlend
+
 		this.fullscreenMaterial.uniforms.projectionMatrix.value = camera.projectionMatrix
 		this.fullscreenMaterial.uniforms.projectionMatrixInverse.value = camera.projectionMatrixInverse
 		this.fullscreenMaterial.uniforms.cameraMatrixWorld.value = camera.matrixWorld
@@ -86,13 +89,15 @@ export class TemporalResolvePass extends Pass {
 		this.fullscreenMaterial.uniforms.lastDepthTexture.value = this.copyPass.renderTarget.texture[0]
 		this.fullscreenMaterial.uniforms.lastNormalTexture.value = this.copyPass.renderTarget.texture[1]
 
-		if (options.renderVelocity) {
-			this.velocityPass = new VelocityPass(scene, camera, { renderDepth: true })
+		// if (options.renderVelocity) {
+		this.velocityPass = new VelocityPass(scene, camera, { renderDepth: true })
 
-			this.fullscreenMaterial.uniforms.velocityTexture.value = this.velocityPass.texture
-			this.fullscreenMaterial.uniforms.depthTexture.value = this.velocityPass.depthTexture
-			this.fullscreenMaterial.uniforms.normalTexture.value = this.velocityPass.normalTexture
-		}
+		this.fullscreenMaterial.uniforms.velocityTexture.value = this.velocityPass.texture
+		this.fullscreenMaterial.uniforms.depthTexture.value = this.velocityPass.depthTexture
+		this.fullscreenMaterial.uniforms.normalTexture.value = this.velocityPass.normalTexture
+		// }
+
+		this.renderVelocity = options.renderVelocity
 
 		this.setupFramebuffers(1, 1)
 	}
@@ -135,7 +140,7 @@ export class TemporalResolvePass extends Pass {
 	}
 
 	render(renderer) {
-		this.velocityPass?.render(renderer)
+		if (this.renderVelocity) this.velocityPass.render(renderer)
 
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)

@@ -9,11 +9,12 @@ const finalFragmentShader = compose.replace("#include <utils>", utils)
 
 export const defaultTRAAOptions = {
 	blend: 0.9,
+	constantBlend: true,
 	dilation: true,
 	catmullRomSampling: true,
-	constantBlend: true,
 	logTransform: true,
-	neighborhoodClamping: true
+	neighborhoodClamping: true,
+	renderVelocity: false
 }
 
 export class TRAAEffect extends Effect {
@@ -22,7 +23,7 @@ export class TRAAEffect extends Effect {
 	constructor(scene, camera, options = defaultTRAAOptions) {
 		super("TRAAEffect", finalFragmentShader, {
 			type: "FinalTRAAEffectMaterial",
-			uniforms: new Map([["accumulatedTexture", new Uniform(null)]])
+			uniforms: new Map([["inputTexture", new Uniform(null)]])
 		})
 
 		this._scene = scene
@@ -34,51 +35,9 @@ export class TRAAEffect extends Effect {
 
 		this.temporalResolvePass = new TemporalResolvePass(scene, camera, options)
 
-		this.uniforms.get("accumulatedTexture").value = this.temporalResolvePass.texture
+		this.uniforms.get("inputTexture").value = this.temporalResolvePass.texture
 
 		this.setSize(options.width, options.height)
-
-		this.makeOptionsReactive(options)
-	}
-
-	makeOptionsReactive(options) {
-		let needsUpdate = false
-
-		for (const key of Object.keys(options)) {
-			Object.defineProperty(this, key, {
-				get() {
-					return options[key]
-				},
-				set(value) {
-					if (options[key] === value && needsUpdate) return
-
-					options[key] = value
-
-					switch (key) {
-						case "blend":
-						case "correction":
-							this.temporalResolvePass.fullscreenMaterial.uniforms[key].value = value
-							break
-
-						case "logTransform":
-						case "neighborhoodClamping":
-							if (value) {
-								this.temporalResolvePass.fullscreenMaterial.defines[key] = ""
-							} else {
-								delete this.temporalResolvePass.fullscreenMaterial.defines[key]
-							}
-
-							this.temporalResolvePass.fullscreenMaterial.needsUpdate = true
-							break
-					}
-				}
-			})
-
-			// apply all uniforms and defines
-			this[key] = options[key]
-		}
-
-		needsUpdate = true
 	}
 
 	setSize(width, height) {
@@ -103,44 +62,47 @@ export class TRAAEffect extends Effect {
 	update(renderer, inputBuffer) {
 		// TODO: FIX RIGGED MESHES ISSUE
 
-		this.temporalResolvePass.jitter()
-		this.jitteredProjectionMatrix = this._camera.projectionMatrix.clone()
 		this.temporalResolvePass.unjitter()
+		this.jitteredProjectionMatrix = this._camera.projectionMatrix.clone()
 
-		const visibleMeshes = getVisibleChildren(this._scene)
-		for (const mesh of visibleMeshes) {
-			if (mesh.constructor.name === "GroundProjectedEnv") continue
+		// this._camera.projectionMatrix.copy(this.jitteredProjectionMatrix)
 
-			const uniforms = Array.from(renderer.properties.get(mesh.material).programs.values())[0].getUniforms()
+		// const visibleMeshes = getVisibleChildren(this._scene)
+		// for (const mesh of visibleMeshes) {
+		// 	if (mesh.constructor.name === "GroundProjectedEnv") continue
 
-			if (!uniforms._patchedProjectionMatrix) {
-				const oldSetValue = uniforms.setValue.bind(uniforms)
-				uniforms._oldSetValue = oldSetValue
-				uniforms.setValue = (gl, name, value, ...args) => {
-					if (name === "projectionMatrix") {
-						value = this.jitteredProjectionMatrix
-					}
+		// 	const uniforms = Array.from(renderer.properties.get(mesh.material).programs.values())[0].getUniforms()
 
-					oldSetValue(gl, name, value, ...args)
-				}
+		// 	if (!uniforms._patchedProjectionMatrix) {
+		// 		const oldSetValue = uniforms.setValue.bind(uniforms)
+		// 		uniforms._oldSetValue = oldSetValue
+		// 		uniforms.setValue = (gl, name, value, ...args) => {
+		// 			if (name === "projectionMatrix") {
+		// 				value = this.jitteredProjectionMatrix
+		// 			}
 
-				uniforms._patchedProjectionMatrix = true
-			}
+		// 			oldSetValue(gl, name, value, ...args)
+		// 		}
 
-			cancelAnimationFrame(uniforms._destroyPatchRAF)
-			cancelAnimationFrame(uniforms._destroyPatchRAF2)
+		// 		uniforms._patchedProjectionMatrix = true
+		// 	}
 
-			uniforms._destroyPatchRAF = requestAnimationFrame(() => {
-				uniforms._destroyPatchRAF2 = requestAnimationFrame(() => {
-					uniforms.setValue = uniforms._oldSetValue
-					delete uniforms._oldSetValue
-					delete uniforms._patchedProjectionMatrix
-				})
-			})
-		}
+		// 	cancelAnimationFrame(uniforms._destroyPatchRAF)
+		// 	cancelAnimationFrame(uniforms._destroyPatchRAF2)
+
+		// 	uniforms._destroyPatchRAF = requestAnimationFrame(() => {
+		// 		uniforms._destroyPatchRAF2 = requestAnimationFrame(() => {
+		// 			uniforms.setValue = uniforms._oldSetValue
+		// 			delete uniforms._oldSetValue
+		// 			delete uniforms._patchedProjectionMatrix
+		// 		})
+		// 	})
+		// }
 
 		this.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = inputBuffer.texture
 
 		this.temporalResolvePass.render(renderer)
+
+		this.temporalResolvePass.jitter()
 	}
 }
