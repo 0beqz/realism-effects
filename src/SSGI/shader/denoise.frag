@@ -10,11 +10,13 @@ uniform float lumaPhi;
 uniform float depthPhi;
 uniform float normalPhi;
 uniform float roughnessPhi;
+uniform float curvaturePhi;
 uniform float denoiseKernel;
 uniform float stepSize;
 uniform mat4 _viewMatrix;
 uniform mat4 _projectionMatrixInverse;
 uniform mat4 projectionMatrix;
+uniform mat4 cameraMatrixWorld;
 uniform bool isLastIteration;
 
 #include <packing>
@@ -27,6 +29,38 @@ float czm_luminance(vec3 rgb) {
     // Algorithm from Chapter 10 of Graphics Shaders.
     const vec3 W = vec3(0.2125, 0.7154, 0.0721);
     return dot(rgb, W);
+}
+
+float getCurvature(vec3 normal) {
+    vec3 dx = dFdx(normal);
+    vec3 dy = dFdy(normal);
+
+    float x = dot(dx, dx);
+    float y = dot(dy, dy);
+
+    float curvature = sqrt(max(x, y));
+
+    return curvature;
+}
+
+vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth, mat4 curMatrixWorld) {
+    vec4 ndc = vec4(
+        (uv.x - 0.5) * 2.0,
+        (uv.y - 0.5) * 2.0,
+        (depth - 0.5) * 2.0,
+        1.0);
+
+    vec4 clip = inverse(projectionMatrix) * ndc;
+    vec4 view = curMatrixWorld * (clip / clip.w);
+
+    return view.xyz;
+}
+
+float distToPlane(vec3 worldPos, vec3 neighborWorldPos, vec3 worldNormal) {
+    vec3 toCurrent = worldPos - neighborWorldPos;
+    float distToPlane = abs(dot(toCurrent, worldNormal));
+
+    return distToPlane;
 }
 
 void main() {
@@ -43,6 +77,7 @@ void main() {
     vec4 normalTexel = textureLod(normalTexture, vUv, 0.);
     vec3 viewNormal = unpackRGBToNormal(normalTexel.rgb);
     vec3 normal = normalize((vec4(viewNormal, 1.0) * _viewMatrix).xyz);
+    float curvature = getCurvature(normal);
 
     float totalWeight = 1.;
     vec3 color = inputTexel.rgb;
@@ -51,10 +86,14 @@ void main() {
     float luma = czm_luminance(inputTexel.rgb);
     vec2 pixelStepOffset = invTexSize * stepSize;
 
+    vec3 worldPos = screenSpaceToWorldSpace(vUv, depth, cameraMatrixWorld);
+
     float roughness = normalTexel.a;
 
     float kernel = denoiseKernel;
     float sumVariance;
+
+    float colorPhi = lumaPhi;
 
 #ifdef USE_MOMENT
     if (horizontal && stepSize == 1.) {
@@ -65,9 +104,7 @@ void main() {
         sumVariance = inputTexel.a;
     }
 
-    float colorPhi = lumaPhi * sqrt(FLOAT_EPSILON + sumVariance);
-#else
-    float colorPhi = lumaPhi;
+    colorPhi = lumaPhi * sqrt(FLOAT_EPSILON + sumVariance);
 #endif
 
     for (float i = -kernel; i <= kernel; i++) {
@@ -76,11 +113,11 @@ void main() {
             vec2 neighborUv = vUv + neighborVec * pixelStepOffset;
 
             vec4 neighborDepthTexel = textureLod(depthTexture, neighborUv, 0.);
-
             float neighborDepth = unpackRGBAToDepth(neighborDepthTexel);
 
-            float depthDiff = abs(depth - neighborDepth) * 50000.;
-            float depthSimilarity = 1.0 - min(1.0, depthDiff * depthPhi);
+            vec3 neighborWorldPos = screenSpaceToWorldSpace(neighborUv, neighborDepth, cameraMatrixWorld);
+
+            float depthSimilarity = (1. - distToPlane(worldPos, neighborWorldPos, normal)) / depthPhi;
 
             if (depthSimilarity > 0.) {
                 vec4 neighborNormalTexel = textureLod(normalTexture, neighborUv, 0.);
@@ -94,13 +131,13 @@ void main() {
                     vec4 neighborInputTexel = textureLod(inputTexture, neighborUv, 0.);
                     vec3 neighborColor = neighborInputTexel.rgb;
                     float neighborLuma = czm_luminance(neighborColor);
+                    float neighborCurvature = getCurvature(neighborNormal);
 
-                    float lumaDiff = abs(luma - neighborLuma);
-                    float lumaSimilarity = max(1.0 - lumaDiff / colorPhi, 0.0);
-                    float roughnessDiff = abs(roughness - neighborRoughness);
-                    float roughnessSimilarity = exp(-roughnessDiff * roughnessPhi);
+                    float lumaSimilarity = max(1.0 - abs(luma - neighborLuma) / colorPhi, 0.0);
+                    float roughnessSimilarity = exp(-abs(roughness - neighborRoughness) * roughnessPhi);
+                    float curvatureSimilarity = exp(-abs(curvature - neighborCurvature) * curvaturePhi);
 
-                    float weight = normalSimilarity * lumaSimilarity * depthSimilarity * roughnessSimilarity;
+                    float weight = normalSimilarity * lumaSimilarity * depthSimilarity * roughnessSimilarity * curvatureSimilarity;
 
                     if (weight > 0.) {
                         color += neighborColor * weight;

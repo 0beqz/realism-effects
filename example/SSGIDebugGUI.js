@@ -41,8 +41,8 @@ export class SSGIDebugGUI {
 		})
 		denoiseKernelFolder.addInput(params, "depthPhi", {
 			min: 0,
-			max: 20,
-			step: 0.1
+			max: 10,
+			step: 0.01
 		})
 		denoiseKernelFolder.addInput(params, "normalPhi", {
 			min: 0,
@@ -50,6 +50,11 @@ export class SSGIDebugGUI {
 			step: 0.01
 		})
 		denoiseKernelFolder.addInput(params, "roughnessPhi", {
+			min: 0,
+			max: 50,
+			step: 0.01
+		})
+		denoiseKernelFolder.addInput(params, "curvaturePhi", {
 			min: 0,
 			max: 50,
 			step: 0.01

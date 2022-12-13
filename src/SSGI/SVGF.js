@@ -16,7 +16,6 @@ export class SVGF {
 		this.svgfTemporalResolvePass = new SVGFTemporalResolvePass(scene, camera, options)
 
 		this.denoisePass = new DenoisePass(camera, null, options)
-		this.denoisePass.fullscreenMaterial.uniforms.inputTexture.value = this.svgfTemporalResolvePass.texture
 
 		if (options.moments) {
 			this.denoisePass.fullscreenMaterial.uniforms.momentsTexture.value = this.svgfTemporalResolvePass.momentsTexture
@@ -59,6 +58,8 @@ export class SVGF {
 		this.denoisePass.setSize(width, height)
 
 		this.svgfTemporalResolvePass.setSize(width, height)
+
+		this.denoisePass.fullscreenMaterial.uniforms.inputTexture.value = this.svgfTemporalResolvePass.accumulatedTexture
 	}
 
 	dispose() {

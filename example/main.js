@@ -226,25 +226,24 @@ const refreshLighting = () => {
 const initScene = () => {
 	const options = {
 		intensity: 1,
-		power: 0.9999999999999999,
-		distance: 3.8100000000000094,
-		thickness: 4.349999999999998,
+		distance: 2.7200000000000095,
+		thickness: 1.7399999999999978,
 		maxRoughness: 1,
-		blend: 0.975,
+		blend: 0.9749999999999999,
 		denoiseIterations: 3,
-		denoiseKernel: 1,
-		lumaPhi: 5.440000000000012,
-		depthPhi: 12.200000000000001,
-		normalPhi: 69.57000000000002,
-		roughnessPhi: 50,
+		denoiseKernel: 3,
+		lumaPhi: 34.240000000000016,
+		depthPhi: 3.480000000000001,
+		normalPhi: 45.65000000000002,
+		roughnessPhi: 19.569999999999997,
+		curvaturePhi: 5.43,
 		jitter: 3.469446951953614e-18,
 		jitterRoughness: 1,
 		steps: 20,
 		refineSteps: 4,
 		spp: 1,
 		resolutionScale: 1,
-		missedRays: false,
-		antialias: false
+		missedRays: false
 	}
 
 	traaEffect = new TRAAEffect(scene, camera, params)

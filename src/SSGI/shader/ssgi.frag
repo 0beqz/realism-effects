@@ -230,7 +230,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
 
     float ssgiLum = czm_luminance(SSGI);
 
-    if (ssgiLum > 10.0) SSGI *= 10.0 / ssgiLum;
+    if (ssgiLum > 1.0) SSGI *= 1.0 / ssgiLum;
 
     if (isAllowedMissedRay) {
         float envLum = czm_luminance(envMapSample);

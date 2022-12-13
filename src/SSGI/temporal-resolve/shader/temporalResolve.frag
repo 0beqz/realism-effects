@@ -97,6 +97,8 @@ bool normalsDisocclusionCheck(vec3 currentNormal, vec3 lastNormal) {
 }
 
 bool validateReprojectedUV(vec2 reprojectedUv, float depth, vec3 worldPos, vec4 worldNormalTexel) {
+    if (!(all(greaterThanEqual(reprojectedUv, vec2(0.))) && all(lessThanEqual(reprojectedUv, vec2(1.))))) return false;
+
 #ifdef neighborhoodClamping
     return true;
 #endif
@@ -108,7 +110,6 @@ bool validateReprojectedUV(vec2 reprojectedUv, float depth, vec3 worldPos, vec4 
     vec3 lastWorldNormal = unpackRGBToNormal(lastWorldNormalTexel.xyz);
     lastWorldNormal = normalize((_viewMatrix * vec4(lastWorldNormal, 1.)).xyz);
 
-    if (!(all(greaterThanEqual(reprojectedUv, vec2(0.))) && all(lessThanEqual(reprojectedUv, vec2(1.))))) return false;
     if (normalsDisocclusionCheck(worldNormal, lastWorldNormal)) return false;
 
     // the reprojected UV coordinates are inside the view
@@ -117,14 +118,16 @@ bool validateReprojectedUV(vec2 reprojectedUv, float depth, vec3 worldPos, vec4 
 
     if (planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal)) return false;
 
-    float depthDiff = abs(depth - lastDepth);
-    if (depthDiff > 0.00005) return false;
+    // float depthDiff = abs(depth - lastDepth);
+    // if (depthDiff > 0.00005) return false;
     return true;
 }
 
-vec2 reprojectVelocity(vec2 sampleUv) {
+vec2 reprojectVelocity(vec2 sampleUv, out bool didMove) {
     vec4 velocity = textureLod(velocityTexture, sampleUv, 0.0);
     velocity.xy = unpackRGBATo2Half(velocity) * 2. - 1.;
+
+    didMove = dot(velocity.xy, velocity.xy) > 0.000000001;
 
     if (all(lessThan(abs(velocity.xy), invTexSize * 0.25))) {
         velocity.xy = vec2(0.);
@@ -244,6 +247,11 @@ vec4 SampleTextureCatmullRom(sampler2D tex, in vec2 uv, in vec2 texSize) {
 
 void main() {
     vec4 inputTexel = textureLod(inputTexture, vUv, 0.0);
+    vec3 inputColor = inputTexel.rgb;
+
+#ifdef logTransform
+    inputColor = transformColor(inputColor);
+#endif
 
 #ifdef dilation
     vec4 depthTexel;
@@ -256,36 +264,30 @@ void main() {
 #endif
 
     bool isBackground = dot(depthTexel.rgb, depthTexel.rgb) == 0.0;
+    bool didMove;
     bool isReprojectedUvValid;
     vec2 reprojectedUv;
-
-    vec3 inputColor = inputTexel.rgb;
-
-#ifdef logTransform
-    inputColor = transformColor(inputColor);
-#endif
 
     float alpha = 1.0;
 
     vec4 accumulatedTexel;
     vec3 accumulatedColor;
+    vec4 worldNormalTexel = textureLod(normalTexture, uv, 0.);
 
     if (isBackground) {
         accumulatedColor = inputColor;
     } else {
         vec3 worldPos = screenSpaceToWorldSpace(uv, depth, cameraMatrixWorld);
 
-        vec4 worldNormalTexel = textureLod(normalTexture, uv, 0.);
-
 #ifdef reprojectReflectionHitPoints
         float rayLength;
         if ((rayLength = textureLod(inputTexture, uv, 0.).a) != 0.0) {
             reprojectedUv = reprojectHitPoint(worldPos, rayLength, uv, depth);
         } else {
-            reprojectedUv = reprojectVelocity(uv);
+            reprojectedUv = reprojectVelocity(uv, didMove);
         }
 #else
-        reprojectedUv = reprojectVelocity(uv);
+        reprojectedUv = reprojectVelocity(uv, didMove);
 #endif
 
         isReprojectedUvValid = validateReprojectedUV(reprojectedUv, depth, worldPos, worldNormalTexel);
@@ -297,9 +299,8 @@ void main() {
             accumulatedTexel = textureLod(accumulatedTexture, reprojectedUv, 0.0);
 #endif
 
-            alpha = accumulatedTexel.a;
-            alpha = min(alpha, blend);
             accumulatedColor = transformColor(accumulatedTexel.rgb);
+            alpha = accumulatedTexel.a;
 
             alpha += ALPHA_STEP;
 
@@ -321,18 +322,30 @@ void main() {
 
     vec3 outputColor = inputColor;
 
-    float temporalResolveMix = blend;
+    float temporalResolveMix;
 
-    if (!constantBlend) {
+    if (constantBlend) {
+        temporalResolveMix = blend;
+    } else {
         float pixelSample = alpha / ALPHA_STEP + 1.0;
-        temporalResolveMix = min(1. - 1. / pixelSample, blend);
+        float maxValue = didMove ? blend : 1.0;
+
+        temporalResolveMix = 1. - 1. / pixelSample;
+        temporalResolveMix = min(temporalResolveMix, blend);
     }
 
     outputColor = mix(inputColor, accumulatedColor, temporalResolveMix);
+    if (didMove && alpha > blend) alpha = blend;
 
 // the user's shader to compose a final outputColor from the inputTexel and accumulatedTexel
 #ifdef useCustomComposeShader
     customComposeShader
+
+    // gOutput.xyz = didMove ? vec3(0., 1., 0.) : vec3(0., 0., 0.);
+
+    // float variance = max(0.0, gMoment.g - gMoment.r * gMoment.r);
+    // variance = abs(variance);
+    // gOutput.xyz = vec3(variance);
 #else
     gl_FragColor = vec4(undoColorTransform(outputColor), alpha);
 #endif

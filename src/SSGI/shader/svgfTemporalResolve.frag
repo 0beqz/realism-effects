@@ -1,23 +1,30 @@
 ﻿gOutput = vec4(undoColorTransform(outputColor), alpha);
 
 if (isReprojectedUvValid) {
-    vec3 rawColor = textureLod(inputTexture, vUv, 0.).rgb;
-
     const vec3 W = vec3(0.2125, 0.7154, 0.0721);
-
-    vec2 moments = vec2(0.);
-    moments.r = dot(rawColor, W);
-    moments.g = moments.r * moments.r;
 
     vec4 historyMoments = textureLod(lastMomentsTexture, reprojectedUv, 0.);
 
-    float momentsAlpha = 0.;
-    if (alpha > FLOAT_EPSILON) {
-        momentsAlpha = historyMoments.a + ALPHA_STEP;
-    }
+    vec2 moments = vec2(0.);
+    moments.r = dot(inputTexel.rgb, W);
+    moments.g = moments.r * moments.r;
 
-    float momentAlpha = 0.8;
-    gMoment = vec4(mix(moments, historyMoments.rg, momentAlpha), 0., momentsAlpha);
+    if (temporalResolveMix > 0.99) temporalResolveMix = 0.99;
+
+    moments = mix(moments, historyMoments.rg, temporalResolveMix);
+
+    vec3 worldNormal = unpackRGBToNormal(worldNormalTexel.xyz);
+
+    vec3 dx = dFdx(worldNormal);
+    vec3 dy = dFdy(worldNormal);
+
+    float x = dot(dx, dx);
+    float y = dot(dy, dy);
+
+    float curvature = sqrt(max(x, y));
+
+    gMoment = vec4(moments, curvature, 0.0);
 } else {
+    // boost new samples
     gMoment = vec4(0., 10.0e4, 0., 0.);
 }
