@@ -1,7 +1,6 @@
 ﻿/**
  * Options of the SSGI effect
  * @typedef {Object} SSGIOptions
- * @property {Number} [intensity] intensity of the ssgi
  * @property {Number} [distance] maximum distance a ssgi ray can travel to find what it reflects
  * @property {Number} [thickness] maximum depth difference between a ray and the particular depth at its screen position before refining with binary search; higher values will result in better performance
  * @property {Number} [maxRoughness] maximum roughness a texel can have to have ssgi calculated for it
@@ -27,7 +26,6 @@
  * @type {SSGIOptions}
  */
 export const defaultSSGIOptions = {
-	intensity: 1,
 	distance: 10,
 	thickness: 10,
 	maxRoughness: 1,

@@ -18,7 +18,6 @@ export class SSGIDebugGUI {
 		params = { ...defaultSSGIOptions, ...params }
 
 		const generalFolder = pane.addFolder({ title: "General" })
-		generalFolder.addInput(params, "intensity", { min: 0, max: 3, step: 0.01 })
 		generalFolder.addInput(params, "distance", { min: 0.001, max: 50, step: 0.01 })
 		generalFolder.addInput(params, "thickness", {
 			min: 0,

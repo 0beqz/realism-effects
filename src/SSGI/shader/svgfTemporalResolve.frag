@@ -9,21 +9,11 @@ if (isReprojectedUvValid) {
     moments.r = dot(inputTexel.rgb, W);
     moments.g = moments.r * moments.r;
 
-    if (temporalResolveMix > 0.99) temporalResolveMix = 0.99;
+    temporalResolveMix = clamp(temporalResolveMix, 0.8, 0.99);
 
     moments = mix(moments, historyMoments.rg, temporalResolveMix);
 
-    vec3 worldNormal = unpackRGBToNormal(worldNormalTexel.xyz);
-
-    vec3 dx = dFdx(worldNormal);
-    vec3 dy = dFdy(worldNormal);
-
-    float x = dot(dx, dx);
-    float y = dot(dy, dy);
-
-    float curvature = sqrt(max(x, y));
-
-    gMoment = vec4(moments, curvature, 0.0);
+    gMoment = vec4(moments, 0.0, 0.0);
 } else {
     // boost new samples
     gMoment = vec4(0., 10.0e4, 0., 0.);

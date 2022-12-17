@@ -22,10 +22,7 @@ export class SSGIEffect extends Effect {
 
 		super("SSGIEffect", finalFragmentShader, {
 			type: "FinalSSGIMaterial",
-			uniforms: new Map([
-				["inputTexture", new Uniform(null)],
-				["intensity", new Uniform(1)]
-			])
+			uniforms: new Map([["inputTexture", new Uniform(null)]])
 		})
 
 		this._scene = scene
@@ -78,31 +75,17 @@ export class SSGIEffect extends Effect {
 		
 				vec3 viewPos = getViewPosition(depth);
 				vec3 viewDir = normalize(viewPos);
-				vec3 reflected = reflect(viewNormal, viewDir);
-		
-				float fresnelFactor = fresnel_dielectric(viewDir, viewNormal, 1.1);
 
-				float ior = mix(2.33, 1.75, metalness);
-				float fresnelFactor2 = fresnel_dielectric(viewDir, viewNormal, ior);
 				float f = fresnel_dielectric(viewDir, viewNormal, 1.75);
 		
-				float specularFactor = fresnelFactor * 0.025;
-		
-				float diffuseInfluence = 1.0 - specularFactor - f * (metalness * 0.75 + 0.25) * 0.1 * (1. - roughness);
-
-				specularFactor += 0.375 * metalness * fresnelFactor2;
-
 				float colorLum = czm_luminance(color);
-				float lightLum = max(0., colorLum) * 0.5 + 0.5;
+				float diffuseLum = czm_luminance(diffuse);
 
-				vec3 spec = vec3((1. - diffuseInfluence) * fresnelFactor2 * lightLum * 2.0);
-				vec3 diffuseColor = diffuse;
+				float factor = clamp(0.2 + diffuseLum * 0.1 - f * metalness * (1. - roughness) * 0.25, 0., 1.);
 
-				float diffuseLum = czm_luminance(diffuseColor);
+				float s = rgb2hsv(diffuse).y;
 
-				float factor = clamp(0.35 - roughness * 0.25 - f * metalness * (1. - roughness) * 0.25, 0., 1.);
-
-				color *= mix(diffuse * mix(colorLum, 1., 0.5), mix(color, vec3(colorLum), 0.5), factor);
+				color *= mix(diffuse * mix(colorLum, 1., 0.5 + s * s * 0.175), mix(color, vec3(colorLum), 1.), factor);
 				color += directLight;
 		
 				sumVariance = 1.;
@@ -132,6 +115,18 @@ export class SSGIEffect extends Effect {
 				}
 
 				return result;
+			}
+
+			// source: http://lolengine.net/blog/2013/07/27/rgb-to-hsv-in-glsl
+			vec3 rgb2hsv(vec3 c)
+			{
+				vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+				vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+				vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+
+				float d = q.x - min(q.w, q.y);
+				float e = 1.0e-10;
+				return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
 			}
 
 			// source: https://github.com/blender/blender/blob/594f47ecd2d5367ca936cf6fc6ec8168c2b360d0/source/blender/gpu/shaders/material/gpu_shader_material_fresnel.glsl
@@ -199,10 +194,6 @@ export class SSGIEffect extends Effect {
 					switch (key) {
 						case "resolutionScale":
 							this.setSize(this.lastSize.width, this.lastSize.height)
-							break
-
-						case "intensity":
-							this.uniforms.get(key).value = value
 							break
 
 						case "denoiseIterations":

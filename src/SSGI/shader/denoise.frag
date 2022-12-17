@@ -63,14 +63,66 @@ float distToPlane(vec3 worldPos, vec3 neighborWorldPos, vec3 worldNormal) {
     return distToPlane;
 }
 
+void tap(vec2 neighborVec, vec2 pixelStepOffset, float depth, vec3 normal, float curvature, float roughness, vec3 worldPos, float luma, float colorPhi,
+         inout vec3 color, inout float totalWeight, inout float sumVariance) {
+    vec2 neighborUv = vUv + neighborVec * pixelStepOffset;
+
+    vec4 neighborDepthTexel = textureLod(depthTexture, neighborUv, 0.);
+    float neighborDepth = unpackRGBAToDepth(neighborDepthTexel);
+
+    vec3 neighborWorldPos = screenSpaceToWorldSpace(neighborUv, neighborDepth, cameraMatrixWorld);
+
+    float depthSimilarity = (1. - distToPlane(worldPos, neighborWorldPos, normal)) / depthPhi;
+
+    if (depthSimilarity > 0.) {
+        vec4 neighborNormalTexel = textureLod(normalTexture, neighborUv, 0.);
+        vec3 neighborNormal = unpackRGBToNormal(neighborNormalTexel.rgb);
+        neighborNormal = normalize((vec4(neighborNormal, 1.0) * _viewMatrix).xyz);
+        float neighborRoughness = neighborNormalTexel.a;
+
+        float normalSimilarity = pow(max(0., dot(neighborNormal, normal)), normalPhi);
+
+        if (normalSimilarity > 0.) {
+            vec4 neighborInputTexel = textureLod(inputTexture, neighborUv, 0.);
+            vec3 neighborColor = neighborInputTexel.rgb;
+            float neighborLuma = czm_luminance(neighborColor);
+            float neighborCurvature = getCurvature(neighborNormal);
+
+            float lumaSimilarity = max(1.0 - abs(luma - neighborLuma) / colorPhi, 0.0);
+            float roughnessSimilarity = exp(-abs(roughness - neighborRoughness) * roughnessPhi);
+            float curvatureSimilarity = exp(-abs(curvature - neighborCurvature) * curvaturePhi);
+
+            float weight = normalSimilarity * lumaSimilarity * depthSimilarity * roughnessSimilarity * curvatureSimilarity;
+
+            if (weight > 0.) {
+                color += neighborColor * weight;
+
+                totalWeight += weight;
+
+#ifdef USE_MOMENT
+                float neighborVariance;
+                if (stepSize > 1.) {
+                    neighborVariance = neighborInputTexel.a;
+                } else {
+                    vec2 neighborMoment = textureLod(momentsTexture, neighborUv, 0.).rg;
+
+                    neighborVariance = max(0.0, neighborMoment.g - neighborMoment.r * neighborMoment.r);
+                }
+
+                sumVariance += weight * weight * neighborVariance;
+#endif
+            }
+        }
+    }
+}
+
 void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.);
     vec4 inputTexel = textureLod(inputTexture, vUv, 0.);
 
     // skip background
     if (dot(depthTexel.rgb, depthTexel.rgb) == 0.) {
-        gl_FragColor = inputTexel;
-        gl_FragColor.a = 0.;
+        gl_FragColor = vec4(inputTexel.rgb, 0.);
         return;
     }
 
@@ -107,58 +159,19 @@ void main() {
     colorPhi = lumaPhi * sqrt(FLOAT_EPSILON + sumVariance);
 #endif
 
+    // horizontal / vertical
     for (float i = -kernel; i <= kernel; i++) {
         if (i != 0.) {
             vec2 neighborVec = horizontal ? vec2(i, 0.) : vec2(0., i);
-            vec2 neighborUv = vUv + neighborVec * pixelStepOffset;
+            tap(neighborVec, pixelStepOffset, depth, normal, curvature, roughness, worldPos, luma, colorPhi, color, totalWeight, sumVariance);
+        }
+    }
 
-            vec4 neighborDepthTexel = textureLod(depthTexture, neighborUv, 0.);
-            float neighborDepth = unpackRGBAToDepth(neighborDepthTexel);
-
-            vec3 neighborWorldPos = screenSpaceToWorldSpace(neighborUv, neighborDepth, cameraMatrixWorld);
-
-            float depthSimilarity = (1. - distToPlane(worldPos, neighborWorldPos, normal)) / depthPhi;
-
-            if (depthSimilarity > 0.) {
-                vec4 neighborNormalTexel = textureLod(normalTexture, neighborUv, 0.);
-                vec3 neighborNormal = unpackRGBToNormal(neighborNormalTexel.rgb);
-                neighborNormal = normalize((vec4(neighborNormal, 1.0) * _viewMatrix).xyz);
-                float neighborRoughness = neighborNormalTexel.a;
-
-                float normalSimilarity = pow(max(0., dot(neighborNormal, normal)), normalPhi);
-
-                if (normalSimilarity > 0.) {
-                    vec4 neighborInputTexel = textureLod(inputTexture, neighborUv, 0.);
-                    vec3 neighborColor = neighborInputTexel.rgb;
-                    float neighborLuma = czm_luminance(neighborColor);
-                    float neighborCurvature = getCurvature(neighborNormal);
-
-                    float lumaSimilarity = max(1.0 - abs(luma - neighborLuma) / colorPhi, 0.0);
-                    float roughnessSimilarity = exp(-abs(roughness - neighborRoughness) * roughnessPhi);
-                    float curvatureSimilarity = exp(-abs(curvature - neighborCurvature) * curvaturePhi);
-
-                    float weight = normalSimilarity * lumaSimilarity * depthSimilarity * roughnessSimilarity * curvatureSimilarity;
-
-                    if (weight > 0.) {
-                        color += neighborColor * weight;
-
-                        totalWeight += weight;
-
-#ifdef USE_MOMENT
-                        float neighborVariance;
-                        if (stepSize > 1.) {
-                            neighborVariance = neighborInputTexel.a;
-                        } else {
-                            vec2 neighborMoment = textureLod(momentsTexture, neighborUv, 0.).rg;
-
-                            neighborVariance = max(0.0, neighborMoment.g - neighborMoment.r * neighborMoment.r);
-                        }
-
-                        sumVariance += weight * weight * neighborVariance;
-#endif
-                    }
-                }
-            }
+    // diagonal (top left to bottom right) / diagonal (top right to bottom left)
+    for (float i = -kernel; i <= kernel; i++) {
+        if (i != 0.) {
+            vec2 neighborVec = horizontal ? vec2(-i, -i) : vec2(-i, i);
+            tap(neighborVec, pixelStepOffset, depth, normal, curvature, roughness, worldPos, luma, colorPhi, color, totalWeight, sumVariance);
         }
     }
 
