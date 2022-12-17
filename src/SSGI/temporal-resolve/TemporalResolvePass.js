@@ -25,8 +25,8 @@ export const defaultTemporalResolvePassOptions = {
 	renderVelocity: true,
 	neighborhoodClamping: false,
 	logTransform: false,
-	depthDistance: 0.1,
-	normalDistance: 10,
+	depthDistance: 0.05,
+	normalDistance: 5,
 	reprojectReflectionHitPoints: false,
 	customComposeShader: null,
 	renderTarget: null

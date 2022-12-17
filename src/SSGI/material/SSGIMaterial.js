@@ -56,7 +56,7 @@ export class SSGIMaterial extends ShaderMaterial {
 			fragmentShader: fragmentShader.replace("#include <utils>", utils),
 			vertexShader,
 
-			toneMapped: false,
+			toneMapped: true,
 			depthWrite: false,
 			depthTest: false
 		})

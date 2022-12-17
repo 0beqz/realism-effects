@@ -38,7 +38,7 @@ float getCurvature(vec3 normal) {
     float x = dot(dx, dx);
     float y = dot(dy, dy);
 
-    float curvature = sqrt(max(x, y));
+    float curvature = sqrt(x * x + y * y);
 
     return curvature;
 }

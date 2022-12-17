@@ -35,7 +35,6 @@ uniform float jitterRoughness;
 #define INVALID_RAY_COORDS vec2(-1.0);
 #define EARLY_OUT_COLOR    vec4(0.0, 0.0, 0.0, 0.0)
 #define FLOAT_EPSILON      0.00001
-#define TRANSFORM_FACTOR   0.16666666666666666
 
 float nearMinusFar;
 float nearMulFar;
@@ -108,7 +107,7 @@ void main() {
 
     float fresnelFactor = fresnel_dielectric(viewDir, viewNormal, 1.45);
     float diffuseFactor = 1. - metalness;
-    float specularFactor = 1. + metalness * 0.5 + fresnelFactor * metalness;
+    float specularFactor = (1. - spread) + fresnelFactor * metalness * 2.;
     // specularFactor *= 2.;
 
     for (int s = 0; s < spp; s++) {
@@ -135,7 +134,7 @@ void main() {
         float x = dot(dx, dx);
         float y = dot(dy, dy);
 
-        float curvature = sqrt(max(x, y));
+        float curvature = sqrt(x * x + y * y);
 
         if (curvature < 0.05) {
             vec3 hitPosWS = (_viewMatrix * vec4(hitPos, 1.)).xyz;
@@ -157,7 +156,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
     }
 
     vec3 SSGI;
-    vec3 m = vec3(TRANSFORM_FACTOR);
+    vec3 m = vec3(1.0);
 
     vec3 dir = normalize(reflected * -viewPos.z);
 
@@ -203,7 +202,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
 
         // we won't deal with calculating direct sun light from the env map as it is too noisy
         float envLum = czm_luminance(envMapSample);
-        if (envLum > 10.0) envMapSample *= 10.0 / envLum;
+        if (envLum > 10.) envMapSample *= 10. / envLum;
 
         return m * envMapSample;
     }
@@ -221,12 +220,11 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
         vec3 emissiveColor = emissiveTexel.rgb;
         float emissiveIntensity = emissiveTexel.a;
 
-        vec3 directLightColor = textureLod(directLightTexture, reprojectedUv, 0.).rgb;
-        directLightColor = 5.0 * (7.5 * spread + 1.0) * mix(directLightColor, vec3(czm_luminance(directLightColor)), 0.375);
+        vec3 directLightColor = vec3(0.);  // textureLod(directLightTexture, reprojectedUv, 0.).rgb;
 
-        SSGI = 2.0 * (1.0 + 0.5 * spread) * textureLod(accumulatedTexture, reprojectedUv, 0.).rgb + directLightColor + emissiveColor * emissiveIntensity * 4.;
+        SSGI = 0.4 * textureLod(accumulatedTexture, reprojectedUv, 0.).rgb + directLightColor + emissiveColor * emissiveIntensity;
     } else {
-        SSGI = textureLod(directLightTexture, vUv, 0.).rgb;
+        // SSGI = textureLod(directLightTexture, vUv, 0.).rgb;
     }
 
     float ssgiLum = czm_luminance(SSGI);

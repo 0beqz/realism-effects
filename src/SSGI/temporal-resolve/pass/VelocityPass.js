@@ -73,7 +73,7 @@ export class VelocityPass extends Pass {
 
 			if (map) velocityMaterial.uniforms.uvTransform.value = map.matrix
 
-			updateVelocityMaterialBeforeRender(c, this._camera.projectionMatrix)
+			updateVelocityMaterialBeforeRender(c, this._camera)
 		}
 	}
 
@@ -81,7 +81,7 @@ export class VelocityPass extends Pass {
 		for (const c of this.visibleMeshes) {
 			c.visible = true
 
-			updateVelocityMaterialAfterRender(c, this._camera.projectionMatrix)
+			updateVelocityMaterialAfterRender(c, this._camera)
 
 			c.material = this.cachedMaterials.get(c)[0]
 		}

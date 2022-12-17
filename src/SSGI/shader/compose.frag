@@ -1,10 +1,36 @@
-﻿#define INV_TRANSFORM_FACTOR 6.0
-
+﻿
 uniform sampler2D inputTexture;
+uniform int toneMapping;
+
+#include <tonemapping_pars_fragment>
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
     vec4 ssgiTexel = textureLod(inputTexture, vUv, 0.);
-    vec3 ssgiClr = ssgiTexel.rgb * INV_TRANSFORM_FACTOR;
+    vec3 ssgiClr = ssgiTexel.rgb;
+
+    switch (toneMapping) {
+        case 1:
+            ssgiClr = LinearToneMapping(ssgiClr);
+            break;
+
+        case 2:
+            ssgiClr = ReinhardToneMapping(ssgiClr);
+            break;
+
+        case 3:
+            ssgiClr = OptimizedCineonToneMapping(ssgiClr);
+            break;
+
+        case 4:
+            ssgiClr = ACESFilmicToneMapping(ssgiClr);
+            break;
+
+        case 5:
+            ssgiClr = CustomToneMapping(ssgiClr);
+            break;
+    }
+
+    ssgiClr *= toneMappingExposure;
 
     // float variance = max(0.0, ssgiTexel.g - ssgiTexel.r * ssgiTexel.r);
     // ssgiClr = vec3(variance);

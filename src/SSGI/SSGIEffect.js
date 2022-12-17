@@ -1,5 +1,5 @@
 ﻿import { Effect, Selection } from "postprocessing"
-import { EquirectangularReflectionMapping, LinearMipMapLinearFilter, Uniform } from "three"
+import { EquirectangularReflectionMapping, LinearMipMapLinearFilter, NoToneMapping, Uniform } from "three"
 import { SSGIPass } from "./pass/SSGIPass.js"
 import compose from "./shader/compose.frag"
 import utils from "./shader/utils.frag"
@@ -22,7 +22,10 @@ export class SSGIEffect extends Effect {
 
 		super("SSGIEffect", finalFragmentShader, {
 			type: "FinalSSGIMaterial",
-			uniforms: new Map([["inputTexture", new Uniform(null)]])
+			uniforms: new Map([
+				["inputTexture", new Uniform(null)],
+				["toneMapping", new Uniform(NoToneMapping)]
+			])
 		})
 
 		this._scene = scene
@@ -62,12 +65,12 @@ export class SSGIEffect extends Effect {
 		uniform float jitterRoughness;
 		` +
 			this.svgf.denoisePass.fullscreenMaterial.fragmentShader
+				.replace("roughness = ", "roughness = jitter + jitterRoughness * ")
+				.replace("neighborRoughness = ", "neighborRoughness = jitter + jitterRoughness * ")
 				.replace(
 					"gl_FragColor = vec4(color, sumVariance);",
 					/* glsl */ `
 			if (isLastIteration) {
-				roughness = jitter + jitterRoughness * roughness;
-
 				vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.);
 				vec3 diffuse = diffuseTexel.rgb;
 				vec3 directLight = textureLod(directLightTexture, vUv, 0.).rgb;
@@ -82,7 +85,7 @@ export class SSGIEffect extends Effect {
 				float diffuseLum = czm_luminance(diffuse);
 
 				float fresnelInfluence = 0.25 * f * (metalness * 0.5 + 0.5);
-				float darkColorBoost = pow(1. - colorLum, 2.) * pow(1. - diffuseLum, 4.) * 0.25;
+				float darkColorBoost = 0.05 + pow(diffuseLum, 4.) * 0.05;
 
 				float factor = clamp(fresnelInfluence + darkColorBoost, 0., 1.);
 
@@ -90,8 +93,8 @@ export class SSGIEffect extends Effect {
 
 				float l = mix(colorLum, 1., 0.5 + s * s * 0.25);
 
-				color *= mix(mix(diffuse, diffuse * l, 0.25), color, factor);
-				color += directLight;
+				color *= mix(mix(diffuse, diffuse * l, 0.25), mix(color, vec3(colorLum), 0.75), factor);
+				// color += directLight;
 		
 				sumVariance = 1.;
 			}
@@ -343,5 +346,6 @@ export class SSGIEffect extends Effect {
 		this.svgf.render(renderer)
 
 		this.uniforms.get("inputTexture").value = this.svgf.texture
+		this.uniforms.get("toneMapping").value = renderer.toneMapping
 	}
 }

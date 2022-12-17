@@ -2,9 +2,7 @@ import dragDrop from "drag-drop"
 import * as POSTPROCESSING from "postprocessing"
 import Stats from "stats.js"
 import * as THREE from "three"
-import { Color, DoubleSide, NearestFilter } from "three"
-import { MeshNormalMaterial } from "three"
-import { ACESFilmicToneMapping, Box3, DirectionalLight, SpotLight, Vector3 } from "three"
+import { Box3, Color, DirectionalLight, DoubleSide, MeshNormalMaterial, NoToneMapping, Vector3 } from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader"
@@ -68,8 +66,8 @@ renderer.autoClear = false
 // renderer.autoClearDepth = false
 // renderer.autoClearStencil = false
 
-renderer.toneMapping = ACESFilmicToneMapping
-renderer.toneMappingExposure = 1
+renderer.toneMapping = NoToneMapping
+renderer.toneMappingExposure = 1.5
 renderer.outputEncoding = THREE.sRGBEncoding
 const dpr = window.devicePixelRatio || 1
 renderer.setPixelRatio(dpr)
@@ -164,7 +162,7 @@ const params = {}
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
 pmremGenerator.compileEquirectangularShader()
 
-new RGBELoader().load("monbachtal_riverbank_2k.hdr", envMap => {
+new RGBELoader().load("colosseum_2k.hdr", envMap => {
 	envMap.mapping = THREE.EquirectangularReflectionMapping
 
 	scene.environment = envMap

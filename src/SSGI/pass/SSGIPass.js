@@ -187,7 +187,7 @@ export class SSGIPass extends Pass {
 			mrtMaterial.uniforms.emissiveIntensity.value = c.material.emissiveIntensity || 0
 			c.material = mrtMaterial
 
-			updateVelocityMaterialBeforeRender(c, this._camera.projectionMatrix)
+			updateVelocityMaterialBeforeRender(c, this._camera)
 		}
 	}
 
@@ -198,7 +198,9 @@ export class SSGIPass extends Pass {
 			// set material back to the original one
 			const [originalMaterial] = this.cachedMaterials.get(c)
 
-			updateVelocityMaterialAfterRender(c, this._camera.projectionMatrix)
+			this._camera.updateProjectionMatrix()
+
+			updateVelocityMaterialAfterRender(c, this._camera)
 
 			if (!this.ssgiEffect.reflectionsOnly) originalMaterial.envMapIntensity = c.material.envMapIntensity
 

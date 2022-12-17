@@ -1,4 +1,13 @@
-﻿import { DataTexture, FloatType, RGBAFormat } from "three"
+﻿import {
+	ACESFilmicToneMapping,
+	CineonToneMapping,
+	CustomToneMapping,
+	DataTexture,
+	FloatType,
+	LinearToneMapping,
+	ReinhardToneMapping,
+	RGBAFormat
+} from "three"
 
 export const getVisibleChildren = object => {
 	const queue = [object]
@@ -94,7 +103,7 @@ export const saveBoneTexture = object => {
 	}
 }
 
-export const updateVelocityMaterialBeforeRender = (c, projectionMatrix) => {
+export const updateVelocityMaterialBeforeRender = (c, camera) => {
 	if (c.skeleton?.boneTexture) {
 		c.material.defines.USE_SKINNING = ""
 		c.material.defines.BONE_TEXTURE = ""
@@ -102,11 +111,13 @@ export const updateVelocityMaterialBeforeRender = (c, projectionMatrix) => {
 		c.material.uniforms.boneTexture.value = c.skeleton.boneTexture
 	}
 
-	c.material.uniforms.velocityMatrix.value.multiplyMatrices(projectionMatrix, c.modelViewMatrix)
+	c.modelViewMatrix.multiplyMatrices(camera.matrixWorldInverse, c.matrixWorld)
+
+	c.material.uniforms.velocityMatrix.value.multiplyMatrices(camera.projectionMatrix, c.modelViewMatrix)
 }
 
-export const updateVelocityMaterialAfterRender = (c, projectionMatrix) => {
-	c.material.uniforms.prevVelocityMatrix.value.multiplyMatrices(projectionMatrix, c.modelViewMatrix)
+export const updateVelocityMaterialAfterRender = (c, camera) => {
+	c.material.uniforms.prevVelocityMatrix.value.multiplyMatrices(camera.projectionMatrix, c.modelViewMatrix)
 
 	if (c.skeleton?.boneTexture) saveBoneTexture(c)
 }
