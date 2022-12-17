@@ -315,7 +315,7 @@ const initScene = () => {
 		composer.addPass(traaEffect.temporalResolvePass.velocityPass)
 
 		composer.addPass(ssgiPass)
-		composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, motionBlurEffect, vignetteEffect, lutEffect))
+		composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, motionBlurEffect, vignetteEffect))
 
 		traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
 		composer.addPass(traaPass)

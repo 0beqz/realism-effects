@@ -108,7 +108,8 @@ void main() {
 
     float fresnelFactor = fresnel_dielectric(viewDir, viewNormal, 1.45);
     float diffuseFactor = 1. - metalness;
-    float specularFactor = 2.5 * fresnelFactor * metalness + (1. - roughness);
+    float specularFactor = 1. + metalness * 0.5 + fresnelFactor * metalness;
+    // specularFactor *= 2.;
 
     for (int s = 0; s < spp; s++) {
         if (s != 0) sampleOffset = rand2();

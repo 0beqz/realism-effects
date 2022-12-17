@@ -76,16 +76,21 @@ export class SSGIEffect extends Effect {
 				vec3 viewPos = getViewPosition(depth);
 				vec3 viewDir = normalize(viewPos);
 
-				float f = fresnel_dielectric(viewDir, viewNormal, 1.75);
+				float f = fresnel_dielectric(viewDir, viewNormal, 1.45);
 		
 				float colorLum = czm_luminance(color);
 				float diffuseLum = czm_luminance(diffuse);
 
-				float factor = clamp(0.2 + diffuseLum * 0.1 - f * metalness * (1. - roughness) * 0.25, 0., 1.);
+				float fresnelInfluence = 0.25 * f * (metalness * 0.5 + 0.5);
+				float darkColorBoost = pow(1. - colorLum, 2.) * pow(1. - diffuseLum, 4.) * 0.25;
+
+				float factor = clamp(fresnelInfluence + darkColorBoost, 0., 1.);
 
 				float s = rgb2hsv(diffuse).y;
 
-				color *= mix(diffuse * mix(colorLum, 1., 0.5 + s * s * 0.175), mix(color, vec3(colorLum), 1.), factor);
+				float l = mix(colorLum, 1., 0.5 + s * s * 0.25);
+
+				color *= mix(mix(diffuse, diffuse * l, 0.25), color, factor);
 				color += directLight;
 		
 				sumVariance = 1.;
