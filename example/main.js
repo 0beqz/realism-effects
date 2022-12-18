@@ -162,7 +162,7 @@ const params = {}
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
 pmremGenerator.compileEquirectangularShader()
 
-new RGBELoader().load("colosseum_2k.hdr", envMap => {
+new RGBELoader().load("monbachtal_riverbank_2k.hdr", envMap => {
 	envMap.mapping = THREE.EquirectangularReflectionMapping
 
 	scene.environment = envMap
@@ -223,13 +223,13 @@ const refreshLighting = () => {
 
 const initScene = () => {
 	const options = {
-		distance: 2.7200000000000095,
-		thickness: 1.7399999999999978,
+		distance: 5.98000000000001,
+		thickness: 8.039999999999997,
 		maxRoughness: 1,
 		blend: 0.95,
 		denoiseIterations: 3,
 		denoiseKernel: 3,
-		lumaPhi: 10.880000000000017,
+		lumaPhi: 25.55000000000002,
 		depthPhi: 7.3900000000000015,
 		normalPhi: 26.090000000000018,
 		roughnessPhi: 15.759999999999996,
@@ -300,8 +300,8 @@ const initScene = () => {
 
 		const { depthTexture, normalTexture, velocityTexture } = traaEffect.temporalResolvePass.fullscreenMaterial.uniforms
 
-		const motionBlurEffect = new MotionBlurEffect(velocityTexture, {
-			jitter: 5
+		const motionBlurEffect = new MotionBlurEffect(velocityTexture.value, {
+			jitter: 1
 		})
 
 		ssgiEffect.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.velocityTexture.value = velocityTexture.value

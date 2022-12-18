@@ -50,7 +50,7 @@ vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth, mat4 curMatrixWor
         (depth - 0.5) * 2.0,
         1.0);
 
-    vec4 clip = inverse(projectionMatrix) * ndc;
+    vec4 clip = _projectionMatrixInverse * ndc;
     vec4 view = curMatrixWorld * (clip / clip.w);
 
     return view.xyz;
@@ -69,51 +69,44 @@ void tap(vec2 neighborVec, vec2 pixelStepOffset, float depth, vec3 normal, float
 
     vec4 neighborDepthTexel = textureLod(depthTexture, neighborUv, 0.);
     float neighborDepth = unpackRGBAToDepth(neighborDepthTexel);
-
     vec3 neighborWorldPos = screenSpaceToWorldSpace(neighborUv, neighborDepth, cameraMatrixWorld);
 
     float depthSimilarity = (1. - distToPlane(worldPos, neighborWorldPos, normal)) / depthPhi;
 
-    if (depthSimilarity > 0.) {
-        vec4 neighborNormalTexel = textureLod(normalTexture, neighborUv, 0.);
-        vec3 neighborNormal = unpackRGBToNormal(neighborNormalTexel.rgb);
-        neighborNormal = normalize((vec4(neighborNormal, 1.0) * _viewMatrix).xyz);
-        float neighborRoughness = neighborNormalTexel.a;
+    vec4 neighborNormalTexel = textureLod(normalTexture, neighborUv, 0.);
+    vec3 neighborNormal = unpackRGBToNormal(neighborNormalTexel.rgb);
+    neighborNormal = normalize((vec4(neighborNormal, 1.0) * _viewMatrix).xyz);
+    float neighborRoughness = neighborNormalTexel.a;
 
-        float normalSimilarity = pow(max(0., dot(neighborNormal, normal)), normalPhi);
+    float normalSimilarity = pow(max(0., dot(neighborNormal, normal)), normalPhi);
 
-        if (normalSimilarity > 0.) {
-            vec4 neighborInputTexel = textureLod(inputTexture, neighborUv, 0.);
-            vec3 neighborColor = neighborInputTexel.rgb;
-            float neighborLuma = czm_luminance(neighborColor);
-            float neighborCurvature = getCurvature(neighborNormal);
+    vec4 neighborInputTexel = textureLod(inputTexture, neighborUv, 0.);
+    vec3 neighborColor = neighborInputTexel.rgb;
+    float neighborLuma = czm_luminance(neighborColor);
+    float neighborCurvature = getCurvature(neighborNormal);
 
-            float lumaSimilarity = max(1.0 - abs(luma - neighborLuma) / colorPhi, 0.0);
-            float roughnessSimilarity = exp(-abs(roughness - neighborRoughness) * roughnessPhi);
-            float curvatureSimilarity = exp(-abs(curvature - neighborCurvature) * curvaturePhi);
+    float lumaSimilarity = max(1.0 - abs(luma - neighborLuma) / colorPhi, 0.0);
+    float roughnessSimilarity = exp(-abs(roughness - neighborRoughness) * roughnessPhi);
+    float curvatureSimilarity = exp(-abs(curvature - neighborCurvature) * curvaturePhi);
 
-            float weight = normalSimilarity * lumaSimilarity * depthSimilarity * roughnessSimilarity * curvatureSimilarity;
+    float weight = normalSimilarity * lumaSimilarity * depthSimilarity * roughnessSimilarity * curvatureSimilarity;
 
-            if (weight > 0.) {
-                color += neighborColor * weight;
+    color += neighborColor * weight;
 
-                totalWeight += weight;
+    totalWeight += weight;
 
 #ifdef USE_MOMENT
-                float neighborVariance;
-                if (stepSize > 1.) {
-                    neighborVariance = neighborInputTexel.a;
-                } else {
-                    vec2 neighborMoment = textureLod(momentsTexture, neighborUv, 0.).rg;
+    float neighborVariance;
+    if (horizontal && stepSize == 1.) {
+        neighborVariance = neighborInputTexel.a;
+    } else {
+        vec2 neighborMoment = textureLod(momentsTexture, neighborUv, 0.).rg;
 
-                    neighborVariance = max(0.0, neighborMoment.g - neighborMoment.r * neighborMoment.r);
-                }
-
-                sumVariance += weight * weight * neighborVariance;
-#endif
-            }
-        }
+        neighborVariance = max(0.0, neighborMoment.g - neighborMoment.r * neighborMoment.r);
     }
+
+    sumVariance += weight * weight * neighborVariance;
+#endif
 }
 
 void main() {
@@ -168,12 +161,12 @@ void main() {
     }
 
     // diagonal (top left to bottom right) / diagonal (top right to bottom left)
-    for (float i = -kernel; i <= kernel; i++) {
-        if (i != 0.) {
-            vec2 neighborVec = horizontal ? vec2(-i, -i) : vec2(-i, i);
-            tap(neighborVec, pixelStepOffset, depth, normal, curvature, roughness, worldPos, luma, colorPhi, color, totalWeight, sumVariance);
-        }
-    }
+    // for (float i = -kernel; i <= kernel; i++) {
+    //     if (i != 0.) {
+    //         vec2 neighborVec = horizontal ? vec2(-i, -i) : vec2(-i, i);
+    //         tap(neighborVec, pixelStepOffset, depth, normal, curvature, roughness, worldPos, luma, colorPhi, color, totalWeight, sumVariance);
+    //     }
+    // }
 
     sumVariance /= totalWeight * totalWeight;
     color /= totalWeight;

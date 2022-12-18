@@ -107,7 +107,7 @@ void main() {
 
     float fresnelFactor = fresnel_dielectric(viewDir, viewNormal, 1.45);
     float diffuseFactor = 1. - metalness;
-    float specularFactor = (1. - spread) + fresnelFactor * metalness * 2.;
+    float specularFactor = (1. - spread) + fresnelFactor * metalness * 2.5;
     // specularFactor *= 2.;
 
     for (int s = 0; s < spp; s++) {
@@ -195,10 +195,10 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
         reflectedWS.xyz = normalize(reflectedWS.xyz);
     #endif
 
-        // float mip = 7. / 13. * maxEnvMapMipLevel * spread;
+        float mip = 7. / 13. * maxEnvMapMipLevel * spread;
 
         vec3 sampleDir = reflectedWS.xyz;
-        envMapSample = sampleEquirectEnvMapColor(sampleDir, envMap, 0.0);
+        envMapSample = 0.675 * sampleEquirectEnvMapColor(sampleDir, envMap, mip);
 
         // we won't deal with calculating direct sun light from the env map as it is too noisy
         float envLum = czm_luminance(envMapSample);

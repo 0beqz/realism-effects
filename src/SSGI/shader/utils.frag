@@ -171,13 +171,18 @@ vec3 SampleLambert(vec3 viewNormal, vec2 random) {
     return normalize(normalBasis * hemisphereVector);
 }
 
+float schlick(in vec3 v0, in vec3 v1, in float n1, in float n2) {
+    float f0 = (n1 - n2) / (n1 + n2);
+    f0 *= f0;
+    return max(0., f0 + (1. - f0) * pow(dot(v0, v1), 5.));
+}
+
 // source: https://github.com/Domenicobrz/SSR-TAA-in-threejs-/blob/master/Components/ssr.js
 vec3 SampleGGX(vec3 wo, vec3 norm, float roughness, vec2 random) {
     float r0 = random.x;
     float r1 = random.y;
 
     float a = roughness * roughness;
-    a = max(a, 0.01);
 
     float a2 = a * a;
     float theta = acos(sqrt((1.0 - r0) / ((a2 - 1.0) * r0 + 1.0)));

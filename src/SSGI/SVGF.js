@@ -33,7 +33,7 @@ export class SVGF {
 
 	// the denoised texture
 	get texture() {
-		return this.denoisePass.texture
+		return this.denoisePass.iterations > 0 ? this.denoisePass.texture : this.svgfTemporalResolvePass.texture
 	}
 
 	setInputTexture(texture) {
@@ -82,8 +82,8 @@ export class SVGF {
 		if (this.denoisePass.iterations > 0) {
 			this.denoisePass.render(renderer)
 		} else {
-			this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value =
-				this.denoisePass.fullscreenMaterial.uniforms.inputTexture.value
+			// this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value =
+			// 	this.denoisePass.fullscreenMaterial.uniforms.inputTexture.value
 		}
 
 		this.svgfTemporalResolvePass.render(renderer)

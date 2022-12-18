@@ -1,13 +1,4 @@
-﻿import {
-	ACESFilmicToneMapping,
-	CineonToneMapping,
-	CustomToneMapping,
-	DataTexture,
-	FloatType,
-	LinearToneMapping,
-	ReinhardToneMapping,
-	RGBAFormat
-} from "three"
+﻿import { DataTexture, FloatType, RGBAFormat } from "three"
 
 export const getVisibleChildren = object => {
 	const queue = [object]

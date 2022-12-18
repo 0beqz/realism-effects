@@ -85,7 +85,7 @@ export class SSGIEffect extends Effect {
 				float diffuseLum = czm_luminance(diffuse);
 
 				float fresnelInfluence = 0.25 * f * (metalness * 0.5 + 0.5);
-				float darkColorBoost = 0.05 + pow(diffuseLum, 4.) * 0.05;
+				float darkColorBoost = 0.05 + pow(1. - diffuseLum, 4.) * 0.05;
 
 				float factor = clamp(fresnelInfluence + darkColorBoost, 0., 1.);
 
@@ -93,7 +93,7 @@ export class SSGIEffect extends Effect {
 
 				float l = mix(colorLum, 1., 0.5 + s * s * 0.25);
 
-				color *= mix(mix(diffuse, diffuse * l, 0.25), mix(color, vec3(colorLum), 0.75), factor);
+				color *= mix(mix(diffuse, diffuse * l, 0.125), mix(vec3(1.), diffuse, 0.5) * color, factor - s * 0.1);
 				// color += directLight;
 		
 				sumVariance = 1.;

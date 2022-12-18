@@ -1,4 +1,4 @@
-﻿import { Pass } from "postprocessing"
+﻿import { Pass, RenderPass } from "postprocessing"
 import { HalfFloatType, LinearFilter, ShaderMaterial, Uniform, Vector2, WebGLRenderTarget } from "three"
 import basicVertexShader from "../shader/basic.vert"
 import fragmentShader from "../shader/denoise.frag"
@@ -54,6 +54,8 @@ export class DenoisePass extends Pass {
 		this.renderTargetA = new WebGLRenderTarget(1, 1, renderTargetOptions)
 		this.renderTargetB = new WebGLRenderTarget(1, 1, renderTargetOptions)
 
+		this.renderPass = new RenderPass(this.scene, this.camera)
+
 		if (options.moments) this.fullscreenMaterial.defines.USE_MOMENT = ""
 	}
 
@@ -88,8 +90,7 @@ export class DenoisePass extends Pass {
 					: this.renderTargetB.texture
 				: this.renderTargetA.texture
 
-			renderer.setRenderTarget(renderTarget)
-			renderer.render(this.scene, this.camera)
+			this.renderPass.render(renderer, renderTarget)
 		}
 
 		this.fullscreenMaterial.uniforms.inputTexture.value = inputTexture
