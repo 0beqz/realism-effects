@@ -84,16 +84,16 @@ export class SSGIEffect extends Effect {
 				float colorLum = czm_luminance(color);
 				float diffuseLum = czm_luminance(diffuse);
 
-				float fresnelInfluence = 0.25 * f * (metalness * 0.5 + 0.5);
-				float darkColorBoost = 0.05 + pow(1. - diffuseLum, 4.) * 0.05;
+				diffuse = mix(diffuse, vec3(diffuseLum), 0.4 * colorLum * (1. - metalness));
 
-				float factor = clamp(fresnelInfluence + darkColorBoost, 0., 1.);
+				float fresnelInfluence = 0.1 * f * (metalness * 0.5 + 0.5);
+				float darkColorBoost =  pow(1. - diffuseLum, 4.) * 0.05;
 
 				float s = rgb2hsv(diffuse).y;
+				float factor = clamp(fresnelInfluence + darkColorBoost - s * metalness * 0.05, 0., 1.);
 
-				float l = mix(colorLum, 1., 0.5 + s * s * 0.25);
 
-				color *= mix(mix(diffuse, diffuse * l, 0.125), mix(vec3(1.), diffuse, 0.5) * color, factor - s * 0.1);
+				color *= mix(diffuse, color, factor);
 				// color += directLight;
 		
 				sumVariance = 1.;
@@ -123,6 +123,11 @@ export class SSGIEffect extends Effect {
 				}
 
 				return result;
+			}
+
+			vec3 brightnessContrast(vec3 value, float brightness, float contrast)
+			{
+				return (value - 0.5) * contrast + 0.5 + brightness;
 			}
 
 			// source: http://lolengine.net/blog/2013/07/27/rgb-to-hsv-in-glsl
