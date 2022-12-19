@@ -107,10 +107,9 @@ void main() {
 
     float fresnelFactor = fresnel_dielectric(viewDir, viewNormal, ior);
     float diffuseFactor = 1. - metalness * (1. - spread * 0.825);
-    float specularFactor = mix(fresnelFactor, 1., spread) * 0.5 + (1. - spread);
-    // specularFactor *= 2.;
+    float specularFactor = mix(fresnelFactor, 1., spread) * 0.5;
 
-    float spr = (1. - abs(spread - 0.5) * 2. * metalness) * spread;
+    float spr = mix(spread, 0., metalness);
 
     for (int s = 0; s < spp; s++) {
         if (s != 0) sampleOffset = rand2();
@@ -224,7 +223,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
 
         vec3 directLightColor = vec3(0.);  // textureLod(directLightTexture, reprojectedUv, 0.).rgb;
 
-        SSGI = 0.4 * textureLod(accumulatedTexture, reprojectedUv, 0.).rgb + directLightColor + emissiveColor * emissiveIntensity;
+        SSGI = 1. * textureLod(accumulatedTexture, reprojectedUv, 0.).rgb + directLightColor + emissiveColor * emissiveIntensity;
     } else {
         // SSGI = textureLod(directLightTexture, vUv, 0.).rgb;
     }

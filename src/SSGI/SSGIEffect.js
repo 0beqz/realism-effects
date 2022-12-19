@@ -86,7 +86,10 @@ export class SSGIEffect extends Effect {
 				float colorLum = czm_luminance(color);
 				float diffuseLum = czm_luminance(diffuse);
 
+				float s = rgb2hsv(diffuse).y;
+
 				diffuse = mix(diffuse, vec3(diffuseLum), min(1., 0.3 * colorLum * roughness * (1. - metalness)));
+				diffuse = brightnessContrast(diffuse, metalness * 0.1 * f * s * (1. - roughness), 1. - f * metalness * 0.1);
 
 				float diffuseFactor = 1. - metalness;
     			float specularFactor = mix(f, 1., roughness);
@@ -96,7 +99,7 @@ export class SSGIEffect extends Effect {
 				float metalTintFactor = min(1., metalness * mix((1. - f), 1., min(1.,  roughness * 1.5)));
 				vec3 metalTint = mix(vec3(1.), diffuse, metalTintFactor);
 				
-				color *= diffuse * 0.7 + color * specularWeight * (0.075 + metalness * 0.1) * metalTint;
+				color *= diffuse * 0.7 + color * specularWeight * (0.075 + metalness * (1. - roughness) * 0.1) * metalTint;
 				// color += directLight;
 		
 				sumVariance = 1.;
