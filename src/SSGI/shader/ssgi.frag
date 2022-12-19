@@ -101,14 +101,16 @@ void main() {
     vec3 hitPos;
     vec2 sampleOffset;
 
-    float ior = mix(3.0, 1.0, max(0., spread - metalness));
+    float ior = mix(2., 3.0, min(1., spread * 2.));
 
     bool isMissedRay = false;
 
     float fresnelFactor = fresnel_dielectric(viewDir, viewNormal, ior);
-    float diffuseFactor = 1. - metalness * (1. - spread * 0.675);
-    float specularFactor = fresnelFactor + metalness;
+    float diffuseFactor = 1. - metalness * (1. - spread * 0.75);
+    float specularFactor = mix(fresnelFactor, 1., spread) * 0.5 + (1. - spread);
     // specularFactor *= 2.;
+
+    float spr = (1. - abs(spread - 0.5) * 2. * metalness) * spread;
 
     for (int s = 0; s < spp; s++) {
         if (s != 0) sampleOffset = rand2();
@@ -117,7 +119,7 @@ void main() {
         float m = 1. / (sF + 1.0);
 
         vec3 diffuseSSGI = diffuseFactor > 0.01 ? doSample(viewPos, viewDir, viewNormal, worldPos, roughness, 1.0, sampleOffset, reflected, hitPos, isMissedRay) : vec3(0.);
-        vec3 specularSSGI = specularFactor > 0.01 ? doSample(viewPos, viewDir, viewNormal, worldPos, roughness, min(spread, 0.99), sampleOffset, reflected, hitPos, isMissedRay) : vec3(0.);
+        vec3 specularSSGI = specularFactor > 0.01 ? doSample(viewPos, viewDir, viewNormal, worldPos, roughness, min(spr, 0.99), sampleOffset, reflected, hitPos, isMissedRay) : vec3(0.);
 
         vec3 gi = diffuseSSGI * diffuseFactor + specularSSGI * specularFactor;
 
@@ -202,7 +204,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
 
         // we won't deal with calculating direct sun light from the env map as it is too noisy
         float envLum = czm_luminance(envMapSample);
-        if (envLum > 10.) envMapSample *= 10. / envLum;
+        // if (envLum > 10.) envMapSample *= 10. / envLum;
 
         return m * envMapSample;
     }
