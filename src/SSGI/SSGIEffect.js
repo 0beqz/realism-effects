@@ -95,8 +95,10 @@ export class SSGIEffect extends Effect {
 
 				float s = rgb2hsv(diffuse).y;
 
+				float metalTintFactor = min(1., metalness * mix((1. - f), 1., min(1.,  roughness * 1.5)));
+				vec3 metalTint = mix(vec3(1.), diffuse, metalTintFactor);
 				
-				color *= diffuse * 0.7 + color * specularWeight * (0.05 + metalness * 0.1) * mix(vec3(1.), diffuse, min(1., metalness * mix((1. - f), 1., min(1.,  roughness * 1.5)) ));
+				color *= diffuse * 0.7 + color * specularWeight * (0.075 + metalness * 0.1) * metalTint;
 				// color += directLight;
 		
 				sumVariance = 1.;
