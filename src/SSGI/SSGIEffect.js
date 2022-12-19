@@ -65,8 +65,14 @@ export class SSGIEffect extends Effect {
 		uniform float jitterRoughness;
 		` +
 			this.svgf.denoisePass.fullscreenMaterial.fragmentShader
-				.replace("roughness = ", "roughness = jitter + jitterRoughness * ")
-				.replace("neighborRoughness = ", "neighborRoughness = jitter + jitterRoughness * ")
+				.replace(
+					"float roughness = normalTexel.a;",
+					"float roughness = min(1., jitter + jitterRoughness * normalTexel.a);"
+				)
+				.replace(
+					"float neighborRoughness = neighborNormalTexel.a;",
+					"float neighborRoughness = min(1., jitter + jitterRoughness * neighborNormalTexel.a);"
+				)
 				.replace(
 					"gl_FragColor = vec4(color, sumVariance);",
 					/* glsl */ `
@@ -88,8 +94,8 @@ export class SSGIEffect extends Effect {
 
 				float s = rgb2hsv(diffuse).y;
 
-				diffuse = mix(diffuse, vec3(diffuseLum), min(1., 0.3 * colorLum * roughness * (1. - metalness)));
-				diffuse = brightnessContrast(diffuse, metalness * 0.1 * f * s * (1. - roughness), 1. - f * metalness * 0.1);
+				diffuse = brightnessContrast(diffuse, metalness * 0.1 * f * s * (1. - roughness), 1. + f * metalness * 0.1 * (1. - roughness));
+				diffuse = mix(diffuse, vec3(diffuseLum), min(1., 0.3 * colorLum * roughness * (1. - metalness)) - colorLum * metalness * 0.0675);
 
 				float diffuseFactor = 1. - metalness;
     			float specularFactor = mix(f, 1., roughness);

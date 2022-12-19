@@ -106,10 +106,11 @@ void main() {
     bool isMissedRay = false;
 
     float fresnelFactor = fresnel_dielectric(viewDir, viewNormal, ior);
-    float diffuseFactor = 1. - metalness * (1. - spread * 0.825);
-    float specularFactor = mix(fresnelFactor, 1., spread) * 0.5;
+    float diffuseFactor = 1. - metalness * (1. - spread * 0.75);
+    float specularFactor = mix(fresnelFactor, 1., spread) * 0.5 + (1. - spread);
+    if (specularFactor > 1.) specularFactor = 1.;
 
-    float spr = mix(spread, 0., metalness);
+    float spr = (1. - abs(spread - 0.5) * 2. * metalness) * spread;
 
     for (int s = 0; s < spp; s++) {
         if (s != 0) sampleOffset = rand2();
