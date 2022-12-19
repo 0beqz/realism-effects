@@ -93,8 +93,6 @@ export class SSGIEffect extends Effect {
 
 				float specularWeight = specularFactor / (diffuseFactor + specularFactor);
 
-				float s = rgb2hsv(diffuse).y;
-
 				float metalTintFactor = min(1., metalness * mix((1. - f), 1., min(1.,  roughness * 1.5)));
 				vec3 metalTint = mix(vec3(1.), diffuse, metalTintFactor);
 				

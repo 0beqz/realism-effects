@@ -17,3 +17,9 @@ if (isReprojectedUvValid) {
     // boost new samples
     gMoment = vec4(0., 1., 0., 0.);
 }
+
+// gOutput.xyz = didMove ? vec3(0., 1., 0.) : vec3(0., 0., 0.);
+
+// float variance = max(0.0, gMoment.g - gMoment.r * gMoment.r);
+// variance = abs(variance);
+// gOutput.xyz = vec3(variance);

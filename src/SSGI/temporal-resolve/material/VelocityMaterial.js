@@ -119,9 +119,13 @@ export class VelocityMaterial extends ShaderMaterial {
 			uniforms: UniformsUtils.clone(velocity_uniforms),
 			glslVersion: GLSL3,
 			vertexShader: /* glsl */ `
+					#include <common>
 					#include <uv_pars_vertex>
-					#include <packing>
+					#include <displacementmap_pars_vertex>
 					#include <normal_pars_vertex>
+					#include <morphtarget_pars_vertex>
+					#include <logdepthbuf_pars_vertex>
+					#include <clipping_planes_pars_vertex>
 
 					#if defined( FLAT_SHADED ) || defined( USE_BUMPMAP ) || defined( TANGENTSPACE_NORMALMAP )
 						varying vec3 vViewPosition;
@@ -139,11 +143,9 @@ export class VelocityMaterial extends ShaderMaterial {
 						#include <skinnormal_vertex>
 						#include <defaultnormal_vertex>
 
-
 						#include <morphnormal_vertex>
 						#include <normal_vertex>
 						#include <morphtarget_vertex>
-						#include <skinning_vertex>
 						#include <displacementmap_vertex>
 						#include <project_vertex>
 						#include <logdepthbuf_vertex>
@@ -186,17 +188,7 @@ export class VelocityMaterial extends ShaderMaterial {
 						#ifdef renderDepth
 						gDepth = packDepthToRGBA(fragCoordZ);
 
-						normal *= mat3(viewMatrix);
-
-						vec3 dx = dFdx(normal);
-						vec3 dy = dFdy(normal);
-
-						float x = dot(dx, dx);
-						float y = dot(dy, dy);
-
-						float curvature = sqrt(max(x, y)) * 100.0;
-
-						gNormal = vec4(packNormalToRGB( normal ), curvature);
+						gNormal = vec4(packNormalToRGB( normal ), 0.);
 						#endif
                     }`
 		})

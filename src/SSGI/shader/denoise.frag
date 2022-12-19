@@ -162,12 +162,12 @@ void main() {
     }
 
     // diagonal (top left to bottom right) / diagonal (top right to bottom left)
-    // for (float i = -kernel; i <= kernel; i++) {
-    //     if (i != 0.) {
-    //         vec2 neighborVec = horizontal ? vec2(-i, -i) : vec2(-i, i);
-    //         tap(neighborVec, pixelStepOffset, depth, normal, curvature, roughness, worldPos, luma, colorPhi, color, totalWeight, sumVariance);
-    //     }
-    // }
+    for (float i = -kernel; i <= kernel; i++) {
+        if (i != 0.) {
+            vec2 neighborVec = horizontal ? vec2(-i, -i) : vec2(-i, i);
+            tap(neighborVec, pixelStepOffset, depth, normal, curvature, roughness, worldPos, luma, colorPhi, color, totalWeight, sumVariance);
+        }
+    }
 
     sumVariance /= totalWeight * totalWeight;
     color /= totalWeight;

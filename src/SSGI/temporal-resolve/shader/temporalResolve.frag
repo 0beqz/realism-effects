@@ -340,12 +340,6 @@ void main() {
 // the user's shader to compose a final outputColor from the inputTexel and accumulatedTexel
 #ifdef useCustomComposeShader
     customComposeShader
-
-        // gOutput.xyz = didMove ? vec3(0., 1., 0.) : vec3(0., 0., 0.);
-
-        float variance = max(0.0, gMoment.g - gMoment.r * gMoment.r);
-    variance = abs(variance);
-    // gOutput.xyz = vec3(variance);
 #else
     gl_FragColor = vec4(undoColorTransform(outputColor), alpha);
 #endif

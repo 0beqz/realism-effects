@@ -40,7 +40,7 @@ export class SSGIDebugGUI {
 		})
 		denoiseKernelFolder.addInput(params, "depthPhi", {
 			min: 0,
-			max: 10,
+			max: 25,
 			step: 0.01
 		})
 		denoiseKernelFolder.addInput(params, "normalPhi", {
