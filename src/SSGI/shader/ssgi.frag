@@ -48,7 +48,7 @@ float farMinusNear;
 vec2 RayMarch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
 vec2 BinarySearch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
 float fastGetViewZ(const in float depth);
-vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, float roughness, float spread, vec2 sampleOffset, inout vec3 reflected, inout vec3 hitPos, out bool isMissedRay);
+vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, float metalness, float spread, vec2 sampleOffset, inout vec3 reflected, inout vec3 hitPos, out bool isMissedRay);
 
 void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.0);
@@ -118,8 +118,8 @@ void main() {
         float sF = float(s);
         float m = 1. / (sF + 1.0);
 
-        vec3 diffuseSSGI = diffuseFactor > 0.01 ? doSample(viewPos, viewDir, viewNormal, worldPos, roughness, 1.0, sampleOffset, reflected, hitPos, isMissedRay) : vec3(0.);
-        vec3 specularSSGI = specularFactor > 0.01 ? doSample(viewPos, viewDir, viewNormal, worldPos, roughness, min(spr, 0.99), sampleOffset, reflected, hitPos, isMissedRay) : vec3(0.);
+        vec3 diffuseSSGI = diffuseFactor > 0.01 ? doSample(viewPos, viewDir, viewNormal, worldPos, metalness, 1.0, sampleOffset, reflected, hitPos, isMissedRay) : vec3(0.);
+        vec3 specularSSGI = specularFactor > 0.01 ? doSample(viewPos, viewDir, viewNormal, worldPos, metalness, min(spr, 0.99), sampleOffset, reflected, hitPos, isMissedRay) : vec3(0.);
 
         vec3 gi = diffuseSSGI * diffuseFactor + specularSSGI * specularFactor;
 
@@ -147,7 +147,7 @@ void main() {
     gl_FragColor = vec4(SSGI, rayLength);
 }
 
-vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, float roughness, float spread, vec2 sampleOffset, inout vec3 reflected, inout vec3 hitPos, out bool isMissedRay) {
+vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, float metalness, float spread, vec2 sampleOffset, inout vec3 reflected, inout vec3 hitPos, out bool isMissedRay) {
     vec2 blueNoiseUv = (vUv + blueNoiseOffset + sampleOffset) * blueNoiseRepeat;
     vec2 random = textureLod(blueNoiseTexture, blueNoiseUv, 0.).rg;
 
@@ -159,6 +159,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
 
     vec3 SSGI;
     vec3 m = vec3(1.0);
+    if (spread == 1.0) m *= dot(reflected, viewNormal);
 
     vec3 dir = normalize(reflected * -viewPos.z);
 
@@ -197,14 +198,16 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
         reflectedWS.xyz = normalize(reflectedWS.xyz);
     #endif
 
-        float mip = 7. / 13. * maxEnvMapMipLevel * spread * spread;
+        float mip = spread == 1.0 ? 0. : 7. / 13. * maxEnvMapMipLevel * spread * spread;
 
         vec3 sampleDir = reflectedWS.xyz;
         envMapSample = sampleEquirectEnvMapColor(sampleDir, envMap, mip);
 
         // we won't deal with calculating direct sun light from the env map as it is too noisy
         float envLum = czm_luminance(envMapSample);
-        if (envLum > 10. && spread == 1.0) envMapSample *= 10. / envLum;
+
+        const float maxVal = 10.0;
+        if (envLum > maxVal) envMapSample *= maxVal / envLum;
 
         return m * envMapSample;
     }

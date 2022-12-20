@@ -31,7 +31,7 @@ export class SSGIDebugGUI {
 
 		temporalResolveFolder.addInput(params, "blend", { min: 0, max: 1, step: 0.001 })
 		const denoiseKernelFolder = pane.addFolder({ title: "Denoise" })
-		denoiseKernelFolder.addInput(params, "denoiseIterations", { min: 0, max: 5, step: 1 })
+		denoiseKernelFolder.addInput(params, "denoiseIterations", { min: 1, max: 5, step: 1 })
 		denoiseKernelFolder.addInput(params, "denoiseKernel", { min: 1, max: 5, step: 1 })
 		denoiseKernelFolder.addInput(params, "lumaPhi", {
 			min: 0.01,

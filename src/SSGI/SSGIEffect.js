@@ -81,6 +81,7 @@ export class SSGIEffect extends Effect {
 				vec3 diffuse = diffuseTexel.rgb;
 				vec3 directLight = textureLod(directLightTexture, vUv, 0.).rgb;
 				float metalness = diffuseTexel.a;
+				float glossiness = (1. - roughness);
 		
 				vec3 viewPos = getViewPosition(depth);
 				vec3 viewDir = normalize(viewPos);
@@ -94,8 +95,8 @@ export class SSGIEffect extends Effect {
 
 				float s = rgb2hsv(diffuse).y;
 
-				diffuse = brightnessContrast(diffuse, metalness * 0.1 * f * s * (1. - roughness), 1. + f * metalness * 0.1 * (1. - roughness));
-				diffuse = mix(diffuse, vec3(diffuseLum), min(1., 0.3 * colorLum * roughness * (1. - metalness)) - colorLum * metalness * 0.0675);
+				diffuse = brightnessContrast(diffuse, metalness * 0.1 * f * s * glossiness, 1. + f * metalness * 0.1 * glossiness);
+				// diffuse = mix(diffuse, vec3(diffuseLum), min(1., 0.6 * colorLum * roughness * (1. - metalness)) - colorLum * metalness * 0.0675);
 
 				float diffuseFactor = 1. - metalness;
     			float specularFactor = mix(f, 1., roughness);
@@ -105,8 +106,8 @@ export class SSGIEffect extends Effect {
 				float metalTintFactor = min(1., metalness * mix((1. - f), 1., min(1.,  roughness * 1.5)));
 				vec3 metalTint = mix(vec3(1.), diffuse, metalTintFactor);
 				
-				color *= diffuse * 0.7 + color * specularWeight * (0.075 + metalness * (1. - roughness) * 0.1) * metalTint;
-				// color += directLight;
+				color *= diffuse * 0.7 + color * specularWeight * (0.075 + metalness * glossiness * 0.15) * metalTint;
+				color += directLight;
 		
 				sumVariance = 1.;
 			}
