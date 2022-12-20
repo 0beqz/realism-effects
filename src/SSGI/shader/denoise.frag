@@ -71,8 +71,7 @@ void tap(vec2 neighborVec, vec2 pixelStepOffset, float depth, vec3 normal, float
     float neighborDepth = unpackRGBAToDepth(neighborDepthTexel);
     vec3 neighborWorldPos = screenSpaceToWorldSpace(neighborUv, neighborDepth, cameraMatrixWorld);
 
-    float depthSimilarity = (1. - distToPlane(worldPos, neighborWorldPos, normal)) / depthPhi;
-    if (depthSimilarity < 0.) depthSimilarity = 0.;
+    float depthSimilarity = max((1. - distToPlane(worldPos, neighborWorldPos, normal)) / depthPhi, 0.);
 
     vec4 neighborNormalTexel = textureLod(normalTexture, neighborUv, 0.);
     vec3 neighborNormal = unpackRGBToNormal(neighborNormalTexel.rgb);

@@ -79,13 +79,13 @@ export class SVGF {
 	render(renderer) {
 		this.ensureAllTexturesSet()
 
+		this.svgfTemporalResolvePass.render(renderer)
+
 		if (this.denoisePass.iterations > 0) {
 			this.denoisePass.render(renderer)
 		} else {
 			// this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value =
 			// 	this.denoisePass.fullscreenMaterial.uniforms.inputTexture.value
 		}
-
-		this.svgfTemporalResolvePass.render(renderer)
 	}
 }
