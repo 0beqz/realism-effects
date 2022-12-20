@@ -101,16 +101,18 @@ void main() {
     vec3 hitPos;
     vec2 sampleOffset;
 
-    float ior = mix(2., 3.0, min(1., spread * 2.));
-
     bool isMissedRay = false;
 
+    float ior = mix(2., 3.0, min(1., spread * 2.));
     float fresnelFactor = fresnel_dielectric(viewDir, viewNormal, ior);
-    float diffuseFactor = 1. - metalness * (1. - spread * 0.75);
-    float specularFactor = mix(fresnelFactor, 1., spread) * 0.5 + (1. - spread);
-    if (specularFactor > 1.) specularFactor = 1.;
+    float metalFresnel = fresnel_dielectric(viewDir, viewNormal, 1.2);
+    float diffuseFactor = 1. - metalness * (1. - spread * 0.5);
+    float specularFactor = mix(fresnelFactor, 1., spread) * (1. - spread * 0.75) + metalFresnel * (1. - spread) * 0.75;
+    // specularFactor *= 0.5;
+    // if (specularFactor > 1.) specularFactor = 1.;
 
     float spr = (1. - abs(spread - 0.5) * 2. * metalness) * spread;
+    spr = sqrt(spr);
 
     for (int s = 0; s < spp; s++) {
         if (s != 0) sampleOffset = rand2();
@@ -151,15 +153,17 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
     vec2 blueNoiseUv = (vUv + blueNoiseOffset + sampleOffset) * blueNoiseRepeat;
     vec2 random = textureLod(blueNoiseTexture, blueNoiseUv, 0.).rg;
 
-    reflected = spread == 1.0 ? SampleLambert(viewNormal, random) : SampleGGX(viewDir, viewNormal, spread, random);
+    bool isHemisphereSample = spread == 1.0;
 
-    if (spread != 1.0 && dot(reflected, viewNormal) < 0.) {
+    reflected = isHemisphereSample ? SampleLambert(viewNormal, random) : SampleGGX(viewDir, viewNormal, spread, random);
+
+    if (!isHemisphereSample && dot(reflected, viewNormal) < 0.) {
         reflected = SampleGGX(viewDir, viewNormal, spread, vec2(random.y, random.x));
     }
 
     vec3 SSGI;
     vec3 m = vec3(1.0);
-    if (spread == 1.0) m *= dot(reflected, viewNormal);
+    if (isHemisphereSample) m *= dot(reflected, viewNormal);
 
     vec3 dir = normalize(reflected * -viewPos.z);
 
@@ -225,11 +229,9 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
         vec3 emissiveColor = emissiveTexel.rgb;
         float emissiveIntensity = emissiveTexel.a;
 
-        vec3 directLightColor = vec3(0.);  // textureLod(directLightTexture, reprojectedUv, 0.).rgb;
-
-        SSGI = 1. * textureLod(accumulatedTexture, reprojectedUv, 0.).rgb + directLightColor + emissiveColor * emissiveIntensity;
+        SSGI = .5 * textureLod(accumulatedTexture, reprojectedUv, 0.).rgb + emissiveColor * emissiveIntensity;
     } else {
-        // SSGI = textureLod(directLightTexture, vUv, 0.).rgb;
+        SSGI = textureLod(directLightTexture, vUv, 0.).rgb;
     }
 
     float ssgiLum = czm_luminance(SSGI);
