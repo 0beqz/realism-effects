@@ -96,7 +96,7 @@ export class SSGIEffect extends Effect {
 
 				float s = rgb2hsv(diffuse).y;
 
-				diffuse = mix(diffuse, vec3(diffuseLum), -(metalness * colorLum * 0.9));
+				diffuse = mix(diffuse, vec3(diffuseLum), -(metalness * colorLum * 0.5));
 
 				float diffuseFactor = 1. - metalness;
     			float specularFactor = mix(f, 1., roughness);
