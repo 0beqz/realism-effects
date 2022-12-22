@@ -245,6 +245,13 @@ vec4 SampleTextureCatmullRom(sampler2D tex, in vec2 uv, in vec2 texSize) {
 }
 #endif
 
+// source: https://github.com/CesiumGS/cesium/blob/main/Source/Shaders/Builtin/Functions/luminance.glsl
+float czm_luminance(vec3 rgb) {
+    // Algorithm from Chapter 10 of Graphics Shaders.
+    const vec3 W = vec3(0.2125, 0.7154, 0.0721);
+    return dot(rgb, W);
+}
+
 void main() {
     vec4 inputTexel = textureLod(inputTexture, vUv, 0.0);
     vec3 inputColor = inputTexel.rgb;
@@ -335,6 +342,9 @@ void main() {
     }
 
     outputColor = mix(inputColor, accumulatedColor, temporalResolveMix);
+    float lum = czm_luminance(outputColor);
+    if (lum > 1.) outputColor *= 1. / lum;
+
     if (didMove && alpha > blend) alpha = blend;
 
 // the user's shader to compose a final outputColor from the inputTexel and accumulatedTexel

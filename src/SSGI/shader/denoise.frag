@@ -90,6 +90,7 @@ void tap(vec2 neighborVec, vec2 pixelStepOffset, float depth, vec3 normal, float
     float curvatureSimilarity = exp(-abs(curvature - neighborCurvature) * curvaturePhi);
 
     float weight = normalSimilarity * lumaSimilarity * depthSimilarity * roughnessSimilarity * curvatureSimilarity;
+    if (weight > 1.0) weight = 1.0;
 
     color += neighborColor * weight;
 

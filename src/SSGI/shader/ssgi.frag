@@ -108,8 +108,6 @@ void main() {
     float metalFresnel = fresnel_dielectric(viewDir, viewNormal, 1.2);
     float diffuseFactor = 1. - metalness * (1. - spread * 0.5);
     float specularFactor = mix(fresnelFactor, 1., spread) * (1. - spread * 0.75) + metalFresnel * (1. - spread) * 0.75;
-    // specularFactor *= 0.5;
-    // if (specularFactor > 1.) specularFactor = 1.;
 
     float spr = (1. - abs(spread - 0.5) * 2. * metalness) * spread;
     spr = sqrt(spr);
@@ -229,14 +227,12 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
         vec3 emissiveColor = emissiveTexel.rgb;
         float emissiveIntensity = emissiveTexel.a;
 
-        SSGI = .5 * textureLod(accumulatedTexture, reprojectedUv, 0.).rgb + emissiveColor * emissiveIntensity;
+        SSGI = textureLod(accumulatedTexture, reprojectedUv, 0.).rgb + emissiveColor * emissiveIntensity;
     } else {
         SSGI = textureLod(directLightTexture, vUv, 0.).rgb;
     }
 
     float ssgiLum = czm_luminance(SSGI);
-
-    if (ssgiLum > 1.0) SSGI *= 1.0 / ssgiLum;
 
     if (isAllowedMissedRay) {
         float envLum = czm_luminance(envMapSample);
