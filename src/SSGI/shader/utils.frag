@@ -205,3 +205,127 @@ vec3 SampleGGX(vec3 wo, vec3 norm, float roughness, vec2 random) {
 
     return wi;
 }
+
+float samplePDF(vec3 wi, vec3 wo, vec3 norm, float roughness) {
+    vec3 wg = norm;
+    vec3 wm = normalize(wo + wi);
+    float a = roughness * roughness;
+    float a2 = a * a;
+    float cosTheta = dot(wg, wm);
+    float exp = (a2 - 1.0) * cosTheta * cosTheta + 1.0;
+    float D = a2 / (PI * exp * exp);
+    return (D * dot(wm, wg)) / (4.0 * dot(wo, wm));
+}
+
+float GeometrySchlickGGX(float NdotV, float roughness) {
+    float r = (roughness + 1.0);
+    float k = (r * r) / 8.0;
+
+    float num = NdotV;
+    float denom = NdotV * (1.0 - k) + k;
+
+    return num / denom;
+}
+
+float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness) {
+    float a = roughness * roughness;
+    float nv = dot(N, V);
+    return (2.0 * nv) / (nv + sqrt(a * a + (1.0 - a * a) * nv * nv));
+
+    // float NdotV = max(dot(N, V), 0.0);
+    // float NdotL = max(dot(N, L), 0.0);
+    // float ggx2  = GeometrySchlickGGX(NdotV, roughness);
+    // float ggx1  = GeometrySchlickGGX(NdotL, roughness);
+
+    // return ggx1 * ggx2;
+}
+
+vec3 fresnelSchlick(float cosTheta, vec3 F0) {
+    return F0 + (1.0 - F0) * pow(max(1.0 - cosTheta, 0.0), 5.0);
+}
+
+float DistributionGGX(vec3 N, vec3 H, float roughness) {
+    vec3 m = H;
+    float a = roughness * roughness;
+    float nm2 = pow(dot(N, H), 2.0);
+    return (a * a) / (PI * pow(nm2 * (a * a - 1.0) + 1.0, 2.0));
+    // float a      = roughness*roughness;
+    // float a2     = a*a;
+    // float NdotH  = max(dot(N, H), 0.0);
+    // float NdotH2 = NdotH*NdotH;
+
+    // float num   = a2;
+    // float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+    // denom = PI * denom * denom;
+
+    // return num / denom;
+}
+// http://graphicrants.blogspot.com/2013/08/specular-brdf-reference.html
+vec3 EvalBRDF(vec3 wi, vec3 wo, vec3 n, float roughness, vec3 F0) {
+    vec3 wm = normalize(wo + wi);
+    if (/* (wi.y <= 0.0) || */ dot(wi, wm) <= 0.0) {
+        return vec3(0.0);
+    }
+    vec3 F = fresnelSchlick(max(dot(wi, n), 0.0), F0);
+    float NDF = DistributionGGX(n, wm, roughness);
+    float G = GeometrySmith(n, wo, wi, roughness);
+    // vec3 numerator    = NDF * G * F;
+    // float denominator = 4.0 * max(dot(n, wo), 0.0) * max(dot(n, wi), 0.0);
+    // vec3 specular     = numerator / max(denominator, 0.001);
+
+    // I removed an additional multiplication dot(wi, n) from this line
+    // so that I could also remove the initial multiplication for cos theta at the first bounce
+    // took the idea from here: http://cwyman.org/code/dxrTutors/tutors/Tutor14/tutorial14.md.html (step 4)
+    vec3 specular = (F * NDF * G) / (4.0 * dot(n, wo));
+    return F0 * specular;
+    // return specular;
+    // // from filament
+    // vec3 F    = F_Schlick(max(dot(wm, wo), 0.0), F0);
+    // float NDF = DistributionGGXFilament(n, wm, roughness);
+    // float G   = V_SmithGGXCorrelatedFast(n, wo, wi, roughness);
+    // // specular BRDF
+    // vec3 Fr = (NDF * G) * F;
+    // return Fr;
+}
+
+vec3 F_Schlick(vec3 f0, float theta) {
+    return f0 + (1. - f0) * pow(1.0 - theta, 5.);
+}
+
+float F_Schlick(float f0, float f90, float theta) {
+    return f0 + (f90 - f0) * pow(1.0 - theta, 5.0);
+}
+
+float D_GTR(float roughness, float NoH, float k) {
+    float a2 = pow(roughness, 2.);
+    return a2 / (PI * pow((NoH * NoH) * (a2 * a2 - 1.) + 1., k));
+}
+
+float SmithG(float NDotV, float alphaG) {
+    float a = alphaG * alphaG;
+    float b = NDotV * NDotV;
+    return (2.0 * NDotV) / (NDotV + sqrt(a + b - a * b));
+}
+
+float GGXVNDFPdf(float NoH, float NoV, float roughness) {
+    float D = D_GTR(roughness, NoH, 2.);
+    float G1 = SmithG(NoV, roughness * roughness);
+    return (D * G1) / max(0.00001, 4.0f * NoV);
+}
+
+float GeometryTerm(float NoL, float NoV, float roughness) {
+    float a2 = roughness * roughness;
+    float G1 = SmithG(NoV, a2);
+    float G2 = SmithG(NoL, a2);
+    return G1 * G2;
+}
+
+vec3 evalDisneySpecular(float r, vec3 F, float NoH, float NoV, float NoL) {
+    float roughness = pow(r, 2.);
+    float D = D_GTR(roughness, NoH, 2.);
+    float G = GeometryTerm(NoL, NoV, pow(0.5 + r * .5, 2.));
+
+    vec3 spec = D * F * G / (4. * NoL * NoV);
+
+    return spec;
+}

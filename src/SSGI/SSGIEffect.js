@@ -76,7 +76,7 @@ export class SSGIEffect extends Effect {
 				.replace(
 					"gl_FragColor = vec4(color, sumVariance);",
 					/* glsl */ `
-			if (isLastIteration) {
+			if (false&&isLastIteration) {
 				vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.);
 				vec3 diffuse = diffuseTexel.rgb;
 				vec3 directLight = textureLod(directLightTexture, vUv, 0.).rgb;
@@ -106,8 +106,11 @@ export class SSGIEffect extends Effect {
 				float metalTintFactor = min(1., metalness * mix((1. - (f * 0.75 + 0.25)), 1., roughness));
 				vec3 metalTint = mix(vec3(1.), diffuse, metalTintFactor * 0.9);
 				
-				color *= diffuse * 0.7 + color * specularWeight * (0.1 + roughness * 0.1 + metalness * glossiness * 0.15 + (1. - metalness) * f2 * 0.2) * metalTint;
-				color += directLight;
+				// color *= diffuse * 0.7 + color * specularWeight * (0.1 + roughness * 0.1 + metalness * glossiness * 0.15 + (1. - metalness) * f2 * 0.2) * metalTint;
+
+				color = diffuse * color + color * 0.1;
+				color *= 3.;
+				// color += directLight;
 		
 				sumVariance = 1.;
 			}

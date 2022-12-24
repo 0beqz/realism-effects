@@ -105,23 +105,27 @@ void main() {
 
     float ior = mix(2., 3.0, min(1., spread * 2.));
     float fresnelFactor = fresnel_dielectric(viewDir, viewNormal, ior);
-    float metalFresnel = fresnel_dielectric(viewDir, viewNormal, 1.2);
+    float metalFresnel = fresnel_dielectric(viewDir, viewNormal, 1.5);
     float diffuseFactor = 1. - metalness * (1. - spread * 0.5);
     float specularFactor = mix(fresnelFactor, 1., spread) * (1. - spread * 0.75) + metalFresnel * (1. - spread) * 0.75;
 
-    float spr = (1. - abs(spread - 0.5) * 2. * metalness) * spread;
-    spr = sqrt(spr);
-
     for (int s = 0; s < spp; s++) {
-        if (s != 0) sampleOffset = rand2();
+        sampleOffset = rand2();
 
         float sF = float(s);
         float m = 1. / (sF + 1.0);
 
-        vec3 diffuseSSGI = diffuseFactor > 0.01 ? doSample(viewPos, viewDir, viewNormal, worldPos, metalness, 1.0, sampleOffset, reflected, hitPos, isMissedRay) : vec3(0.);
-        vec3 specularSSGI = specularFactor > 0.01 ? doSample(viewPos, viewDir, viewNormal, worldPos, metalness, min(spr, 0.99), sampleOffset, reflected, hitPos, isMissedRay) : vec3(0.);
+        vec3 gi;
+        vec2 blueNoiseUv = (vUv + blueNoiseOffset) * blueNoiseRepeat;
+        if (false && textureLod(blueNoiseTexture, blueNoiseUv, 0.).rg.x > 1. - metalness) {
+            gi = doSample(viewPos, viewDir, viewNormal, worldPos, metalness, 1.0, sampleOffset, reflected, hitPos, isMissedRay);
 
-        vec3 gi = diffuseSSGI * diffuseFactor + specularSSGI * specularFactor;
+        } else {
+            gi = doSample(viewPos, viewDir, viewNormal, worldPos, metalness, spread, sampleOffset, reflected, hitPos, isMissedRay);
+            // gi += gi * metalFresnel * 20. * (1. - spread);
+        }
+
+        // vec3 gi = diffuseSSGI * diffuseFactor + specularSSGI * specularFactor;
 
         SSGI = mix(SSGI, gi, m);
     }
@@ -151,29 +155,57 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
     vec2 blueNoiseUv = (vUv + blueNoiseOffset + sampleOffset) * blueNoiseRepeat;
     vec2 random = textureLod(blueNoiseTexture, blueNoiseUv, 0.).rg;
 
+    spread = sqrt(spread);
+    if (spread < 0.01) spread = 0.01;
+
     bool isHemisphereSample = spread == 1.0;
 
     reflected = isHemisphereSample ? SampleLambert(viewNormal, random) : SampleGGX(viewDir, viewNormal, spread, random);
 
-    if (!isHemisphereSample && dot(reflected, viewNormal) < 0.) {
-        reflected = SampleGGX(viewDir, viewNormal, spread, vec2(random.y, random.x));
+    if (dot(reflected, viewNormal) < 0.) {
+        reflected = -reflected;
     }
 
     vec3 SSGI;
     vec3 m = vec3(1.0);
-    if (isHemisphereSample) m *= dot(reflected, viewNormal);
+    m *= max(0.001, dot(reflected, viewNormal));
 
-    vec3 dir = normalize(reflected * -viewPos.z);
+    vec3 n = viewNormal;
+    vec3 v = -viewDir;
+    vec3 l = reflected;
+    vec3 h = normalize(v + l);
+
+    float NoL = max(0.001, dot(n, l));
+    float NoV = max(0.001, dot(n, v));
+    float NoH = max(0.001, dot(n, h));
+    float LoH = max(0.001, dot(l, h));
+    float VoH = max(0.001, dot(v, h));
+
+    vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.);
+
+    vec3 f0 = mix(vec3(0.04), diffuseTexel.rgb, diffuseTexel.a);
+    vec3 F = F_Schlick(f0, VoH);
+
+    // m *= F;
+
+    vec3 brdf = evalDisneySpecular(spread, F, NoH, NoV, NoL);
+    float pdf = GGXVNDFPdf(NoH, NoV, spread);
+
+    pdf = clamp(pdf, 0.0001, 100.);
+    brdf = clamp(brdf, 0.0001, 100.);
+
+    m *= brdf;
+    m /= pdf;
 
     hitPos = viewPos;
     float rayHitDepthDifference = 0.;
 
 #if steps == 0
-    hitPos += dir;
+    hitPos += reflected;
 
     vec2 coords = viewSpaceToScreenSpace(hitPos);
 #else
-    vec2 coords = RayMarch(dir, hitPos, rayHitDepthDifference);
+    vec2 coords = RayMarch(reflected, hitPos, rayHitDepthDifference);
 #endif
 
     bool allowMissedRays = false;
