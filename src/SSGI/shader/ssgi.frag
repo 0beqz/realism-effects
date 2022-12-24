@@ -1,4 +1,7 @@
-﻿varying vec2 vUv;
+﻿layout(location = 0) out vec4 gSSGI;
+layout(location = 1) out vec4 gBRDF;
+
+varying vec2 vUv;
 
 uniform sampler2D directLightTexture;
 uniform sampler2D accumulatedTexture;
@@ -56,7 +59,7 @@ void main() {
 
     // filter out background
     if (dot(depthTexel.rgb, depthTexel.rgb) == 0.) {
-        gl_FragColor = EARLY_OUT_COLOR;
+        gSSGI = gBRDF = EARLY_OUT_COLOR;
         return;
     }
 
@@ -65,7 +68,7 @@ void main() {
 
     // a roughness of 1 is only being used for deselected meshes
     if (roughness == 1.0 || roughness > maxRoughness) {
-        gl_FragColor = EARLY_OUT_COLOR;
+        gSSGI = gBRDF = EARLY_OUT_COLOR;
         return;
     }
 
@@ -101,8 +104,11 @@ void main() {
     vec2 sampleOffset;
 
     bool isMissedRay = false;
+    bool isDiffuseSample = false;
 
-    for (int s = 0; s < spp; s++) {
+    vec3 brdf = vec3(1.0);
+
+    for (int s = 0; s < 1; s++) {
         sampleOffset = rand2();
 
         float sF = float(s);
@@ -142,9 +148,9 @@ void main() {
         diffW = max(diffW, FLOAT_EPSILON);
         specW = max(specW, FLOAT_EPSILON);
 
-        vec3 brdf = vec3(1.0);
+        isDiffuseSample = random.z < diffW;
 
-        if (random.z < diffW) {
+        if (isDiffuseSample) {
             gi = doSample(viewPos, viewDir, viewNormal, worldPos, metalness, 1.0, random.xy, reflected, hitPos, isMissedRay, brdf);
             brdf /= diffW;
             brdf *= diffuse;
@@ -180,12 +186,14 @@ void main() {
         }
     }
 
-    gl_FragColor = vec4(SSGI, rayLength);
+    gSSGI = vec4(SSGI, rayLength);
+    gBRDF = vec4(brdf, isDiffuseSample ? 0. : 1.);
 }
 
 vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, float metalness, float spread, vec2 random, inout vec3 reflected, inout vec3 hitPos, out bool isMissedRay, out vec3 brdf) {
     bool isHemisphereSample = spread == 1.0;
 
+    // todo: check why sqrt?
     if (!isHemisphereSample) {
         spread = sqrt(spread);
     }
@@ -215,8 +223,6 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
     vec3 F = F_Schlick(f0, VoH);
 
     if (isHemisphereSample) {
-        if (spread < 0.01) spread = 0.1;
-
         vec3 diffuseBrdf = evalDisneyDiffuse(NoL, NoV, LoH, spread, diffuseTexel.a) * (1. - F);
         float pdf = NoL / M_PI;
 

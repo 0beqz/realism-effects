@@ -1,4 +1,4 @@
-﻿import { Matrix4, ShaderMaterial, Uniform, Vector2, Vector3 } from "three"
+﻿import { GLSL3, Matrix4, ShaderMaterial, Uniform, Vector2, Vector3 } from "three"
 import vertexShader from "../shader/basic.vert"
 import fragmentShader from "../shader/ssgi.frag"
 import utils from "../shader/utils.frag"
@@ -58,7 +58,9 @@ export class SSGIMaterial extends ShaderMaterial {
 
 			toneMapped: true,
 			depthWrite: false,
-			depthTest: false
+			depthTest: false,
+
+			glslVersion: GLSL3
 		})
 	}
 }

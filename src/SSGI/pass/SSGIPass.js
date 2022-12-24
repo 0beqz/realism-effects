@@ -1,5 +1,4 @@
 ﻿import { Pass, RenderPass } from "postprocessing"
-import { TextureLoader } from "three"
 import {
 	Color,
 	HalfFloatType,
@@ -8,10 +7,9 @@ import {
 	NearestFilter,
 	RepeatWrapping,
 	sRGBEncoding,
-	WebGLMultipleRenderTargets,
-	WebGLRenderTarget
+	TextureLoader,
+	WebGLMultipleRenderTargets
 } from "three"
-import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader.js"
 import { MRTMaterial } from "../material/MRTMaterial.js"
 import { SSGIMaterial } from "../material/SSGIMaterial.js"
 import { generateHalton23Points } from "../temporal-resolve/utils/generateHalton23Points.js"
@@ -40,7 +38,7 @@ export class SSGIPass extends Pass {
 		this.fullscreenMaterial = new SSGIMaterial()
 		if (ssgiEffect._camera.isPerspectiveCamera) this.fullscreenMaterial.defines.PERSPECTIVE_CAMERA = ""
 
-		this.renderTarget = new WebGLRenderTarget(1, 1, {
+		this.renderTarget = new WebGLMultipleRenderTargets(1, 1, 2, {
 			minFilter: LinearFilter,
 			magFilter: LinearFilter,
 			type: HalfFloatType,
@@ -88,10 +86,19 @@ export class SSGIPass extends Pass {
 		})
 	}
 
+	get texture() {
+		return this.renderTarget.texture[0]
+	}
+
+	get brdfTexture() {
+		return this.renderTarget.texture[1]
+	}
+
 	initMRTRenderTarget() {
 		this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(1, 1, 5, {
 			minFilter: NearestFilter,
-			magFilter: NearestFilter
+			magFilter: NearestFilter,
+			type: HalfFloatType
 		})
 
 		this.depthTexture = this.gBuffersRenderTarget.texture[0]

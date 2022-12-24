@@ -343,7 +343,7 @@ void main() {
 
     outputColor = mix(inputColor, accumulatedColor, temporalResolveMix);
     float lum = czm_luminance(outputColor);
-    // if (lum > 1.) outputColor *= 1. / lum;
+    if (lum > 1.) outputColor *= 1. / lum;
 
     if (didMove && alpha > blend) alpha = blend;
 

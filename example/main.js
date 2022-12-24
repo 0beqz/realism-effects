@@ -229,7 +229,7 @@ const initScene = () => {
 		blend: 0.95,
 		denoiseIterations: 3,
 		denoiseKernel: 3,
-		lumaPhi: 9.250000000000018,
+		lumaPhi: 0.010000000000017571,
 		depthPhi: 8.150000000000002,
 		normalPhi: 43.48000000000002,
 		roughnessPhi: 19.019999999999996,
