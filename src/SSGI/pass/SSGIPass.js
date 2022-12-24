@@ -1,4 +1,5 @@
 ﻿import { Pass, RenderPass } from "postprocessing"
+import { TextureLoader } from "three"
 import {
 	Color,
 	HalfFloatType,
@@ -60,11 +61,23 @@ export class SSGIPass extends Pass {
 
 	initialize(renderer, ...args) {
 		super.initialize(renderer, ...args)
-		const ktx2Loader = new KTX2Loader()
-		ktx2Loader.setTranscoderPath("examples/js/libs/basis/")
-		ktx2Loader.detectSupport(renderer)
-		ktx2Loader.load("texture/blue_noise_rg.ktx2", blueNoiseTexture => {
-			// generated using "toktx --target_type RG --t2 blue_noise_rg blue_noise_rg.png"
+		// const ktx2Loader = new KTX2Loader()
+		// ktx2Loader.setTranscoderPath("examples/js/libs/basis/")
+		// ktx2Loader.detectSupport(renderer)
+		// ktx2Loader.load("texture/blue_noise_rg.ktx2", blueNoiseTexture => {
+		// 	// generated using "toktx --target_type RG --t2 blue_noise_rg blue_noise_rg.png"
+		// 	blueNoiseTexture.minFilter = NearestFilter
+		// 	blueNoiseTexture.magFilter = NearestFilter
+		// 	blueNoiseTexture.wrapS = RepeatWrapping
+		// 	blueNoiseTexture.wrapT = RepeatWrapping
+		// 	blueNoiseTexture.encoding = LinearEncoding
+
+		// 	this.fullscreenMaterial.uniforms.blueNoiseTexture.value = blueNoiseTexture
+
+		// 	ktx2Loader.dispose()
+		// })
+
+		new TextureLoader().load("texture/blue_noise_3channels_256.png", blueNoiseTexture => {
 			blueNoiseTexture.minFilter = NearestFilter
 			blueNoiseTexture.magFilter = NearestFilter
 			blueNoiseTexture.wrapS = RepeatWrapping
@@ -72,8 +85,6 @@ export class SSGIPass extends Pass {
 			blueNoiseTexture.encoding = LinearEncoding
 
 			this.fullscreenMaterial.uniforms.blueNoiseTexture.value = blueNoiseTexture
-
-			ktx2Loader.dispose()
 		})
 	}
 

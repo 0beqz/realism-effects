@@ -320,12 +320,12 @@ float GeometryTerm(float NoL, float NoV, float roughness) {
     return G1 * G2;
 }
 
-vec3 evalDisneyDiffuse(float NoL, float NoV, float LoH, float roughness, vec3 albedo, float metalness) {
+float evalDisneyDiffuse(float NoL, float NoV, float LoH, float roughness, float metalness) {
     float FD90 = 0.5 + 2. * roughness * pow(LoH, 2.);
     float a = F_Schlick(1., FD90, NoL);
     float b = F_Schlick(1., FD90, NoV);
 
-    return albedo * (a * b / PI) * (1. - metalness);
+    return (a * b / PI) * (1. - metalness);
 }
 
 vec3 evalDisneySpecular(float r, vec3 F, float NoH, float NoV, float NoL) {

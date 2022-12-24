@@ -48,8 +48,7 @@ float farMinusNear;
 vec2 RayMarch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
 vec2 BinarySearch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
 float fastGetViewZ(const in float depth);
-vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, float metalness, float spread, vec2 sampleOffset, inout vec3 reflected, inout vec3 hitPos, out bool isMissedRay);
-
+vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, float metalness, float spread, vec2 sampleOffset, inout vec3 reflected, inout vec3 hitPos, out bool isMissedRay, out vec3 brdf);
 void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.0);
 
@@ -109,21 +108,56 @@ void main() {
         float sF = float(s);
         float m = 1. / (sF + 1.0);
 
-        vec3 gi;
-        vec2 blueNoiseUv = (vUv + blueNoiseOffset) * blueNoiseRepeat;
-        if (textureLod(blueNoiseTexture, blueNoiseUv, 0.).rg.x > 0.5) {
-            gi = doSample(viewPos, viewDir, viewNormal, worldPos, metalness, 1.0, sampleOffset, reflected, hitPos, isMissedRay);
+        vec2 blueNoiseUv = (vUv + blueNoiseOffset + sampleOffset) * blueNoiseRepeat;
+        vec3 random = textureLod(blueNoiseTexture, blueNoiseUv, 0.).rgb;
 
+        vec3 gi;
+        vec3 ggx = SampleGGX(viewDir, viewNormal, sqrt(spread), random.xy);
+
+        if (dot(ggx, viewNormal) < 0.) {
+            ggx = -ggx;
+        }
+
+        vec3 n = viewNormal;
+        vec3 v = -viewDir;
+        vec3 l = ggx;
+        vec3 h = normalize(v + l);
+
+        float NoL = max(FLOAT_EPSILON, dot(n, l));
+        float NoV = max(FLOAT_EPSILON, dot(n, v));
+        float NoH = max(FLOAT_EPSILON, dot(n, h));
+        float LoH = max(FLOAT_EPSILON, dot(l, h));
+        float VoH = max(FLOAT_EPSILON, dot(v, h));
+
+        // fresnel
+        vec3 f0 = mix(vec3(0.04), diffuse, metalness);
+        vec3 F = F_Schlick(f0, VoH);
+
+        float diffW = (1. - metalness);
+        float specW = czm_luminance(F);
+        float invW = 1. / (diffW + specW);
+        diffW *= invW;
+        specW *= invW;
+
+        diffW = max(diffW, FLOAT_EPSILON);
+        specW = max(specW, FLOAT_EPSILON);
+
+        vec3 brdf = vec3(1.0);
+
+        if (random.z < diffW) {
+            gi = doSample(viewPos, viewDir, viewNormal, worldPos, metalness, 1.0, random.xy, reflected, hitPos, isMissedRay, brdf);
+            brdf /= diffW;
+            brdf *= diffuse;
         } else {
-            gi = doSample(viewPos, viewDir, viewNormal, worldPos, metalness, spread, sampleOffset, reflected, hitPos, isMissedRay);
-            // gi += gi * metalFresnel * 20. * (1. - spread);
+            gi = doSample(viewPos, viewDir, viewNormal, worldPos, metalness, min(spread, 0.99999), random.xy, reflected, hitPos, isMissedRay, brdf);
+
+            brdf /= specW;
         }
 
         float cosTheta = max(FLOAT_EPSILON, dot(viewNormal, reflected));
+        brdf *= cosTheta;
 
-        gi *= cosTheta;
-
-        // vec3 gi = diffuseSSGI * diffuseFactor + specularSSGI * specularFactor;
+        gi *= brdf;
 
         SSGI = mix(SSGI, gi, m);
     }
@@ -149,10 +183,7 @@ void main() {
     gl_FragColor = vec4(SSGI, rayLength);
 }
 
-vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, float metalness, float spread, vec2 sampleOffset, inout vec3 reflected, inout vec3 hitPos, out bool isMissedRay) {
-    vec2 blueNoiseUv = (vUv + blueNoiseOffset + sampleOffset) * blueNoiseRepeat;
-    vec2 random = textureLod(blueNoiseTexture, blueNoiseUv, 0.).rg;
-
+vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, float metalness, float spread, vec2 random, inout vec3 reflected, inout vec3 hitPos, out bool isMissedRay, out vec3 brdf) {
     bool isHemisphereSample = spread == 1.0;
 
     if (!isHemisphereSample) {
@@ -166,9 +197,6 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
     }
 
     vec3 SSGI;
-    vec3 m = vec3(1.0);
-
-    if (spread < 0.01) spread = 0.1;
 
     vec3 n = viewNormal;
     vec3 v = -viewDir;
@@ -187,21 +215,20 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
     vec3 F = F_Schlick(f0, VoH);
 
     if (isHemisphereSample) {
-        vec3 brdf = evalDisneyDiffuse(NoL, NoV, LoH, spread, diffuseTexel.rgb, diffuseTexel.a) * (1. - F);
+        if (spread < 0.01) spread = 0.1;
+
+        vec3 diffuseBrdf = evalDisneyDiffuse(NoL, NoV, LoH, spread, diffuseTexel.a) * (1. - F);
         float pdf = NoL / M_PI;
 
-        m *= brdf;
-        m /= pdf;
-
+        brdf *= diffuseBrdf / pdf;
     } else {
-        vec3 brdf = evalDisneySpecular(spread, F, NoH, NoV, NoL);
+        vec3 specularBrdf = evalDisneySpecular(spread, F, NoH, NoV, NoL);
         float pdf = GGXVNDFPdf(NoH, NoV, spread);
 
         pdf = clamp(pdf, FLOAT_EPSILON, 100.);
-        brdf = clamp(brdf, FLOAT_EPSILON, 100.);
+        specularBrdf = clamp(specularBrdf, FLOAT_EPSILON, 100.);
 
-        m *= brdf;
-        m /= pdf;
+        brdf *= specularBrdf / pdf;
     }
 
     hitPos = viewPos;
@@ -239,7 +266,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
         reflectedWS.xyz = normalize(reflectedWS.xyz);
     #endif
 
-        float mip = spread == 1.0 ? 0. : 7. / 13. * maxEnvMapMipLevel * spread * spread;
+        float mip = spread == 1.0 ? 7. / 13. * maxEnvMapMipLevel * spread * spread : 0.0;
 
         vec3 sampleDir = reflectedWS.xyz;
         envMapSample = sampleEquirectEnvMapColor(sampleDir, envMap, mip);
@@ -250,7 +277,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
         const float maxVal = 10.0;
         if (envLum > maxVal) envMapSample *= maxVal / envLum;
 
-        return m * envMapSample;
+        return envMapSample;
     }
 #endif
 
@@ -281,10 +308,10 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
         vec2 dCoords = smoothstep(0.2, 0.6, abs(vec2(0.5, 0.5) - vUv));
         float screenEdgeIntensity = clamp(1.0 - (dCoords.x + dCoords.y), 0.0, 1.0);
 
-        m *= screenEdgeIntensity;
+        brdf *= screenEdgeIntensity;
     }
 
-    return m * SSGI;
+    return SSGI;
 }
 
 vec2 RayMarch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {
