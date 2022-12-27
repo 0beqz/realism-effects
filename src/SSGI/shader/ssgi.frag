@@ -51,7 +51,7 @@ float farMinusNear;
 vec2 RayMarch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
 vec2 BinarySearch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
 float fastGetViewZ(const in float depth);
-vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, float metalness, float spread, vec2 sampleOffset, inout vec3 reflected, inout vec3 hitPos, out bool isMissedRay, out vec3 brdf);
+vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, float metalness, float spread, bool isDiffuseSample, vec3 F, vec2 random, inout vec3 reflected, inout vec3 hitPos, out bool isMissedRay, out vec3 brdf);
 void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.0);
 
@@ -92,7 +92,7 @@ void main() {
     vec3 worldPos = vec4(_viewMatrix * vec4(viewPos, 1.)).xyz;
 
     float spread = jitter + roughness * jitterRoughness;
-    spread = min(1.0, spread);
+    spread = clamp(spread, 0.001, 1.0);
 
     vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.);
     vec3 diffuse = diffuseTexel.rgb;
@@ -118,15 +118,36 @@ void main() {
         vec3 random = textureLod(blueNoiseTexture, blueNoiseUv, 0.).rgb;
 
         vec3 gi;
-        vec3 ggx = SampleGGX(viewDir, viewNormal, sqrt(spread), random.xy);
+        {
+            // convert view dir and view normal to world-space
+            vec3 V = -(vec4(viewDir, 1.) * _viewMatrix).xyz;  // invert view dir
+            vec3 N = (vec4(viewNormal, 1.) * _viewMatrix).xyz;
 
-        if (dot(ggx, viewNormal) < 0.) {
-            ggx = -ggx;
+            vec3 T, B;
+            Onb(N, T, B);
+
+            V = ToLocal(T, B, N, V);
+
+            float spr = max(0.01, spread);
+
+            vec3 H = SampleGGXVNDF(V, spr, spr, random.x, random.y);
+
+            if (H.z < 0.0)
+                H = -H;
+
+            reflected = normalize(reflect(-V, H));
+            reflected = ToWorld(T, B, N, reflected);
+
+            // convert reflected vector back to view-space
+            reflected = (vec4(reflected, 1.) * cameraMatrixWorld).xyz;
+            reflected = normalize(reflected);
         }
+
+        if (dot(viewNormal, reflected) < 0.) reflected = -reflected;
 
         vec3 n = viewNormal;
         vec3 v = -viewDir;
-        vec3 l = ggx;
+        vec3 l = reflected;
         vec3 h = normalize(v + l);
 
         float NoL = max(FLOAT_EPSILON, dot(n, l));
@@ -139,7 +160,7 @@ void main() {
         vec3 f0 = mix(vec3(0.04), diffuse, metalness);
         vec3 F = F_Schlick(f0, VoH);
 
-        float diffW = (1. - metalness);
+        float diffW = (1. - metalness) * czm_luminance(diffuse);
         float specW = czm_luminance(F);
         float invW = 1. / (diffW + specW);
         diffW *= invW;
@@ -151,11 +172,12 @@ void main() {
         isDiffuseSample = random.z < diffW;
 
         if (isDiffuseSample) {
-            gi = doSample(viewPos, viewDir, viewNormal, worldPos, metalness, 1.0, random.xy, reflected, hitPos, isMissedRay, brdf);
+            reflected = cosineSampleHemisphere(viewNormal, random.xy);
+            gi = doSample(viewPos, viewDir, viewNormal, worldPos, metalness, spread, isDiffuseSample, F, random.xy, reflected, hitPos, isMissedRay, brdf);
             brdf /= diffW;
-            brdf *= diffuse;
+            brdf *= diffuse * (1. - metalness);
         } else {
-            gi = doSample(viewPos, viewDir, viewNormal, worldPos, metalness, min(spread, 0.99999), random.xy, reflected, hitPos, isMissedRay, brdf);
+            gi = doSample(viewPos, viewDir, viewNormal, worldPos, metalness, spread, isDiffuseSample, F, random.xy, reflected, hitPos, isMissedRay, brdf);
 
             brdf /= specW;
         }
@@ -190,18 +212,10 @@ void main() {
     gBRDF = vec4(brdf, isDiffuseSample ? 0. : 1.);
 }
 
-vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, float metalness, float spread, vec2 random, inout vec3 reflected, inout vec3 hitPos, out bool isMissedRay, out vec3 brdf) {
-    bool isHemisphereSample = spread == 1.0;
-
+vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, float metalness, float spread, bool isDiffuseSample, vec3 F, vec2 random, inout vec3 reflected, inout vec3 hitPos, out bool isMissedRay, out vec3 brdf) {
     // todo: check why sqrt?
-    if (!isHemisphereSample) {
+    if (!isDiffuseSample) {
         spread = sqrt(spread);
-    }
-
-    reflected = isHemisphereSample ? SampleLambert(viewNormal, random) : SampleGGX(viewDir, viewNormal, spread, random);
-
-    if (dot(reflected, viewNormal) < 0.) {
-        reflected = -reflected;
     }
 
     vec3 SSGI;
@@ -219,10 +233,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
 
     vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.);
 
-    vec3 f0 = mix(vec3(0.04), diffuseTexel.rgb, diffuseTexel.a);
-    vec3 F = F_Schlick(f0, VoH);
-
-    if (isHemisphereSample) {
+    if (isDiffuseSample) {
         vec3 diffuseBrdf = evalDisneyDiffuse(NoL, NoV, LoH, spread, diffuseTexel.a) * (1. - F);
         float pdf = NoL / M_PI;
 

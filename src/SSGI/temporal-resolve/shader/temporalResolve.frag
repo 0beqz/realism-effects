@@ -127,7 +127,7 @@ vec2 reprojectVelocity(vec2 sampleUv, out bool didMove) {
     vec4 velocity = textureLod(velocityTexture, sampleUv, 0.0);
     velocity.xy = unpackRGBATo2Half(velocity) * 2. - 1.;
 
-    didMove = dot(velocity.xy, velocity.xy) > 0.000000001;
+    didMove = velocity.x > 0.000000001 || velocity.y > 0.000000001;
 
     if (all(lessThan(abs(velocity.xy), invTexSize * 0.25))) {
         velocity.xy = vec2(0.);
@@ -335,7 +335,7 @@ void main() {
         temporalResolveMix = blend;
     } else {
         float pixelSample = alpha / ALPHA_STEP + 1.0;
-        float maxValue = didMove ? blend : 1.0;
+        // float maxValue = didMove ? blend : 1.0;
 
         temporalResolveMix = 1. - 1. / pixelSample;
         temporalResolveMix = min(temporalResolveMix, blend);
@@ -343,7 +343,7 @@ void main() {
 
     outputColor = mix(inputColor, accumulatedColor, temporalResolveMix);
     float lum = czm_luminance(outputColor);
-    if (lum > 1.) outputColor *= 1. / lum;
+    // if (lum > 1.) outputColor *= 1. / lum;
 
     if (didMove && alpha > blend) alpha = blend;
 
