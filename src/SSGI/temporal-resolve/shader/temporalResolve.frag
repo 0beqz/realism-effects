@@ -127,11 +127,7 @@ vec2 reprojectVelocity(vec2 sampleUv, out bool didMove) {
     vec4 velocity = textureLod(velocityTexture, sampleUv, 0.0);
     velocity.xy = unpackRGBATo2Half(velocity) * 2. - 1.;
 
-    didMove = velocity.x > 0.000000001 || velocity.y > 0.000000001;
-
-    if (all(lessThan(abs(velocity.xy), invTexSize * 0.25))) {
-        velocity.xy = vec2(0.);
-    }
+    didMove = velocity.x > 0.0 || velocity.y > 0.0;
 
     return vUv - velocity.xy;
 }

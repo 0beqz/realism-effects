@@ -193,7 +193,7 @@ void main() {
 
     float rayLength = 0.0;
     if (!isMissedRay && spread < 0.675) {
-        vec3 normalWS = viewNormal * mat3(_viewMatrix);
+        vec3 normalWS = (vec4(viewNormal, 1.) * _viewMatrix).xyz;
 
         vec3 dx = dFdx(normalWS);
         vec3 dy = dFdy(normalWS);
@@ -286,10 +286,10 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
         reflectedWS.xyz = normalize(reflectedWS.xyz);
     #endif
 
-        float mip = spread == 1.0 ? 7. / 13. * maxEnvMapMipLevel * spread * spread : 0.0;
+        // float mip = spread == 1.0 ? 7. / 13. * maxEnvMapMipLevel * spread * spread : 0.0;
 
         vec3 sampleDir = reflectedWS.xyz;
-        envMapSample = sampleEquirectEnvMapColor(sampleDir, envMap, mip);
+        envMapSample = sampleEquirectEnvMapColor(sampleDir, envMap, 0.);
 
         // we won't deal with calculating direct sun light from the env map as it is too noisy
         float envLum = czm_luminance(envMapSample);
