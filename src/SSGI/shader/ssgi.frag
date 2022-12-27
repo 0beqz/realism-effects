@@ -175,7 +175,8 @@ void main() {
             reflected = cosineSampleHemisphere(viewNormal, random.xy);
             gi = doSample(viewPos, viewDir, viewNormal, worldPos, metalness, spread, isDiffuseSample, F, random.xy, reflected, hitPos, isMissedRay, brdf);
             brdf /= diffW;
-            brdf *= diffuse * (1. - metalness);
+            brdf *= 1. - metalness;
+            brdf *= diffuse;
         } else {
             gi = doSample(viewPos, viewDir, viewNormal, worldPos, metalness, spread, isDiffuseSample, F, random.xy, reflected, hitPos, isMissedRay, brdf);
 
@@ -208,8 +209,10 @@ void main() {
         }
     }
 
+    float a = 0.;
+
     gSSGI = vec4(SSGI, rayLength);
-    gBRDF = vec4(brdf, isDiffuseSample ? 0. : 1.);
+    gBRDF = vec4(brdf, a);
 }
 
 vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, float metalness, float spread, bool isDiffuseSample, vec3 F, vec2 random, inout vec3 reflected, inout vec3 hitPos, out bool isMissedRay, out vec3 brdf) {

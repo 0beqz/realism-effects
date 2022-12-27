@@ -2,7 +2,16 @@ import dragDrop from "drag-drop"
 import * as POSTPROCESSING from "postprocessing"
 import Stats from "stats.js"
 import * as THREE from "three"
-import { Box3, Color, DirectionalLight, DoubleSide, MeshNormalMaterial, NoToneMapping, Vector3 } from "three"
+import {
+	ACESFilmicToneMapping,
+	Box3,
+	Color,
+	DirectionalLight,
+	DoubleSide,
+	MeshNormalMaterial,
+	NoToneMapping,
+	Vector3
+} from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader"
@@ -66,8 +75,8 @@ renderer.autoClear = false
 // renderer.autoClearDepth = false
 // renderer.autoClearStencil = false
 
-renderer.toneMapping = NoToneMapping
-renderer.toneMappingExposure = 1.5
+renderer.toneMapping = ACESFilmicToneMapping
+renderer.toneMappingExposure = 1.2
 renderer.outputEncoding = THREE.sRGBEncoding
 const dpr = window.devicePixelRatio || 1
 renderer.setPixelRatio(dpr)

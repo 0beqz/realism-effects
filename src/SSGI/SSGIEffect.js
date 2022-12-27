@@ -84,11 +84,8 @@ export class SSGIEffect extends Effect {
 				float alpha = inputTexel.a;
 				float pixelSample = alpha /  0.001 + 1.0;
 				float temporalResolveMix = 1. - 1. / pixelSample;
-				temporalResolveMix = min(temporalResolveMix, 0.95);
-
-				// if(brdf.a < 0.5){
-				// 	color *= mix(vec3(1.), diffuse, 0.97);
-				// }
+				
+				// color = color * brdf.xyz * 0.975 + color * 0.025;
 			}
 
 			gl_FragColor = vec4(color, sumVariance);

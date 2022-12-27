@@ -213,38 +213,6 @@ vec3 evalDisneySpecular(float r, vec3 F, float NoH, float NoV, float NoL) {
     return spec;
 }
 
-float DielectricFresnel(float cosThetaI, float eta) {
-    float sinThetaTSq = eta * eta * (1.0f - cosThetaI * cosThetaI);
-
-    // Total internal reflection
-    if (sinThetaTSq > 1.0)
-        return 1.0;
-
-    float cosThetaT = sqrt(max(1.0 - sinThetaTSq, 0.0));
-
-    float rs = (eta * cosThetaT - cosThetaI) / (eta * cosThetaT + cosThetaI);
-    float rp = (eta * cosThetaI - cosThetaT) / (eta * cosThetaI + cosThetaT);
-
-    return 0.5f * (rs * rs + rp * rp);
-}
-
-float SchlickWeight(float u) {
-    float m = clamp(1.0 - u, 0.0, 1.0);
-    float m2 = m * m;
-    return m2 * m2 * m;
-}
-
-vec3 SpecColor(vec3 diffuse, float metalness, float eta) {
-    float lum = czm_luminance(diffuse);
-    vec3 ctint = lum > 0.0 ? diffuse / lum : vec3(1.0f);
-    float F0 = (1.0 - eta) / (1.0 + eta);
-
-    vec3 specularTint = diffuse;
-    vec3 specCol = mix(F0 * F0 * mix(vec3(1.0), ctint, 0.), diffuse, metalness);
-
-    return specCol;
-}
-
 vec3 SampleGGXVNDF(vec3 V, float ax, float ay, float r1, float r2) {
     vec3 Vh = normalize(vec3(ax * V.x, ay * V.y, V.z));
 
@@ -287,47 +255,4 @@ vec3 cosineSampleHemisphere(vec3 n, vec2 u) {
     vec3 t = cross(b, n);
 
     return normalize(r * sin(theta) * b + sqrt(1.0 - u.x) * n + r * cos(theta) * t);
-}
-
-// source: https://github.com/Domenicobrz/SSR-TAA-in-threejs-/blob/master/Components/ssr.js
-vec3 SampleGGX(vec3 wo, vec3 norm, float roughness, vec2 random) {
-    float r0 = random.x;
-    float r1 = random.y;
-
-    float a = roughness * roughness;
-
-    float a2 = a * a;
-    float theta = acos(sqrt((1.0 - r0) / ((a2 - 1.0) * r0 + 1.0)));
-    float phi = 2.0 * M_PI * r1;
-    float x = sin(theta) * cos(phi);
-    float y = cos(theta);
-    float z = sin(theta) * sin(phi);
-    vec3 wm = normalize(vec3(x, y, z));
-    vec3 w = norm;
-    if (abs(norm.y) < 0.95) {
-        vec3 u = normalize(cross(w, vec3(0.0, 1.0, 0.0)));
-        vec3 v = normalize(cross(u, w));
-        wm = normalize(wm.y * w + wm.x * u + wm.z * v);
-    } else {
-        vec3 u = normalize(cross(w, vec3(0.0, 0.0, 1.0)));
-        vec3 v = normalize(cross(u, w));
-        wm = normalize(wm.y * w + wm.x * u + wm.z * v);
-    }
-    vec3 wi = reflect(wo, wm);
-
-    return wi;
-}
-
-vec3 SampleLambert(vec3 viewNormal, vec2 random) {
-    float sqrtR0 = sqrt(random.x);
-
-    float x = sqrtR0 * cos(2. * M_PI * random.y);
-    float y = sqrtR0 * sin(2. * M_PI * random.y);
-    float z = sqrt(1. - random.x);
-
-    vec3 hemisphereVector = vec3(x, y, z);
-
-    mat3 normalBasis = getBasisFromNormal(viewNormal);
-
-    return normalize(normalBasis * hemisphereVector);
 }
