@@ -75,8 +75,8 @@ renderer.autoClear = false
 // renderer.autoClearDepth = false
 // renderer.autoClearStencil = false
 
-renderer.toneMapping = ACESFilmicToneMapping
-renderer.toneMappingExposure = 1.2
+renderer.toneMapping = NoToneMapping
+renderer.toneMappingExposure = 1.1
 renderer.outputEncoding = THREE.sRGBEncoding
 const dpr = window.devicePixelRatio || 1
 renderer.setPixelRatio(dpr)
@@ -171,7 +171,7 @@ const params = {}
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
 pmremGenerator.compileEquirectangularShader()
 
-new RGBELoader().load("monbachtal_riverbank_2k.hdr", envMap => {
+new RGBELoader().load("quarry_02_4k.hdr", envMap => {
 	envMap.mapping = THREE.EquirectangularReflectionMapping
 
 	scene.environment = envMap

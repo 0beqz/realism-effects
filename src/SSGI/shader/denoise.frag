@@ -172,5 +172,7 @@ void main() {
     sumVariance /= totalWeight * totalWeight;
     color /= totalWeight;
 
+    if (isLastIteration) sumVariance = 1.;
+
     gl_FragColor = vec4(color, sumVariance);
 }

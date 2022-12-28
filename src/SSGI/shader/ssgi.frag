@@ -92,7 +92,8 @@ void main() {
     vec3 worldPos = vec4(_viewMatrix * vec4(viewPos, 1.)).xyz;
 
     float spread = jitter + roughness * jitterRoughness;
-    spread = clamp(spread, 0.001, 1.0);
+    spread = sqrt(spread);
+    spread = clamp(spread, 0.01, 1.0);
 
     vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.);
     vec3 diffuse = diffuseTexel.rgb;
@@ -106,7 +107,17 @@ void main() {
     bool isMissedRay = false;
     bool isDiffuseSample = false;
 
+    // convert view dir and view normal to world-space
+    vec3 V = -(vec4(viewDir, 1.) * _viewMatrix).xyz;  // invert view dir
+    vec3 N = (vec4(viewNormal, 1.) * _viewMatrix).xyz;
+
+    vec3 T, B;
+    Onb(N, T, B);
+
+    V = ToLocal(T, B, N, V);
+
     vec3 brdf = vec3(1.0);
+    vec3 reconstructBrdf = vec3(1.);
 
     for (int s = 0; s < 1; s++) {
         sampleOffset = rand2();
@@ -118,30 +129,17 @@ void main() {
         vec3 random = textureLod(blueNoiseTexture, blueNoiseUv, 0.).rgb;
 
         vec3 gi;
-        {
-            // convert view dir and view normal to world-space
-            vec3 V = -(vec4(viewDir, 1.) * _viewMatrix).xyz;  // invert view dir
-            vec3 N = (vec4(viewNormal, 1.) * _viewMatrix).xyz;
+        vec3 H = SampleGGXVNDF(V, spread, spread, random.x, random.y);
 
-            vec3 T, B;
-            Onb(N, T, B);
+        if (H.z < 0.0)
+            H = -H;
 
-            V = ToLocal(T, B, N, V);
+        reflected = normalize(reflect(-V, H));
+        reflected = ToWorld(T, B, N, reflected);
 
-            float spr = max(0.01, spread);
-
-            vec3 H = SampleGGXVNDF(V, spr, spr, random.x, random.y);
-
-            if (H.z < 0.0)
-                H = -H;
-
-            reflected = normalize(reflect(-V, H));
-            reflected = ToWorld(T, B, N, reflected);
-
-            // convert reflected vector back to view-space
-            reflected = (vec4(reflected, 1.) * cameraMatrixWorld).xyz;
-            reflected = normalize(reflected);
-        }
+        // convert reflected vector back to view-space
+        reflected = (vec4(reflected, 1.) * cameraMatrixWorld).xyz;
+        reflected = normalize(reflected);
 
         if (dot(viewNormal, reflected) < 0.) reflected = -reflected;
 
@@ -174,21 +172,31 @@ void main() {
         if (isDiffuseSample) {
             reflected = cosineSampleHemisphere(viewNormal, random.xy);
             gi = doSample(viewPos, viewDir, viewNormal, worldPos, metalness, spread, isDiffuseSample, F, random.xy, reflected, hitPos, isMissedRay, brdf);
-            brdf /= diffW;
             brdf *= 1. - metalness;
-            brdf *= diffuse;
+            brdf /= diffW;
+
+            // diffuse-related information
+            reconstructBrdf *= diffuse * (1. - F);
+            brdf *= reconstructBrdf;
         } else {
             gi = doSample(viewPos, viewDir, viewNormal, worldPos, metalness, spread, isDiffuseSample, F, random.xy, reflected, hitPos, isMissedRay, brdf);
 
             brdf /= specW;
+
+            // diffuse-related information
+            reconstructBrdf = F;
+            brdf *= reconstructBrdf;
         }
 
         float cosTheta = max(FLOAT_EPSILON, dot(viewNormal, reflected));
         brdf *= cosTheta;
 
+        brdf = clamp(brdf, 0.01, 100.);
+
         gi *= brdf;
 
         SSGI = mix(SSGI, gi, m);
+        // SSGI = F;
     }
 
     float rayLength = 0.0;
@@ -212,15 +220,10 @@ void main() {
     float a = 0.;
 
     gSSGI = vec4(SSGI, rayLength);
-    gBRDF = vec4(brdf, a);
+    gBRDF = vec4(reconstructBrdf, a);
 }
 
 vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, float metalness, float spread, bool isDiffuseSample, vec3 F, vec2 random, inout vec3 reflected, inout vec3 hitPos, out bool isMissedRay, out vec3 brdf) {
-    // todo: check why sqrt?
-    if (!isDiffuseSample) {
-        spread = sqrt(spread);
-    }
-
     vec3 SSGI;
 
     vec3 n = viewNormal;
@@ -236,17 +239,18 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
 
     vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.);
 
+    float pdf;
+
     if (isDiffuseSample) {
-        vec3 diffuseBrdf = evalDisneyDiffuse(NoL, NoV, LoH, spread, diffuseTexel.a) * (1. - F);
-        float pdf = NoL / M_PI;
+        vec3 diffuseBrdf = vec3(evalDisneyDiffuse(NoL, NoV, LoH, spread, diffuseTexel.a));
+        pdf = NoL / M_PI;
+        pdf = clamp(pdf, FLOAT_EPSILON, 100.);
 
         brdf *= diffuseBrdf / pdf;
     } else {
         vec3 specularBrdf = evalDisneySpecular(spread, F, NoH, NoV, NoL);
-        float pdf = GGXVNDFPdf(NoH, NoV, spread);
-
+        pdf = GGXVNDFPdf(NoH, NoV, spread);
         pdf = clamp(pdf, FLOAT_EPSILON, 100.);
-        specularBrdf = clamp(specularBrdf, FLOAT_EPSILON, 100.);
 
         brdf *= specularBrdf / pdf;
     }
@@ -286,10 +290,10 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
         reflectedWS.xyz = normalize(reflectedWS.xyz);
     #endif
 
-        // float mip = spread == 1.0 ? 7. / 13. * maxEnvMapMipLevel * spread * spread : 0.0;
+        float mip = spread == 1.0 ? 7. / 13. * maxEnvMapMipLevel * spread * spread : 0.0;
 
         vec3 sampleDir = reflectedWS.xyz;
-        envMapSample = sampleEquirectEnvMapColor(sampleDir, envMap, 0.);
+        envMapSample = sampleEquirectEnvMapColor(sampleDir, envMap, mip);
 
         // we won't deal with calculating direct sun light from the env map as it is too noisy
         float envLum = czm_luminance(envMapSample);
@@ -303,7 +307,6 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
 
     // reproject the coords from the last frame
     vec4 velocity = textureLod(velocityTexture, coords.xy, 0.0);
-    velocity.xy = unpackRGBATo2Half(velocity) * 2. - 1.;
 
     vec2 reprojectedUv = coords.xy - velocity.xy;
 
@@ -311,7 +314,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
     if (all(greaterThanEqual(reprojectedUv, vec2(0.))) && all(lessThanEqual(reprojectedUv, vec2(1.)))) {
         vec4 emissiveTexel = textureLod(emissiveTexture, coords.xy, 0.);
         vec3 emissiveColor = emissiveTexel.rgb;
-        float emissiveIntensity = emissiveTexel.a * 10.0;
+        float emissiveIntensity = emissiveTexel.a;
 
         SSGI = textureLod(accumulatedTexture, reprojectedUv, 0.).rgb + emissiveColor * emissiveIntensity;
     } else {

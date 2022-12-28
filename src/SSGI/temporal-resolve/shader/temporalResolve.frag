@@ -125,7 +125,6 @@ bool validateReprojectedUV(vec2 reprojectedUv, float depth, vec3 worldPos, vec4 
 
 vec2 reprojectVelocity(vec2 sampleUv, out bool didMove) {
     vec4 velocity = textureLod(velocityTexture, sampleUv, 0.0);
-    velocity.xy = unpackRGBATo2Half(velocity) * 2. - 1.;
 
     didMove = velocity.x > 0.0 || velocity.y > 0.0;
 

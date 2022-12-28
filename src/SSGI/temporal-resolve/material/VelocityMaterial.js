@@ -94,13 +94,12 @@ vec2 pos0 = (prevPosition.xy / prevPosition.w) * 0.5 + 0.5;
 vec2 pos1 = (newPosition.xy / newPosition.w) * 0.5 + 0.5;
 
 vec2 vel = pos1 - pos0;
-vel = 0.5 * vel + 0.5; // as pack2HalfToRGBA doesn't support negative numbers
 
 #ifdef renderDepth
 float fragCoordZ = 0.5 * vHighPrecisionZW[0] / vHighPrecisionZW[1] + 0.5;
 #endif
 
-gl_FragColor = pack2HalfToRGBA(vel);
+gl_FragColor =  vec4(vel.x, vel.y, 0., 0.);
 `
 
 export const velocity_uniforms = {

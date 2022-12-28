@@ -171,6 +171,26 @@ float F_Schlick(float f0, float f90, float theta) {
     return f0 + (f90 - f0) * pow(1.0 - theta, 5.0);
 }
 
+vec3 FresnelReflectAmount(float n1, float n2, vec3 normal, vec3 incident, vec3 f0, vec3 f90) {
+    // Schlick aproximation
+    float r0 = (n1 - n2) / (n1 + n2);
+    r0 *= r0;
+    float cosX = -dot(normal, incident);
+    if (n1 > n2) {
+        float n = n1 / n2;
+        float sinT2 = n * n * (1.0 - cosX * cosX);
+        // Total internal reflection
+        if (sinT2 > 1.0)
+            return f90;
+        cosX = sqrt(1.0 - sinT2);
+    }
+    float x = 1.0 - cosX;
+    float ret = r0 + (1.0 - r0) * x * x * x * x * x;
+
+    // adjust reflect multiplier for object reflectivity
+    return mix(f0, f90, ret);
+}
+
 float D_GTR(float roughness, float NoH, float k) {
     float a2 = pow(roughness, 2.);
     return a2 / (PI * pow((NoH * NoH) * (a2 * a2 - 1.) + 1., k));
@@ -208,7 +228,7 @@ vec3 evalDisneySpecular(float r, vec3 F, float NoH, float NoV, float NoL) {
     float D = D_GTR(roughness, NoH, 2.);
     float G = GeometryTerm(NoL, NoV, pow(0.5 + r * .5, 2.));
 
-    vec3 spec = D * F * G / (4. * NoL * NoV);
+    vec3 spec = vec3(D * G / (4. * NoL * NoV));
 
     return spec;
 }

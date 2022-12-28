@@ -121,7 +121,7 @@ export class MRTMaterial extends ShaderMaterial {
                     #include <clipping_planes_fragment>
                     #include <logdepthbuf_fragment>
                     #include <normal_fragment_begin>
-                    // #include <normal_fragment_maps>
+                    #include <normal_fragment_maps>
 
                     float roughnessFactor = roughness;
                     bool isDeselected = roughness > 10.0e9;
