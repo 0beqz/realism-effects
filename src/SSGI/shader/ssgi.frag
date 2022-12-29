@@ -99,28 +99,26 @@ void main() {
     vec3 diffuse = diffuseTexel.rgb;
     float metalness = diffuseTexel.a;
 
-    vec3 SSGI;
-    vec3 reflected;
-    vec3 hitPos;
-    vec2 sampleOffset;
-
-    bool isMissedRay = false;
-    bool isDiffuseSample = false;
+    vec3 n = viewNormal;  // view-space normal
+    vec3 v = -viewDir;    // incoming vector
+    float NoV = max(FLOAT_EPSILON, dot(n, v));
 
     // convert view dir and view normal to world-space
-    vec3 V = -(vec4(viewDir, 1.) * _viewMatrix).xyz;  // invert view dir
-    vec3 N = (vec4(viewNormal, 1.) * _viewMatrix).xyz;
+    vec3 V = (vec4(v, 1.) * _viewMatrix).xyz;  // invert view dir
+    vec3 N = (vec4(n, 1.) * _viewMatrix).xyz;
 
-    vec3 T, B;
+    bool isMissedRay, isDiffuseSample;
+    vec2 sampleOffset;
+    vec3 SSGI, hitPos, T, B;
+
     Onb(N, T, B);
 
     V = ToLocal(T, B, N, V);
 
-    vec3 brdf = vec3(1.0);
-    vec3 reconstructBrdf = vec3(1.);
+    vec3 brdf = vec3(1.0), reconstructBrdf = vec3(1.0);
 
     for (int s = 0; s < 1; s++) {
-        sampleOffset = rand2();
+        if (s != 0) sampleOffset = rand2();
 
         float sF = float(s);
         float m = 1. / (sF + 1.0);
@@ -128,13 +126,11 @@ void main() {
         vec2 blueNoiseUv = (vUv + blueNoiseOffset + sampleOffset) * blueNoiseRepeat;
         vec3 random = textureLod(blueNoiseTexture, blueNoiseUv, 0.).rgb;
 
-        vec3 gi;
+        // calculate GGX reflection ray
         vec3 H = SampleGGXVNDF(V, spread, spread, random.x, random.y);
+        if (H.z < 0.0) H = -H;
 
-        if (H.z < 0.0)
-            H = -H;
-
-        reflected = normalize(reflect(-V, H));
+        vec3 reflected = normalize(reflect(-V, H));
         reflected = ToWorld(T, B, N, reflected);
 
         // convert reflected vector back to view-space
@@ -143,13 +139,10 @@ void main() {
 
         if (dot(viewNormal, reflected) < 0.) reflected = -reflected;
 
-        vec3 n = viewNormal;
-        vec3 v = -viewDir;
-        vec3 l = reflected;
-        vec3 h = normalize(v + l);
+        vec3 l = reflected;         // reflected vector
+        vec3 h = normalize(v + l);  // half vector
 
         float NoL = max(FLOAT_EPSILON, dot(n, l));
-        float NoV = max(FLOAT_EPSILON, dot(n, v));
         float NoH = max(FLOAT_EPSILON, dot(n, h));
         float LoH = max(FLOAT_EPSILON, dot(l, h));
         float VoH = max(FLOAT_EPSILON, dot(v, h));
@@ -158,15 +151,22 @@ void main() {
         vec3 f0 = mix(vec3(0.04), diffuse, metalness);
         vec3 F = F_Schlick(f0, VoH);
 
+        // diffuse and specular wieght
         float diffW = (1. - metalness) * czm_luminance(diffuse);
         float specW = czm_luminance(F);
+
         float invW = 1. / (diffW + specW);
+
+        // relative weights used for choosing either a diffuse or specular ray
         diffW *= invW;
         specW *= invW;
 
         diffW = max(diffW, FLOAT_EPSILON);
         specW = max(specW, FLOAT_EPSILON);
 
+        vec3 gi;
+
+        // if diffuse lighting should be sampled
         isDiffuseSample = random.z < diffW;
 
         if (isDiffuseSample) {
@@ -191,14 +191,14 @@ void main() {
         float cosTheta = max(FLOAT_EPSILON, dot(viewNormal, reflected));
         brdf *= cosTheta;
 
-        brdf = clamp(brdf, 0.01, 100.);
+        brdf = clamp(brdf, FLOAT_EPSILON, 10.);
 
         gi *= brdf;
 
         SSGI = mix(SSGI, gi, m);
-        // SSGI = F;
     }
 
+    // calculate world-space ray length used for reprojecting hit points instead of screen-space pixels in the temporal resolve pass
     float rayLength = 0.0;
     if (!isMissedRay && spread < 0.675) {
         vec3 normalWS = (vec4(viewNormal, 1.) * _viewMatrix).xyz;
@@ -244,13 +244,11 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
     if (isDiffuseSample) {
         vec3 diffuseBrdf = vec3(evalDisneyDiffuse(NoL, NoV, LoH, spread, diffuseTexel.a));
         pdf = NoL / M_PI;
-        pdf = clamp(pdf, FLOAT_EPSILON, 100.);
 
         brdf *= diffuseBrdf / pdf;
     } else {
         vec3 specularBrdf = evalDisneySpecular(spread, F, NoH, NoV, NoL);
         pdf = GGXVNDFPdf(NoH, NoV, spread);
-        pdf = clamp(pdf, FLOAT_EPSILON, 100.);
 
         brdf *= specularBrdf / pdf;
     }
