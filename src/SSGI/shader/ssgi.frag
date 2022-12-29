@@ -116,11 +116,12 @@ void main() {
     V = ToLocal(T, B, N, V);
 
     vec3 brdf = vec3(1.0), reconstructBrdf = vec3(1.0);
+    float sppPlus1 = float(spp + 1);
 
-    for (int s = 0; s < 1; s++) {
-        if (s != 0) sampleOffset = rand2();
-
+    for (int s = 0; s < spp; s++) {
         float sF = float(s);
+        if (s != 0) sampleOffset = vec2(sF / sppPlus1);
+
         float m = 1. / (sF + 1.0);
 
         vec2 blueNoiseUv = (vUv + blueNoiseOffset + sampleOffset) * blueNoiseRepeat;
@@ -172,20 +173,19 @@ void main() {
         if (isDiffuseSample) {
             reflected = cosineSampleHemisphere(viewNormal, random.xy);
             gi = doSample(viewPos, viewDir, viewNormal, worldPos, metalness, spread, isDiffuseSample, F, random.xy, reflected, hitPos, isMissedRay, brdf);
-            brdf *= 1. - metalness;
-            brdf /= diffW;
+            // brdf *= 1. - metalness;
+            // brdf /= diffW;
 
             // diffuse-related information
             reconstructBrdf *= diffuse * (1. - F);
-            brdf *= reconstructBrdf;
+            // brdf *= reconstructBrdf;
         } else {
             gi = doSample(viewPos, viewDir, viewNormal, worldPos, metalness, spread, isDiffuseSample, F, random.xy, reflected, hitPos, isMissedRay, brdf);
-
-            brdf /= specW;
+            // brdf /= specW;
 
             // diffuse-related information
             reconstructBrdf = F;
-            brdf *= reconstructBrdf;
+            // brdf *= reconstructBrdf;
         }
 
         float cosTheta = max(FLOAT_EPSILON, dot(viewNormal, reflected));
@@ -237,17 +237,15 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
     float LoH = max(FLOAT_EPSILON, dot(l, h));
     float VoH = max(FLOAT_EPSILON, dot(v, h));
 
-    vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.);
-
     float pdf;
 
     if (isDiffuseSample) {
-        vec3 diffuseBrdf = vec3(evalDisneyDiffuse(NoL, NoV, LoH, spread, diffuseTexel.a));
+        vec3 diffuseBrdf = vec3(evalDisneyDiffuse(NoL, NoV, LoH, spread, metalness));
         pdf = NoL / M_PI;
 
         brdf *= diffuseBrdf / pdf;
     } else {
-        vec3 specularBrdf = evalDisneySpecular(spread, F, NoH, NoV, NoL);
+        vec3 specularBrdf = evalDisneySpecular(spread, NoH, NoV, NoL);
         pdf = GGXVNDFPdf(NoH, NoV, spread);
 
         brdf *= specularBrdf / pdf;

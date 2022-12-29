@@ -1,5 +1,13 @@
 ﻿import { Pass } from "postprocessing"
-import { GLSL3, NearestFilter, ShaderMaterial, Uniform, WebGLMultipleRenderTargets, WebGLRenderTarget } from "three"
+import {
+	GLSL3,
+	HalfFloatType,
+	NearestFilter,
+	ShaderMaterial,
+	Uniform,
+	WebGLMultipleRenderTargets,
+	WebGLRenderTarget
+} from "three"
 import basicVertexShader from "../shader/basic.vert"
 
 export class CopyPass extends Pass {
@@ -9,7 +17,6 @@ export class CopyPass extends Pass {
 		this.fullscreenMaterial = new ShaderMaterial({
 			fragmentShader: /* glsl */ `
             varying vec2 vUv;
-
 
 			uniform sampler2D inputTexture;
 			layout(location = 0) out vec4 gOutput0;
@@ -51,7 +58,7 @@ export class CopyPass extends Pass {
 		const renderTargetOptions = {
 			minFilter: NearestFilter,
 			magFilter: NearestFilter,
-			// type: HalfFloatType,
+			type: HalfFloatType,
 			depthBuffer: false
 		}
 

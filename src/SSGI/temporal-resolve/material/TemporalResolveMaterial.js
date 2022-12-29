@@ -30,7 +30,8 @@ export class TemporalResolveMaterial extends ShaderMaterial {
 				lastCameraPos: new Uniform(new Vector3())
 			},
 			vertexShader,
-			fragmentShader
+			fragmentShader,
+			toneMapped: false
 		})
 	}
 }

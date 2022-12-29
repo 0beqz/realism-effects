@@ -41,7 +41,8 @@ export class DenoisePass extends Pass {
 				projectionMatrix: new Uniform(camera.projectionMatrix),
 				cameraMatrixWorld: new Uniform(camera.matrixWorld),
 				_projectionMatrixInverse: new Uniform(camera.projectionMatrixInverse)
-			}
+			},
+			toneMapped: false
 		})
 
 		const renderTargetOptions = {

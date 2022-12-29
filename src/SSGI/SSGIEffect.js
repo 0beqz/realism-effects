@@ -78,12 +78,60 @@ export class SSGIEffect extends Effect {
 					"gl_FragColor = vec4(color, sumVariance);",
 					/* glsl */ `
 			if (isLastIteration) {
-				vec3 diffuse = textureLod(diffuseTexture, vUv, 0.).rgb;
-				vec4 brdf = textureLod(brdfTexture, vUv, 0.);
+				vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.);
+				vec3 diffuse = diffuseTexel.rgb;
+				float metalness = diffuseTexel.a;
+				float spread = sqrt(roughness);
 
-				float alpha = inputTexel.a;
-				float pixelSample = alpha /  0.001 + 1.0;
-				float temporalResolveMix = 1. - 1. / pixelSample;
+				// view-space position of the current texel
+				vec3 viewPos = getViewPosition(depth);
+    			vec3 viewDir = normalize(viewPos);
+
+				vec3 T, B;
+
+				vec3 n = viewNormal;  // view-space normal
+    			vec3 v = viewDir;    // incoming vector
+
+				// convert view dir and view normal to world-space
+				vec3 V = (vec4(v, 1.) * _viewMatrix).xyz;  // invert view dir
+    			vec3 N = (vec4(n, 1.) * _viewMatrix).xyz;  // invert view dir
+
+				Onb(N, T, B);
+
+				V = ToLocal(T, B, N, V);
+
+				// calculate GGX reflection ray
+				vec3 H = SampleGGXVNDF(V, spread, spread, 0.5, 0.5);
+				if (H.z < 0.0) H = -H;
+
+				vec3 reflected = normalize(reflect(-V, H));
+				reflected = ToWorld(T, B, N, reflected);
+
+				// convert reflected vector back to view-space
+				reflected = (vec4(reflected, 1.) * cameraMatrixWorld).xyz;
+				reflected = normalize(reflected);
+
+				if (dot(viewNormal, reflected) < 0.) reflected = -reflected;
+
+				vec3 l = reflected;         // reflected vector
+        		vec3 h = normalize(v + l);  // half vector
+				float VoH = max(0.0001, dot(v, h));
+
+				// fresnel
+				vec3 f0 = mix(vec3(0.04), diffuse, metalness);
+				vec3 F = F_Schlick(f0, VoH);
+
+				// diffuse and specular wieght
+				float diffW = (1. - metalness) * czm_luminance(diffuse);
+        		float specW = czm_luminance(F);
+
+        		float invW = 1. / (diffW + specW);
+				
+				// relative weights used for choosing either a diffuse or specular ray
+				diffW *= invW;
+        		specW *= invW;
+
+				color = color * F + color * diffuse * (1. - F) * (1. - metalness);
 				
 				vec3 directLight = textureLod(directLightTexture, vUv, 0.).rgb;
 				color += directLight;

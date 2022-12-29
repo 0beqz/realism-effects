@@ -1,4 +1,5 @@
-﻿import { DenoisePass } from "./pass/DenoisePass.js"
+﻿import { HalfFloatType } from "three"
+import { DenoisePass } from "./pass/DenoisePass.js"
 import { SVGFTemporalResolvePass } from "./pass/SVGFTemporalResolvePass.js"
 import { defaultTemporalResolvePassOptions } from "./temporal-resolve/TemporalResolvePass.js"
 
@@ -26,6 +27,9 @@ export class SVGF {
 			lastMomentsTexture.isRenderTargetTexture = true
 			this.svgfTemporalResolvePass.copyPass.renderTarget.texture.push(lastMomentsTexture)
 			this.svgfTemporalResolvePass.copyPass.fullscreenMaterial.defines.textureCount++
+
+			lastMomentsTexture.type = HalfFloatType
+			lastMomentsTexture.needsUpdate = true
 
 			this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.lastMomentsTexture.value = lastMomentsTexture
 		}

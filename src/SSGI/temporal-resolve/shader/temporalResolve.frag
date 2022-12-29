@@ -27,9 +27,7 @@ uniform mat4 prevCameraMatrixWorld;
 uniform vec3 cameraPos;
 uniform vec3 lastCameraPos;
 
-#define FLOAT_EPSILON           0.00001
-#define FLOAT_ONE_MINUS_EPSILON 0.9999
-#define ALPHA_STEP              0.001
+#define FLOAT_EPSILON 0.00001
 
 #include <packing>
 
@@ -186,10 +184,10 @@ vec2 getDilatedDepthUV(out float currentDepth, out vec4 closestDepthTexel) {
 #ifdef catmullRomSampling
 vec4 SampleTextureCatmullRom(sampler2D tex, in vec2 uv, in vec2 texSize) {
     vec4 center = textureLod(tex, uv, 0.);
-    float pixelSample = center.a / ALPHA_STEP + 1.0;
+    float pixelFrames = center.a;
 
     // Catmull Rom Sampling will result in very glitchy sampling when the center texel is noisy over frame so use the center texel in that case
-    if (pixelSample < 100.) {
+    if (pixelFrames < 100.) {
         return center;
     }
 
@@ -304,7 +302,7 @@ void main() {
             accumulatedColor = transformColor(accumulatedTexel.rgb);
             alpha = accumulatedTexel.a;
 
-            alpha += ALPHA_STEP;
+            alpha += 1.0;  // add one more frame
 
 #ifdef neighborhoodClamping
             vec3 minNeighborColor = inputColor;
@@ -317,8 +315,9 @@ void main() {
 
 #endif
         } else {
+            // reprojection invalid possibly due to disocclusion
             accumulatedColor = inputColor;
-            alpha = 0.0;
+            alpha = 1.0;
         }
     }
 
@@ -329,10 +328,10 @@ void main() {
     if (constantBlend) {
         temporalResolveMix = blend;
     } else {
-        float pixelSample = alpha / ALPHA_STEP + 1.0;
+        float pixelFrames = alpha;
         // float maxValue = didMove ? blend : 1.0;
 
-        temporalResolveMix = 1. - 1. / pixelSample;
+        temporalResolveMix = 1. - 1. / pixelFrames;
         temporalResolveMix = min(temporalResolveMix, blend);
     }
 
@@ -340,7 +339,7 @@ void main() {
     float lum = czm_luminance(outputColor);
     // if (lum > 1.) outputColor *= 1. / lum;
 
-    if (didMove && alpha > blend) alpha = blend;
+    // if (didMove && alpha > blend) alpha = blend;
 
 // the user's shader to compose a final outputColor from the inputTexel and accumulatedTexel
 #ifdef useCustomComposeShader
