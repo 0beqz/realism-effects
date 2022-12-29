@@ -182,7 +182,6 @@ void main() {
         } else {
             gi = doSample(viewPos, viewDir, viewNormal, worldPos, metalness, spread, isDiffuseSample, F, random.xy, reflected, hitPos, isMissedRay, brdf);
             // brdf /= specW;
-
             // diffuse-related information
             reconstructBrdf = F;
             // brdf *= reconstructBrdf;

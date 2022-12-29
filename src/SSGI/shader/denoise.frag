@@ -44,6 +44,40 @@ vec3 SampleGGXVNDF(vec3 V, float ax, float ay, float r1, float r2) {
     return normalize(vec3(ax * Nh.x, ay * Nh.y, max(0.0, Nh.z)));
 }
 
+float D_GTR(float roughness, float NoH, float k) {
+    float a2 = pow(roughness, 2.);
+    return a2 / (PI * pow((NoH * NoH) * (a2 * a2 - 1.) + 1., k));
+}
+
+float SmithG(float NDotV, float alphaG) {
+    float a = alphaG * alphaG;
+    float b = NDotV * NDotV;
+    return (2.0 * NDotV) / (NDotV + sqrt(a + b - a * b));
+}
+
+float GGXVNDFPdf(float NoH, float NoV, float roughness) {
+    float D = D_GTR(roughness, NoH, 2.);
+    float G1 = SmithG(NoV, roughness * roughness);
+    return (D * G1) / max(0.00001, 4.0f * NoV);
+}
+
+float GeometryTerm(float NoL, float NoV, float roughness) {
+    float a2 = roughness * roughness;
+    float G1 = SmithG(NoV, a2);
+    float G2 = SmithG(NoL, a2);
+    return G1 * G2;
+}
+
+vec3 evalDisneySpecular(float r, float NoH, float NoV, float NoL) {
+    float roughness = pow(r, 2.);
+    float D = D_GTR(roughness, NoH, 2.);
+    float G = GeometryTerm(NoL, NoV, pow(0.5 + r * .5, 2.));
+
+    vec3 spec = vec3(D * G / (4. * NoL * NoV));
+
+    return spec;
+}
+
 void Onb(in vec3 N, inout vec3 T, inout vec3 B) {
     vec3 up = abs(N.z) < 0.9999999 ? vec3(0, 0, 1) : vec3(1, 0, 0);
     T = normalize(cross(up, N));
