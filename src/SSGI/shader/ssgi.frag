@@ -116,6 +116,7 @@ void main() {
     Onb(N, T, B);
 
     V = ToLocal(T, B, N, V);
+    vec3 F;
 
     vec3 brdf = vec3(1.0), reconstructBrdf = vec3(1.0);
     float sppPlus1 = float(spp + 1);
@@ -152,7 +153,7 @@ void main() {
 
         // fresnel
         vec3 f0 = mix(vec3(0.04), diffuse, metalness);
-        vec3 F = F_Schlick(f0, VoH);
+        F = F_Schlick(f0, VoH);
 
         // diffuse and specular wieght
         float diffW = (1. - metalness) * czm_luminance(diffuse);
@@ -176,17 +177,17 @@ void main() {
             reflected = cosineSampleHemisphere(viewNormal, random.xy);
             gi = doSample(viewPos, viewDir, viewNormal, worldPos, metalness, spread, isDiffuseSample, F, random.xy, reflected, hitPos, isMissedRay, brdf);
             brdf *= 1. - metalness;
-            brdf /= diffW;
+            // brdf /= diffW;
 
             // diffuse-related information
             reconstructBrdf *= diffuse * (1. - F);
-            brdf *= reconstructBrdf;
+            // brdf *= reconstructBrdf;
         } else {
             gi = doSample(viewPos, viewDir, viewNormal, worldPos, metalness, spread, isDiffuseSample, F, random.xy, reflected, hitPos, isMissedRay, brdf);
-            brdf /= specW;
+            // brdf /= specW;
             // diffuse-related information
             reconstructBrdf = F;
-            brdf *= reconstructBrdf;
+            // brdf *= reconstructBrdf;
         }
 
         float cosTheta = max(FLOAT_EPSILON, dot(viewNormal, reflected));

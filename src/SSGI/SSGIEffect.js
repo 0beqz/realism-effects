@@ -101,7 +101,7 @@ export class SSGIEffect extends Effect {
 				V = ToLocal(T, B, N, V);
 
 				// calculate GGX reflection ray
-				vec3 H = SampleGGXVNDF(V, 0.75, 0.75, 0., 0.);
+				vec3 H = SampleGGXVNDF(V, spread, spread, 0.5, 0.5);
 				if (H.z < 0.0) H = -H;
 
 				vec3 reflected = normalize(reflect(-V, H));
@@ -117,7 +117,11 @@ export class SSGIEffect extends Effect {
         		vec3 h = normalize(v + l);  // half vector
 				float VoH = max(0.0001, dot(v, h));
 
-				VoH = pow(VoH, 4.5);
+				float vo = VoH;
+				// VoH = pow(VoH, 2.5);
+				VoH = pow(1.5, VoH -.4) - 1.;
+				VoH *= 3.;
+				VoH = min(vo, pow(VoH, 0.5));
 
 				// fresnel
 				vec3 f0 = mix(vec3(0.04), diffuse, metalness);
@@ -132,8 +136,9 @@ export class SSGIEffect extends Effect {
 				// relative weights used for choosing either a diffuse or specular ray
 				diffW *= invW;
         		specW *= invW;
-
-				// color = color * F + color * diffuse * (1. - F) * (1. - metalness);
+				
+				color = color * F + color * diffuse * (1. - F) * (1. - metalness);
+				// color = F;
 				
 				vec3 directLight = textureLod(directLightTexture, vUv, 0.).rgb;
 				color += directLight;
