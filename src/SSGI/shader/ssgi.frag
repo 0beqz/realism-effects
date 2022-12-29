@@ -94,6 +94,8 @@ void main() {
     float spread = jitter + roughness * jitterRoughness;
     spread = sqrt(spread);
     spread = clamp(spread, 0.01, 1.0);
+    // spread = 1.;
+    // metalness = 0.;
 
     vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.);
     vec3 diffuse = diffuseTexel.rgb;
@@ -173,18 +175,18 @@ void main() {
         if (isDiffuseSample) {
             reflected = cosineSampleHemisphere(viewNormal, random.xy);
             gi = doSample(viewPos, viewDir, viewNormal, worldPos, metalness, spread, isDiffuseSample, F, random.xy, reflected, hitPos, isMissedRay, brdf);
-            // brdf *= 1. - metalness;
-            // brdf /= diffW;
+            brdf *= 1. - metalness;
+            brdf /= diffW;
 
             // diffuse-related information
             reconstructBrdf *= diffuse * (1. - F);
-            // brdf *= reconstructBrdf;
+            brdf *= reconstructBrdf;
         } else {
             gi = doSample(viewPos, viewDir, viewNormal, worldPos, metalness, spread, isDiffuseSample, F, random.xy, reflected, hitPos, isMissedRay, brdf);
-            // brdf /= specW;
+            brdf /= specW;
             // diffuse-related information
             reconstructBrdf = F;
-            // brdf *= reconstructBrdf;
+            brdf *= reconstructBrdf;
         }
 
         float cosTheta = max(FLOAT_EPSILON, dot(viewNormal, reflected));
@@ -285,7 +287,8 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
         reflectedWS.xyz = normalize(reflectedWS.xyz);
     #endif
 
-        float mip = spread == 1.0 ? 7. / 13. * maxEnvMapMipLevel * spread * spread : 0.0;
+        // float mip = isDiffuseSample ? 10. * spread : 0.;
+        float mip = 8. / 12. * maxEnvMapMipLevel;
 
         vec3 sampleDir = reflectedWS.xyz;
         envMapSample = sampleEquirectEnvMapColor(sampleDir, envMap, mip);
@@ -294,7 +297,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
         float envLum = czm_luminance(envMapSample);
 
         const float maxVal = 10.0;
-        if (envLum > maxVal) envMapSample *= maxVal / envLum;
+        // if (envLum > maxVal) envMapSample *= maxVal / envLum;
 
         return envMapSample;
     }
