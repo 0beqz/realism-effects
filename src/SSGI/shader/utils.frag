@@ -223,10 +223,9 @@ float evalDisneyDiffuse(float NoL, float NoV, float LoH, float roughness, float 
     return (a * b / PI) * (1. - metalness);
 }
 
-vec3 evalDisneySpecular(float r, float NoH, float NoV, float NoL) {
-    float roughness = pow(r, 2.);
+vec3 evalDisneySpecular(float roughness, float NoH, float NoV, float NoL) {
     float D = D_GTR(roughness, NoH, 2.);
-    float G = GeometryTerm(NoL, NoV, pow(0.5 + r * .5, 2.));
+    float G = GeometryTerm(NoL, NoV, pow(0.5 + roughness * .5, 2.));
 
     vec3 spec = vec3(D * G / (4. * NoL * NoV));
 

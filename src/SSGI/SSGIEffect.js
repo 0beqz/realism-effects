@@ -119,10 +119,10 @@ export class SSGIEffect extends Effect {
 				float VoH = max(0.0001, dot(v, h));
 
 				float vo = VoH;
-				// VoH = pow(VoH, 2.5);
-				VoH = pow(1.5, VoH -.4) - 1.;
+				VoH = pow(VoH, 1.5);
+				VoH = pow(1.5, VoH - 0.2) - 1.;
 				VoH *= 3.;
-				VoH = min(vo, pow(VoH, 0.5 + 0.125 * metalness));
+				VoH = min(vo, pow(VoH, 1.));
 
 				// fresnel
 				vec3 f0 = mix(vec3(0.04), diffuse, metalness);
@@ -138,7 +138,7 @@ export class SSGIEffect extends Effect {
 				diffW *= invW;
         		specW *= invW;
 				
-				color = color * F + color * diffuse * (1. - F) * (1. - metalness);
+				// color = color * F + color * diffuse * (1. - F) * (1. - metalness);
 				// color = F;
 				
 				vec3 directLight = textureLod(directLightTexture, vUv, 0.).rgb;

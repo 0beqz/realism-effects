@@ -92,7 +92,7 @@ void main() {
     vec3 worldPos = vec4(_viewMatrix * vec4(viewPos, 1.)).xyz;
 
     float spread = jitter + roughness * jitterRoughness;
-    spread = sqrt(spread);
+    spread = spread * spread;
     spread = clamp(spread, 0.01, 1.0);
     // spread = 1.;
     // metalness = 0.;
@@ -177,24 +177,23 @@ void main() {
             reflected = cosineSampleHemisphere(viewNormal, random.xy);
             gi = doSample(viewPos, viewDir, viewNormal, worldPos, metalness, spread, isDiffuseSample, F, random.xy, reflected, hitPos, isMissedRay, brdf);
             brdf *= 1. - metalness;
-            // brdf /= diffW;
+            brdf /= diffW;
 
             // diffuse-related information
             reconstructBrdf *= diffuse * (1. - F);
-            // brdf *= reconstructBrdf;
+            brdf *= reconstructBrdf;
         } else {
             gi = doSample(viewPos, viewDir, viewNormal, worldPos, metalness, spread, isDiffuseSample, F, random.xy, reflected, hitPos, isMissedRay, brdf);
-            // brdf /= specW;
+            brdf /= specW;
             // diffuse-related information
             reconstructBrdf = F;
-            // brdf *= reconstructBrdf;
+            brdf *= reconstructBrdf;
         }
 
         float cosTheta = max(FLOAT_EPSILON, dot(viewNormal, reflected));
         brdf *= cosTheta;
 
-        brdf = clamp(brdf, FLOAT_EPSILON, 10.);
-
+        brdf = clamp(brdf, FLOAT_EPSILON, 1000.);
         gi *= brdf;
 
         SSGI = mix(SSGI, gi, m);
@@ -244,11 +243,13 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
     if (isDiffuseSample) {
         vec3 diffuseBrdf = vec3(evalDisneyDiffuse(NoL, NoV, LoH, spread, metalness));
         pdf = NoL / M_PI;
+        pdf = max(FLOAT_EPSILON, pdf);
 
         brdf *= diffuseBrdf / pdf;
     } else {
         vec3 specularBrdf = evalDisneySpecular(spread, NoH, NoV, NoL);
         pdf = GGXVNDFPdf(NoH, NoV, spread);
+        pdf = max(FLOAT_EPSILON, pdf);
 
         brdf *= specularBrdf / pdf;
     }
@@ -288,8 +289,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
         reflectedWS.xyz = normalize(reflectedWS.xyz);
     #endif
 
-        // float mip = isDiffuseSample ? 10. * spread : 0.;
-        float mip = 8. / 12. * maxEnvMapMipLevel;
+        float mip = 4. / 12. * maxEnvMapMipLevel;
 
         vec3 sampleDir = reflectedWS.xyz;
         envMapSample = sampleEquirectEnvMapColor(sampleDir, envMap, mip);
@@ -297,7 +297,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
         // we won't deal with calculating direct sun light from the env map as it is too noisy
         float envLum = czm_luminance(envMapSample);
 
-        const float maxVal = 10.0;
+        // const float maxVal = 10.0;
         // if (envLum > maxVal) envMapSample *= maxVal / envLum;
 
         return envMapSample;

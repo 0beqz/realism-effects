@@ -76,7 +76,7 @@ renderer.autoClear = false
 // renderer.autoClearStencil = false
 
 renderer.toneMapping = NoToneMapping
-renderer.toneMappingExposure = 1.1
+renderer.toneMappingExposure = 1.5
 renderer.outputEncoding = THREE.sRGBEncoding
 const dpr = window.devicePixelRatio || 1
 renderer.setPixelRatio(dpr)
