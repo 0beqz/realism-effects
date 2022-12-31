@@ -215,6 +215,20 @@ float GeometryTerm(float NoL, float NoV, float roughness) {
     return G1 * G2;
 }
 
+float SmithGAniso(float NDotV, float VDotX, float VDotY, float ax, float ay) {
+    float a = VDotX * ax;
+    float b = VDotY * ay;
+    float c = NDotV;
+    return (2.0 * NDotV) / (NDotV + sqrt(a * a + b * b + c * c));
+}
+
+float GTR2Aniso(float NDotH, float HDotX, float HDotY, float ax, float ay) {
+    float a = HDotX / ax;
+    float b = HDotY / ay;
+    float c = a * a + b * b + NDotH * NDotH;
+    return 1.0 / (PI * ax * ay * c * c);
+}
+
 float evalDisneyDiffuse(float NoL, float NoV, float LoH, float roughness, float metalness) {
     float FD90 = 0.5 + 2. * roughness * pow(LoH, 2.);
     float a = F_Schlick(1., FD90, NoL);

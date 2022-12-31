@@ -279,7 +279,7 @@ void main() {
     } else {
         vec3 worldPos = screenSpaceToWorldSpace(uv, depth, cameraMatrixWorld);
 
-#ifdef reprojectReflectionHitPoints
+#ifdef reprojectReflectionHitPoints_______________XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
         float rayLength;
         if ((rayLength = textureLod(inputTexture, uv, 0.).a) != 0.0) {
             reprojectedUv = reprojectHitPoint(worldPos, rayLength, uv, depth);

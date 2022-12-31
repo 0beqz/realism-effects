@@ -176,24 +176,24 @@ void main() {
         if (isDiffuseSample) {
             reflected = cosineSampleHemisphere(viewNormal, random.xy);
             gi = doSample(viewPos, viewDir, viewNormal, worldPos, metalness, spread, isDiffuseSample, F, random.xy, reflected, hitPos, isMissedRay, brdf);
-            brdf *= 1. - metalness;
-            brdf /= diffW;
+            // brdf *= 1. - metalness;
+            // brdf /= diffW;
 
             // diffuse-related information
-            reconstructBrdf *= diffuse * (1. - F);
-            brdf *= reconstructBrdf;
+            // reconstructBrdf *= diffuse * (1. - F);
+            // brdf *= reconstructBrdf;
         } else {
             gi = doSample(viewPos, viewDir, viewNormal, worldPos, metalness, spread, isDiffuseSample, F, random.xy, reflected, hitPos, isMissedRay, brdf);
-            brdf /= specW;
+            // brdf /= specW;
             // diffuse-related information
-            reconstructBrdf = F;
-            brdf *= reconstructBrdf;
+            // reconstructBrdf = F;
+            // brdf *= reconstructBrdf;
         }
 
-        float cosTheta = max(FLOAT_EPSILON, dot(viewNormal, reflected));
+        float cosTheta = max(0.0, dot(viewNormal, reflected));
         brdf *= cosTheta;
 
-        brdf = clamp(brdf, FLOAT_EPSILON, 1000.);
+        brdf = clamp(brdf, 0., 1000.);
         gi *= brdf;
 
         SSGI = mix(SSGI, gi, m);
@@ -218,9 +218,9 @@ void main() {
         }
     }
 
-    float a = 0.;
+    float a = isDiffuseSample ? 1. : 0.;
 
-    gSSGI = vec4(SSGI, rayLength);
+    gSSGI = vec4(SSGI, a);
     gBRDF = vec4(reconstructBrdf, a);
 }
 

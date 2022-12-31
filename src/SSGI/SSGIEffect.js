@@ -45,12 +45,12 @@ export class SSGIEffect extends Effect {
 			/* glsl */ `
 		uniform sampler2D brdfTexture;
 		uniform sampler2D directLightTexture;
+
 		` + this.svgf.svgfTemporalResolvePass.fullscreenMaterial.fragmentShader
 
 		this.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms = {
 			...this.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms,
 			...{
-				brdfTexture: new Uniform(null),
 				directLightTexture: new Uniform(null)
 			}
 		}
@@ -64,6 +64,8 @@ export class SSGIEffect extends Effect {
 		uniform sampler2D diffuseTexture;
 		uniform float jitter;
 		uniform float jitterRoughness;
+		uniform float a;
+		uniform float b;
 		` +
 			this.svgf.denoisePass.fullscreenMaterial.fragmentShader
 				.replace(
@@ -81,7 +83,7 @@ export class SSGIEffect extends Effect {
 				vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.);
 				vec3 diffuse = diffuseTexel.rgb;
 				float metalness = diffuseTexel.a;
-				float spread = sqrt(roughness);
+				float spread = roughness * roughness;
 
 				// view-space position of the current texel
 				vec3 viewPos = getViewPosition(depth);
@@ -101,8 +103,9 @@ export class SSGIEffect extends Effect {
 				V = ToLocal(T, B, N, V);
 
 				// calculate GGX reflection ray
-				float s = max(0.4, spread);
-				vec3 H = SampleGGXVNDF(V, s, s, 0.5, 0.5);
+				float o = random(vUv + a);
+				float p = random(vUv + b);
+				vec3 H = SampleGGXVNDF(V, spread, spread, o, p);
 				if (H.z < 0.0) H = -H;
 
 				vec3 reflected = normalize(reflect(-V, H));
@@ -116,30 +119,15 @@ export class SSGIEffect extends Effect {
 
 				vec3 l = reflected;         // reflected vector
         		vec3 h = normalize(v + l);  // half vector
-				float VoH = max(0.0001, dot(v, h));
-
-				float vo = VoH;
-				VoH = pow(VoH, 1.5);
-				VoH = pow(1.5, VoH - 0.2) - 1.;
-				VoH *= 3.;
-				VoH = min(vo, pow(VoH, 1.));
+				float VoH = max(FLOAT_EPSILON, dot(v, h));
 
 				// fresnel
 				vec3 f0 = mix(vec3(0.04), diffuse, metalness);
 				vec3 F = F_Schlick(f0, VoH);
-
-				// diffuse and specular wieght
-				float diffW = (1. - metalness) * czm_luminance(diffuse);
-        		float specW = czm_luminance(F);
-
-        		float invW = 1. / (diffW + specW);
-				
-				// relative weights used for choosing either a diffuse or specular ray
-				diffW *= invW;
-        		specW *= invW;
-				
-				// color = color * F + color * diffuse * (1. - F) * (1. - metalness);
-				// color = F;
+			
+				vec3 diff = diffuse * (1. - metalness) * (1. - F);
+				vec3 spec = F;
+				color *= diff + spec;
 				
 				vec3 directLight = textureLod(directLightTexture, vUv, 0.).rgb;
 				color += directLight;
@@ -156,7 +144,19 @@ export class SSGIEffect extends Effect {
 				diffuseTexture: new Uniform(null),
 				brdfTexture: new Uniform(null),
 				jitter: new Uniform(0),
-				jitterRoughness: new Uniform(0)
+				jitterRoughness: new Uniform(0),
+				a: {
+					get value() {
+						return Math.random()
+					},
+					set value(_) {}
+				},
+				b: {
+					get value() {
+						return Math.random()
+					},
+					set value(_) {}
+				}
 			}
 		}
 

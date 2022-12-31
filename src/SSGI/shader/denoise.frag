@@ -68,10 +68,15 @@ float GeometryTerm(float NoL, float NoV, float roughness) {
     return G1 * G2;
 }
 
-vec3 evalDisneySpecular(float r, float NoH, float NoV, float NoL) {
-    float roughness = pow(r, 2.);
+float random(vec2 st) {
+    return fract(sin(dot(st.xy,
+                         vec2(12.9898, 78.233))) *
+                 43758.5453123);
+}
+
+vec3 evalDisneySpecular(float roughness, float NoH, float NoV, float NoL) {
     float D = D_GTR(roughness, NoH, 2.);
-    float G = GeometryTerm(NoL, NoV, pow(0.5 + r * .5, 2.));
+    float G = GeometryTerm(NoL, NoV, pow(0.5 + roughness * .5, 2.));
 
     vec3 spec = vec3(D * G / (4. * NoL * NoV));
 
