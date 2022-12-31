@@ -8,7 +8,7 @@ const defaultSVGFTemporalResolvePassOptions = {
 export class SVGFTemporalResolvePass extends TemporalResolvePass {
 	constructor(scene, camera, options = defaultSVGFTemporalResolvePassOptions) {
 		const temporalResolvePassRenderTarget = options.moments
-			? new WebGLMultipleRenderTargets(1, 1, 2, {
+			? new WebGLMultipleRenderTargets(1, 1, 3, {
 					minFilter: NearestFilter,
 					magFilter: NearestFilter,
 					type: HalfFloatType,
@@ -32,8 +32,11 @@ export class SVGFTemporalResolvePass extends TemporalResolvePass {
 			? /* glsl */ `
 		layout(location = 0) out vec4 gOutput;
 		layout(location = 1) out vec4 gMoment;
+		layout(location = 2) out vec4 gOutput2;
 
 		uniform sampler2D lastMomentsTexture;
+		uniform sampler2D lastSpecularTexture;
+		uniform sampler2D specularTexture;
 		`
 			: ""
 
@@ -41,7 +44,9 @@ export class SVGFTemporalResolvePass extends TemporalResolvePass {
 
 		const momentsUniforms = options.moments
 			? {
-					lastMomentsTexture: new Uniform(null)
+					lastMomentsTexture: new Uniform(null),
+					lastSpecularTexture: new Uniform(null),
+					specularTexture: new Uniform(null)
 			  }
 			: {}
 
@@ -59,5 +64,9 @@ export class SVGFTemporalResolvePass extends TemporalResolvePass {
 
 	get momentsTexture() {
 		return this.renderTarget.isWebGLMultipleRenderTargets ? this.renderTarget.texture[1] : null
+	}
+
+	get specularTexture() {
+		return this.renderTarget.isWebGLMultipleRenderTargets ? this.renderTarget.texture[2] : null
 	}
 }

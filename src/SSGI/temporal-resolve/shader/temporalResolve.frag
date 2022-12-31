@@ -124,7 +124,7 @@ bool validateReprojectedUV(vec2 reprojectedUv, float depth, vec3 worldPos, vec4 
 vec2 reprojectVelocity(vec2 sampleUv, out bool didMove) {
     vec4 velocity = textureLod(velocityTexture, sampleUv, 0.0);
 
-    didMove = velocity.x > 0.0 || velocity.y > 0.0;
+    didMove = abs(velocity.x) > 0.0 || abs(velocity.y) > 0.0;
 
     return vUv - velocity.xy;
 }
@@ -330,6 +330,11 @@ void main() {
     } else {
         float pixelFrames = alpha;
         // float maxValue = didMove ? blend : 1.0;
+
+        if (dot(inputColor, inputColor) == 0.0) {
+            pixelFrames = max(1., pixelFrames - 1.);
+            inputColor = accumulatedColor;
+        }
 
         temporalResolveMix = 1. - 1. / pixelFrames;
         temporalResolveMix = min(temporalResolveMix, blend);

@@ -1,4 +1,5 @@
 ﻿import { Pass, RenderPass } from "postprocessing"
+import { GLSL3, WebGLMultipleRenderTargets } from "three"
 import { HalfFloatType, LinearFilter, ShaderMaterial, Uniform, Vector2, WebGLRenderTarget } from "three"
 import basicVertexShader from "../shader/basic.vert"
 import fragmentShader from "../shader/denoise.frag"
@@ -22,7 +23,8 @@ export class DenoisePass extends Pass {
 			fragmentShader,
 			vertexShader: basicVertexShader,
 			uniforms: {
-				inputTexture: new Uniform(inputTexture),
+				diffuseLightingTexture: new Uniform(inputTexture),
+				specularLightingTexture: new Uniform(inputTexture),
 				diffuseTexture: new Uniform(null),
 				depthTexture: new Uniform(null),
 				normalTexture: new Uniform(null),
@@ -30,7 +32,8 @@ export class DenoisePass extends Pass {
 				invTexSize: new Uniform(new Vector2()),
 				horizontal: new Uniform(true),
 				denoiseKernel: new Uniform(1),
-				lumaPhi: new Uniform(1),
+				lumaPhiDiffuse: new Uniform(1),
+				lumaPhiSpecular: new Uniform(1),
 				depthPhi: new Uniform(1),
 				normalPhi: new Uniform(1),
 				roughnessPhi: new Uniform(1),
@@ -42,7 +45,8 @@ export class DenoisePass extends Pass {
 				cameraMatrixWorld: new Uniform(camera.matrixWorld),
 				_projectionMatrixInverse: new Uniform(camera.projectionMatrixInverse)
 			},
-			toneMapped: false
+			toneMapped: false,
+			glslVersion: GLSL3
 		})
 
 		const renderTargetOptions = {
@@ -52,8 +56,18 @@ export class DenoisePass extends Pass {
 			depthBuffer: false
 		}
 
-		this.renderTargetA = new WebGLRenderTarget(1, 1, renderTargetOptions)
-		this.renderTargetB = new WebGLRenderTarget(1, 1, renderTargetOptions)
+		this.renderTargetA = new WebGLMultipleRenderTargets(1, 1, 2, renderTargetOptions)
+		this.renderTargetB = new WebGLMultipleRenderTargets(1, 1, 2, renderTargetOptions)
+
+		this.renderTargetA.texture[0].type = HalfFloatType
+		this.renderTargetA.texture[1].type = HalfFloatType
+		this.renderTargetB.texture[0].type = HalfFloatType
+		this.renderTargetB.texture[1].type = HalfFloatType
+
+		this.renderTargetA.texture[0].needsUpdate = true
+		this.renderTargetA.texture[1].needsUpdate = true
+		this.renderTargetB.texture[0].needsUpdate = true
+		this.renderTargetB.texture[1].needsUpdate = true
 
 		this.renderPass = new RenderPass(this.scene, this.camera)
 
@@ -73,7 +87,8 @@ export class DenoisePass extends Pass {
 	}
 
 	render(renderer) {
-		const inputTexture = this.fullscreenMaterial.uniforms.inputTexture.value
+		const diffuseLightingTexture = this.fullscreenMaterial.uniforms.diffuseLightingTexture.value
+		const specularLightingTexture = this.fullscreenMaterial.uniforms.specularLightingTexture.value
 
 		for (let i = 0; i < 2 * this.iterations; i++) {
 			const horizontal = i % 2 === 0
@@ -85,19 +100,28 @@ export class DenoisePass extends Pass {
 
 			const renderTarget = horizontal ? this.renderTargetA : this.renderTargetB
 
-			this.fullscreenMaterial.uniforms.inputTexture.value = horizontal
+			this.fullscreenMaterial.uniforms.diffuseLightingTexture.value = horizontal
 				? i === 0
-					? inputTexture
-					: this.renderTargetB.texture
-				: this.renderTargetA.texture
+					? diffuseLightingTexture
+					: this.renderTargetB.texture[0]
+				: this.renderTargetA.texture[0]
+
+			// specular
+
+			this.fullscreenMaterial.uniforms.specularLightingTexture.value = horizontal
+				? i === 0
+					? specularLightingTexture
+					: this.renderTargetB.texture[1]
+				: this.renderTargetA.texture[1]
 
 			this.renderPass.render(renderer, renderTarget)
 		}
 
-		this.fullscreenMaterial.uniforms.inputTexture.value = inputTexture
+		this.fullscreenMaterial.uniforms.diffuseLightingTexture.value = diffuseLightingTexture
+		this.fullscreenMaterial.uniforms.specularLightingTexture.value = specularLightingTexture
 	}
 
 	get texture() {
-		return this.renderTargetB.texture
+		return this.renderTargetB.texture[0]
 	}
 }

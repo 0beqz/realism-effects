@@ -31,6 +31,11 @@ export class CopyPass extends Pass {
 			layout(location = 2) out vec4 gOutput2;
 			#endif
 
+			#if textureCount > 3
+			uniform sampler2D inputTexture4;
+			layout(location = 3) out vec4 gOutput3;
+			#endif
+
             void main() {
                 gOutput0 = textureLod(inputTexture, vUv, 0.);
 
@@ -41,13 +46,18 @@ export class CopyPass extends Pass {
 				#if textureCount > 2
 				gOutput2 = textureLod(inputTexture3, vUv, 0.);
 				#endif
+
+				#if textureCount > 3
+				gOutput3 = textureLod(inputTexture4, vUv, 0.);
+				#endif
             }
             `,
 			vertexShader: basicVertexShader,
 			uniforms: {
 				inputTexture: new Uniform(null),
 				inputTexture2: new Uniform(null),
-				inputTexture3: new Uniform(null)
+				inputTexture3: new Uniform(null),
+				inputTexture4: new Uniform(null)
 			},
 			defines: {
 				textureCount

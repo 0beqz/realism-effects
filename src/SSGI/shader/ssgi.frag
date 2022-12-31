@@ -93,7 +93,7 @@ void main() {
 
     float spread = jitter + roughness * jitterRoughness;
     spread = spread * spread;
-    spread = clamp(spread, 0.01, 1.0);
+    spread = clamp(spread, FLOAT_EPSILON, 1.0);
     // spread = 1.;
     // metalness = 0.;
 
@@ -112,6 +112,8 @@ void main() {
     bool isMissedRay, isDiffuseSample;
     vec2 sampleOffset;
     vec3 SSGI, hitPos, T, B;
+
+    vec3 diffuseGI, specularGI;
 
     Onb(N, T, B);
 
@@ -175,28 +177,34 @@ void main() {
 
         if (isDiffuseSample) {
             reflected = cosineSampleHemisphere(viewNormal, random.xy);
-            gi = doSample(viewPos, viewDir, viewNormal, worldPos, metalness, spread, isDiffuseSample, F, random.xy, reflected, hitPos, isMissedRay, brdf);
+            diffuseGI = doSample(viewPos, viewDir, viewNormal, worldPos, metalness, spread, isDiffuseSample, F, random.xy, reflected, hitPos, isMissedRay, brdf);
             // brdf *= 1. - metalness;
             // brdf /= diffW;
 
             // diffuse-related information
             // reconstructBrdf *= diffuse * (1. - F);
             // brdf *= reconstructBrdf;
+
+            float cosTheta = max(0.0, dot(viewNormal, reflected));
+            brdf *= cosTheta;
+
+            brdf = clamp(brdf, 0., 1000.);
+            diffuseGI *= brdf;
         } else {
-            gi = doSample(viewPos, viewDir, viewNormal, worldPos, metalness, spread, isDiffuseSample, F, random.xy, reflected, hitPos, isMissedRay, brdf);
+            specularGI = doSample(viewPos, viewDir, viewNormal, worldPos, metalness, spread, isDiffuseSample, F, random.xy, reflected, hitPos, isMissedRay, brdf);
             // brdf /= specW;
             // diffuse-related information
             // reconstructBrdf = F;
             // brdf *= reconstructBrdf;
+
+            float cosTheta = max(0.0, dot(viewNormal, reflected));
+            brdf *= cosTheta;
+
+            brdf = clamp(brdf, 0., 1000.);
+            specularGI *= brdf;
         }
 
-        float cosTheta = max(0.0, dot(viewNormal, reflected));
-        brdf *= cosTheta;
-
-        brdf = clamp(brdf, 0., 1000.);
-        gi *= brdf;
-
-        SSGI = mix(SSGI, gi, m);
+        // SSGI = mix(SSGI, gi, m);
     }
 
     // calculate world-space ray length used for reprojecting hit points instead of screen-space pixels in the temporal resolve pass
@@ -220,8 +228,8 @@ void main() {
 
     float a = isDiffuseSample ? 1. : 0.;
 
-    gSSGI = vec4(SSGI, a);
-    gBRDF = vec4(reconstructBrdf, a);
+    gSSGI = vec4(diffuseGI, a);
+    gBRDF = vec4(specularGI, a);
 }
 
 vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, float metalness, float spread, bool isDiffuseSample, vec3 F, vec2 random, inout vec3 reflected, inout vec3 hitPos, out bool isMissedRay, out vec3 brdf) {
@@ -289,16 +297,16 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
         reflectedWS.xyz = normalize(reflectedWS.xyz);
     #endif
 
-        float mip = 4. / 12. * maxEnvMapMipLevel;
+        // float mip = 4. / 12. * maxEnvMapMipLevel;
 
         vec3 sampleDir = reflectedWS.xyz;
-        envMapSample = sampleEquirectEnvMapColor(sampleDir, envMap, mip);
+        envMapSample = sampleEquirectEnvMapColor(sampleDir, envMap, 0.);
 
         // we won't deal with calculating direct sun light from the env map as it is too noisy
         float envLum = czm_luminance(envMapSample);
 
-        // const float maxVal = 10.0;
-        // if (envLum > maxVal) envMapSample *= maxVal / envLum;
+        const float maxVal = 10.0;
+        if (envLum > maxVal) envMapSample *= maxVal / envLum;
 
         return envMapSample;
     }

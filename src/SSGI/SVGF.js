@@ -22,6 +22,8 @@ export class SVGF {
 			this.denoisePass.fullscreenMaterial.uniforms.momentsTexture.value = this.svgfTemporalResolvePass.momentsTexture
 			this.svgfTemporalResolvePass.copyPass.fullscreenMaterial.uniforms.inputTexture3.value =
 				this.svgfTemporalResolvePass.momentsTexture
+			this.svgfTemporalResolvePass.copyPass.fullscreenMaterial.uniforms.inputTexture4.value =
+				this.svgfTemporalResolvePass.specularTexture
 
 			const lastMomentsTexture = this.svgfTemporalResolvePass.copyPass.renderTarget.texture[0].clone()
 			lastMomentsTexture.isRenderTargetTexture = true
@@ -32,6 +34,16 @@ export class SVGF {
 			lastMomentsTexture.needsUpdate = true
 
 			this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.lastMomentsTexture.value = lastMomentsTexture
+
+			const lastSpecularTexture = this.svgfTemporalResolvePass.copyPass.renderTarget.texture[0].clone()
+			lastSpecularTexture.isRenderTargetTexture = true
+			this.svgfTemporalResolvePass.copyPass.renderTarget.texture.push(lastSpecularTexture)
+			this.svgfTemporalResolvePass.copyPass.fullscreenMaterial.defines.textureCount++
+
+			lastSpecularTexture.type = HalfFloatType
+			lastSpecularTexture.needsUpdate = true
+
+			this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.lastSpecularTexture.value = lastSpecularTexture
 		}
 	}
 
@@ -63,7 +75,11 @@ export class SVGF {
 
 		this.svgfTemporalResolvePass.setSize(width, height)
 
-		this.denoisePass.fullscreenMaterial.uniforms.inputTexture.value = this.svgfTemporalResolvePass.accumulatedTexture
+		this.denoisePass.fullscreenMaterial.uniforms.diffuseLightingTexture.value =
+			this.svgfTemporalResolvePass.accumulatedTexture
+
+		this.denoisePass.fullscreenMaterial.uniforms.specularLightingTexture.value =
+			this.svgfTemporalResolvePass.specularTexture
 	}
 
 	dispose() {

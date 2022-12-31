@@ -1,12 +1,17 @@
-﻿varying vec2 vUv;
+﻿layout(location = 0) out vec4 gDiffuse;
+layout(location = 1) out vec4 gSpecular;
 
-uniform sampler2D inputTexture;
+varying vec2 vUv;
+
+uniform sampler2D diffuseLightingTexture;
+uniform sampler2D specularLightingTexture;
 uniform sampler2D depthTexture;
 uniform sampler2D normalTexture;
 uniform sampler2D momentsTexture;
 uniform vec2 invTexSize;
 uniform bool horizontal;
-uniform float lumaPhi;
+uniform float lumaPhiDiffuse;
+uniform float lumaPhiSpecular;
 uniform float depthPhi;
 uniform float normalPhi;
 uniform float roughnessPhi;
@@ -168,60 +173,88 @@ float distToPlane(vec3 worldPos, vec3 neighborWorldPos, vec3 worldNormal) {
     return distToPlane;
 }
 
-void tap(vec2 neighborVec, vec2 pixelStepOffset, float depth, vec3 normal, float curvature, float roughness, vec3 worldPos, float luma, float colorPhi,
-         inout vec3 color, inout float totalWeight, inout float sumVariance) {
+void tap(vec2 neighborVec, vec2 pixelStepOffset, float depth, vec3 normal, float curvature, float roughness, vec3 worldPos, float lumaDiffuse, float lumaSpecular, float colorPhiDiffuse,
+         float colorPhiSpecular,
+         inout vec3 diffuseLightingColor, inout vec3 specularLightingColor, inout float totalWeightDiffuse, inout float sumVarianceDiffuse,
+         inout float totalWeightSpecular, inout float sumVarianceSpecular) {
     vec2 neighborUv = vUv + neighborVec * pixelStepOffset;
 
     vec4 neighborDepthTexel = textureLod(depthTexture, neighborUv, 0.);
     float neighborDepth = unpackRGBAToDepth(neighborDepthTexel);
     vec3 neighborWorldPos = screenSpaceToWorldSpace(neighborUv, neighborDepth, cameraMatrixWorld);
 
-    float depthSimilarity = max((1. - distToPlane(worldPos, neighborWorldPos, normal)) / depthPhi, 0.);
+    float depthDiff = (1. - distToPlane(worldPos, neighborWorldPos, normal));
+
+    float depthSimilarity = max(depthDiff / depthPhi, 0.);
 
     vec4 neighborNormalTexel = textureLod(normalTexture, neighborUv, 0.);
     vec3 neighborNormal = unpackRGBToNormal(neighborNormalTexel.rgb);
     neighborNormal = normalize((vec4(neighborNormal, 1.0) * _viewMatrix).xyz);
     float neighborRoughness = neighborNormalTexel.a;
 
-    float normalSimilarity = pow(max(0., dot(neighborNormal, normal)), normalPhi);
+    float normalDiff = dot(neighborNormal, normal);
+    float normalSimilarity = pow(max(0., normalDiff), normalPhi);
 
-    vec4 neighborInputTexel = textureLod(inputTexture, neighborUv, 0.);
-    vec3 neighborColor = neighborInputTexel.rgb;
-    float neighborLuma = czm_luminance(neighborColor);
+    vec4 diffuseNeighborInputTexel = textureLod(diffuseLightingTexture, neighborUv, 0.);
+    vec3 diffuseNeighborColor = diffuseNeighborInputTexel.rgb;
+
+    vec4 specularNeighborInputTexel = textureLod(specularLightingTexture, neighborUv, 0.);
+    vec3 specularNeighborColor = specularNeighborInputTexel.rgb;
+
+    float neighborLumaDiffuse = czm_luminance(diffuseNeighborColor);
+    float neighborLumaSpecular = czm_luminance(specularNeighborColor);
     float neighborCurvature = getCurvature(neighborNormal);
 
-    float lumaSimilarity = max(1.0 - abs(luma - neighborLuma) / colorPhi, 0.0);
-    float roughnessSimilarity = exp(-abs(roughness - neighborRoughness) * roughnessPhi);
-    float curvatureSimilarity = exp(-abs(curvature - neighborCurvature) * curvaturePhi);
+    float lumaDiffDiffuse = abs(lumaDiffuse - neighborLumaDiffuse);
+    float lumaDiffSpecular = abs(lumaSpecular - neighborLumaSpecular);
 
-    float weight = normalSimilarity * lumaSimilarity * depthSimilarity * roughnessSimilarity * curvatureSimilarity;
-    if (weight > 1.0) weight = 1.0;
+    float roughnessDiff = abs(roughness - neighborRoughness);
+    float curvatureDiff = abs(curvature - neighborCurvature);
 
-    color += neighborColor * weight;
+    float lumaSimilarityDiffuse = max(1.0 - lumaDiffDiffuse / colorPhiDiffuse, 0.0);
+    float lumaSimilaritySpecular = max(1.0 - lumaDiffSpecular / colorPhiSpecular, 0.0);
 
-    totalWeight += weight;
+    float roughnessSimilarity = exp(-roughnessDiff * roughnessPhi);
+    float curvatureSimilarity = exp(-curvatureDiff * curvaturePhi);
+
+    float basicWeight = normalSimilarity * depthSimilarity * roughnessSimilarity * curvatureSimilarity;
+    float weightDiffuse = basicWeight * lumaSimilarityDiffuse;
+    float weightSpecular = basicWeight * lumaSimilaritySpecular;
+
+    if (weightDiffuse > 1.) weightDiffuse = 1.;
+    if (weightSpecular > 1.) weightSpecular = 1.;
+
+    diffuseLightingColor += diffuseNeighborColor * weightDiffuse;
+    specularLightingColor += specularNeighborColor * weightSpecular;
+
+    totalWeightDiffuse += weightDiffuse;
+    totalWeightSpecular += weightSpecular;
 
 #ifdef USE_MOMENT
-    float neighborVariance;
+    float neighborVarianceDiffuse, neighborVarianceSpecular;
     if (horizontal && stepSize == 1.) {
-        neighborVariance = neighborInputTexel.a;
+        neighborVarianceDiffuse = diffuseNeighborInputTexel.a;
+        neighborVarianceSpecular = specularNeighborInputTexel.a;
     } else {
-        vec2 neighborMoment = textureLod(momentsTexture, neighborUv, 0.).rg;
+        vec4 neighborMoment = textureLod(momentsTexture, neighborUv, 0.);
 
-        neighborVariance = max(0.0, neighborMoment.g - neighborMoment.r * neighborMoment.r);
+        neighborVarianceDiffuse = max(0.0, neighborMoment.g - neighborMoment.r * neighborMoment.r);
+        neighborVarianceSpecular = max(0.0, neighborMoment.a - neighborMoment.b * neighborMoment.b);
     }
 
-    sumVariance += weight * weight * neighborVariance;
+    sumVarianceDiffuse += weightDiffuse * weightDiffuse * neighborVarianceDiffuse;
+    sumVarianceSpecular += weightSpecular * weightSpecular * neighborVarianceSpecular;
 #endif
 }
 
 void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.);
-    vec4 inputTexel = textureLod(inputTexture, vUv, 0.);
+    vec4 diffuseLightingTexel = textureLod(diffuseLightingTexture, vUv, 0.);
+    vec4 specularLightingTexel = textureLod(specularLightingTexture, vUv, 0.);
 
     // skip background
     if (dot(depthTexel.rgb, depthTexel.rgb) == 0.) {
-        gl_FragColor = vec4(inputTexel.rgb, 0.);
+        gDiffuse = gSpecular = vec4(diffuseLightingTexel.rgb, 0.);
         return;
     }
 
@@ -230,11 +263,12 @@ void main() {
     vec3 normal = normalize((vec4(viewNormal, 1.0) * _viewMatrix).xyz);
     float curvature = getCurvature(normal);
 
-    float totalWeight = 1.;
-    vec3 color = inputTexel.rgb;
+    vec3 diffuseLightingColor = diffuseLightingTexel.rgb;
+    vec3 specularLightingColor = specularLightingTexel.rgb;
 
     float depth = unpackRGBAToDepth(depthTexel);
-    float luma = czm_luminance(inputTexel.rgb);
+    float lumaDiffuse = czm_luminance(diffuseLightingColor);
+    float lumaSpecular = czm_luminance(specularLightingColor);
     vec2 pixelStepOffset = invTexSize * stepSize;
 
     vec3 worldPos = screenSpaceToWorldSpace(vUv, depth, cameraMatrixWorld);
@@ -242,27 +276,31 @@ void main() {
     float roughness = normalTexel.a;
 
     float kernel = denoiseKernel;
-    float sumVariance;
+    float sumVarianceDiffuse, sumVarianceSpecular;
+    float totalWeightDiffuse = 1., totalWeightSpecular = 1.;
 
-    float colorPhi = lumaPhi;
+    float colorPhiDiffuse = lumaPhiDiffuse, colorPhiSpecular = lumaPhiSpecular;
 
 #ifdef USE_MOMENT
     if (horizontal && stepSize == 1.) {
-        vec2 moment = textureLod(momentsTexture, vUv, 0.).rg;
+        vec4 moment = textureLod(momentsTexture, vUv, 0.);
 
-        sumVariance = max(0.0, moment.g - moment.r * moment.r);
+        sumVarianceDiffuse = max(0.0, moment.g - moment.r * moment.r);
+        sumVarianceSpecular = max(0.0, moment.a - moment.b * moment.b);
     } else {
-        sumVariance = inputTexel.a;
+        sumVarianceDiffuse = diffuseLightingTexel.a;
+        sumVarianceSpecular = specularLightingTexel.a;
     }
 
-    colorPhi = lumaPhi * sqrt(FLOAT_EPSILON + sumVariance);
+    colorPhiDiffuse = lumaPhiDiffuse * sqrt(FLOAT_EPSILON + sumVarianceDiffuse);
+    colorPhiSpecular = lumaPhiSpecular * sqrt(FLOAT_EPSILON + sumVarianceSpecular);
 #endif
 
     // horizontal / vertical
     for (float i = -kernel; i <= kernel; i++) {
         if (i != 0.) {
             vec2 neighborVec = horizontal ? vec2(i, 0.) : vec2(0., i);
-            tap(neighborVec, pixelStepOffset, depth, normal, curvature, roughness, worldPos, luma, colorPhi, color, totalWeight, sumVariance);
+            tap(neighborVec, pixelStepOffset, depth, normal, curvature, roughness, worldPos, lumaDiffuse, lumaSpecular, colorPhiDiffuse, colorPhiSpecular, diffuseLightingColor, specularLightingColor, totalWeightDiffuse, sumVarianceDiffuse, totalWeightSpecular, sumVarianceSpecular);
         }
     }
 
@@ -270,14 +308,23 @@ void main() {
     for (float i = -kernel; i <= kernel; i++) {
         if (i != 0.) {
             vec2 neighborVec = horizontal ? vec2(-i, -i) : vec2(-i, i);
-            tap(neighborVec, pixelStepOffset, depth, normal, curvature, roughness, worldPos, luma, colorPhi, color, totalWeight, sumVariance);
+            tap(neighborVec, pixelStepOffset, depth, normal, curvature, roughness, worldPos, lumaDiffuse, lumaSpecular, colorPhiDiffuse, colorPhiSpecular, diffuseLightingColor, specularLightingColor, totalWeightDiffuse, sumVarianceDiffuse, totalWeightSpecular, sumVarianceSpecular);
         }
     }
 
-    sumVariance /= totalWeight * totalWeight;
-    color /= totalWeight;
+    sumVarianceDiffuse /= totalWeightDiffuse * totalWeightDiffuse;
+    sumVarianceSpecular /= totalWeightSpecular * totalWeightSpecular;
 
-    if (isLastIteration) sumVariance = 1.;
+    diffuseLightingColor /= totalWeightDiffuse;
+    specularLightingColor /= totalWeightSpecular;
 
-    gl_FragColor = vec4(color, sumVariance);
+    vec3 color = diffuseLightingColor;
+
+    if (isLastIteration) {
+        sumVarianceDiffuse = 1.;
+        sumVarianceSpecular = 1.;
+    }
+
+    gDiffuse = vec4(diffuseLightingColor, sumVarianceDiffuse);
+    gSpecular = vec4(specularLightingColor, sumVarianceSpecular);
 }

@@ -36,6 +36,7 @@ export class SSGIEffect extends Effect {
 		// ssgi pass
 		this.ssgiPass = new SSGIPass(this)
 		this.svgf.setInputTexture(this.ssgiPass.texture)
+		this.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.specularTexture.value = this.ssgiPass.brdfTexture
 		this.svgf.setNormalTexture(this.ssgiPass.normalTexture)
 		this.svgf.setDepthTexture(this.ssgiPass.depthTexture)
 		this.svgf.setVelocityTexture(this.ssgiPass.velocityTexture)
@@ -77,7 +78,7 @@ export class SSGIEffect extends Effect {
 					"float neighborRoughness = min(1., jitter + jitterRoughness * neighborNormalTexel.a);"
 				)
 				.replace(
-					"gl_FragColor = vec4(color, sumVariance);",
+					"gSpecular = vec4(specularLightingColor, sumVarianceSpecular);",
 					/* glsl */ `
 			if (isLastIteration) {
 				vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.);
@@ -124,16 +125,29 @@ export class SSGIEffect extends Effect {
 				// fresnel
 				vec3 f0 = mix(vec3(0.04), diffuse, metalness);
 				vec3 F = F_Schlick(f0, VoH);
+
+				float diffW = (1. - metalness) * czm_luminance(diffuse);
+        		float specW = czm_luminance(F);
+
+				diffW = max(diffW, FLOAT_EPSILON);
+        		specW = max(specW, FLOAT_EPSILON);
 			
 				vec3 diff = diffuse * (1. - metalness) * (1. - F);
 				vec3 spec = F;
-				color *= diff + spec;
+				// color *= diff + spec;
 				
 				vec3 directLight = textureLod(directLightTexture, vUv, 0.).rgb;
 				color += directLight;
+
+				vec3 specular = textureLod(specularLightingTexture, vUv, 0.).rgb;
+
+				diffuseLightingColor = diffuse * (1. - metalness) * (1. - F) * color + specular * F;
+				// diffuseLightingColor = specular;
+				// diffuseLightingColor = specular * specW;
 			}
 
-			gl_FragColor = vec4(color, sumVariance);
+		    gDiffuse = vec4(diffuseLightingColor, sumVarianceDiffuse);
+    		gSpecular = vec4(specularLightingColor, sumVarianceSpecular);
 			`
 				)
 
@@ -160,7 +174,6 @@ export class SSGIEffect extends Effect {
 			}
 		}
 
-		this.svgf.denoisePass.fullscreenMaterial.uniforms.brdfTexture.value = this.ssgiPass.brdfTexture
 		this.svgf.denoisePass.fullscreenMaterial.uniforms.diffuseTexture.value = this.ssgiPass.diffuseTexture
 
 		this.lastSize = {
@@ -202,7 +215,8 @@ export class SSGIEffect extends Effect {
 							break
 
 						case "denoiseKernel":
-						case "lumaPhi":
+						case "lumaPhiDiffuse":
+						case "lumaPhiSpecular":
 						case "depthPhi":
 						case "normalPhi":
 						case "roughnessPhi":
