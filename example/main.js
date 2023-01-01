@@ -2,7 +2,7 @@ import dragDrop from "drag-drop"
 import * as POSTPROCESSING from "postprocessing"
 import Stats from "stats.js"
 import * as THREE from "three"
-import { ACESFilmicToneMapping, Box3, Color, DirectionalLight, DoubleSide, MeshNormalMaterial, Vector3 } from "three"
+import { Box3, Color, DirectionalLight, DoubleSide, MeshNormalMaterial, Vector3 } from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader"
@@ -304,10 +304,10 @@ const initScene = () => {
 		composer.addPass(traaEffect.temporalResolvePass.velocityPass)
 
 		composer.addPass(ssgiPass)
-		// composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect, bloomEffect, vignetteEffect, lutEffect))
+		composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect, bloomEffect, vignetteEffect, lutEffect))
 
-		// traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
-		// composer.addPass(traaPass)
+		traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
+		composer.addPass(traaPass)
 
 		const smaaEffect = new POSTPROCESSING.SMAAEffect()
 
