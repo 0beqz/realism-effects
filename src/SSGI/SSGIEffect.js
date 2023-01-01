@@ -136,14 +136,14 @@ export class SSGIEffect extends Effect {
 				vec3 spec = F;
 				// color *= diff + spec;
 				
-				vec3 directLight = textureLod(directLightTexture, vUv, 0.).rgb;
-				color += directLight;
+
 
 				vec3 specular = textureLod(specularLightingTexture, vUv, 0.).rgb;
 
 				diffuseLightingColor = diffuse * (1. - metalness) * (1. - F) * color + specular * F;
-				// diffuseLightingColor = specular;
-				// diffuseLightingColor = specular * specW;
+
+				vec3 directLight = textureLod(directLightTexture, vUv, 0.).rgb;
+				diffuseLightingColor += directLight;
 			}
 
 		    gDiffuse = vec4(diffuseLightingColor, sumVarianceDiffuse);

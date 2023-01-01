@@ -171,7 +171,7 @@ const params = {}
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
 pmremGenerator.compileEquirectangularShader()
 
-new RGBELoader().load("quarry_02_4k.hdr", envMap => {
+new RGBELoader().load("monbachtal_riverbank_2k.hdr", envMap => {
 	envMap.mapping = THREE.EquirectangularReflectionMapping
 
 	scene.environment = envMap
@@ -238,7 +238,8 @@ const initScene = () => {
 		blend: 0.95,
 		denoiseIterations: 3,
 		denoiseKernel: 3,
-		lumaPhi: 0.010000000000017571,
+		lumaPhiDiffuse: 2.73,
+		lumaPhiSpecular: 6.53,
 		depthPhi: 8.150000000000002,
 		normalPhi: 43.48000000000002,
 		roughnessPhi: 19.019999999999996,

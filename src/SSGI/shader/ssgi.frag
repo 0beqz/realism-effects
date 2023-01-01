@@ -297,7 +297,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
         reflectedWS.xyz = normalize(reflectedWS.xyz);
     #endif
 
-        // float mip = 4. / 12. * maxEnvMapMipLevel;
+        float mip = 4. / 12. * maxEnvMapMipLevel;
 
         vec3 sampleDir = reflectedWS.xyz;
         envMapSample = sampleEquirectEnvMapColor(sampleDir, envMap, 0.);
@@ -338,7 +338,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
         vec2 dCoords = smoothstep(0.2, 0.6, abs(vec2(0.5, 0.5) - vUv));
         float screenEdgeIntensity = clamp(1.0 - (dCoords.x + dCoords.y), 0.0, 1.0);
 
-        brdf *= screenEdgeIntensity;
+        SSGI *= screenEdgeIntensity;
     }
 
     return SSGI;

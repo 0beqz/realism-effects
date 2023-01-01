@@ -1,8 +1,7 @@
 ﻿gOutput = vec4(undoColorTransform(outputColor), alpha);
 
 const vec3 W = vec3(0.2125, 0.7154, 0.0721);
-float l = dot(inputTexel.rgb, W);
-l = max(0.001, l);
+#define luminance(a) dot(W, a)
 
 if (isReprojectedUvValid) {
     float momentsTemporalResolveMix = max(temporalResolveMix, 0.8);
@@ -10,7 +9,7 @@ if (isReprojectedUvValid) {
     vec4 historyMoments = textureLod(lastMomentsTexture, reprojectedUv, 0.);
 
     vec2 momentsDiffuse = vec2(0.);
-    momentsDiffuse.r = dot(gOutput.rgb, W);
+    momentsDiffuse.r = luminance(gOutput.rgb);
     momentsDiffuse.g = momentsDiffuse.r * momentsDiffuse.r;
 
     momentsDiffuse = mix(momentsDiffuse, historyMoments.rg, momentsTemporalResolveMix);
@@ -30,7 +29,7 @@ if (isReprojectedUvValid) {
     gOutput2 = vec4(mix(specular, lastSpecular, temporalResolveMix), alpha);
 
     vec2 momentsSpecular = vec2(0.);
-    momentsSpecular.r = dot(gOutput2.rgb, W);
+    momentsSpecular.r = luminance(gOutput2.rgb);
     momentsSpecular.g = momentsSpecular.r * momentsSpecular.r;
 
     momentsSpecular = mix(momentsSpecular, historyMoments.ba, 0.);
@@ -38,7 +37,7 @@ if (isReprojectedUvValid) {
     gMoment = vec4(momentsDiffuse, momentsSpecular);
 } else {
     // boost new samples
-    gMoment = vec4(0., 1., 0., 1.);
+    gMoment = vec4(0., 1000., 0., 1000.);
     gOutput2 = textureLod(specularTexture, vUv, 1.);
 }
 
