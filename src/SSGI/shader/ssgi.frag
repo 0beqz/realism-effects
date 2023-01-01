@@ -29,7 +29,6 @@ uniform vec2 invTexSize;
 uniform vec2 blueNoiseRepeat;
 
 uniform float samples;
-uniform int seed;
 uniform vec2 blueNoiseOffset;
 
 uniform float jitter;
@@ -37,7 +36,7 @@ uniform float jitterRoughness;
 
 #define INVALID_RAY_COORDS vec2(-1.0);
 #define EARLY_OUT_COLOR    vec4(0.0, 0.0, 0.0, 0.0)
-#define FLOAT_EPSILON      0.00001
+#define EPSILON            0.00001
 
 float nearMinusFar;
 float nearMulFar;
@@ -51,7 +50,20 @@ float farMinusNear;
 vec2 RayMarch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
 vec2 BinarySearch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
 float fastGetViewZ(const in float depth);
-vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, float metalness, float spread, bool isDiffuseSample, vec3 F, vec2 random, inout vec3 reflected, inout vec3 hitPos, out bool isMissedRay, out vec3 brdf);
+vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, float metalness,
+              float roughness, bool isDiffuseSample, vec3 F, float NoV, float NoL, float NoH, float LoH, float VoH, vec2 random, inout vec3 reflected,
+              inout vec3 hitPos, out bool isMissedRay, out vec3 brdf);
+
+float getCurvature(vec3 worldNormal) {
+    vec3 dx = dFdx(worldNormal);
+    vec3 dy = dFdy(worldNormal);
+
+    float x = dot(dx, dx);
+    float y = dot(dy, dy);
+
+    return sqrt(x * x + y * y);
+}
+
 void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.0);
 
@@ -64,17 +76,15 @@ void main() {
     }
 
     vec4 normalTexel = textureLod(normalTexture, vUv, 0.0);
-    float roughness = normalTexel.a;
+    float roughnessValue = normalTexel.a;
 
     // a roughness of 1 is only being used for deselected meshes
-    if (roughness == 1.0 || roughness > maxRoughness) {
+    if (roughnessValue == 1.0 || roughnessValue > maxRoughness) {
         gSSGI = gBRDF = EARLY_OUT_COLOR;
         return;
     }
 
     normalTexel.xyz = unpackRGBToNormal(normalTexel.rgb);
-
-    rng_initialize(vec2(0.), seed);
 
     // pre-calculated variables for the "fastGetViewZ" function
     nearMinusFar = cameraNear - cameraFar;
@@ -91,11 +101,8 @@ void main() {
 
     vec3 worldPos = vec4(_viewMatrix * vec4(viewPos, 1.)).xyz;
 
-    float spread = jitter + roughness * jitterRoughness;
-    spread = spread * spread;
-    spread = clamp(spread, FLOAT_EPSILON, 1.0);
-    // spread = 1.;
-    // metalness = 0.;
+    float roughness = jitter + roughnessValue * jitterRoughness;
+    roughness = clamp(roughness * roughness, EPSILON, 1.0);
 
     vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.);
     vec3 diffuse = diffuseTexel.rgb;
@@ -103,63 +110,62 @@ void main() {
 
     vec3 n = viewNormal;  // view-space normal
     vec3 v = -viewDir;    // incoming vector
-    float NoV = max(FLOAT_EPSILON, dot(n, v));
+    float NoV = max(EPSILON, dot(n, v));
 
     // convert view dir and view normal to world-space
-    vec3 V = (vec4(v, 1.) * _viewMatrix).xyz;  // invert view dir
+    vec3 V = (vec4(v, 1.) * _viewMatrix).xyz;
     vec3 N = (vec4(n, 1.) * _viewMatrix).xyz;
 
     bool isMissedRay, isDiffuseSample;
     vec2 sampleOffset;
-    vec3 SSGI, hitPos, T, B;
-
-    vec3 diffuseGI, specularGI;
+    vec3 SSGI, diffuseGI, specularGI, brdf, hitPos, T, B;
 
     Onb(N, T, B);
 
     V = ToLocal(T, B, N, V);
-    vec3 F;
+    float diffuseSamples, specularSamples;
 
-    vec3 brdf = vec3(1.0), reconstructBrdf = vec3(1.0);
+    // fresnel f0
+    vec3 f0 = mix(vec3(0.04), diffuse, metalness);
+
     float sppPlus1 = float(spp + 1);
 
+    // start taking samples
     for (int s = 0; s < spp; s++) {
         float sF = float(s);
         if (s != 0) sampleOffset = vec2(sF / sppPlus1);
-
-        float m = 1. / (sF + 1.0);
 
         vec2 blueNoiseUv = (vUv + blueNoiseOffset + sampleOffset) * blueNoiseRepeat;
         vec3 random = textureLod(blueNoiseTexture, blueNoiseUv, 0.).rgb;
 
         // calculate GGX reflection ray
-        vec3 H = SampleGGXVNDF(V, spread, spread, random.x, random.y);
+        vec3 H = SampleGGXVNDF(V, roughness, roughness, random.x, random.y);
         if (H.z < 0.0) H = -H;
 
-        vec3 reflected = normalize(reflect(-V, H));
-        reflected = ToWorld(T, B, N, reflected);
+        vec3 l = normalize(reflect(-V, H));
+        l = ToWorld(T, B, N, l);
 
         // convert reflected vector back to view-space
-        reflected = (vec4(reflected, 1.) * cameraMatrixWorld).xyz;
-        reflected = normalize(reflected);
+        l = (vec4(l, 1.) * cameraMatrixWorld).xyz;
+        l = normalize(l);
+        if (dot(viewNormal, l) < 0.) l = -l;
 
-        if (dot(viewNormal, reflected) < 0.) reflected = -reflected;
-
-        vec3 l = reflected;         // reflected vector
         vec3 h = normalize(v + l);  // half vector
 
-        float NoL = max(FLOAT_EPSILON, dot(n, l));
-        float NoH = max(FLOAT_EPSILON, dot(n, h));
-        float LoH = max(FLOAT_EPSILON, dot(l, h));
-        float VoH = max(FLOAT_EPSILON, dot(v, h));
+        float NoL = max(EPSILON, dot(n, l));
+        float NoH = max(EPSILON, dot(n, h));
+        float LoH = max(EPSILON, dot(l, h));
+        float VoH = max(EPSILON, dot(v, h));
 
         // fresnel
-        vec3 f0 = mix(vec3(0.04), diffuse, metalness);
-        F = F_Schlick(f0, VoH);
+        vec3 F = F_Schlick(f0, VoH);
 
         // diffuse and specular wieght
         float diffW = (1. - metalness) * czm_luminance(diffuse);
         float specW = czm_luminance(F);
+
+        diffW = max(diffW, EPSILON);
+        specW = max(specW, EPSILON);
 
         float invW = 1. / (diffW + specW);
 
@@ -167,58 +173,47 @@ void main() {
         diffW *= invW;
         specW *= invW;
 
-        diffW = max(diffW, FLOAT_EPSILON);
-        specW = max(specW, FLOAT_EPSILON);
-
-        vec3 gi;
-
         // if diffuse lighting should be sampled
         isDiffuseSample = random.z < diffW;
 
         if (isDiffuseSample) {
-            reflected = cosineSampleHemisphere(viewNormal, random.xy);
-            diffuseGI = doSample(viewPos, viewDir, viewNormal, worldPos, metalness, spread, isDiffuseSample, F, random.xy, reflected, hitPos, isMissedRay, brdf);
-            // brdf *= 1. - metalness;
-            // brdf /= diffW;
+            l = cosineSampleHemisphere(viewNormal, random.xy);
+            h = normalize(v + l);  // half vector
 
-            // diffuse-related information
-            // reconstructBrdf *= diffuse * (1. - F);
-            // brdf *= reconstructBrdf;
+            NoL = max(EPSILON, dot(n, l));
+            NoH = max(EPSILON, dot(n, h));
+            LoH = max(EPSILON, dot(l, h));
+            VoH = max(EPSILON, dot(v, h));
 
-            float cosTheta = max(0.0, dot(viewNormal, reflected));
-            brdf *= cosTheta;
+            vec3 gi = doSample(
+                viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, F, NoV, NoL, NoH, LoH, VoH, random.xy,
+                l, hitPos, isMissedRay, brdf);
 
-            brdf = clamp(brdf, 0., 1000.);
-            diffuseGI *= brdf;
+            gi *= brdf;
+
+            diffuseSamples++;
+
+            diffuseGI = mix(diffuseGI, gi, 1. / diffuseSamples);
+
         } else {
-            specularGI = doSample(viewPos, viewDir, viewNormal, worldPos, metalness, spread, isDiffuseSample, F, random.xy, reflected, hitPos, isMissedRay, brdf);
-            // brdf /= specW;
-            // diffuse-related information
-            // reconstructBrdf = F;
-            // brdf *= reconstructBrdf;
+            vec3 gi = doSample(
+                viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, F, NoV, NoL, NoH, LoH, VoH, random.xy,
+                l, hitPos, isMissedRay, brdf);
 
-            float cosTheta = max(0.0, dot(viewNormal, reflected));
-            brdf *= cosTheta;
+            gi *= brdf;
 
-            brdf = clamp(brdf, 0., 1000.);
-            specularGI *= brdf;
+            specularSamples++;
+
+            specularGI = mix(specularGI, gi, 1. / specularSamples);
         }
-
-        // SSGI = mix(SSGI, gi, m);
     }
 
     // calculate world-space ray length used for reprojecting hit points instead of screen-space pixels in the temporal resolve pass
     float rayLength = 0.0;
-    if (!isMissedRay && spread < 0.675) {
-        vec3 normalWS = (vec4(viewNormal, 1.) * _viewMatrix).xyz;
+    if (!isMissedRay && roughness < 0.675) {
+        vec3 worldNormal = (vec4(viewNormal, 1.) * _viewMatrix).xyz;
 
-        vec3 dx = dFdx(normalWS);
-        vec3 dy = dFdy(normalWS);
-
-        float x = dot(dx, dx);
-        float y = dot(dy, dy);
-
-        float curvature = sqrt(x * x + y * y);
+        float curvature = getCurvature(worldNormal);
 
         if (curvature < 0.05) {
             vec3 hitPosWS = (_viewMatrix * vec4(hitPos, 1.)).xyz;
@@ -226,51 +221,42 @@ void main() {
         }
     }
 
-    float diffuseSampleFlag = isDiffuseSample ? 1. : 0.;
-
-    gSSGI = vec4(diffuseGI, diffuseSampleFlag);
+    gSSGI = vec4(diffuseGI, 0.);
     gBRDF = vec4(specularGI, rayLength);
 }
 
-vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, float metalness, float spread, bool isDiffuseSample, vec3 F, vec2 random, inout vec3 reflected, inout vec3 hitPos, out bool isMissedRay, out vec3 brdf) {
-    vec3 SSGI;
-
-    vec3 n = viewNormal;
-    vec3 v = -viewDir;
-    vec3 l = reflected;
-    vec3 h = normalize(v + l);
-
-    float NoL = max(FLOAT_EPSILON, dot(n, l));
-    float NoV = max(FLOAT_EPSILON, dot(n, v));
-    float NoH = max(FLOAT_EPSILON, dot(n, h));
-    float LoH = max(FLOAT_EPSILON, dot(l, h));
-    float VoH = max(FLOAT_EPSILON, dot(v, h));
-
-    float pdf;
-
+vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, float metalness,
+              float roughness, bool isDiffuseSample, vec3 F, float NoV, float NoL, float NoH, float LoH, float VoH, vec2 random, inout vec3 l,
+              inout vec3 hitPos, out bool isMissedRay, out vec3 brdf) {
     if (isDiffuseSample) {
-        vec3 diffuseBrdf = vec3(evalDisneyDiffuse(NoL, NoV, LoH, spread, metalness));
-        pdf = NoL / M_PI;
-        pdf = max(FLOAT_EPSILON, pdf);
+        vec3 diffuseBrdf = vec3(evalDisneyDiffuse(NoL, NoV, LoH, roughness, metalness));
+        float pdf = NoL / M_PI;
+        pdf = max(EPSILON, pdf);
 
-        brdf *= diffuseBrdf / pdf;
+        brdf = diffuseBrdf / pdf;
     } else {
-        vec3 specularBrdf = evalDisneySpecular(spread, NoH, NoV, NoL);
-        pdf = GGXVNDFPdf(NoH, NoV, spread);
-        pdf = max(FLOAT_EPSILON, pdf);
+        vec3 specularBrdf = evalDisneySpecular(roughness, NoH, NoV, NoL);
+        float pdf = GGXVNDFPdf(NoH, NoV, roughness);
+        pdf = max(EPSILON, pdf);
 
-        brdf *= specularBrdf / pdf;
+        brdf = specularBrdf / pdf;
     }
+
+    float cosTheta = max(0.0, dot(viewNormal, l));
+    brdf *= cosTheta;
+
+    // clamping it to 100 reduces most fireflies
+    brdf = min(brdf, 100.);
 
     hitPos = viewPos;
     float rayHitDepthDifference = 0.;
 
 #if steps == 0
-    hitPos += reflected;
+    hitPos += l;
 
     vec2 coords = viewSpaceToScreenSpace(hitPos);
 #else
-    vec2 coords = RayMarch(reflected, hitPos, rayHitDepthDifference);
+    vec2 coords = RayMarch(l, hitPos, rayHitDepthDifference);
 #endif
 
     bool allowMissedRays = false;
@@ -288,7 +274,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
     // invalid ray, use environment lighting as fallback
     if (isInvalidRay || isAllowedMissedRay) {
         // world-space reflected ray
-        vec4 reflectedWS = vec4(reflected, 1.) * _viewMatrix;
+        vec4 reflectedWS = vec4(l, 1.) * _viewMatrix;
         reflectedWS.xyz = normalize(reflectedWS.xyz);
 
     #ifdef BOX_PROJECTED_ENV_MAP
@@ -297,16 +283,16 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
         reflectedWS.xyz = normalize(reflectedWS.xyz);
     #endif
 
-        float mip = spread * 4. / 12. * maxEnvMapMipLevel;
+        float mip = roughness * 4. / 12. * maxEnvMapMipLevel;
 
         vec3 sampleDir = reflectedWS.xyz;
-        envMapSample = sampleEquirectEnvMapColor(sampleDir, envMap, mip);
+        envMapSample = sampleEquirectEnvMapColor(sampleDir, envMap, 0.);
 
         // we won't deal with calculating direct sun light from the env map as it is too noisy
         float envLum = czm_luminance(envMapSample);
 
-        const float maxVal = 10.0;
-        if (envLum > maxVal) envMapSample *= maxVal / envLum;
+        // const float maxVal = 10.0;
+        // if (envLum > maxVal) envMapSample *= maxVal / envLum;
 
         return envMapSample;
     }
@@ -316,6 +302,8 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
     vec4 velocity = textureLod(velocityTexture, coords.xy, 0.0);
 
     vec2 reprojectedUv = coords.xy - velocity.xy;
+
+    vec3 SSGI;
 
     // check if the reprojected coordinates are within the screen
     if (all(greaterThanEqual(reprojectedUv, vec2(0.))) && all(lessThanEqual(reprojectedUv, vec2(1.)))) {
@@ -335,6 +323,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
 
         if (envLum > ssgiLum) SSGI = envMapSample;
     } else {
+        // screen edges fading
         vec2 dCoords = smoothstep(0.2, 0.6, abs(vec2(0.5, 0.5) - vUv));
         float screenEdgeIntensity = clamp(1.0 - (dCoords.x + dCoords.y), 0.0, 1.0);
 

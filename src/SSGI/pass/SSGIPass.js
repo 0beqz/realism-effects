@@ -39,17 +39,11 @@ export class SSGIPass extends Pass {
 		if (ssgiEffect._camera.isPerspectiveCamera) this.fullscreenMaterial.defines.PERSPECTIVE_CAMERA = ""
 
 		this.renderTarget = new WebGLMultipleRenderTargets(1, 1, 2, {
-			minFilter: NearestFilter,
-			magFilter: NearestFilter,
+			minFilter: LinearFilter,
+			magFilter: LinearFilter,
 			type: HalfFloatType,
 			depthBuffer: false
 		})
-
-		this.renderTarget.texture[0].type = HalfFloatType
-		this.renderTarget.texture[1].type = HalfFloatType
-
-		this.renderTarget.texture[0].needsUpdate = true
-		this.renderTarget.texture[1].needsUpdate = true
 
 		this.renderPass = new RenderPass(this._scene, this._camera)
 

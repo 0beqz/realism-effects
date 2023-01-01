@@ -55,35 +55,6 @@ vec3 parallaxCorrectNormal(vec3 v, vec3 cubeSize, vec3 cubePos, vec3 worldPositi
 }
 #endif
 
-// source: https://github.com/blender/blender/blob/594f47ecd2d5367ca936cf6fc6ec8168c2b360d0/source/blender/gpu/shaders/material/gpu_shader_material_fresnel.glsl
-float fresnel_dielectric_cos(float cosi, float eta) {
-    /* compute fresnel reflectance without explicitly computing
-     * the refracted direction */
-    float c = abs(cosi);
-    float g = eta * eta - 1.0 + c * c;
-    float result;
-
-    if (g > 0.0) {
-        g = sqrt(g);
-        float A = (g - c) / (g + c);
-        float B = (c * (g + c) - 1.0) / (c * (g - c) + 1.0);
-        result = 0.5 * A * A * (1.0 + B * B);
-    } else {
-        result = 1.0; /* TIR (no refracted component) */
-    }
-
-    return result;
-}
-
-// source: https://github.com/blender/blender/blob/594f47ecd2d5367ca936cf6fc6ec8168c2b360d0/source/blender/gpu/shaders/material/gpu_shader_material_fresnel.glsl
-float fresnel_dielectric(vec3 Incoming, vec3 Normal, float eta) {
-    /* compute fresnel reflectance without explicitly computing
-     * the refracted direction */
-
-    float cosine = dot(Incoming, Normal);
-    return min(1.0, 5.0 * fresnel_dielectric_cos(cosine, eta));
-}
-
 #define M_PI 3.1415926535897932384626433832795
 
 // ray sampling x and z are swapped to align with expected background view
@@ -122,46 +93,7 @@ float czm_luminance(vec3 rgb) {
     return dot(rgb, W);
 }
 
-// from: https://github.com/gkjohnson/three-gpu-pathtracer/blob/5c74583ce4e246b5a582cc8fe974051064978207/src/shader/shaderUtils.js
-// https://www.shadertoy.com/view/wltcRS
-uvec4 s0;
-void rng_initialize(vec2 p, int frame) {
-    // white noise seed
-    s0 = uvec4(p, uint(frame), uint(p.x) + uint(p.y));
-}
-// https://www.pcg-random.org/
-void pcg4d(inout uvec4 v) {
-    v = v * 1664525u + 1013904223u;
-    v.x += v.y * v.w;
-    v.y += v.z * v.x;
-    v.z += v.x * v.y;
-    v.w += v.y * v.z;
-    v = v ^ (v >> 16u);
-    v.x += v.y * v.w;
-    v.y += v.z * v.x;
-    v.z += v.x * v.y;
-    v.w += v.y * v.z;
-}
-
-// returns [ 0, 1 ]
-float rand() {
-    pcg4d(s0);
-    return float(s0.x) / float(0xffffffffu);
-}
-
-vec2 rand2() {
-    pcg4d(s0);
-    return vec2(s0.xy) / float(0xffffffffu);
-}
-
-#define EPSILON FLOAT_EPSILON
-#define PI      M_PI
-
-float schlick(in vec3 v0, in vec3 v1, in float n1, in float n2) {
-    float f0 = (n1 - n2) / (n1 + n2);
-    f0 *= f0;
-    return max(0., f0 + (1. - f0) * pow(dot(v0, v1), 5.));
-}
+#define PI M_PI
 
 vec3 F_Schlick(vec3 f0, float theta) {
     return f0 + (1. - f0) * pow(1.0 - theta, 5.);
@@ -169,26 +101,6 @@ vec3 F_Schlick(vec3 f0, float theta) {
 
 float F_Schlick(float f0, float f90, float theta) {
     return f0 + (f90 - f0) * pow(1.0 - theta, 5.0);
-}
-
-vec3 FresnelReflectAmount(float n1, float n2, vec3 normal, vec3 incident, vec3 f0, vec3 f90) {
-    // Schlick aproximation
-    float r0 = (n1 - n2) / (n1 + n2);
-    r0 *= r0;
-    float cosX = -dot(normal, incident);
-    if (n1 > n2) {
-        float n = n1 / n2;
-        float sinT2 = n * n * (1.0 - cosX * cosX);
-        // Total internal reflection
-        if (sinT2 > 1.0)
-            return f90;
-        cosX = sqrt(1.0 - sinT2);
-    }
-    float x = 1.0 - cosX;
-    float ret = r0 + (1.0 - r0) * x * x * x * x * x;
-
-    // adjust reflect multiplier for object reflectivity
-    return mix(f0, f90, ret);
 }
 
 float D_GTR(float roughness, float NoH, float k) {
@@ -213,20 +125,6 @@ float GeometryTerm(float NoL, float NoV, float roughness) {
     float G1 = SmithG(NoV, a2);
     float G2 = SmithG(NoL, a2);
     return G1 * G2;
-}
-
-float SmithGAniso(float NDotV, float VDotX, float VDotY, float ax, float ay) {
-    float a = VDotX * ax;
-    float b = VDotY * ay;
-    float c = NDotV;
-    return (2.0 * NDotV) / (NDotV + sqrt(a * a + b * b + c * c));
-}
-
-float GTR2Aniso(float NDotH, float HDotX, float HDotY, float ax, float ay) {
-    float a = HDotX / ax;
-    float b = HDotY / ay;
-    float c = a * a + b * b + NDotH * NDotH;
-    return 1.0 / (PI * ax * ay * c * c);
 }
 
 float evalDisneyDiffuse(float NoL, float NoV, float LoH, float roughness, float metalness) {

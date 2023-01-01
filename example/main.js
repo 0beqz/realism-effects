@@ -171,7 +171,7 @@ const params = {}
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
 pmremGenerator.compileEquirectangularShader()
 
-new RGBELoader().load("monbachtal_riverbank_2k.hdr", envMap => {
+new RGBELoader().load("round_platform_2k.hdr", envMap => {
 	envMap.mapping = THREE.EquirectangularReflectionMapping
 
 	scene.environment = envMap
@@ -241,7 +241,6 @@ const initScene = () => {
 		depthPhi: 8.150000000000002,
 		normalPhi: 43.48000000000002,
 		roughnessPhi: 19.019999999999996,
-		curvaturePhi: 0,
 		jitter: 3.469446951953614e-18,
 		jitterRoughness: 1,
 		steps: 20,
@@ -309,7 +308,7 @@ const initScene = () => {
 		const { depthTexture, normalTexture, velocityTexture } = traaEffect.temporalResolvePass.fullscreenMaterial.uniforms
 
 		const motionBlurEffect = new MotionBlurEffect(velocityTexture.value, {
-			jitter: 1
+			jitter: 5
 		})
 
 		ssgiEffect.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.velocityTexture.value = velocityTexture.value

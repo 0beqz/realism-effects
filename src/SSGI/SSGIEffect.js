@@ -65,8 +65,6 @@ export class SSGIEffect extends Effect {
 		uniform sampler2D diffuseTexture;
 		uniform float jitter;
 		uniform float jitterRoughness;
-		uniform float a;
-		uniform float b;
 		` +
 			this.svgf.denoisePass.fullscreenMaterial.fragmentShader
 				.replace(
@@ -102,53 +100,27 @@ export class SSGIEffect extends Effect {
 				Onb(N, T, B);
 
 				V = ToLocal(T, B, N, V);
-
-				// calculate GGX reflection ray
-				float o = random(vUv + a);
-				float p = random(vUv + b);
 				
 				vec3 H = SampleGGXVNDF(V, spread, spread, 0.5, 0.5);
 				if (H.z < 0.0) H = -H;
 
-				vec3 reflected = normalize(reflect(-V, H));
-				reflected = ToWorld(T, B, N, reflected);
+				vec3 l = normalize(reflect(-V, H));
+				l = ToWorld(T, B, N, l);
 
 				// convert reflected vector back to view-space
-				reflected = (vec4(reflected, 1.) * cameraMatrixWorld).xyz;
-				reflected = normalize(reflected);
+				l = (vec4(l, 1.) * cameraMatrixWorld).xyz;
+				l = normalize(l);
 
-				if (dot(viewNormal, reflected) < 0.) reflected = -reflected;
+				if (dot(viewNormal, l) < 0.) l = -l;
 
-				vec3 l = reflected;         // reflected vector
         		vec3 h = normalize(v + l);  // half vector
-				float VoH = max(FLOAT_EPSILON, dot(v, h));
-
-				float vo = VoH;
-				// VoH = pow(VoH, 2.5);
-				// VoH = pow(1.5, VoH -.4) - 1.;
-				// VoH *= 3.;
-				// VoH = min(vo, pow(VoH, 0.5));
-
+				float VoH = max(EPSILON, dot(v, h));
 
 				// fresnel
 				vec3 f0 = mix(vec3(0.04), diffuse, metalness);
 				vec3 F = F_Schlick(f0, VoH);
 
-				float diffW = (1. - metalness) * czm_luminance(diffuse);
-        		float specW = czm_luminance(F);
-
-				diffW = max(diffW, FLOAT_EPSILON);
-        		specW = max(specW, FLOAT_EPSILON);
-			
-				vec3 diff = diffuse * (1. - metalness) * (1. - F);
-				vec3 spec = F;
-				// color *= diff + spec;
-				
-
-
-				vec3 specular = textureLod(specularLightingTexture, vUv, 0.).rgb;
-
-				diffuseLightingColor = diffuse * (1. - metalness) * (1. - F) * color + specular * F;
+				diffuseLightingColor = diffuse * (1. - metalness) * (1. - F) * color + specularLightingColor * F;
 
 				vec3 directLight = textureLod(directLightTexture, vUv, 0.).rgb;
 				diffuseLightingColor += directLight;
@@ -158,6 +130,45 @@ export class SSGIEffect extends Effect {
     		gSpecular = vec4(specularLightingColor, sumVarianceSpecular);
 			`
 				)
+				.replace(
+					"void main()",
+					/* glsl */ `
+					vec3 SampleGGXVNDF(vec3 V, float ax, float ay, float r1, float r2) {
+						vec3 Vh = normalize(vec3(ax * V.x, ay * V.y, V.z));
+					
+						float lensq = Vh.x * Vh.x + Vh.y * Vh.y;
+						vec3 T1 = lensq > 0. ? vec3(-Vh.y, Vh.x, 0.) * inversesqrt(lensq) : vec3(1., 0., 0.);
+						vec3 T2 = cross(Vh, T1);
+					
+						float r = sqrt(r1);
+						float phi = 2.0 * PI * r2;
+						float t1 = r * cos(phi);
+						float t2 = r * sin(phi);
+						float s = 0.5 * (1.0 + Vh.z);
+						t2 = (1.0 - s) * sqrt(1.0 - t1 * t1) + s * t2;
+					
+						vec3 Nh = t1 * T1 + t2 * T2 + sqrt(max(0.0, 1.0 - t1 * t1 - t2 * t2)) * Vh;
+					
+						return normalize(vec3(ax * Nh.x, ay * Nh.y, max(0.0, Nh.z)));
+					}
+					
+					void Onb(in vec3 N, inout vec3 T, inout vec3 B) {
+						vec3 up = abs(N.z) < 0.9999999 ? vec3(0, 0, 1) : vec3(1, 0, 0);
+						T = normalize(cross(up, N));
+						B = cross(N, T);
+					}
+					
+					vec3 ToLocal(vec3 X, vec3 Y, vec3 Z, vec3 V) {
+						return vec3(dot(V, X), dot(V, Y), dot(V, Z));
+					}
+					
+					vec3 ToWorld(vec3 X, vec3 Y, vec3 Z, vec3 V) {
+						return V.x * X + V.y * Y + V.z * Z;
+					}
+
+					void main()
+					`
+				)
 
 		this.svgf.denoisePass.fullscreenMaterial.uniforms = {
 			...this.svgf.denoisePass.fullscreenMaterial.uniforms,
@@ -166,19 +177,7 @@ export class SSGIEffect extends Effect {
 				diffuseTexture: new Uniform(null),
 				brdfTexture: new Uniform(null),
 				jitter: new Uniform(0),
-				jitterRoughness: new Uniform(0),
-				a: {
-					get value() {
-						return Math.random()
-					},
-					set value(_) {}
-				},
-				b: {
-					get value() {
-						return Math.random()
-					},
-					set value(_) {}
-				}
+				jitterRoughness: new Uniform(0)
 			}
 		}
 
@@ -228,7 +227,6 @@ export class SSGIEffect extends Effect {
 						case "depthPhi":
 						case "normalPhi":
 						case "roughnessPhi":
-						case "curvaturePhi":
 							this.svgf.denoisePass.fullscreenMaterial.uniforms[key].value = value
 							break
 

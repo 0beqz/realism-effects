@@ -27,14 +27,14 @@ uniform mat4 prevCameraMatrixWorld;
 uniform vec3 cameraPos;
 uniform vec3 lastCameraPos;
 
-#define FLOAT_EPSILON 0.00001
+#define EPSILON 0.00001
 
 #include <packing>
 
 // idea from: https://www.elopezr.com/temporal-aa-and-the-quest-for-the-holy-trail/
 vec3 transformColor(vec3 color) {
 #ifdef logTransform
-    return log(max(color, vec3(FLOAT_EPSILON)));
+    return log(max(color, vec3(EPSILON)));
 #else
     return color;
 #endif
@@ -325,7 +325,7 @@ void main() {
         temporalResolveMix = blend;
     } else {
         float pixelFrames = alpha;
-        float maxValue = didMove ? blend : 1.0;
+        // float maxValue = didMove ? blend : 1.0;
 
         if (dot(inputColor, inputColor) == 0.0) {
             pixelFrames = max(1., pixelFrames - 1.);
@@ -333,14 +333,14 @@ void main() {
         }
 
         temporalResolveMix = 1. - 1. / pixelFrames;
-        temporalResolveMix = min(temporalResolveMix, maxValue);
+        temporalResolveMix = min(temporalResolveMix, blend);
     }
 
     outputColor = mix(inputColor, accumulatedColor, temporalResolveMix);
 
     float pixelFrames = max(1., alpha - 1.);
     float a = 1. - 1. / pixelFrames;
-    if (didMove && a > blend) alpha = 1. / (1. - blend);
+    // if (didMove && a > blend) alpha = 1. / (1. - blend);
 
 // the user's shader to compose a final outputColor from the inputTexel and accumulatedTexel
 #ifdef useCustomComposeShader

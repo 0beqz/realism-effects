@@ -1,6 +1,4 @@
-﻿bool isDiffuseSample = inputTexel.a == 1.0;
-
-if (!isDiffuseSample) inputColor = accumulatedColor;
+﻿if (dot(inputColor, inputColor) == 0.0) inputColor = accumulatedColor;
 
 const vec3 W = vec3(0.2125, 0.7154, 0.0721);
 #define luminance(a) dot(W, a)
@@ -46,14 +44,17 @@ if (anyReprojectionValid) {
     vec3 lastSpecular = lastSpecularTexel.rgb;
     float specularAlpha = max(lastSpecularTexel.a, 1.);
 
-    vec3 specular = isDiffuseSample ? lastSpecular : specularColor;
+    bool wasSpecularSampled = dot(specularColor, specularColor) != 0.0;
 
-    if (!isDiffuseSample) specularAlpha += 1.0;
+    if (wasSpecularSampled)
+        specularAlpha++;
+    else
+        specularColor = lastSpecular;
 
     temporalResolveMix = 1. - 1. / specularAlpha;
     temporalResolveMix = min(temporalResolveMix, blend);
 
-    gOutput2 = vec4(mix(specular, lastSpecular, temporalResolveMix), specularAlpha);
+    gOutput2 = vec4(mix(specularColor, lastSpecular, temporalResolveMix), specularAlpha);
 
     // specular moments
     historyMoments = textureLod(lastMomentsTexture, specularUv, 0.);

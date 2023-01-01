@@ -37,7 +37,6 @@ export class DenoisePass extends Pass {
 				depthPhi: new Uniform(1),
 				normalPhi: new Uniform(1),
 				roughnessPhi: new Uniform(1),
-				curvaturePhi: new Uniform(1),
 				stepSize: new Uniform(1),
 				isLastIteration: new Uniform(false),
 				_viewMatrix: new Uniform(camera.matrixWorldInverse),

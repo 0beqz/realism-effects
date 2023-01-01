@@ -58,11 +58,6 @@ export class SSGIDebugGUI {
 			max: 50,
 			step: 0.01
 		})
-		denoiseKernelFolder.addInput(params, "curvaturePhi", {
-			min: 0,
-			max: 50,
-			step: 0.01
-		})
 
 		const jitterFolder = pane.addFolder({ title: "Jitter" })
 

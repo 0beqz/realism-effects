@@ -165,10 +165,10 @@ export class MRTMaterial extends ShaderMaterial {
 
                     gDiffuse = diffuseColor;
 
-                    vec3 totalEmissiveRadiance = emissive;
+                    vec3 totalEmissiveRadiance = emissive * emissiveIntensity;
                     #include <emissivemap_fragment>
                     
-                    gEmissive = vec4(totalEmissiveRadiance, emissiveIntensity * 10.0); // encode for 8-bit to support values >1
+                    gEmissive = vec4(totalEmissiveRadiance, 0.); // encode for 8-bit to support values >1
 
                     ${velocity_fragment_main.replaceAll("gl_FragColor", "gVelocity")}
                 }
