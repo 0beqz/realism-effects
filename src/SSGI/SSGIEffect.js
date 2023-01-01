@@ -106,7 +106,8 @@ export class SSGIEffect extends Effect {
 				// calculate GGX reflection ray
 				float o = random(vUv + a);
 				float p = random(vUv + b);
-				vec3 H = SampleGGXVNDF(V, spread, spread, o, p);
+				
+				vec3 H = SampleGGXVNDF(V, spread, spread, 0.5, 0.5);
 				if (H.z < 0.0) H = -H;
 
 				vec3 reflected = normalize(reflect(-V, H));
@@ -121,6 +122,13 @@ export class SSGIEffect extends Effect {
 				vec3 l = reflected;         // reflected vector
         		vec3 h = normalize(v + l);  // half vector
 				float VoH = max(FLOAT_EPSILON, dot(v, h));
+
+				float vo = VoH;
+				// VoH = pow(VoH, 2.5);
+				// VoH = pow(1.5, VoH -.4) - 1.;
+				// VoH *= 3.;
+				// VoH = min(vo, pow(VoH, 0.5));
+
 
 				// fresnel
 				vec3 f0 = mix(vec3(0.04), diffuse, metalness);

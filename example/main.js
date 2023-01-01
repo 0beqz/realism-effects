@@ -218,8 +218,6 @@ let mixer
 
 const toRad = Math.PI / 180
 
-// let rAF
-
 const refreshLighting = () => {
 	light.position.x = Math.sin(lightParams.yaw * toRad) * Math.cos(lightParams.pitch * toRad)
 	light.position.y = Math.sin(lightParams.pitch * toRad)
@@ -239,7 +237,7 @@ const initScene = () => {
 		denoiseIterations: 3,
 		denoiseKernel: 3,
 		lumaPhiDiffuse: 2.73,
-		lumaPhiSpecular: 6.53,
+		lumaPhiSpecular: 0.8800000000000001,
 		depthPhi: 8.150000000000002,
 		normalPhi: 43.48000000000002,
 		roughnessPhi: 19.019999999999996,

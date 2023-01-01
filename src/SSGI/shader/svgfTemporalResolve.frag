@@ -20,19 +20,22 @@ if (isReprojectedUvValid) {
     vec3 lastSpecular = lastSpecularTexel.rgb;
     float alpha = max(lastSpecularTexel.a, 1.);
 
-    if (dot(specular, specular) > 0.0) alpha += 1.0;
+    if (dot(specular, specular) > 0.0) {
+        alpha += 1.0;
+    } else {
+        specular = lastSpecular;
+    }
 
     temporalResolveMix = 1. - 1. / alpha;
     temporalResolveMix = min(temporalResolveMix, blend);
 
-    if (dot(specular, specular) == 0.0) specular = lastSpecular;
     gOutput2 = vec4(mix(specular, lastSpecular, temporalResolveMix), alpha);
 
     vec2 momentsSpecular = vec2(0.);
     momentsSpecular.r = luminance(gOutput2.rgb);
     momentsSpecular.g = momentsSpecular.r * momentsSpecular.r;
 
-    momentsSpecular = mix(momentsSpecular, historyMoments.ba, 0.);
+    momentsSpecular = mix(momentsSpecular, historyMoments.ba, momentsTemporalResolveMix);
 
     gMoment = vec4(momentsDiffuse, momentsSpecular);
 } else {
