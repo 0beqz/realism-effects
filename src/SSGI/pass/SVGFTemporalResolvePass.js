@@ -22,7 +22,8 @@ export class SVGFTemporalResolvePass extends TemporalResolvePass {
 			...{
 				customComposeShader: options.moments ? svgfTemporalResolve : null,
 				renderTarget: temporalResolvePassRenderTarget,
-				renderVelocity: false
+				renderVelocity: false,
+				catmullRomSampling: false
 			}
 		}
 

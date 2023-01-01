@@ -1,5 +1,5 @@
 ﻿layout(location = 0) out vec4 gSSGI;
-layout(location = 1) out vec4 gBRDF;
+layout(location = 1) out vec4 gSpecular;
 
 varying vec2 vUv;
 
@@ -71,7 +71,7 @@ void main() {
 
     // filter out background
     if (dot(depthTexel.rgb, depthTexel.rgb) == 0.) {
-        gSSGI = gBRDF = EARLY_OUT_COLOR;
+        gSSGI = gSpecular = EARLY_OUT_COLOR;
         return;
     }
 
@@ -80,7 +80,7 @@ void main() {
 
     // a roughness of 1 is only being used for deselected meshes
     if (roughnessValue == 1.0 || roughnessValue > maxRoughness) {
-        gSSGI = gBRDF = EARLY_OUT_COLOR;
+        gSSGI = gSpecular = EARLY_OUT_COLOR;
         return;
     }
 
@@ -222,7 +222,7 @@ void main() {
     }
 
     gSSGI = vec4(diffuseGI, 0.);
-    gBRDF = vec4(specularGI, rayLength);
+    gSpecular = vec4(specularGI, rayLength);
 }
 
 vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, float metalness,
@@ -291,13 +291,13 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
         float mip = roughness * 4. / 12. * maxEnvMapMipLevel;
 
         vec3 sampleDir = reflectedWS.xyz;
-        envMapSample = sampleEquirectEnvMapColor(sampleDir, envMap, 0.);
+        envMapSample = sampleEquirectEnvMapColor(sampleDir, envMap, mip);
 
         // we won't deal with calculating direct sun light from the env map as it is too noisy
         float envLum = czm_luminance(envMapSample);
 
-        const float maxVal = 100.0;
-        if (envLum > maxVal) envMapSample *= maxVal / envLum;
+        // const float maxVal = 10.0;
+        // if (envLum > maxVal) envMapSample *= maxVal / envLum;
 
         return envMapSample;
     }
@@ -310,29 +310,34 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
 
     vec3 SSGI;
 
+    bvec4 reprojectedUvInScreen = bvec4(
+        greaterThanEqual(reprojectedUv, vec2(0.)),
+        lessThanEqual(reprojectedUv, vec2(1.)));
+
     // check if the reprojected coordinates are within the screen
-    if (all(greaterThanEqual(reprojectedUv, vec2(0.))) && all(lessThanEqual(reprojectedUv, vec2(1.)))) {
+    if (all(reprojectedUvInScreen)) {
         vec4 emissiveTexel = textureLod(emissiveTexture, coords.xy, 0.);
         vec3 emissiveColor = emissiveTexel.rgb;
         float emissiveIntensity = emissiveTexel.a;
 
-        SSGI = textureLod(accumulatedTexture, reprojectedUv, 0.).rgb + emissiveColor * emissiveIntensity;
+        vec3 reprojectedGI = textureLod(accumulatedTexture, reprojectedUv, 0.).rgb;
+
+        SSGI = reprojectedGI + emissiveColor * emissiveIntensity;
     } else {
         SSGI = textureLod(directLightTexture, vUv, 0.).rgb;
     }
 
-    float ssgiLum = czm_luminance(SSGI);
-
     if (isAllowedMissedRay) {
+        float ssgiLum = czm_luminance(SSGI);
         float envLum = czm_luminance(envMapSample);
 
         if (envLum > ssgiLum) SSGI = envMapSample;
     } else {
         // screen edges fading
-        vec2 dCoords = smoothstep(0.2, 0.6, abs(vec2(0.5, 0.5) - vUv));
-        float screenEdgeIntensity = clamp(1.0 - (dCoords.x + dCoords.y), 0.0, 1.0);
+        // vec2 dCoords = smoothstep(0.2, 0.6, abs(vec2(0.5, 0.5) - vUv));
+        // float screenEdgeIntensity = clamp(1.0 - (dCoords.x + dCoords.y), 0.0, 1.0);
 
-        SSGI *= screenEdgeIntensity;
+        // SSGI *= screenEdgeIntensity;
     }
 
     return SSGI;
@@ -343,8 +348,7 @@ vec2 RayMarch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference)
 
     dir *= rayDistance / float(steps);
 
-    float depth;
-    float unpackedDepth;
+    float depth, unpackedDepth;
     vec2 uv;
 
     for (int i = 0; i < steps; i++) {
@@ -352,6 +356,11 @@ vec2 RayMarch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference)
         if (hitPos.z > 0.0) return INVALID_RAY_COORDS;
 
         uv = viewSpaceToScreenSpace(hitPos);
+
+#ifndef missedRays
+        bvec4 uvOutsideScreen = bvec4(lessThan(uv, vec2(0.)), greaterThan(uv, vec2(1.)));
+        if (any(uvOutsideScreen)) return INVALID_RAY_COORDS;
+#endif
 
         unpackedDepth = unpackRGBAToDepth(textureLod(depthTexture, uv, 0.0));
         depth = fastGetViewZ(unpackedDepth);

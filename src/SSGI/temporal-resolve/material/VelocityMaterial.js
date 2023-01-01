@@ -66,9 +66,9 @@ ${ShaderChunk.skinning_vertex.replace(/vec4 /g, "")}
 prevPosition = prevVelocityMatrix * vec4( transformed, 1.0 );
 
 // The delta between frames
-vec3 delta = newPosition.xyz - prevPosition.xyz;
-vec3 direction = normalize(delta);
-float stretchDot = dot(direction, transformedNormal);
+// vec3 delta = newPosition.xyz - prevPosition.xyz;
+// vec3 direction = normalize(delta);
+// float stretchDot = dot(direction, transformedNormal);
 
 // const float interpolateGeometry = 1.;
 // gl_Position = mix(newPosition, prevPosition, (1.0 - step(0.0, stretchDot) ) );

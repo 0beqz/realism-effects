@@ -7,15 +7,16 @@ uniform sampler2D diffuseLightingTexture;
 uniform sampler2D specularLightingTexture;
 uniform sampler2D depthTexture;
 uniform sampler2D normalTexture;
+uniform sampler2D diffuseTexture;
 uniform sampler2D momentsTexture;
 uniform vec2 invTexSize;
 uniform bool horizontal;
-uniform float lumaPhiDiffuse;
-uniform float lumaPhiSpecular;
+uniform float denoiseDiffuse;
+uniform float denoiseSpecular;
 uniform float depthPhi;
 uniform float normalPhi;
 uniform float roughnessPhi;
-uniform float glossinesPhi;
+uniform float specularPhi;
 uniform float denoiseKernel;
 uniform float stepSize;
 uniform mat4 _viewMatrix;
@@ -47,6 +48,39 @@ vec3 getViewPosition(const float depth) {
 
 vec3 F_Schlick(vec3 f0, float theta) {
     return f0 + (1. - f0) * pow(1.0 - theta, 5.);
+}
+
+vec3 SampleGGXVNDF(vec3 V, float ax, float ay, float r1, float r2) {
+    vec3 Vh = normalize(vec3(ax * V.x, ay * V.y, V.z));
+
+    float lensq = Vh.x * Vh.x + Vh.y * Vh.y;
+    vec3 T1 = lensq > 0. ? vec3(-Vh.y, Vh.x, 0.) * inversesqrt(lensq) : vec3(1., 0., 0.);
+    vec3 T2 = cross(Vh, T1);
+
+    float r = sqrt(r1);
+    float phi = 2.0 * PI * r2;
+    float t1 = r * cos(phi);
+    float t2 = r * sin(phi);
+    float s = 0.5 * (1.0 + Vh.z);
+    t2 = (1.0 - s) * sqrt(1.0 - t1 * t1) + s * t2;
+
+    vec3 Nh = t1 * T1 + t2 * T2 + sqrt(max(0.0, 1.0 - t1 * t1 - t2 * t2)) * Vh;
+
+    return normalize(vec3(ax * Nh.x, ay * Nh.y, max(0.0, Nh.z)));
+}
+
+void Onb(in vec3 N, inout vec3 T, inout vec3 B) {
+    vec3 up = abs(N.z) < 0.9999999 ? vec3(0, 0, 1) : vec3(1, 0, 0);
+    T = normalize(cross(up, N));
+    B = cross(N, T);
+}
+
+vec3 ToLocal(vec3 X, vec3 Y, vec3 Z, vec3 V) {
+    return vec3(dot(V, X), dot(V, Y), dot(V, Z));
+}
+
+vec3 ToWorld(vec3 X, vec3 Y, vec3 Z, vec3 V) {
+    return V.x * X + V.y * Y + V.z * Z;
 }
 
 vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth, mat4 curMatrixWorld) {
@@ -164,13 +198,16 @@ void main() {
     vec3 worldPos = screenSpaceToWorldSpace(vUv, depth, cameraMatrixWorld);
 
     float roughness = normalTexel.a;
-    float glossinesFactor = 1. - exp(-10. * roughness) * glossinesPhi;
+    vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.);
+    vec3 diffuse = diffuseTexel.rgb;
+    float metalness = diffuseTexel.a;
+    float glossinesFactor = 1. - exp(-50. * roughness * (1. - metalness)) * specularPhi;
 
     float kernel = denoiseKernel;
     float sumVarianceDiffuse, sumVarianceSpecular;
     float totalWeightDiffuse = 1., totalWeightSpecular = 1.;
 
-    float colorPhiDiffuse = lumaPhiDiffuse, colorPhiSpecular = lumaPhiSpecular;
+    float colorPhiDiffuse = denoiseDiffuse, colorPhiSpecular = denoiseSpecular;
 
 #ifdef USE_MOMENT
     if (horizontal && stepSize == 1.) {
@@ -183,25 +220,29 @@ void main() {
         sumVarianceSpecular = specularLightingTexel.a;
     }
 
-    colorPhiDiffuse = lumaPhiDiffuse * sqrt(EPSILON + sumVarianceDiffuse);
-    colorPhiSpecular = lumaPhiSpecular * sqrt(EPSILON + sumVarianceSpecular);
+    colorPhiDiffuse = denoiseDiffuse * sqrt(EPSILON + sumVarianceDiffuse);
+    colorPhiSpecular = denoiseSpecular * sqrt(EPSILON + sumVarianceSpecular);
 #endif
 
-    // horizontal / vertical
-    for (float i = -kernel; i <= kernel; i++) {
-        if (i != 0.) {
-            vec2 neighborVec = horizontal ? vec2(i, 0.) : vec2(0., i);
-            tap(neighborVec, pixelStepOffset, depth, normal, roughness, glossinesFactor, worldPos, lumaDiffuse, lumaSpecular, colorPhiDiffuse, colorPhiSpecular, diffuseLightingColor, specularLightingColor, totalWeightDiffuse, sumVarianceDiffuse, totalWeightSpecular, sumVarianceSpecular);
-        }
-    }
+    int n = int(log2(stepSize));
 
-    // diagonal (top left to bottom right) / diagonal (top right to bottom left)
-    for (float i = -kernel; i <= kernel; i++) {
-        if (i != 0.) {
-            vec2 neighborVec = horizontal ? vec2(-i, -i) : vec2(-i, i);
-            tap(neighborVec, pixelStepOffset, depth, normal, roughness, glossinesFactor, worldPos, lumaDiffuse, lumaSpecular, colorPhiDiffuse, colorPhiSpecular, diffuseLightingColor, specularLightingColor, totalWeightDiffuse, sumVarianceDiffuse, totalWeightSpecular, sumVarianceSpecular);
-        }
-    }
+    // horizontal / vertical
+    // if (n % 2 == 0) {
+    //     for (float i = -kernel; i <= kernel; i++) {
+    //         if (i != 0.) {
+    //             vec2 neighborVec = horizontal ? vec2(i, 0.) : vec2(0., i);
+    //             tap(neighborVec, pixelStepOffset, depth, normal, roughness, glossinesFactor, worldPos, lumaDiffuse, lumaSpecular, colorPhiDiffuse, colorPhiSpecular, diffuseLightingColor, specularLightingColor, totalWeightDiffuse, sumVarianceDiffuse, totalWeightSpecular, sumVarianceSpecular);
+    //         }
+    //     }
+    // } else {
+    //     // diagonal (top left to bottom right) / diagonal (top right to bottom left)
+    //     for (float i = -kernel; i <= kernel; i++) {
+    //         if (i != 0.) {
+    //             vec2 neighborVec = horizontal ? vec2(-i, -i) : vec2(-i, i);
+    //             tap(neighborVec, pixelStepOffset, depth, normal, roughness, glossinesFactor, worldPos, lumaDiffuse, lumaSpecular, colorPhiDiffuse, colorPhiSpecular, diffuseLightingColor, specularLightingColor, totalWeightDiffuse, sumVarianceDiffuse, totalWeightSpecular, sumVarianceSpecular);
+    //         }
+    //     }
+    // }
 
     sumVarianceDiffuse /= totalWeightDiffuse * totalWeightDiffuse;
     sumVarianceSpecular /= totalWeightSpecular * totalWeightSpecular;

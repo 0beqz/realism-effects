@@ -7,12 +7,12 @@
  * @property {Number} [blend] a value between 0 and 1 to set how much the last frame's ssgi should be blended in; higher values will result in less noisy ssgi when moving the camera but a more smeary look
  * @property {Number} [denoiseIterations] how many times the denoise filter runs, more iterations will denoise the frame better but need more performance
  * @property {Number} [denoiseKernel] how much SSGI should be mixed with the raw SSGI
- * @property {Number} [lumaPhiDiffuse] diffuse luminance factor of the denoiser, higher values will denoise areas with varying luminance more aggressively
- * @property {Number} [lumaPhiSpecular] specular luminance factor of the denoiser, higher values will denoise areas with varying luminance more aggressively
+ * @property {Number} [denoiseDiffuse] diffuse luminance factor of the denoiser, higher values will denoise areas with varying luminance more aggressively
+ * @property {Number} [denoiseSpecular] specular luminance factor of the denoiser, higher values will denoise areas with varying luminance more aggressively
  * @property {Number} [depthPhi] depth factor of the denoiser, higher values will use neighboring areas with different depth values more resulting in less noise but loss of details
  * @property {Number} [depthPhi] normals factor of the denoiser, higher values will use neighboring areas with different normals more resulting in less noise but loss of details and sharpness
  * @property {Number} [roughnessPhi] roughness factor of the denoiser setting how much the denoiser should only apply the blur to rougher surfaces, a value of 0 means the denoiser will blur mirror-like surfaces the same as rough surfaces
- * @property {Number} [glossinesPhi] glossiness factor of the denoiser setting how much the denoiser should only apply the blur to glossier surfaces
+ * @property {Number} [specularPhi] glossiness factor of the denoiser setting how much the denoiser should only apply the blur to glossier surfaces
  * @property {Number} [jitter] how intense jittering should be
  * @property {Number} [jitterRoughness] how intense jittering should be in relation to a material's roughness
  * @property {Number} [steps] number of steps a ssgi ray can maximally do to find an object it intersected (and thus reflects)
@@ -33,12 +33,12 @@ export const defaultSSGIOptions = {
 	blend: 0.9,
 	denoiseIterations: 1,
 	denoiseKernel: 2,
-	lumaPhiDiffuse: 10,
-	lumaPhiSpecular: 10,
+	denoiseDiffuse: 10,
+	denoiseSpecular: 10,
 	depthPhi: 2,
 	normalPhi: 50,
 	roughnessPhi: 1,
-	glossinesPhi: 1,
+	specularPhi: 0,
 	jitter: 0,
 	jitterRoughness: 0,
 	steps: 20,

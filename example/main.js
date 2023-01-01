@@ -2,7 +2,7 @@ import dragDrop from "drag-drop"
 import * as POSTPROCESSING from "postprocessing"
 import Stats from "stats.js"
 import * as THREE from "three"
-import { Box3, Color, DirectionalLight, DoubleSide, MeshNormalMaterial, Vector3 } from "three"
+import { ACESFilmicToneMapping, Box3, Color, DirectionalLight, DoubleSide, MeshNormalMaterial, Vector3 } from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader"
@@ -154,7 +154,7 @@ const params = {}
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
 pmremGenerator.compileEquirectangularShader()
 
-new RGBELoader().load("monbachtal_riverbank_2k.hdr", envMap => {
+new RGBELoader().load("blouberg_sunrise_2_4k.hdr", envMap => {
 	envMap.mapping = THREE.EquirectangularReflectionMapping
 
 	scene.environment = envMap
@@ -219,11 +219,12 @@ const initScene = () => {
 		blend: 0.95,
 		denoiseIterations: 3,
 		denoiseKernel: 3,
-		lumaPhiDiffuse: 2.73,
-		lumaPhiSpecular: 0.8800000000000001,
+		denoiseDiffuse: 2.73,
+		denoiseSpecular: 0.8800000000000001,
 		depthPhi: 8.150000000000002,
 		normalPhi: 43.48000000000002,
 		roughnessPhi: 19.019999999999996,
+		specularPhi: 1,
 		jitter: 3.469446951953614e-18,
 		jitterRoughness: 1,
 		steps: 20,
@@ -303,10 +304,10 @@ const initScene = () => {
 		composer.addPass(traaEffect.temporalResolvePass.velocityPass)
 
 		composer.addPass(ssgiPass)
-		composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, motionBlurEffect, vignetteEffect, lutEffect))
+		// composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect, bloomEffect, vignetteEffect, lutEffect))
 
-		traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
-		composer.addPass(traaPass)
+		// traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
+		// composer.addPass(traaPass)
 
 		const smaaEffect = new POSTPROCESSING.SMAAEffect()
 

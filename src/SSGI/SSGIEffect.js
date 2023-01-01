@@ -39,6 +39,7 @@ export class SSGIEffect extends Effect {
 		this.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.specularTexture.value = this.ssgiPass.brdfTexture
 		this.svgf.setNormalTexture(this.ssgiPass.normalTexture)
 		this.svgf.setDepthTexture(this.ssgiPass.depthTexture)
+		this.svgf.setDiffuseTexture(this.ssgiPass.diffuseTexture)
 		this.svgf.setVelocityTexture(this.ssgiPass.velocityTexture)
 
 		// modify the temporal resolve pass of SVGF denoiser for the SSGI effect
@@ -62,7 +63,6 @@ export class SSGIEffect extends Effect {
 			/* glsl */ `
 		uniform sampler2D brdfTexture;
 		uniform sampler2D directLightTexture;
-		uniform sampler2D diffuseTexture;
 		uniform float jitter;
 		uniform float jitterRoughness;
 		` +
@@ -79,9 +79,6 @@ export class SSGIEffect extends Effect {
 					"gSpecular = vec4(specularLightingColor, sumVarianceSpecular);",
 					/* glsl */ `
 			if (isLastIteration) {
-				vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.);
-				vec3 diffuse = diffuseTexel.rgb;
-				float metalness = diffuseTexel.a;
 				float spread = roughness * roughness;
 
 				// view-space position of the current texel
@@ -133,52 +130,11 @@ export class SSGIEffect extends Effect {
     		gSpecular = vec4(specularLightingColor, sumVarianceSpecular);
 			`
 				)
-				.replace(
-					"void main()",
-					/* glsl */ `
-					vec3 SampleGGXVNDF(vec3 V, float ax, float ay, float r1, float r2) {
-						vec3 Vh = normalize(vec3(ax * V.x, ay * V.y, V.z));
-					
-						float lensq = Vh.x * Vh.x + Vh.y * Vh.y;
-						vec3 T1 = lensq > 0. ? vec3(-Vh.y, Vh.x, 0.) * inversesqrt(lensq) : vec3(1., 0., 0.);
-						vec3 T2 = cross(Vh, T1);
-					
-						float r = sqrt(r1);
-						float phi = 2.0 * PI * r2;
-						float t1 = r * cos(phi);
-						float t2 = r * sin(phi);
-						float s = 0.5 * (1.0 + Vh.z);
-						t2 = (1.0 - s) * sqrt(1.0 - t1 * t1) + s * t2;
-					
-						vec3 Nh = t1 * T1 + t2 * T2 + sqrt(max(0.0, 1.0 - t1 * t1 - t2 * t2)) * Vh;
-					
-						return normalize(vec3(ax * Nh.x, ay * Nh.y, max(0.0, Nh.z)));
-					}
-					
-					void Onb(in vec3 N, inout vec3 T, inout vec3 B) {
-						vec3 up = abs(N.z) < 0.9999999 ? vec3(0, 0, 1) : vec3(1, 0, 0);
-						T = normalize(cross(up, N));
-						B = cross(N, T);
-					}
-					
-					vec3 ToLocal(vec3 X, vec3 Y, vec3 Z, vec3 V) {
-						return vec3(dot(V, X), dot(V, Y), dot(V, Z));
-					}
-					
-					vec3 ToWorld(vec3 X, vec3 Y, vec3 Z, vec3 V) {
-						return V.x * X + V.y * Y + V.z * Z;
-					}
-
-					void main()
-					`
-				)
 
 		this.svgf.denoisePass.fullscreenMaterial.uniforms = {
 			...this.svgf.denoisePass.fullscreenMaterial.uniforms,
 			...{
 				directLightTexture: new Uniform(null),
-				diffuseTexture: new Uniform(null),
-				brdfTexture: new Uniform(null),
 				jitter: new Uniform(0),
 				jitterRoughness: new Uniform(0)
 			}
@@ -225,12 +181,12 @@ export class SSGIEffect extends Effect {
 							break
 
 						case "denoiseKernel":
-						case "lumaPhiDiffuse":
-						case "lumaPhiSpecular":
+						case "denoiseDiffuse":
+						case "denoiseSpecular":
 						case "depthPhi":
 						case "normalPhi":
 						case "roughnessPhi":
-						case "glossinesPhi":
+						case "specularPhi":
 							this.svgf.denoisePass.fullscreenMaterial.uniforms[key].value = value
 							break
 

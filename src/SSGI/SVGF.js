@@ -66,6 +66,10 @@ export class SVGF {
 		this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.normalTexture.value = texture
 	}
 
+	setDiffuseTexture(texture) {
+		this.denoisePass.fullscreenMaterial.uniforms.diffuseTexture.value = texture
+	}
+
 	setVelocityTexture(texture) {
 		this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.velocityTexture.value = texture
 	}

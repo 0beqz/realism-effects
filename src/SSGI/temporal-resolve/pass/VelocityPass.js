@@ -1,5 +1,5 @@
 ﻿import { Pass, RenderPass } from "postprocessing"
-import { Color, FloatType, HalfFloatType, NearestFilter, Quaternion, Vector3, WebGLMultipleRenderTargets } from "three"
+import { Color, HalfFloatType, NearestFilter, Quaternion, Vector3, WebGLMultipleRenderTargets } from "three"
 import {
 	getVisibleChildren,
 	keepMaterialMapUpdated,
@@ -31,7 +31,7 @@ export class VelocityPass extends Pass {
 		this.renderTarget = new WebGLMultipleRenderTargets(1, 1, bufferCount, {
 			minFilter: NearestFilter,
 			magFilter: NearestFilter,
-			type: FloatType
+			type: HalfFloatType
 		})
 
 		this.renderDepth = renderDepth
