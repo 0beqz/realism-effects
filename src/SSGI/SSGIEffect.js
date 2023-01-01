@@ -31,7 +31,7 @@ export class SSGIEffect extends Effect {
 		this._scene = scene
 		this._camera = camera
 
-		this.svgf = new SVGF(scene, camera, { reprojectReflectionHitPoints: true })
+		this.svgf = new SVGF(scene, camera)
 
 		// ssgi pass
 		this.ssgiPass = new SSGIPass(this)

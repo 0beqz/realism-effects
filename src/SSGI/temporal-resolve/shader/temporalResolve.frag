@@ -129,7 +129,6 @@ vec2 reprojectVelocity(vec2 sampleUv, out bool didMove) {
     return vUv - velocity.xy;
 }
 
-#ifdef reprojectReflectionHitPoints
 vec2 viewSpaceToScreenSpace(vec3 position) {
     vec4 projectedCoord = projectionMatrix * vec4(position, 1.0);
     projectedCoord.xy /= projectedCoord.w;
@@ -150,7 +149,6 @@ vec2 reprojectHitPoint(vec3 rayOrig, float rayLength, vec2 uv, float depth) {
 
     return hitPointUv;
 }
-#endif
 
 #ifdef dilation
 vec2 getDilatedDepthUV(out float currentDepth, out vec4 closestDepthTexel) {
@@ -273,13 +271,12 @@ void main() {
     vec4 accumulatedTexel;
     vec3 accumulatedColor;
     vec4 worldNormalTexel = textureLod(normalTexture, uv, 0.);
+    vec3 worldPos = screenSpaceToWorldSpace(uv, depth, cameraMatrixWorld);
 
     if (isBackground) {
         accumulatedColor = inputColor;
     } else {
-        vec3 worldPos = screenSpaceToWorldSpace(uv, depth, cameraMatrixWorld);
-
-#ifdef reprojectReflectionHitPoints_______________XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+#ifdef reprojectReflectionHitPoints
         float rayLength;
         if ((rayLength = textureLod(inputTexture, uv, 0.).a) != 0.0) {
             reprojectedUv = reprojectHitPoint(worldPos, rayLength, uv, depth);
@@ -312,7 +309,6 @@ void main() {
             accumulatedColor = clamp(accumulatedColor, minNeighborColor, maxNeighborColor);
 
             if (isBackground) accumulatedColor = inputColor;
-
 #endif
         } else {
             // reprojection invalid possibly due to disocclusion
@@ -329,7 +325,7 @@ void main() {
         temporalResolveMix = blend;
     } else {
         float pixelFrames = alpha;
-        // float maxValue = didMove ? blend : 1.0;
+        float maxValue = didMove ? blend : 1.0;
 
         if (dot(inputColor, inputColor) == 0.0) {
             pixelFrames = max(1., pixelFrames - 1.);
@@ -337,14 +333,14 @@ void main() {
         }
 
         temporalResolveMix = 1. - 1. / pixelFrames;
-        temporalResolveMix = min(temporalResolveMix, blend);
+        temporalResolveMix = min(temporalResolveMix, maxValue);
     }
 
     outputColor = mix(inputColor, accumulatedColor, temporalResolveMix);
-    float lum = czm_luminance(outputColor);
-    // if (lum > 1.) outputColor *= 1. / lum;
 
-    // if (didMove && alpha > blend) alpha = blend;
+    float pixelFrames = max(1., alpha - 1.);
+    float a = 1. - 1. / pixelFrames;
+    if (didMove && a > blend) alpha = 1. / (1. - blend);
 
 // the user's shader to compose a final outputColor from the inputTexel and accumulatedTexel
 #ifdef useCustomComposeShader

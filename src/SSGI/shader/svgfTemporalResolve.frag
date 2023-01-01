@@ -1,48 +1,75 @@
-﻿gOutput = vec4(undoColorTransform(outputColor), alpha);
+﻿bool isDiffuseSample = inputTexel.a == 1.0;
+
+if (!isDiffuseSample) inputColor = accumulatedColor;
 
 const vec3 W = vec3(0.2125, 0.7154, 0.0721);
 #define luminance(a) dot(W, a)
 
+vec4 moments, historyMoments;
+float momentsTemporalResolveMix = max(temporalResolveMix, 0.8);
+
+// diffuse
 if (isReprojectedUvValid) {
-    float momentsTemporalResolveMix = max(temporalResolveMix, 0.8);
+    outputColor = mix(inputColor, accumulatedColor, temporalResolveMix);
+    gOutput = vec4(outputColor, alpha);
 
-    vec4 historyMoments = textureLod(lastMomentsTexture, reprojectedUv, 0.);
+    // diffuse moments
+    historyMoments = textureLod(lastMomentsTexture, reprojectedUv, 0.);
 
-    vec2 momentsDiffuse = vec2(0.);
-    momentsDiffuse.r = luminance(gOutput.rgb);
-    momentsDiffuse.g = momentsDiffuse.r * momentsDiffuse.r;
+    moments.r = luminance(gOutput.rgb);
+    moments.g = moments.r * moments.r;
 
-    momentsDiffuse = mix(momentsDiffuse, historyMoments.rg, momentsTemporalResolveMix);
+    moments.rg = mix(moments.rg, historyMoments.rg, momentsTemporalResolveMix);
+} else {
+    gOutput = vec4(inputColor, 0.);
 
-    vec3 specular = textureLod(specularTexture, vUv, 0.).rgb;
+    // boost new samples
+    moments.rg = vec2(0., 1000.);
+}
 
-    vec4 lastSpecularTexel = textureLod(lastSpecularTexture, reprojectedUv, 0.);
+// specular
+vec4 specularTexel = textureLod(specularTexture, uv, 0.);
+vec3 specularColor = specularTexel.rgb;
+float rayLength = specularTexel.a;
+bool canReprojectHitPoint = rayLength != 0.0;
+
+vec2 reprojectedUvSpecular = canReprojectHitPoint ? reprojectHitPoint(worldPos, rayLength, uv, depth) : vec2(0.);
+bool isReprojectedUvSpecularValid = canReprojectHitPoint && validateReprojectedUV(reprojectedUv, depth, worldPos, worldNormalTexel);
+
+bool anyReprojectionValid = isReprojectedUvSpecularValid || isReprojectedUvValid;
+
+// choose which UV coordinates to use when reprojecting specular lighting
+vec2 specularUv = anyReprojectionValid ? (isReprojectedUvSpecularValid ? reprojectedUvSpecular : reprojectedUv) : vec2(0.);
+
+if (anyReprojectionValid) {
+    vec4 lastSpecularTexel = textureLod(lastSpecularTexture, specularUv, 0.);
     vec3 lastSpecular = lastSpecularTexel.rgb;
-    float alpha = max(lastSpecularTexel.a, 1.);
+    float specularAlpha = max(lastSpecularTexel.a, 1.);
 
-    if (dot(specular, specular) > 0.0) {
-        alpha += 1.0;
-    } else {
-        specular = lastSpecular;
-    }
+    vec3 specular = isDiffuseSample ? lastSpecular : specularColor;
 
-    temporalResolveMix = 1. - 1. / alpha;
+    if (!isDiffuseSample) specularAlpha += 1.0;
+
+    temporalResolveMix = 1. - 1. / specularAlpha;
     temporalResolveMix = min(temporalResolveMix, blend);
 
-    gOutput2 = vec4(mix(specular, lastSpecular, temporalResolveMix), alpha);
+    gOutput2 = vec4(mix(specular, lastSpecular, temporalResolveMix), specularAlpha);
 
-    vec2 momentsSpecular = vec2(0.);
-    momentsSpecular.r = luminance(gOutput2.rgb);
-    momentsSpecular.g = momentsSpecular.r * momentsSpecular.r;
+    // specular moments
+    historyMoments = textureLod(lastMomentsTexture, specularUv, 0.);
 
-    momentsSpecular = mix(momentsSpecular, historyMoments.ba, momentsTemporalResolveMix);
+    moments.b = luminance(gOutput2.rgb);
+    moments.a = moments.b * moments.b;
 
-    gMoment = vec4(momentsDiffuse, momentsSpecular);
+    moments.ba = mix(moments.ba, historyMoments.ba, momentsTemporalResolveMix);
 } else {
+    gOutput2 = vec4(specularColor, 0.);
+
     // boost new samples
-    gMoment = vec4(0., 1000., 0., 1000.);
-    gOutput2 = textureLod(specularTexture, vUv, 1.);
+    moments.ba = vec2(0., 1000.);
 }
+
+gMoment = moments;
 
 // gOutput.xyz = didMove ? vec3(0., 1., 0.) : vec3(0., 0., 0.);
 

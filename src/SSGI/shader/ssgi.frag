@@ -226,10 +226,10 @@ void main() {
         }
     }
 
-    float a = isDiffuseSample ? 1. : 0.;
+    float diffuseSampleFlag = isDiffuseSample ? 1. : 0.;
 
-    gSSGI = vec4(diffuseGI, a);
-    gBRDF = vec4(specularGI, a);
+    gSSGI = vec4(diffuseGI, diffuseSampleFlag);
+    gBRDF = vec4(specularGI, rayLength);
 }
 
 vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, float metalness, float spread, bool isDiffuseSample, vec3 F, vec2 random, inout vec3 reflected, inout vec3 hitPos, out bool isMissedRay, out vec3 brdf) {
