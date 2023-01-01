@@ -58,6 +58,11 @@ export class SSGIDebugGUI {
 			max: 50,
 			step: 0.01
 		})
+		denoiseKernelFolder.addInput(params, "glossinesPhi", {
+			min: 0,
+			max: 1,
+			step: 0.01
+		})
 
 		const jitterFolder = pane.addFolder({ title: "Jitter" })
 

@@ -101,7 +101,7 @@ export class SSGIEffect extends Effect {
 
 				V = ToLocal(T, B, N, V);
 				
-				vec3 H = SampleGGXVNDF(V, spread, spread, 0.5, 0.5);
+				vec3 H = SampleGGXVNDF(V, spread, spread, 0.25, 0.25);
 				if (H.z < 0.0) H = -H;
 
 				vec3 l = normalize(reflect(-V, H));
@@ -116,12 +116,15 @@ export class SSGIEffect extends Effect {
         		vec3 h = normalize(v + l);  // half vector
 				float VoH = max(EPSILON, dot(v, h));
 
+				VoH = pow(VoH, 0.875);
+
 				// fresnel
 				vec3 f0 = mix(vec3(0.04), diffuse, metalness);
 				vec3 F = F_Schlick(f0, VoH);
 
 				diffuseLightingColor = diffuse * (1. - metalness) * (1. - F) * color + specularLightingColor * F;
 
+				// apply diffuse líghting
 				vec3 directLight = textureLod(directLightTexture, vUv, 0.).rgb;
 				diffuseLightingColor += directLight;
 			}
@@ -227,6 +230,7 @@ export class SSGIEffect extends Effect {
 						case "depthPhi":
 						case "normalPhi":
 						case "roughnessPhi":
+						case "glossinesPhi":
 							this.svgf.denoisePass.fullscreenMaterial.uniforms[key].value = value
 							break
 

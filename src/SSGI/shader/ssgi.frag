@@ -228,25 +228,30 @@ void main() {
 vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, float metalness,
               float roughness, bool isDiffuseSample, vec3 F, float NoV, float NoL, float NoH, float LoH, float VoH, vec2 random, inout vec3 l,
               inout vec3 hitPos, out bool isMissedRay, out vec3 brdf) {
+    float cosTheta = max(0.0, dot(viewNormal, l));
+
     if (isDiffuseSample) {
         vec3 diffuseBrdf = vec3(evalDisneyDiffuse(NoL, NoV, LoH, roughness, metalness));
         float pdf = NoL / M_PI;
         pdf = max(EPSILON, pdf);
 
         brdf = diffuseBrdf / pdf;
+
+        brdf *= cosTheta;
+
+        brdf = clamp(brdf, 0., 1000.);
     } else {
         vec3 specularBrdf = evalDisneySpecular(roughness, NoH, NoV, NoL);
         float pdf = GGXVNDFPdf(NoH, NoV, roughness);
         pdf = max(EPSILON, pdf);
 
         brdf = specularBrdf / pdf;
+
+        brdf *= cosTheta;
+
+        // clamping it reduces most fireflies
+        brdf = clamp(brdf, 0., 50.);
     }
-
-    float cosTheta = max(0.0, dot(viewNormal, l));
-    brdf *= cosTheta;
-
-    // clamping it to 100 reduces most fireflies
-    brdf = min(brdf, 100.);
 
     hitPos = viewPos;
     float rayHitDepthDifference = 0.;
@@ -291,8 +296,8 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
         // we won't deal with calculating direct sun light from the env map as it is too noisy
         float envLum = czm_luminance(envMapSample);
 
-        // const float maxVal = 10.0;
-        // if (envLum > maxVal) envMapSample *= maxVal / envLum;
+        const float maxVal = 100.0;
+        if (envLum > maxVal) envMapSample *= maxVal / envLum;
 
         return envMapSample;
     }

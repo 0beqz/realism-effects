@@ -2,16 +2,7 @@ import dragDrop from "drag-drop"
 import * as POSTPROCESSING from "postprocessing"
 import Stats from "stats.js"
 import * as THREE from "three"
-import {
-	ACESFilmicToneMapping,
-	Box3,
-	Color,
-	DirectionalLight,
-	DoubleSide,
-	MeshNormalMaterial,
-	NoToneMapping,
-	Vector3
-} from "three"
+import { Box3, Color, DirectionalLight, DoubleSide, MeshNormalMaterial, Vector3 } from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader"
@@ -75,8 +66,6 @@ renderer.autoClear = false
 // renderer.autoClearDepth = false
 // renderer.autoClearStencil = false
 
-renderer.toneMapping = NoToneMapping
-renderer.toneMappingExposure = 1.5
 renderer.outputEncoding = THREE.sRGBEncoding
 const dpr = window.devicePixelRatio || 1
 renderer.setPixelRatio(dpr)
@@ -138,12 +127,6 @@ light.position.set(217, 43, 76)
 light.updateMatrixWorld()
 light.castShadow = true
 scene.add(light)
-window.light = light
-
-// const spotLight = new SpotLight(0xff3300, 2)
-// spotLight.position.set(-20, 20, 5)
-// spotLight.updateMatrixWorld()
-// scene.add(spotLight)
 
 renderer.shadowMap.enabled = true
 renderer.shadowMap.autoUpdate = false
@@ -171,7 +154,7 @@ const params = {}
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
 pmremGenerator.compileEquirectangularShader()
 
-new RGBELoader().load("round_platform_2k.hdr", envMap => {
+new RGBELoader().load("monbachtal_riverbank_2k.hdr", envMap => {
 	envMap.mapping = THREE.EquirectangularReflectionMapping
 
 	scene.environment = envMap
@@ -302,7 +285,7 @@ const initScene = () => {
 
 	ssgiPass = new POSTPROCESSING.EffectPass(camera, ssgiEffect)
 
-	new POSTPROCESSING.LUTCubeLoader().load("lut.cube").then(lutTexture => {
+	new POSTPROCESSING.LUT3dlLoader().load("lut.3dl").then(lutTexture => {
 		const lutEffect = new POSTPROCESSING.LUT3DEffect(lutTexture)
 
 		const { depthTexture, normalTexture, velocityTexture } = traaEffect.temporalResolvePass.fullscreenMaterial.uniforms
@@ -320,7 +303,7 @@ const initScene = () => {
 		composer.addPass(traaEffect.temporalResolvePass.velocityPass)
 
 		composer.addPass(ssgiPass)
-		composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, motionBlurEffect, vignetteEffect))
+		composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, motionBlurEffect, vignetteEffect, lutEffect))
 
 		traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
 		composer.addPass(traaPass)
