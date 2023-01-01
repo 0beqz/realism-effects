@@ -227,22 +227,22 @@ void main() {
     int n = int(log2(stepSize));
 
     // horizontal / vertical
-    // if (n % 2 == 0) {
-    //     for (float i = -kernel; i <= kernel; i++) {
-    //         if (i != 0.) {
-    //             vec2 neighborVec = horizontal ? vec2(i, 0.) : vec2(0., i);
-    //             tap(neighborVec, pixelStepOffset, depth, normal, roughness, glossinesFactor, worldPos, lumaDiffuse, lumaSpecular, colorPhiDiffuse, colorPhiSpecular, diffuseLightingColor, specularLightingColor, totalWeightDiffuse, sumVarianceDiffuse, totalWeightSpecular, sumVarianceSpecular);
-    //         }
-    //     }
-    // } else {
-    //     // diagonal (top left to bottom right) / diagonal (top right to bottom left)
-    //     for (float i = -kernel; i <= kernel; i++) {
-    //         if (i != 0.) {
-    //             vec2 neighborVec = horizontal ? vec2(-i, -i) : vec2(-i, i);
-    //             tap(neighborVec, pixelStepOffset, depth, normal, roughness, glossinesFactor, worldPos, lumaDiffuse, lumaSpecular, colorPhiDiffuse, colorPhiSpecular, diffuseLightingColor, specularLightingColor, totalWeightDiffuse, sumVarianceDiffuse, totalWeightSpecular, sumVarianceSpecular);
-    //         }
-    //     }
-    // }
+    if (n % 2 == 0) {
+        for (float i = -kernel; i <= kernel; i++) {
+            if (i != 0.) {
+                vec2 neighborVec = horizontal ? vec2(i, 0.) : vec2(0., i);
+                tap(neighborVec, pixelStepOffset, depth, normal, roughness, glossinesFactor, worldPos, lumaDiffuse, lumaSpecular, colorPhiDiffuse, colorPhiSpecular, diffuseLightingColor, specularLightingColor, totalWeightDiffuse, sumVarianceDiffuse, totalWeightSpecular, sumVarianceSpecular);
+            }
+        }
+    } else {
+        // diagonal (top left to bottom right) / diagonal (top right to bottom left)
+        for (float i = -kernel; i <= kernel; i++) {
+            if (i != 0.) {
+                vec2 neighborVec = horizontal ? vec2(-i, -i) : vec2(-i, i);
+                tap(neighborVec, pixelStepOffset, depth, normal, roughness, glossinesFactor, worldPos, lumaDiffuse, lumaSpecular, colorPhiDiffuse, colorPhiSpecular, diffuseLightingColor, specularLightingColor, totalWeightDiffuse, sumVarianceDiffuse, totalWeightSpecular, sumVarianceSpecular);
+            }
+        }
+    }
 
     sumVarianceDiffuse /= totalWeightDiffuse * totalWeightDiffuse;
     sumVarianceSpecular /= totalWeightSpecular * totalWeightSpecular;
