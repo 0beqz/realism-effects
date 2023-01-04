@@ -320,11 +320,10 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
     if (all(reprojectedUvInScreen)) {
         vec4 emissiveTexel = textureLod(emissiveTexture, coords.xy, 0.);
         vec3 emissiveColor = emissiveTexel.rgb;
-        float emissiveIntensity = emissiveTexel.a;
 
         vec3 reprojectedGI = textureLod(accumulatedTexture, reprojectedUv, 0.).rgb;
 
-        SSGI = reprojectedGI + emissiveColor * emissiveIntensity;
+        SSGI = reprojectedGI + emissiveColor;
     } else {
         SSGI = textureLod(directLightTexture, vUv, 0.).rgb;
     }

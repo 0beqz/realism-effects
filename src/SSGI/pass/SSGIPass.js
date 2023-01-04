@@ -161,7 +161,6 @@ export class SSGIPass extends Pass {
 				if (originalMaterial.emissive) mrtMaterial.uniforms.emissive.value = originalMaterial.emissive
 				if (originalMaterial.color) mrtMaterial.uniforms.color.value = originalMaterial.color
 
-				mrtMaterial.normalScale = originalMaterial.normalScale
 				mrtMaterial.uniforms.normalScale.value = originalMaterial.normalScale
 
 				const map =
@@ -210,8 +209,6 @@ export class SSGIPass extends Pass {
 
 			// set material back to the original one
 			const [originalMaterial] = this.cachedMaterials.get(c)
-
-			this._camera.updateProjectionMatrix()
 
 			updateVelocityMaterialAfterRender(c, this._camera)
 
