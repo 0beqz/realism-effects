@@ -1,21 +1,9 @@
 ﻿import { Pass } from "postprocessing"
-import {
-	FramebufferTexture,
-	HalfFloatType,
-	LinearFilter,
-	NearestFilter,
-	Quaternion,
-	RGBAFormat,
-	Vector2,
-	Vector3,
-	WebGLRenderTarget
-} from "three"
+import { HalfFloatType, LinearFilter, NearestFilter, Quaternion, Vector3, WebGLRenderTarget } from "three"
+import { CopyPass } from "../pass/CopyPass"
 import { TemporalResolveMaterial } from "./material/TemporalResolveMaterial"
 import { VelocityPass } from "./pass/VelocityPass"
 import { generateHalton23Points } from "./utils/generateHalton23Points"
-import { CopyPass } from "../pass/CopyPass"
-
-const zeroVec2 = new Vector2()
 
 export const defaultTemporalResolvePassOptions = {
 	blend: 0.9,
@@ -71,6 +59,7 @@ export class TemporalResolvePass extends Pass {
 		if (options.catmullRomSampling) this.fullscreenMaterial.defines.catmullRomSampling = ""
 		if (options.logTransform) this.fullscreenMaterial.defines.logTransform = ""
 		if (options.reprojectReflectionHitPoints) this.fullscreenMaterial.defines.reprojectReflectionHitPoints = ""
+
 		this.fullscreenMaterial.defines.depthDistance = options.depthDistance.toPrecision(5)
 		this.fullscreenMaterial.defines.normalDistance = options.normalDistance.toPrecision(5)
 
@@ -151,7 +140,7 @@ export class TemporalResolvePass extends Pass {
 
 		const { elements } = this._camera.matrixWorld
 		// https://github.com/mrdoob/three.js/blob/master/src/math/Matrix4.js#L722
-		this.fullscreenMaterial.uniforms.lastCameraPos.value.set(elements[12], elements[13], elements[14])
+		this.fullscreenMaterial.uniforms.prevCameraPos.value.set(elements[12], elements[13], elements[14])
 	}
 
 	jitter(jitterScale = 1) {

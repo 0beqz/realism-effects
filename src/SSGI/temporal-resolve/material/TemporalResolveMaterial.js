@@ -27,7 +27,7 @@ export class TemporalResolveMaterial extends ShaderMaterial {
 				prevViewMatrix: new Uniform(new Matrix4()),
 				prevCameraMatrixWorld: new Uniform(new Matrix4()),
 				cameraPos: new Uniform(new Vector3()),
-				lastCameraPos: new Uniform(new Vector3())
+				prevCameraPos: new Uniform(new Vector3())
 			},
 			vertexShader,
 			fragmentShader,

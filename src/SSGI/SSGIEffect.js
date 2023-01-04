@@ -269,7 +269,7 @@ export class SSGIEffect extends Effect {
 		this.ssgiPass.fullscreenMaterial.uniforms.directLightTexture.value = inputBuffer.texture
 		this.svgf.denoisePass.fullscreenMaterial.uniforms.directLightTexture.value = inputBuffer.texture
 
-		this.ssgiPass.render(renderer, inputBuffer)
+		this.ssgiPass.render(renderer)
 
 		this.svgf.render(renderer)
 

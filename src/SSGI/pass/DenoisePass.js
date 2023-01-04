@@ -1,5 +1,5 @@
-﻿import { Pass, RenderPass } from "postprocessing"
-import { GLSL3, HalfFloatType, LinearFilter, ShaderMaterial, Uniform, Vector2, WebGLMultipleRenderTargets } from "three"
+﻿import { Pass } from "postprocessing"
+import { GLSL3, ShaderMaterial, sRGBEncoding, Uniform, Vector2, WebGLMultipleRenderTargets } from "three"
 import basicVertexShader from "../shader/basic.vert"
 import fragmentShader from "../shader/denoise.frag"
 
@@ -42,33 +42,28 @@ export class DenoisePass extends Pass {
 				viewMatrix: new Uniform(camera.matrixWorldInverse),
 				projectionMatrix: new Uniform(camera.projectionMatrix),
 				cameraMatrixWorld: new Uniform(camera.matrixWorld),
-				_projectionMatrixInverse: new Uniform(camera.projectionMatrixInverse)
+				projectionMatrixInverse: new Uniform(camera.projectionMatrixInverse)
 			},
-			toneMapped: false,
 			glslVersion: GLSL3
 		})
 
 		const renderTargetOptions = {
-			minFilter: LinearFilter,
-			magFilter: LinearFilter,
-			type: HalfFloatType,
+			encoding: sRGBEncoding,
 			depthBuffer: false
 		}
 
 		this.renderTargetA = new WebGLMultipleRenderTargets(1, 1, 2, renderTargetOptions)
 		this.renderTargetB = new WebGLMultipleRenderTargets(1, 1, 2, renderTargetOptions)
 
-		this.renderTargetA.texture[0].type = HalfFloatType
-		this.renderTargetA.texture[1].type = HalfFloatType
-		this.renderTargetB.texture[0].type = HalfFloatType
-		this.renderTargetB.texture[1].type = HalfFloatType
+		// this.renderTargetA.texture[0].type = HalfFloatType
+		// this.renderTargetA.texture[1].type = HalfFloatType
+		// this.renderTargetB.texture[0].type = HalfFloatType
+		// this.renderTargetB.texture[1].type = HalfFloatType
 
-		this.renderTargetA.texture[0].needsUpdate = true
-		this.renderTargetA.texture[1].needsUpdate = true
-		this.renderTargetB.texture[0].needsUpdate = true
-		this.renderTargetB.texture[1].needsUpdate = true
-
-		this.renderPass = new RenderPass(this.scene, this.camera)
+		// this.renderTargetA.texture[0].needsUpdate = true
+		// this.renderTargetA.texture[1].needsUpdate = true
+		// this.renderTargetB.texture[0].needsUpdate = true
+		// this.renderTargetB.texture[1].needsUpdate = true
 
 		if (options.moments) this.fullscreenMaterial.defines.USE_MOMENT = ""
 	}
@@ -113,7 +108,8 @@ export class DenoisePass extends Pass {
 					: this.renderTargetB.texture[1]
 				: this.renderTargetA.texture[1]
 
-			this.renderPass.render(renderer, renderTarget)
+			renderer.setRenderTarget(renderTarget)
+			renderer.render(this.scene, this.camera)
 		}
 
 		this.fullscreenMaterial.uniforms.diffuseLightingTexture.value = diffuseLightingTexture

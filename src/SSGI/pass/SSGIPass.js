@@ -1,4 +1,4 @@
-﻿import { Pass, RenderPass } from "postprocessing"
+﻿import { Pass } from "postprocessing"
 import {
 	Color,
 	HalfFloatType,
@@ -25,7 +25,6 @@ const points = generateHalton23Points(1024)
 export class SSGIPass extends Pass {
 	cachedMaterials = new WeakMap()
 	visibleMeshes = []
-	samples = 0
 	haltonIndex = 0
 
 	constructor(ssgiEffect) {
@@ -39,13 +38,9 @@ export class SSGIPass extends Pass {
 		if (ssgiEffect._camera.isPerspectiveCamera) this.fullscreenMaterial.defines.PERSPECTIVE_CAMERA = ""
 
 		this.renderTarget = new WebGLMultipleRenderTargets(1, 1, 2, {
-			minFilter: LinearFilter,
-			magFilter: LinearFilter,
 			type: HalfFloatType,
 			depthBuffer: false
 		})
-
-		this.renderPass = new RenderPass(this._scene, this._camera)
 
 		// set up basic uniforms that we don't have to update
 		this.fullscreenMaterial.uniforms.cameraMatrixWorld.value = this._camera.matrixWorld
@@ -233,14 +228,12 @@ export class SSGIPass extends Pass {
 
 		this.setMRTMaterialInScene()
 
-		this.renderPass.render(renderer, this.gBuffersRenderTarget)
+		renderer.setRenderTarget(this.gBuffersRenderTarget)
+		renderer.render(this._scene, this._camera)
 
 		this.unsetMRTMaterialInScene()
 
 		// update uniforms
-		this.fullscreenMaterial.uniforms.samples.value = this.samples++
-		this.fullscreenMaterial.uniforms.seed.value++
-
 		this.haltonIndex = (this.haltonIndex + 1) % points.length
 		this.fullscreenMaterial.uniforms.blueNoiseOffset.value.fromArray(points[this.haltonIndex])
 		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near

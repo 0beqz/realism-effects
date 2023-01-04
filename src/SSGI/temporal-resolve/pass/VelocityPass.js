@@ -1,4 +1,4 @@
-﻿import { Pass, RenderPass } from "postprocessing"
+﻿import { Pass } from "postprocessing"
 import { Color, FloatType, NearestFilter, Quaternion, Vector3, WebGLMultipleRenderTargets } from "three"
 import {
 	getVisibleChildren,
@@ -24,8 +24,6 @@ export class VelocityPass extends Pass {
 
 		this._scene = scene
 		this._camera = camera
-
-		this.renderPass = new RenderPass(this._scene, this._camera)
 
 		const bufferCount = renderDepth ? 3 : 1
 		this.renderTarget = new WebGLMultipleRenderTargets(1, 1, bufferCount, {
@@ -90,12 +88,10 @@ export class VelocityPass extends Pass {
 
 	setSize(width, height) {
 		this.renderTarget.setSize(width, height)
-		if (this.webgl1DepthPass) this.webgl1DepthPass.setSize(width, height)
 	}
 
 	dispose() {
 		this.renderTarget.dispose()
-		if (this.webgl1DepthPass) this.webgl1DepthPass.dispose()
 	}
 
 	get texture() {
@@ -123,7 +119,8 @@ export class VelocityPass extends Pass {
 
 		this._scene.background = backgroundColor
 
-		this.renderPass.render(renderer, this.renderTarget)
+		renderer.setRenderTarget(this.renderTarget)
+		renderer.render(this._scene, this._camera)
 
 		this._scene.background = background
 

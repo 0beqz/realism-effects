@@ -19,7 +19,7 @@ uniform float roughnessPhi;
 uniform float specularPhi;
 uniform float denoiseKernel;
 uniform float stepSize;
-uniform mat4 _projectionMatrixInverse;
+uniform mat4 projectionMatrixInverse;
 uniform mat4 projectionMatrix;
 uniform mat4 cameraMatrixWorld;
 uniform bool isLastIteration;
@@ -31,7 +31,7 @@ uniform bool isLastIteration;
 #define PI      M_PI
 
 // source: https://github.com/CesiumGS/cesium/blob/main/Source/Shaders/Builtin/Functions/luminance.glsl
-float czm_luminance(vec3 rgb) {
+float czm_luminance(const vec3 rgb) {
     // Algorithm from Chapter 10 of Graphics Shaders.
     const vec3 W = vec3(0.2125, 0.7154, 0.0721);
     return dot(rgb, W);
@@ -42,7 +42,7 @@ vec3 getViewPosition(const float depth) {
     float clipW = projectionMatrix[2][3] * depth + projectionMatrix[3][3];
     vec4 clipPosition = vec4((vec3(vUv, depth) - 0.5) * 2.0, 1.0);
     clipPosition *= clipW;
-    return (_projectionMatrixInverse * clipPosition).xyz;
+    return (projectionMatrixInverse * clipPosition).xyz;
 }
 
 vec3 F_Schlick(vec3 f0, float theta) {
@@ -82,28 +82,28 @@ vec3 ToWorld(vec3 X, vec3 Y, vec3 Z, vec3 V) {
     return V.x * X + V.y * Y + V.z * Z;
 }
 
-vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth, mat4 curMatrixWorld) {
+vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth, const mat4 curMatrixWorld) {
     vec4 ndc = vec4(
         (uv.x - 0.5) * 2.0,
         (uv.y - 0.5) * 2.0,
         (depth - 0.5) * 2.0,
         1.0);
 
-    vec4 clip = _projectionMatrixInverse * ndc;
+    vec4 clip = projectionMatrixInverse * ndc;
     vec4 view = curMatrixWorld * (clip / clip.w);
 
     return view.xyz;
 }
 
-float distToPlane(vec3 worldPos, vec3 neighborWorldPos, vec3 worldNormal) {
+float distToPlane(const vec3 worldPos, const vec3 neighborWorldPos, const vec3 worldNormal) {
     vec3 toCurrent = worldPos - neighborWorldPos;
     float distToPlane = abs(dot(toCurrent, worldNormal));
 
     return distToPlane;
 }
 
-void tap(vec2 neighborVec, vec2 pixelStepOffset, float depth, vec3 normal, float roughness, float glossinesFactor, vec3 worldPos, float lumaDiffuse, float lumaSpecular,
-         float colorPhiDiffuse, float colorPhiSpecular,
+void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const float depth, const vec3 normal, const float roughness, const float glossinesFactor, const vec3 worldPos, const float lumaDiffuse, const float lumaSpecular,
+         const float colorPhiDiffuse, const float colorPhiSpecular,
          inout vec3 diffuseLightingColor, inout vec3 specularLightingColor, inout float totalWeightDiffuse, inout float sumVarianceDiffuse,
          inout float totalWeightSpecular, inout float sumVarianceSpecular) {
     vec2 neighborUv = vUv + neighborVec * pixelStepOffset + invTexSize;
@@ -258,7 +258,7 @@ void main() {
     vec3 color = diffuseLightingColor;
 
     if (isLastIteration) {
-        float spread = roughness * roughness;
+        roughness *= roughness;
 
         // view-space position of the current texel
         vec3 viewPos = getViewPosition(depth);
@@ -277,7 +277,7 @@ void main() {
 
         V = ToLocal(T, B, N, V);
 
-        vec3 H = SampleGGXVNDF(V, spread, spread, 0.25, 0.25);
+        vec3 H = SampleGGXVNDF(V, roughness, roughness, 0.25, 0.25);
         if (H.z < 0.0) H = -H;
 
         vec3 l = normalize(reflect(-V, H));

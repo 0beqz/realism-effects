@@ -24,7 +24,7 @@ uniform mat4 cameraMatrixWorld;
 uniform mat4 prevViewMatrix;
 uniform mat4 prevCameraMatrixWorld;
 uniform vec3 cameraPos;
-uniform vec3 lastCameraPos;
+uniform vec3 prevCameraPos;
 
 #define EPSILON 0.00001
 
