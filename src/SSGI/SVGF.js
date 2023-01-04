@@ -20,9 +20,9 @@ export class SVGF {
 
 		if (options.moments) {
 			this.denoisePass.fullscreenMaterial.uniforms.momentsTexture.value = this.svgfTemporalResolvePass.momentsTexture
-			this.svgfTemporalResolvePass.copyPass.fullscreenMaterial.uniforms.inputTexture3.value =
-				this.svgfTemporalResolvePass.momentsTexture
 			this.svgfTemporalResolvePass.copyPass.fullscreenMaterial.uniforms.inputTexture4.value =
+				this.svgfTemporalResolvePass.momentsTexture
+			this.svgfTemporalResolvePass.copyPass.fullscreenMaterial.uniforms.inputTexture5.value =
 				this.svgfTemporalResolvePass.specularTexture
 
 			const lastMomentsTexture = this.svgfTemporalResolvePass.copyPass.renderTarget.texture[0].clone()

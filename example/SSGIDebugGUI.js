@@ -26,6 +26,7 @@ export class SSGIDebugGUI {
 		})
 
 		generalFolder.addInput(params, "maxRoughness", { min: 0, max: 1, step: 0.01 })
+		generalFolder.addInput(params, "envBlur", { min: 0, max: 1, step: 0.01 })
 
 		const temporalResolveFolder = pane.addFolder({ title: "Temporal Resolve" })
 
@@ -40,7 +41,7 @@ export class SSGIDebugGUI {
 		})
 		denoiseKernelFolder.addInput(params, "denoiseSpecular", {
 			min: 0,
-			max: 5,
+			max: 50,
 			step: 0.01
 		})
 		denoiseKernelFolder.addInput(params, "depthPhi", {

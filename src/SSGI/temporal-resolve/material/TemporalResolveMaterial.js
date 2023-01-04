@@ -23,7 +23,7 @@ export class TemporalResolveMaterial extends ShaderMaterial {
 				projectionMatrix: new Uniform(new Matrix4()),
 				projectionMatrixInverse: new Uniform(new Matrix4()),
 				cameraMatrixWorld: new Uniform(new Matrix4()),
-				_viewMatrix: new Uniform(new Matrix4()),
+				viewMatrix: new Uniform(new Matrix4()),
 				prevViewMatrix: new Uniform(new Matrix4()),
 				prevCameraMatrixWorld: new Uniform(new Matrix4()),
 				cameraPos: new Uniform(new Vector3()),

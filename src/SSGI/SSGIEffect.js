@@ -76,59 +76,14 @@ export class SSGIEffect extends Effect {
 					"float neighborRoughness = min(1., jitter + jitterRoughness * neighborNormalTexel.a);"
 				)
 				.replace(
-					"gSpecular = vec4(specularLightingColor, sumVarianceSpecular);",
+					"sumVarianceDiffuse = 1.;",
 					/* glsl */ `
-			if (isLastIteration) {
-				float spread = roughness * roughness;
+					// apply diffuse líghting
+					vec3 directLight = textureLod(directLightTexture, vUv, 0.).rgb;
+					diffuseLightingColor += directLight;
 
-				// view-space position of the current texel
-				vec3 viewPos = getViewPosition(depth);
-    			vec3 viewDir = normalize(viewPos);
-
-				vec3 T, B;
-
-				vec3 n = viewNormal;  // view-space normal
-    			vec3 v = viewDir;    // incoming vector
-
-				// convert view dir and view normal to world-space
-				vec3 V = (vec4(v, 1.) * _viewMatrix).xyz;  // invert view dir
-    			vec3 N = (vec4(n, 1.) * _viewMatrix).xyz;  // invert view dir
-
-				Onb(N, T, B);
-
-				V = ToLocal(T, B, N, V);
-				
-				vec3 H = SampleGGXVNDF(V, spread, spread, 0.25, 0.25);
-				if (H.z < 0.0) H = -H;
-
-				vec3 l = normalize(reflect(-V, H));
-				l = ToWorld(T, B, N, l);
-
-				// convert reflected vector back to view-space
-				l = (vec4(l, 1.) * cameraMatrixWorld).xyz;
-				l = normalize(l);
-
-				if (dot(viewNormal, l) < 0.) l = -l;
-
-        		vec3 h = normalize(v + l);  // half vector
-				float VoH = max(EPSILON, dot(v, h));
-
-				VoH = pow(VoH, 0.875);
-
-				// fresnel
-				vec3 f0 = mix(vec3(0.04), diffuse, metalness);
-				vec3 F = F_Schlick(f0, VoH);
-
-				diffuseLightingColor = diffuse * (1. - metalness) * (1. - F) * color + specularLightingColor * F;
-
-				// apply diffuse líghting
-				vec3 directLight = textureLod(directLightTexture, vUv, 0.).rgb;
-				diffuseLightingColor += directLight;
-			}
-
-		    gDiffuse = vec4(diffuseLightingColor, sumVarianceDiffuse);
-    		gSpecular = vec4(specularLightingColor, sumVarianceSpecular);
-			`
+					sumVarianceDiffuse = 1.;
+					`
 				)
 
 		this.svgf.denoisePass.fullscreenMaterial.uniforms = {

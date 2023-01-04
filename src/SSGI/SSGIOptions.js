@@ -15,6 +15,7 @@
  * @property {Number} [specularPhi] glossiness factor of the denoiser setting how much the denoiser should only apply the blur to glossier surfaces
  * @property {Number} [jitter] how intense jittering should be
  * @property {Number} [jitterRoughness] how intense jittering should be in relation to a material's roughness
+ * @property {Number} [envBlur] higher values will result in lower mipmaps being sampled which will cause less noise but also less detail regarding environment lighting
  * @property {Number} [steps] number of steps a ssgi ray can maximally do to find an object it intersected (and thus reflects)
  * @property {Number} [refineSteps] once we had our ray intersect something, we need to find the exact point in space it intersected and thus it reflects; this can be done through binary search with the given number of maximum steps
  * @property {Number} [spp] number of samples per pixel
@@ -41,6 +42,7 @@ export const defaultSSGIOptions = {
 	specularPhi: 0,
 	jitter: 0,
 	jitterRoughness: 0,
+	envBlur: 0,
 	steps: 20,
 	refineSteps: 5,
 	spp: 1,

@@ -16,7 +16,6 @@ uniform sampler2D envMap;
 uniform mat4 projectionMatrix;
 uniform mat4 inverseProjectionMatrix;
 uniform mat4 cameraMatrixWorld;
-uniform mat4 _viewMatrix;
 uniform float cameraNear;
 uniform float cameraFar;
 uniform float maxEnvMapMipLevel;
@@ -33,6 +32,7 @@ uniform vec2 blueNoiseOffset;
 
 uniform float jitter;
 uniform float jitterRoughness;
+uniform float envBlur;
 
 #define INVALID_RAY_COORDS vec2(-1.0);
 #define EARLY_OUT_COLOR    vec4(0.0, 0.0, 0.0, 0.0)
@@ -99,10 +99,10 @@ void main() {
     vec3 viewDir = normalize(viewPos);
     vec3 viewNormal = normalTexel.xyz;
 
-    vec3 worldPos = vec4(_viewMatrix * vec4(viewPos, 1.)).xyz;
+    vec3 worldPos = vec4(vec4(viewPos, 1.) * viewMatrix).xyz;
 
     float roughness = jitter + roughnessValue * jitterRoughness;
-    roughness = clamp(roughness * roughness, EPSILON, 1.0);
+    roughness = clamp(roughness * roughness, 0.0001, 1.0);
 
     vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.);
     vec3 diffuse = diffuseTexel.rgb;
@@ -113,8 +113,8 @@ void main() {
     float NoV = max(EPSILON, dot(n, v));
 
     // convert view dir and view normal to world-space
-    vec3 V = (vec4(v, 1.) * _viewMatrix).xyz;
-    vec3 N = (vec4(n, 1.) * _viewMatrix).xyz;
+    vec3 V = (vec4(v, 1.) * viewMatrix).xyz;
+    vec3 N = (vec4(n, 1.) * viewMatrix).xyz;
 
     bool isMissedRay, isDiffuseSample;
     vec2 sampleOffset;
@@ -211,12 +211,12 @@ void main() {
     // calculate world-space ray length used for reprojecting hit points instead of screen-space pixels in the temporal resolve pass
     float rayLength = 0.0;
     if (!isMissedRay && roughness < 0.675) {
-        vec3 worldNormal = (vec4(viewNormal, 1.) * _viewMatrix).xyz;
+        vec3 worldNormal = (vec4(viewNormal, 1.) * viewMatrix).xyz;
 
         float curvature = getCurvature(worldNormal);
 
         if (curvature < 0.05) {
-            vec3 hitPosWS = (_viewMatrix * vec4(hitPos, 1.)).xyz;
+            vec3 hitPosWS = (vec4(hitPos, 1.) * viewMatrix).xyz;
             rayLength = distance(worldPos, hitPosWS);
         }
     }
@@ -279,7 +279,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
     // invalid ray, use environment lighting as fallback
     if (isInvalidRay || isAllowedMissedRay) {
         // world-space reflected ray
-        vec4 reflectedWS = vec4(l, 1.) * _viewMatrix;
+        vec4 reflectedWS = vec4(l, 1.) * viewMatrix;
         reflectedWS.xyz = normalize(reflectedWS.xyz);
 
     #ifdef BOX_PROJECTED_ENV_MAP
@@ -288,7 +288,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
         reflectedWS.xyz = normalize(reflectedWS.xyz);
     #endif
 
-        float mip = roughness * 4. / 12. * maxEnvMapMipLevel;
+        float mip = envBlur * maxEnvMapMipLevel;
 
         vec3 sampleDir = reflectedWS.xyz;
         envMapSample = sampleEquirectEnvMapColor(sampleDir, envMap, mip);
@@ -296,8 +296,10 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
         // we won't deal with calculating direct sun light from the env map as it is too noisy
         float envLum = czm_luminance(envMapSample);
 
-        // const float maxVal = 10.0;
-        // if (envLum > maxVal) envMapSample *= maxVal / envLum;
+        const float maxVal = 10.0;
+        if (envLum > maxVal) {
+            envMapSample = mix(envMapSample * maxVal / envLum, envMapSample, envBlur);
+        }
 
         return envMapSample;
     }

@@ -21,7 +21,6 @@ varying vec2 vUv;
 uniform mat4 projectionMatrix;
 uniform mat4 projectionMatrixInverse;
 uniform mat4 cameraMatrixWorld;
-uniform mat4 _viewMatrix;
 uniform mat4 prevViewMatrix;
 uniform mat4 prevCameraMatrixWorld;
 uniform vec3 cameraPos;
@@ -102,11 +101,11 @@ bool validateReprojectedUV(vec2 reprojectedUv, float depth, vec3 worldPos, vec4 
 #endif
 
     vec3 worldNormal = unpackRGBToNormal(worldNormalTexel.xyz);
-    worldNormal = normalize((_viewMatrix * vec4(worldNormal, 1.)).xyz);
+    worldNormal = normalize((vec4(worldNormal, 1.) * viewMatrix).xyz);
 
     vec4 lastWorldNormalTexel = textureLod(lastNormalTexture, reprojectedUv, 0.);
     vec3 lastWorldNormal = unpackRGBToNormal(lastWorldNormalTexel.xyz);
-    lastWorldNormal = normalize((_viewMatrix * vec4(lastWorldNormal, 1.)).xyz);
+    lastWorldNormal = normalize((vec4(lastWorldNormal, 1.) * viewMatrix).xyz);
 
     if (normalsDisocclusionCheck(worldNormal, lastWorldNormal)) return false;
 
@@ -325,7 +324,7 @@ void main() {
         temporalResolveMix = blend;
     } else {
         float pixelFrames = alpha;
-        // float maxValue = didMove ? blend : 1.0;
+        float maxValue = didMove ? blend : 1.0;
 
         if (dot(inputColor, inputColor) == 0.0) {
             pixelFrames = max(1., pixelFrames - 1.);
@@ -333,14 +332,14 @@ void main() {
         }
 
         temporalResolveMix = 1. - 1. / pixelFrames;
-        temporalResolveMix = min(temporalResolveMix, blend);
+        temporalResolveMix = min(temporalResolveMix, maxValue);
     }
 
     outputColor = mix(inputColor, accumulatedColor, temporalResolveMix);
 
     float pixelFrames = max(1., alpha - 1.);
     float a = 1. - 1. / pixelFrames;
-    // if (didMove && a > blend) alpha = 1. / (1. - blend);
+    if (didMove && a > blend) alpha = 1. / (1. - blend);
 
 // the user's shader to compose a final outputColor from the inputTexel and accumulatedTexel
 #ifdef useCustomComposeShader

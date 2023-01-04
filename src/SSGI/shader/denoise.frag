@@ -19,7 +19,6 @@ uniform float roughnessPhi;
 uniform float specularPhi;
 uniform float denoiseKernel;
 uniform float stepSize;
-uniform mat4 _viewMatrix;
 uniform mat4 _projectionMatrixInverse;
 uniform mat4 projectionMatrix;
 uniform mat4 cameraMatrixWorld;
@@ -117,13 +116,22 @@ void tap(vec2 neighborVec, vec2 pixelStepOffset, float depth, vec3 normal, float
 
     float depthSimilarity = max(depthDiff / depthPhi, 0.);
 
+    if (depthSimilarity < EPSILON) return;
+
     vec4 neighborNormalTexel = textureLod(normalTexture, neighborUv, 0.);
     vec3 neighborNormal = unpackRGBToNormal(neighborNormalTexel.rgb);
-    neighborNormal = normalize((vec4(neighborNormal, 1.0) * _viewMatrix).xyz);
+    neighborNormal = normalize((vec4(neighborNormal, 1.0) * viewMatrix).xyz);
     float neighborRoughness = neighborNormalTexel.a;
 
     float normalDiff = dot(neighborNormal, normal);
     float normalSimilarity = pow(max(0., normalDiff), normalPhi);
+
+    if (normalSimilarity < EPSILON) return;
+
+    float roughnessDiff = abs(roughness - neighborRoughness);
+    float roughnessSimilarity = exp(-roughnessDiff * roughnessPhi);
+
+    if (roughnessSimilarity < EPSILON) return;
 
     vec4 diffuseNeighborInputTexel = textureLod(diffuseLightingTexture, neighborUv, 0.);
     vec3 diffuseNeighborColor = diffuseNeighborInputTexel.rgb;
@@ -136,9 +144,6 @@ void tap(vec2 neighborVec, vec2 pixelStepOffset, float depth, vec3 normal, float
 
     float lumaDiffDiffuse = abs(lumaDiffuse - neighborLumaDiffuse);
     float lumaDiffSpecular = abs(lumaSpecular - neighborLumaSpecular);
-
-    float roughnessDiff = abs(roughness - neighborRoughness);
-    float roughnessSimilarity = exp(-roughnessDiff * roughnessPhi);
 
     float lumaSimilarityDiffuse = max(1.0 - lumaDiffDiffuse / colorPhiDiffuse, 0.0);
     float lumaSimilaritySpecular = max(1.0 - lumaDiffSpecular / colorPhiSpecular, 0.0);
@@ -185,7 +190,7 @@ void main() {
 
     vec4 normalTexel = textureLod(normalTexture, vUv, 0.);
     vec3 viewNormal = unpackRGBToNormal(normalTexel.rgb);
-    vec3 normal = normalize((vec4(viewNormal, 1.0) * _viewMatrix).xyz);
+    vec3 normal = normalize((vec4(viewNormal, 1.0) * viewMatrix).xyz);
 
     vec3 diffuseLightingColor = diffuseLightingTexel.rgb;
     vec3 specularLightingColor = specularLightingTexel.rgb;
@@ -201,7 +206,7 @@ void main() {
     vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.);
     vec3 diffuse = diffuseTexel.rgb;
     float metalness = diffuseTexel.a;
-    float glossinesFactor = 1. - exp(-50. * roughness * (1. - metalness)) * specularPhi;
+    float glossinesFactor = 1. - exp(-5. * roughness) * specularPhi;
 
     float kernel = denoiseKernel;
     float sumVarianceDiffuse, sumVarianceSpecular;
@@ -253,6 +258,48 @@ void main() {
     vec3 color = diffuseLightingColor;
 
     if (isLastIteration) {
+        float spread = roughness * roughness;
+
+        // view-space position of the current texel
+        vec3 viewPos = getViewPosition(depth);
+        vec3 viewDir = normalize(viewPos);
+
+        vec3 T, B;
+
+        vec3 n = viewNormal;  // view-space normal
+        vec3 v = viewDir;     // incoming vector
+
+        // convert view dir and view normal to world-space
+        vec3 V = (vec4(v, 1.) * viewMatrix).xyz;  // invert view dir
+        vec3 N = (vec4(n, 1.) * viewMatrix).xyz;  // invert view dir
+
+        Onb(N, T, B);
+
+        V = ToLocal(T, B, N, V);
+
+        vec3 H = SampleGGXVNDF(V, spread, spread, 0.25, 0.25);
+        if (H.z < 0.0) H = -H;
+
+        vec3 l = normalize(reflect(-V, H));
+        l = ToWorld(T, B, N, l);
+
+        // convert reflected vector back to view-space
+        l = (vec4(l, 1.) * cameraMatrixWorld).xyz;
+        l = normalize(l);
+
+        if (dot(viewNormal, l) < 0.) l = -l;
+
+        vec3 h = normalize(v + l);  // half vector
+        float VoH = max(EPSILON, dot(v, h));
+
+        VoH = pow(VoH, 0.875);
+
+        // fresnel
+        vec3 f0 = mix(vec3(0.04), diffuse, metalness);
+        vec3 F = F_Schlick(f0, VoH);
+
+        diffuseLightingColor = diffuse * (1. - metalness) * (1. - F) * diffuseLightingColor + specularLightingColor * F;
+
         sumVarianceDiffuse = 1.;
         sumVarianceSpecular = 1.;
     }

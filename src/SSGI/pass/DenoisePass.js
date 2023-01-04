@@ -39,7 +39,7 @@ export class DenoisePass extends Pass {
 				specularPhi: new Uniform(1),
 				stepSize: new Uniform(1),
 				isLastIteration: new Uniform(false),
-				_viewMatrix: new Uniform(camera.matrixWorldInverse),
+				viewMatrix: new Uniform(camera.matrixWorldInverse),
 				projectionMatrix: new Uniform(camera.projectionMatrix),
 				cameraMatrixWorld: new Uniform(camera.matrixWorld),
 				_projectionMatrixInverse: new Uniform(camera.projectionMatrixInverse)
