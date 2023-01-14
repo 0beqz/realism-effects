@@ -18,6 +18,8 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
         return;
     }
 
+    velocity.xy = unpackRGBATo2Half(velocity);
+
     velocity.xy *= intensity / (60. * deltaTime);
 
     vec2 blueNoiseUv = (vUv + blueNoiseOffset) * blueNoiseRepeat;

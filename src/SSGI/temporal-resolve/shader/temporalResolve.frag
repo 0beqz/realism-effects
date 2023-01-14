@@ -14,6 +14,7 @@ uniform sampler2D lastNormalTexture;
 
 uniform float blend;
 uniform bool constantBlend;
+uniform bool blendStatic;
 uniform vec2 invTexSize;
 
 varying vec2 vUv;
@@ -120,6 +121,7 @@ bool validateReprojectedUV(vec2 reprojectedUv, float depth, vec3 worldPos, vec4 
 
 vec2 reprojectVelocity(vec2 sampleUv, out bool didMove) {
     vec4 velocity = textureLod(velocityTexture, sampleUv, 0.0);
+    velocity.xy = unpackRGBATo2Half(velocity);
 
     didMove = abs(velocity.x) > 0.0 || abs(velocity.y) > 0.0;
 
@@ -317,7 +319,7 @@ void main() {
     vec3 outputColor = inputColor;
 
     float temporalResolveMix;
-    // float maxValue = didMove ? blend : 1.0;
+    float maxValue = (!blendStatic || didMove) ? blend : 1.0;
 
     if (constantBlend) {
         temporalResolveMix = blend;
@@ -330,14 +332,14 @@ void main() {
         }
 
         temporalResolveMix = 1. - 1. / pixelFrames;
-        temporalResolveMix = min(temporalResolveMix, blend);
+        temporalResolveMix = min(temporalResolveMix, maxValue);
     }
 
     outputColor = mix(inputColor, accumulatedColor, temporalResolveMix);
 
-    // float pixelFrames = max(1., alpha - 1.);
-    // float a = 1. - 1. / pixelFrames;
-    // if (didMove && a > blend) alpha = 1. / (1. - blend);
+    float pixelFrames = max(1., alpha - 1.);
+    float a = 1. - 1. / pixelFrames;
+    if (didMove && a > blend) alpha = 1. / (1. - blend);
 
 // the user's shader to compose a final outputColor from the inputTexel and accumulatedTexel
 #ifdef useCustomComposeShader

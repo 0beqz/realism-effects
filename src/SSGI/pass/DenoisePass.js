@@ -37,7 +37,6 @@ export class DenoisePass extends Pass {
 				depthPhi: new Uniform(1),
 				normalPhi: new Uniform(1),
 				roughnessPhi: new Uniform(1),
-				specularPhi: new Uniform(1),
 				stepSize: new Uniform(1),
 				isLastIteration: new Uniform(false),
 				viewMatrix: new Uniform(camera.matrixWorldInverse),
@@ -91,6 +90,7 @@ export class DenoisePass extends Pass {
 		const skipDenoiseStr = (this.iterations === 0).toString()
 
 		if (this.fullscreenMaterial.defines.skipDenoise !== skipDenoiseStr) {
+			console.log("change")
 			this.fullscreenMaterial.defines.skipDenoise = (this.iterations === 0).toString()
 			this.fullscreenMaterial.needsUpdate = true
 		}

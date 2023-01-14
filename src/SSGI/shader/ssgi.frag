@@ -33,6 +33,7 @@ uniform vec2 blueNoiseOffset;
 uniform float jitter;
 uniform float jitterRoughness;
 uniform float envBlur;
+uniform float maxEnvLuminance;
 
 #define INVALID_RAY_COORDS vec2(-1.0);
 #define EARLY_OUT_COLOR    vec4(0.0, 0.0, 0.0, 0.0)
@@ -215,7 +216,7 @@ void main() {
 
         float curvature = getCurvature(worldNormal);
 
-        if (curvature < EPSILON) {
+        if (curvature < 0.001) {
             vec3 hitPosWS = (vec4(hitPos, 1.) * viewMatrix).xyz;
             rayLength = distance(worldPos, hitPosWS);
         }
@@ -287,15 +288,16 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
 
         float mip = envBlur * maxEnvMapMipLevel;
 
+        if (!isDiffuseSample) mip *= roughness;
+
         vec3 sampleDir = reflectedWS.xyz;
         envMapSample = sampleEquirectEnvMapColor(sampleDir, envMap, mip);
 
         // we won't deal with calculating direct sun light from the env map as it is too noisy
         float envLum = czm_luminance(envMapSample);
 
-        const float maxVal = 10.0;
-        if (envLum > maxVal) {
-            envMapSample = mix(envMapSample * maxVal / envLum, envMapSample, envBlur);
+        if (envLum > maxEnvLuminance) {
+            envMapSample *= maxEnvLuminance / envLum;
         }
 
         return envMapSample;
@@ -304,6 +306,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
 
     // reproject the coords from the last frame
     vec4 velocity = textureLod(velocityTexture, coords.xy, 0.0);
+    velocity.xy = unpackRGBATo2Half(velocity);
 
     vec2 reprojectedUv = coords.xy - velocity.xy;
 
@@ -330,12 +333,6 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
         float envLum = czm_luminance(envMapSample);
 
         if (envLum > ssgiLum) SSGI = envMapSample;
-    } else {
-        // screen edges fading
-        vec2 dCoords = smoothstep(0.2, 0.6, abs(vec2(0.5, 0.5) - vUv));
-        float screenEdgeIntensity = clamp(1.0 - (dCoords.x + dCoords.y), 0.0, 1.0);
-
-        SSGI *= screenEdgeIntensity;
     }
 
     return SSGI;

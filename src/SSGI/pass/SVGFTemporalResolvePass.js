@@ -21,6 +21,7 @@ export class SVGFTemporalResolvePass extends TemporalResolvePass {
 				customComposeShader: svgfTemporalResolve,
 				renderTarget: temporalResolvePassRenderTarget,
 				renderVelocity: false,
+				blendStatic: true,
 				catmullRomSampling: true
 			}
 		}
@@ -51,6 +52,14 @@ export class SVGFTemporalResolvePass extends TemporalResolvePass {
 		}
 
 		if (options.moment) this.fullscreenMaterial.glslVersion = GLSL3
+
+		for (const texture of this.renderTarget.texture) {
+			texture.type = HalfFloatType
+			texture.minFilter = NearestFilter
+			texture.magFilter = NearestFilter
+
+			texture.needsUpdate = true
+		}
 	}
 
 	get texture() {

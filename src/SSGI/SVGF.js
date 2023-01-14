@@ -1,4 +1,4 @@
-﻿import { HalfFloatType } from "three"
+﻿import { HalfFloatType, LinearFilter, NearestFilter } from "three"
 import { DenoisePass } from "./pass/DenoisePass.js"
 import { SVGFTemporalResolvePass } from "./pass/SVGFTemporalResolvePass.js"
 import { defaultTemporalResolvePassOptions } from "./temporal-resolve/TemporalResolvePass.js"
@@ -29,6 +29,8 @@ export class SVGF {
 		this.svgfTemporalResolvePass.copyPass.fullscreenMaterial.defines.textureCount++
 
 		lastMomentTexture.type = HalfFloatType
+		lastMomentTexture.minFilter = NearestFilter
+		lastMomentTexture.magFilter = NearestFilter
 		lastMomentTexture.needsUpdate = true
 
 		this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.lastMomentTexture.value = lastMomentTexture
@@ -39,6 +41,8 @@ export class SVGF {
 		this.svgfTemporalResolvePass.copyPass.fullscreenMaterial.defines.textureCount++
 
 		lastSpecularTexture.type = HalfFloatType
+		lastMomentTexture.minFilter = LinearFilter
+		lastMomentTexture.magFilter = LinearFilter
 		lastSpecularTexture.needsUpdate = true
 
 		this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.lastSpecularTexture.value = lastSpecularTexture

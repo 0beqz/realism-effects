@@ -12,10 +12,10 @@
  * @property {Number} [depthPhi] depth factor of the denoiser, higher values will use neighboring areas with different depth values more resulting in less noise but loss of details
  * @property {Number} [depthPhi] normals factor of the denoiser, higher values will use neighboring areas with different normals more resulting in less noise but loss of details and sharpness
  * @property {Number} [roughnessPhi] roughness factor of the denoiser setting how much the denoiser should only apply the blur to rougher surfaces, a value of 0 means the denoiser will blur mirror-like surfaces the same as rough surfaces
- * @property {Number} [specularPhi] glossiness factor of the denoiser setting how much the denoiser should only apply the blur to glossier surfaces
  * @property {Number} [jitter] how intense jittering should be
  * @property {Number} [jitterRoughness] how intense jittering should be in relation to a material's roughness
  * @property {Number} [envBlur] higher values will result in lower mipmaps being sampled which will cause less noise but also less detail regarding environment lighting
+ * @property {Number} [maxEnvLuminance] the maximum luminance by which the environment lighting will be clamped; used to reduce noise from sharp light sources such as the sun
  * @property {Number} [steps] number of steps a ssgi ray can maximally do to find an object it intersected (and thus reflects)
  * @property {Number} [refineSteps] once we had our ray intersect something, we need to find the exact point in space it intersected and thus it reflects; this can be done through binary search with the given number of maximum steps
  * @property {Number} [spp] number of samples per pixel
@@ -39,10 +39,10 @@ export const defaultSSGIOptions = {
 	depthPhi: 2,
 	normalPhi: 50,
 	roughnessPhi: 1,
-	specularPhi: 0,
 	jitter: 0,
 	jitterRoughness: 0,
 	envBlur: 0,
+	maxEnvLuminance: 10,
 	steps: 20,
 	refineSteps: 5,
 	spp: 1,

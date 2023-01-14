@@ -114,7 +114,7 @@ window.controls = controls
 const composer = new POSTPROCESSING.EffectComposer(renderer)
 window.composer = composer
 const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
-composer.addPass(renderPass)
+// composer.addPass(renderPass)
 
 const lightParams = {
 	yaw: 55,
@@ -224,7 +224,6 @@ const initScene = () => {
 		depthPhi: 6.250000000000002,
 		normalPhi: 81.52000000000001,
 		roughnessPhi: 19.019999999999996,
-		specularPhi: 1.96,
 		jitter: 3.469446951953614e-18,
 		jitterRoughness: 1,
 		envBlur: 0.53,

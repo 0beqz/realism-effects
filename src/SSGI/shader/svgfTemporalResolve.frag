@@ -4,7 +4,7 @@ const vec3 W = vec3(0.2125, 0.7154, 0.0721);
 #define luminance(a) dot(W, a)
 
 vec4 moment, historyMoment;
-float momentTemporalResolveMix = temporalResolveMix;
+float momentTemporalResolveMix = max(blend, 0.8);
 
 // diffuse
 if (isReprojectedUvValid) {
@@ -22,7 +22,7 @@ if (isReprojectedUvValid) {
     gOutput = vec4(inputColor, 0.);
 
     // boost new samples
-    moment.rg = vec2(0., 1000.);
+    moment.rg = vec2(0., 10.);
 }
 
 // specular
@@ -52,7 +52,11 @@ if (anyReprojectionValid) {
         specularColor = lastSpecular;
 
     temporalResolveMix = 1. - 1. / specularAlpha;
-    temporalResolveMix = min(temporalResolveMix, blend);
+    temporalResolveMix = min(temporalResolveMix, maxValue);
+
+    float pixelFrames = max(1., specularAlpha - 1.);
+    float a = 1. - 1. / pixelFrames;
+    if (didMove && a > blend) specularAlpha = 1. / (1. - blend);
 
     gOutput2 = vec4(mix(specularColor, lastSpecular, temporalResolveMix), specularAlpha);
 
@@ -67,7 +71,7 @@ if (anyReprojectionValid) {
     gOutput2 = vec4(specularColor, 0.);
 
     // boost new samples
-    moment.ba = vec2(0., 1000.);
+    moment.ba = vec2(0., 10.);
 }
 
 gMoment = moment;

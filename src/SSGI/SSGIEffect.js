@@ -78,7 +78,7 @@ export class SSGIEffect extends Effect {
 					/* glsl */ `
 					// apply diffuse líghting
 					vec3 directLight = textureLod(directLightTexture, vUv, 0.).rgb;
-					diffuseLightingColor += directLight;
+					// diffuseLightingColor += directLight;
 
 					sumVarianceDiffuse = 1.;
 					`
@@ -139,7 +139,6 @@ export class SSGIEffect extends Effect {
 						case "depthPhi":
 						case "normalPhi":
 						case "roughnessPhi":
-						case "specularPhi":
 							this.svgf.denoisePass.fullscreenMaterial.uniforms[key].value = value
 							break
 

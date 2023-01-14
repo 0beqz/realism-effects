@@ -1,5 +1,5 @@
 ﻿import { Pass } from "postprocessing"
-import { HalfFloatType, LinearFilter, NearestFilter, Quaternion, Vector3, WebGLRenderTarget } from "three"
+import { HalfFloatType, LinearFilter, Quaternion, Vector3, WebGLRenderTarget } from "three"
 import { CopyPass } from "../pass/CopyPass"
 import { TemporalResolveMaterial } from "./material/TemporalResolveMaterial"
 import { VelocityPass } from "./pass/VelocityPass"
@@ -9,11 +9,12 @@ export const defaultTemporalResolvePassOptions = {
 	blend: 0.9,
 	dilation: false,
 	constantBlend: false,
+	blendStatic: false,
 	catmullRomSampling: true,
 	renderVelocity: true,
 	neighborhoodClamping: false,
 	logTransform: false,
-	depthDistance: 0.1,
+	depthDistance: 0.25,
 	normalDistance: 10,
 	reprojectReflectionHitPoints: false,
 	customComposeShader: null,
@@ -65,6 +66,7 @@ export class TemporalResolvePass extends Pass {
 
 		this.fullscreenMaterial.uniforms.blend.value = options.blend
 		this.fullscreenMaterial.uniforms.constantBlend.value = options.constantBlend
+		this.fullscreenMaterial.uniforms.blendStatic.value = options.blendStatic
 
 		this.fullscreenMaterial.uniforms.projectionMatrix.value = camera.projectionMatrix
 		this.fullscreenMaterial.uniforms.projectionMatrixInverse.value = camera.projectionMatrixInverse

@@ -16,7 +16,6 @@ uniform float denoiseSpecular;
 uniform float depthPhi;
 uniform float normalPhi;
 uniform float roughnessPhi;
-uniform float specularPhi;
 uniform float denoiseKernel;
 uniform float stepSize;
 uniform mat4 projectionMatrixInverse;
@@ -102,7 +101,7 @@ float distToPlane(const vec3 worldPos, const vec3 neighborWorldPos, const vec3 w
     return distToPlane;
 }
 
-void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const float depth, const vec3 normal, const float roughness, const float glossinesFactor, const vec3 worldPos, const float lumaDiffuse, const float lumaSpecular,
+void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const float depth, const vec3 normal, const float roughness, const vec3 worldPos, const float lumaDiffuse, const float lumaSpecular,
          const float colorPhiDiffuse, const float colorPhiSpecular,
          inout vec3 diffuseLightingColor, inout vec3 specularLightingColor, inout float totalWeightDiffuse, inout float sumVarianceDiffuse,
          inout float totalWeightSpecular, inout float sumVarianceSpecular) {
@@ -149,14 +148,14 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const float depth, 
     float lumaSimilarityDiffuse = max(1.0 - lumaDiffDiffuse / colorPhiDiffuse, 0.0);
     float lumaSimilaritySpecular = max(1.0 - lumaDiffSpecular / colorPhiSpecular, 0.0);
 
-    float basicWeight = normalSimilarity * depthSimilarity * glossinesFactor;
+    float basicWeight = normalSimilarity * depthSimilarity;
 
 #ifdef useRoughness
     basicWeight *= roughnessSimilarity;
 #endif
 
-    float weightDiffuse = basicWeight * lumaSimilarityDiffuse;
-    float weightSpecular = basicWeight * lumaSimilaritySpecular;
+    float weightDiffuse = min(basicWeight * lumaSimilarityDiffuse, 1.0);
+    float weightSpecular = min(basicWeight * lumaSimilaritySpecular, 1.0);
 
     diffuseLightingColor += diffuseNeighborColor * weightDiffuse;
     specularLightingColor += specularNeighborColor * weightSpecular;
@@ -167,13 +166,13 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const float depth, 
 #ifdef useMoment
     float neighborVarianceDiffuse, neighborVarianceSpecular;
     if (horizontal && stepSize == 1.) {
-        neighborVarianceDiffuse = diffuseNeighborInputTexel.a;
-        neighborVarianceSpecular = specularNeighborInputTexel.a;
-    } else {
         vec4 neighborMoment = textureLod(momentTexture, neighborUv, 0.);
 
         neighborVarianceDiffuse = max(0.0, neighborMoment.g - neighborMoment.r * neighborMoment.r);
         neighborVarianceSpecular = max(0.0, neighborMoment.a - neighborMoment.b * neighborMoment.b);
+    } else {
+        neighborVarianceDiffuse = diffuseNeighborInputTexel.a;
+        neighborVarianceSpecular = specularNeighborInputTexel.a;
     }
 
     sumVarianceDiffuse += weightDiffuse * weightDiffuse * neighborVarianceDiffuse;
@@ -213,12 +212,6 @@ void main() {
     vec3 diffuse = diffuseTexel.rgb;
     float metalness = diffuseTexel.a;
 
-#ifdef useRoughness
-    float glossinesFactor = max(1. - exp(-5. * roughness) * specularPhi, 0.);
-#else
-    const float glossinesFactor = 1.;
-#endif
-
     float kernel = denoiseKernel;
     float sumVarianceDiffuse, sumVarianceSpecular;
     float totalWeightDiffuse = 1., totalWeightSpecular = 1.;
@@ -240,33 +233,36 @@ void main() {
     colorPhiSpecular = denoiseSpecular * sqrt(EPSILON + sumVarianceSpecular);
 #endif
 
-    // int n = int(log2(stepSize));
+    kernel = min(denoiseKernel, floor(denoiseKernel * min((sumVarianceDiffuse + sumVarianceSpecular) * 100000., 1.0)));
 
-    // horizontal / vertical
-    // if (n % 2 == 0) {
-    for (float i = -kernel; i <= kernel; i++) {
-        if (i != 0.) {
-            vec2 neighborVec = horizontal ? vec2(i, 0.) : vec2(0., i);
-            tap(neighborVec, pixelStepOffset, depth, normal, roughness, glossinesFactor, worldPos, lumaDiffuse, lumaSpecular, colorPhiDiffuse, colorPhiSpecular, diffuseLightingColor, specularLightingColor, totalWeightDiffuse, sumVarianceDiffuse, totalWeightSpecular, sumVarianceSpecular);
+    int n = int(log2(stepSize));
+    bool blurHorizontal = n % 2 == 0;
+
+    if (kernel > EPSILON) {
+        if (blurHorizontal) {
+            for (float i = -kernel; i <= kernel; i++) {
+                if (i != 0.) {
+                    vec2 neighborVec = horizontal ? vec2(i, 0.) : vec2(0., i);
+                    tap(neighborVec, pixelStepOffset, depth, normal, roughness, worldPos, lumaDiffuse, lumaSpecular, colorPhiDiffuse, colorPhiSpecular, diffuseLightingColor, specularLightingColor, totalWeightDiffuse, sumVarianceDiffuse, totalWeightSpecular, sumVarianceSpecular);
+                }
+            }
+
+        } else {
+            // diagonal (top left to bottom right) / diagonal (top right to bottom left)
+            for (float i = -kernel; i <= kernel; i++) {
+                if (i != 0.) {
+                    vec2 neighborVec = horizontal ? vec2(-i, -i) : vec2(-i, i);
+                    tap(neighborVec, pixelStepOffset, depth, normal, roughness, worldPos, lumaDiffuse, lumaSpecular, colorPhiDiffuse, colorPhiSpecular, diffuseLightingColor, specularLightingColor, totalWeightDiffuse, sumVarianceDiffuse, totalWeightSpecular, sumVarianceSpecular);
+                }
+            }
         }
+
+        sumVarianceDiffuse /= totalWeightDiffuse * totalWeightDiffuse;
+        sumVarianceSpecular /= totalWeightSpecular * totalWeightSpecular;
+
+        diffuseLightingColor /= totalWeightDiffuse;
+        specularLightingColor /= totalWeightSpecular;
     }
-    // } else {
-    //     // diagonal (top left to bottom right) / diagonal (top right to bottom left)
-    //     for (float i = -kernel; i <= kernel; i++) {
-    //         if (i != 0.) {
-    //             vec2 neighborVec = horizontal ? vec2(-i, -i) : vec2(-i, i);
-    //             tap(neighborVec, pixelStepOffset, depth, normal, roughness, glossinesFactor, worldPos, lumaDiffuse, lumaSpecular, colorPhiDiffuse, colorPhiSpecular, diffuseLightingColor, specularLightingColor, totalWeightDiffuse, sumVarianceDiffuse, totalWeightSpecular, sumVarianceSpecular);
-    //         }
-    //     }
-    // }
-
-    sumVarianceDiffuse /= totalWeightDiffuse * totalWeightDiffuse;
-    sumVarianceSpecular /= totalWeightSpecular * totalWeightSpecular;
-
-    diffuseLightingColor /= totalWeightDiffuse;
-    specularLightingColor /= totalWeightSpecular;
-
-    vec3 color = diffuseLightingColor;
 
     if (isLastIteration) {
         roughness *= roughness;
@@ -313,6 +309,8 @@ void main() {
 
         sumVarianceDiffuse = 1.;
         sumVarianceSpecular = 1.;
+
+        // diffuseLightingColor = vec3(kernel / 3.);
     }
 
     gDiffuse = vec4(diffuseLightingColor, sumVarianceDiffuse);
