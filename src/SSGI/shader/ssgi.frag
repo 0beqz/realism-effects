@@ -47,8 +47,8 @@ float farMinusNear;
 // helper functions
 #include <utils>
 
-vec2 RayMarch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
-vec2 BinarySearch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference);
+vec2 RayMarch(in vec3 dir, inout vec3 hitPos);
+vec2 BinarySearch(in vec3 dir, inout vec3 hitPos);
 float fastGetViewZ(const in float depth);
 vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, float metalness,
               float roughness, bool isDiffuseSample, vec3 F, float NoV, float NoL, float NoH, float LoH, float VoH, vec2 random, inout vec3 reflected,
@@ -210,12 +210,12 @@ void main() {
 
     // calculate world-space ray length used for reprojecting hit points instead of screen-space pixels in the temporal resolve pass
     float rayLength = 0.0;
-    if (!isMissedRay && roughness < 0.675) {
+    if (!isMissedRay && roughness < 0.5) {
         vec3 worldNormal = (vec4(viewNormal, 1.) * viewMatrix).xyz;
 
         float curvature = getCurvature(worldNormal);
 
-        if (curvature < 0.05) {
+        if (curvature < EPSILON) {
             vec3 hitPosWS = (vec4(hitPos, 1.) * viewMatrix).xyz;
             rayLength = distance(worldPos, hitPosWS);
         }
@@ -254,14 +254,13 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
     }
 
     hitPos = viewPos;
-    float rayHitDepthDifference = 0.;
 
 #if steps == 0
     hitPos += l;
 
     vec2 coords = viewSpaceToScreenSpace(hitPos);
 #else
-    vec2 coords = RayMarch(l, hitPos, rayHitDepthDifference);
+    vec2 coords = RayMarch(l, hitPos);
 #endif
 
     bool allowMissedRays = false;
@@ -269,15 +268,13 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
     allowMissedRays = true;
 #endif
 
-    isMissedRay = rayHitDepthDifference == -1.0;
-    bool isAllowedMissedRay = allowMissedRays && isMissedRay;
-    bool isInvalidRay = coords.x == -1.0;
+    isMissedRay = coords.x == -1.0;
 
     vec3 envMapSample = vec3(0.);
 
 #ifdef USE_ENVMAP
     // invalid ray, use environment lighting as fallback
-    if (isInvalidRay || isAllowedMissedRay) {
+    if (isMissedRay || allowMissedRays) {
         // world-space reflected ray
         vec4 reflectedWS = vec4(l, 1.) * viewMatrix;
         reflectedWS.xyz = normalize(reflectedWS.xyz);
@@ -328,24 +325,25 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
         SSGI = textureLod(directLightTexture, vUv, 0.).rgb;
     }
 
-    if (isAllowedMissedRay) {
+    if (allowMissedRays) {
         float ssgiLum = czm_luminance(SSGI);
         float envLum = czm_luminance(envMapSample);
 
         if (envLum > ssgiLum) SSGI = envMapSample;
     } else {
         // screen edges fading
-        // vec2 dCoords = smoothstep(0.2, 0.6, abs(vec2(0.5, 0.5) - vUv));
-        // float screenEdgeIntensity = clamp(1.0 - (dCoords.x + dCoords.y), 0.0, 1.0);
+        vec2 dCoords = smoothstep(0.2, 0.6, abs(vec2(0.5, 0.5) - vUv));
+        float screenEdgeIntensity = clamp(1.0 - (dCoords.x + dCoords.y), 0.0, 1.0);
 
-        // SSGI *= screenEdgeIntensity;
+        SSGI *= screenEdgeIntensity;
     }
 
     return SSGI;
 }
 
-vec2 RayMarch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {
+vec2 RayMarch(in vec3 dir, inout vec3 hitPos) {
     float stepsFloat = float(steps);
+    float rayHitDepthDifference;
 
     dir *= rayDistance / float(steps);
 
@@ -359,8 +357,7 @@ vec2 RayMarch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference)
         uv = viewSpaceToScreenSpace(hitPos);
 
 #ifndef missedRays
-        bvec4 uvOutsideScreen = bvec4(lessThan(uv, vec2(0.)), greaterThan(uv, vec2(1.)));
-        if (any(uvOutsideScreen)) return INVALID_RAY_COORDS;
+        if (any(lessThan(uv, vec2(0.))) || any(greaterThan(uv, vec2(1.)))) return INVALID_RAY_COORDS;
 #endif
 
         unpackedDepth = unpackRGBAToDepth(textureLod(depthTexture, uv, 0.0));
@@ -370,16 +367,12 @@ vec2 RayMarch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference)
 
         if (rayHitDepthDifference >= 0.0 && rayHitDepthDifference < thickness) {
 #if refineSteps == 0
-            rayHitDepthDifference = unpackedDepth;
-
             return uv;
 #else
-            return BinarySearch(dir, hitPos, rayHitDepthDifference);
+            return BinarySearch(dir, hitPos);
 #endif
         }
     }
-
-    rayHitDepthDifference = -1.0;
 
 #ifndef missedRays
     return INVALID_RAY_COORDS;
@@ -388,14 +381,15 @@ vec2 RayMarch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference)
     return uv;
 }
 
-vec2 BinarySearch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDifference) {
+vec2 BinarySearch(in vec3 dir, inout vec3 hitPos) {
     float depth;
     float unpackedDepth;
     vec4 depthTexel;
+    float rayHitDepthDifference;
     vec2 uv;
 
     dir *= 0.5;
-    hitPos += rayHitDepthDifference > 0.0 ? -dir : dir;
+    hitPos -= dir;
 
     for (int i = 0; i < refineSteps; i++) {
         uv = viewSpaceToScreenSpace(hitPos);
@@ -410,8 +404,6 @@ vec2 BinarySearch(in vec3 dir, inout vec3 hitPos, inout float rayHitDepthDiffere
     }
 
     uv = viewSpaceToScreenSpace(hitPos);
-
-    rayHitDepthDifference = unpackedDepth;
 
     return uv;
 }

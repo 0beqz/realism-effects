@@ -36,16 +36,15 @@ export class SSGIEffect extends Effect {
 		// ssgi pass
 		this.ssgiPass = new SSGIPass(this)
 		this.svgf.setInputTexture(this.ssgiPass.texture)
-		this.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.specularTexture.value = this.ssgiPass.brdfTexture
+		this.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.specularTexture.value = this.ssgiPass.specularTexture
+
 		this.svgf.setNormalTexture(this.ssgiPass.normalTexture)
 		this.svgf.setDepthTexture(this.ssgiPass.depthTexture)
 		this.svgf.setDiffuseTexture(this.ssgiPass.diffuseTexture)
-		this.svgf.setVelocityTexture(this.ssgiPass.velocityTexture)
 
 		// modify the temporal resolve pass of SVGF denoiser for the SSGI effect
 		this.svgf.svgfTemporalResolvePass.fullscreenMaterial.fragmentShader =
 			/* glsl */ `
-		uniform sampler2D brdfTexture;
 		uniform sampler2D directLightTexture;
 
 		` + this.svgf.svgfTemporalResolvePass.fullscreenMaterial.fragmentShader
@@ -61,7 +60,6 @@ export class SSGIEffect extends Effect {
 
 		this.svgf.denoisePass.fullscreenMaterial.fragmentShader =
 			/* glsl */ `
-		uniform sampler2D brdfTexture;
 		uniform sampler2D directLightTexture;
 		uniform float jitter;
 		uniform float jitterRoughness;
@@ -218,8 +216,6 @@ export class SSGIEffect extends Effect {
 
 		this.ssgiPass.setSize(width, height)
 		this.svgf.setSize(width, height)
-
-		if (!this.antialias) this.svgf.svgfTemporalResolvePass.customDepthRenderTarget = this.ssgiPass.gBuffersRenderTarget
 
 		this.lastSize = {
 			width,

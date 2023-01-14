@@ -1,13 +1,4 @@
-﻿/* eslint-disable camelcase */
-import { UniformsUtils } from "three"
-import { Color, GLSL3, Matrix3, ShaderMaterial, TangentSpaceNormalMap, Uniform, Vector2 } from "three"
-import {
-	velocity_fragment_main,
-	velocity_fragment_pars,
-	velocity_uniforms,
-	velocity_vertex_main,
-	velocity_vertex_pars
-} from "../temporal-resolve/material/VelocityMaterial"
+﻿import { Color, GLSL3, Matrix3, ShaderMaterial, TangentSpaceNormalMap, Uniform, Vector2 } from "three"
 
 // will render normals to RGB channel of "gNormal" buffer, roughness to A channel of "gNormal" buffer, depth to RGBA channel of "gDepth" buffer
 // and velocity to "gVelocity" buffer
@@ -35,8 +26,7 @@ export class MRTMaterial extends ShaderMaterial {
 				metalness: new Uniform(0),
 				emissiveIntensity: new Uniform(0),
 				uvTransform: new Uniform(new Matrix3()),
-				boneTexture: new Uniform(null),
-				...UniformsUtils.clone(velocity_uniforms)
+				boneTexture: new Uniform(null)
 			},
 			vertexShader: /* glsl */ `
                 varying vec2 vHighPrecisionZW;
@@ -45,6 +35,7 @@ export class MRTMaterial extends ShaderMaterial {
                 #if defined( FLAT_SHADED ) || defined( USE_BUMPMAP ) || defined( TANGENTSPACE_NORMALMAP )
                     varying vec3 vViewPosition;
                 #endif
+                
                 #include <common>
                 #include <uv_pars_vertex>
                 #include <displacementmap_pars_vertex>
@@ -52,12 +43,11 @@ export class MRTMaterial extends ShaderMaterial {
                 #include <morphtarget_pars_vertex>
                 #include <logdepthbuf_pars_vertex>
                 #include <clipping_planes_pars_vertex>
-
-                ${velocity_vertex_pars}
+                #include <skinning_pars_vertex>
 
                 void main() {
                     #include <uv_vertex>
-
+                    
                     #include <skinbase_vertex>
                     #include <beginnormal_vertex>
                     #include <skinnormal_vertex>
@@ -67,17 +57,19 @@ export class MRTMaterial extends ShaderMaterial {
                     #include <normal_vertex>
                     #include <begin_vertex>
                     #include <morphtarget_vertex>
+
+                    #include <skinning_vertex>
+
                     #include <displacementmap_vertex>
                     #include <project_vertex>
                     #include <logdepthbuf_vertex>
                     #include <clipping_planes_vertex>
+                    
                     #if defined( FLAT_SHADED ) || defined( USE_BUMPMAP ) || defined( TANGENTSPACE_NORMALMAP )
                         vViewPosition = - mvPosition.xyz;
                     #endif
 
                     vHighPrecisionZW = gl_Position.zw;
-
-                    ${velocity_vertex_main}
                 }
             `,
 
@@ -98,9 +90,6 @@ export class MRTMaterial extends ShaderMaterial {
                 layout(location = 1) out vec4 gNormal;
                 layout(location = 2) out vec4 gDiffuse;
                 layout(location = 3) out vec4 gEmissive;
-                layout(location = 4) out vec4 gVelocity;
-
-                ${velocity_fragment_pars}
 
                 #include <map_pars_fragment>
                 uniform vec3 color;
@@ -147,7 +136,6 @@ export class MRTMaterial extends ShaderMaterial {
                     if(isDeselected){
                         gDepth = vec4(0.);
                         gDiffuse = vec4(0.);
-                        gVelocity = vec4(0.);
 
                         return;
                     }
@@ -168,9 +156,7 @@ export class MRTMaterial extends ShaderMaterial {
                     vec3 totalEmissiveRadiance = emissive * emissiveIntensity;
                     #include <emissivemap_fragment>
                     
-                    gEmissive = vec4(totalEmissiveRadiance, 0.); // encode for 8-bit to support values >1
-
-                    ${velocity_fragment_main.replaceAll("gl_FragColor", "gVelocity")}
+                    gEmissive = vec4(totalEmissiveRadiance, 0.);
                 }
             `,
 			glslVersion: GLSL3,

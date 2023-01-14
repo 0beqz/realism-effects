@@ -13,12 +13,7 @@ import {
 import { MRTMaterial } from "../material/MRTMaterial.js"
 import { SSGIMaterial } from "../material/SSGIMaterial.js"
 import { generateHalton23Points } from "../temporal-resolve/utils/generateHalton23Points.js"
-import {
-	getVisibleChildren,
-	keepMaterialMapUpdated,
-	updateVelocityMaterialAfterRender,
-	updateVelocityMaterialBeforeRender
-} from "../utils/Utils.js"
+import { getVisibleChildren, keepMaterialMapUpdated } from "../utils/Utils.js"
 
 const backgroundColor = new Color(0)
 const points = generateHalton23Points(1024)
@@ -85,22 +80,20 @@ export class SSGIPass extends Pass {
 		return this.renderTarget.texture[0]
 	}
 
-	get brdfTexture() {
+	get specularTexture() {
 		return this.renderTarget.texture[1]
 	}
 
 	initMRTRenderTarget() {
-		this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(1, 1, 5, {
+		this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(1, 1, 4, {
 			minFilter: NearestFilter,
-			magFilter: NearestFilter,
-			type: HalfFloatType
+			magFilter: NearestFilter
 		})
 
 		this.depthTexture = this.gBuffersRenderTarget.texture[0]
 		this.normalTexture = this.gBuffersRenderTarget.texture[1]
 		this.diffuseTexture = this.gBuffersRenderTarget.texture[2]
 		this.emissiveTexture = this.gBuffersRenderTarget.texture[3]
-		this.velocityTexture = this.gBuffersRenderTarget.texture[4]
 
 		this.diffuseTexture.minFilter = LinearFilter
 		this.diffuseTexture.magFilter = LinearFilter
@@ -116,7 +109,6 @@ export class SSGIPass extends Pass {
 		this.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
 		this.fullscreenMaterial.uniforms.diffuseTexture.value = this.diffuseTexture
 		this.fullscreenMaterial.uniforms.emissiveTexture.value = this.emissiveTexture
-		this.fullscreenMaterial.uniforms.velocityTexture.value = this.velocityTexture
 	}
 
 	setSize(width, height) {
@@ -141,15 +133,12 @@ export class SSGIPass extends Pass {
 		this.depthTexture = null
 		this.diffuseTexture = null
 		this.emissiveTexture = null
-		this.velocityTexture = null
 	}
 
 	setMRTMaterialInScene() {
 		this.visibleMeshes = getVisibleChildren(this._scene)
 
 		for (const c of this.visibleMeshes) {
-			c.visible = c.material.visible
-
 			const originalMaterial = c.material
 
 			let [cachedOriginalMaterial, mrtMaterial] = this.cachedMaterials.get(c) || []
@@ -162,6 +151,15 @@ export class SSGIPass extends Pass {
 				if (originalMaterial.color) mrtMaterial.uniforms.color.value = originalMaterial.color
 
 				mrtMaterial.uniforms.normalScale.value = originalMaterial.normalScale
+
+				if (c.skeleton?.boneTexture) {
+					mrtMaterial.defines.USE_SKINNING = ""
+					mrtMaterial.defines.BONE_TEXTURE = ""
+
+					mrtMaterial.uniforms.boneTexture.value = c.skeleton.boneTexture
+
+					mrtMaterial.needsUpdate = true
+				}
 
 				const map =
 					originalMaterial.map ||
@@ -198,8 +196,6 @@ export class SSGIPass extends Pass {
 			mrtMaterial.uniforms.metalness.value = c.material.metalness || 0
 			mrtMaterial.uniforms.emissiveIntensity.value = c.material.emissiveIntensity || 0
 			c.material = mrtMaterial
-
-			updateVelocityMaterialBeforeRender(c, this._camera)
 		}
 	}
 
@@ -209,8 +205,6 @@ export class SSGIPass extends Pass {
 
 			// set material back to the original one
 			const [originalMaterial] = this.cachedMaterials.get(c)
-
-			updateVelocityMaterialAfterRender(c, this._camera)
 
 			if (!this.ssgiEffect.reflectionsOnly) originalMaterial.envMapIntensity = c.material.envMapIntensity
 

@@ -38,8 +38,8 @@ export class TemporalResolvePass extends Pass {
 		this.renderTarget =
 			options.renderTarget ||
 			new WebGLRenderTarget(1, 1, {
-				minFilter: NearestFilter,
-				magFilter: NearestFilter,
+				minFilter: LinearFilter,
+				magFilter: LinearFilter,
 				type: HalfFloatType,
 				depthBuffer: false
 			})

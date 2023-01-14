@@ -154,7 +154,7 @@ const params = {}
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
 pmremGenerator.compileEquirectangularShader()
 
-new RGBELoader().load("garden_nook_2k.hdr", envMap => {
+new RGBELoader().load("monbachtal_riverbank_2k.hdr", envMap => {
 	envMap.mapping = THREE.EquirectangularReflectionMapping
 
 	scene.environment = envMap
@@ -213,20 +213,21 @@ const refreshLighting = () => {
 
 const initScene = () => {
 	const options = {
-		distance: 5.98000000000001,
-		thickness: 8.039999999999997,
+		distance: 2.7200000000000104,
+		thickness: 1.2999999999999972,
 		maxRoughness: 1,
 		blend: 0.95,
 		denoiseIterations: 3,
 		denoiseKernel: 3,
-		denoiseDiffuse: 2.73,
-		denoiseSpecular: 0.8800000000000001,
-		depthPhi: 8.150000000000002,
-		normalPhi: 43.48000000000002,
+		denoiseDiffuse: 6.52,
+		denoiseSpecular: 32.07,
+		depthPhi: 6.250000000000002,
+		normalPhi: 81.52000000000001,
 		roughnessPhi: 19.019999999999996,
-		specularPhi: 1,
+		specularPhi: 1.96,
 		jitter: 3.469446951953614e-18,
 		jitterRoughness: 1,
+		envBlur: 0.53,
 		steps: 20,
 		refineSteps: 4,
 		spp: 1,
@@ -289,17 +290,19 @@ const initScene = () => {
 	new POSTPROCESSING.LUT3dlLoader().load("lut.3dl").then(lutTexture => {
 		const lutEffect = new POSTPROCESSING.LUT3DEffect(lutTexture)
 
-		const { depthTexture, normalTexture, velocityTexture } = traaEffect.temporalResolvePass.fullscreenMaterial.uniforms
+		const { depthTexture, normalTexture, texture } = traaEffect.temporalResolvePass.velocityPass
 
-		const motionBlurEffect = new MotionBlurEffect(velocityTexture.value, {
+		const motionBlurEffect = new MotionBlurEffect(texture, {
 			jitter: 5
 		})
 
-		ssgiEffect.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.velocityTexture.value = velocityTexture.value
-		ssgiEffect.ssgiPass.fullscreenMaterial.uniforms.velocityTexture.value = velocityTexture.value
-		ssgiEffect.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.normalTexture.value = normalTexture.value
-		ssgiEffect.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.depthTexture.value = depthTexture.value
-		traaEffect.temporalResolvePass.velocityPass.renderToScreen = false
+		// ssgiEffect.setVelocityPass(traaEffect.temporalResolvePass.velocityPass)
+
+		ssgiEffect.ssgiPass.fullscreenMaterial.uniforms.velocityTexture.value = texture
+		ssgiEffect.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.velocityTexture.value = texture
+		ssgiEffect.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.normalTexture.value = normalTexture
+		ssgiEffect.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.depthTexture.value = depthTexture
+
 		traaEffect.temporalResolvePass.velocityPass.needsSwap = false
 		composer.addPass(traaEffect.temporalResolvePass.velocityPass)
 

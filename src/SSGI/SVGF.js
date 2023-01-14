@@ -6,8 +6,7 @@ import { defaultTemporalResolvePassOptions } from "./temporal-resolve/TemporalRe
 const requiredTextures = ["inputTexture", "depthTexture", "normalTexture", "velocityTexture"]
 
 const defaultSVGFOptions = {
-	...defaultTemporalResolvePassOptions,
-	moments: true
+	...defaultTemporalResolvePassOptions
 }
 
 export class SVGF {
@@ -18,38 +17,36 @@ export class SVGF {
 
 		this.denoisePass = new DenoisePass(camera, null, options)
 
-		if (options.moments) {
-			this.denoisePass.fullscreenMaterial.uniforms.momentsTexture.value = this.svgfTemporalResolvePass.momentsTexture
-			this.svgfTemporalResolvePass.copyPass.fullscreenMaterial.uniforms.inputTexture4.value =
-				this.svgfTemporalResolvePass.momentsTexture
-			this.svgfTemporalResolvePass.copyPass.fullscreenMaterial.uniforms.inputTexture5.value =
-				this.svgfTemporalResolvePass.specularTexture
+		this.denoisePass.fullscreenMaterial.uniforms.momentTexture.value = this.svgfTemporalResolvePass.momentTexture
+		this.svgfTemporalResolvePass.copyPass.fullscreenMaterial.uniforms.inputTexture4.value =
+			this.svgfTemporalResolvePass.momentTexture
+		this.svgfTemporalResolvePass.copyPass.fullscreenMaterial.uniforms.inputTexture5.value =
+			this.svgfTemporalResolvePass.specularTexture
 
-			const lastMomentsTexture = this.svgfTemporalResolvePass.copyPass.renderTarget.texture[0].clone()
-			lastMomentsTexture.isRenderTargetTexture = true
-			this.svgfTemporalResolvePass.copyPass.renderTarget.texture.push(lastMomentsTexture)
-			this.svgfTemporalResolvePass.copyPass.fullscreenMaterial.defines.textureCount++
+		const lastMomentTexture = this.svgfTemporalResolvePass.copyPass.renderTarget.texture[0].clone()
+		lastMomentTexture.isRenderTargetTexture = true
+		this.svgfTemporalResolvePass.copyPass.renderTarget.texture.push(lastMomentTexture)
+		this.svgfTemporalResolvePass.copyPass.fullscreenMaterial.defines.textureCount++
 
-			lastMomentsTexture.type = HalfFloatType
-			lastMomentsTexture.needsUpdate = true
+		lastMomentTexture.type = HalfFloatType
+		lastMomentTexture.needsUpdate = true
 
-			this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.lastMomentsTexture.value = lastMomentsTexture
+		this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.lastMomentTexture.value = lastMomentTexture
 
-			const lastSpecularTexture = this.svgfTemporalResolvePass.copyPass.renderTarget.texture[0].clone()
-			lastSpecularTexture.isRenderTargetTexture = true
-			this.svgfTemporalResolvePass.copyPass.renderTarget.texture.push(lastSpecularTexture)
-			this.svgfTemporalResolvePass.copyPass.fullscreenMaterial.defines.textureCount++
+		const lastSpecularTexture = this.svgfTemporalResolvePass.copyPass.renderTarget.texture[0].clone()
+		lastSpecularTexture.isRenderTargetTexture = true
+		this.svgfTemporalResolvePass.copyPass.renderTarget.texture.push(lastSpecularTexture)
+		this.svgfTemporalResolvePass.copyPass.fullscreenMaterial.defines.textureCount++
 
-			lastSpecularTexture.type = HalfFloatType
-			lastSpecularTexture.needsUpdate = true
+		lastSpecularTexture.type = HalfFloatType
+		lastSpecularTexture.needsUpdate = true
 
-			this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.lastSpecularTexture.value = lastSpecularTexture
-		}
+		this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.lastSpecularTexture.value = lastSpecularTexture
 	}
 
 	// the denoised texture
 	get texture() {
-		return this.denoisePass.iterations > 0 ? this.denoisePass.texture : this.svgfTemporalResolvePass.texture
+		return this.denoisePass.texture
 	}
 
 	setInputTexture(texture) {
@@ -104,12 +101,6 @@ export class SVGF {
 		this.ensureAllTexturesSet()
 
 		this.svgfTemporalResolvePass.render(renderer)
-
-		if (this.denoisePass.iterations > 0) {
-			this.denoisePass.render(renderer)
-		} else {
-			// this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value =
-			// 	this.denoisePass.fullscreenMaterial.uniforms.inputTexture.value
-		}
+		this.denoisePass.render(renderer)
 	}
 }

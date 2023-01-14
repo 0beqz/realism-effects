@@ -115,8 +115,6 @@ bool validateReprojectedUV(vec2 reprojectedUv, float depth, vec3 worldPos, vec4 
 
     if (planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal)) return false;
 
-    // float depthDiff = abs(depth - lastDepth);
-    // if (depthDiff > 0.00005) return false;
     return true;
 }
 
@@ -319,12 +317,12 @@ void main() {
     vec3 outputColor = inputColor;
 
     float temporalResolveMix;
+    // float maxValue = didMove ? blend : 1.0;
 
     if (constantBlend) {
         temporalResolveMix = blend;
     } else {
         float pixelFrames = alpha;
-        float maxValue = didMove ? blend : 1.0;
 
         if (dot(inputColor, inputColor) == 0.0) {
             pixelFrames = max(1., pixelFrames - 1.);
@@ -332,14 +330,14 @@ void main() {
         }
 
         temporalResolveMix = 1. - 1. / pixelFrames;
-        temporalResolveMix = min(temporalResolveMix, maxValue);
+        temporalResolveMix = min(temporalResolveMix, blend);
     }
 
     outputColor = mix(inputColor, accumulatedColor, temporalResolveMix);
 
-    float pixelFrames = max(1., alpha - 1.);
-    float a = 1. - 1. / pixelFrames;
-    if (didMove && a > blend) alpha = 1. / (1. - blend);
+    // float pixelFrames = max(1., alpha - 1.);
+    // float a = 1. - 1. / pixelFrames;
+    // if (didMove && a > blend) alpha = 1. / (1. - blend);
 
 // the user's shader to compose a final outputColor from the inputTexel and accumulatedTexel
 #ifdef useCustomComposeShader

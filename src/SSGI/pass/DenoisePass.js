@@ -1,5 +1,5 @@
 ﻿import { Pass } from "postprocessing"
-import { GLSL3, ShaderMaterial, sRGBEncoding, Uniform, Vector2, WebGLMultipleRenderTargets } from "three"
+import { GLSL3, HalfFloatType, ShaderMaterial, Uniform, Vector2, WebGLMultipleRenderTargets } from "three"
 import basicVertexShader from "../shader/basic.vert"
 import fragmentShader from "../shader/denoise.frag"
 
@@ -8,7 +8,8 @@ import fragmentShader from "../shader/denoise.frag"
 // https://github.com/NVIDIAGameWorks/Falcor/tree/master/Source/RenderPasses/SVGFPass
 
 const defaultDenoisePassOptions = {
-	moments: true
+	moment: true,
+	roughness: true
 }
 export class DenoisePass extends Pass {
 	iterations = 1
@@ -27,7 +28,7 @@ export class DenoisePass extends Pass {
 				diffuseTexture: new Uniform(null),
 				depthTexture: new Uniform(null),
 				normalTexture: new Uniform(null),
-				momentsTexture: new Uniform(null),
+				momentTexture: new Uniform(null),
 				invTexSize: new Uniform(new Vector2()),
 				horizontal: new Uniform(true),
 				denoiseKernel: new Uniform(1),
@@ -48,9 +49,11 @@ export class DenoisePass extends Pass {
 		})
 
 		const renderTargetOptions = {
-			encoding: sRGBEncoding,
+			type: HalfFloatType,
 			depthBuffer: false
 		}
+
+		this._camera = camera
 
 		this.renderTargetA = new WebGLMultipleRenderTargets(1, 1, 2, renderTargetOptions)
 		this.renderTargetB = new WebGLMultipleRenderTargets(1, 1, 2, renderTargetOptions)
@@ -65,7 +68,8 @@ export class DenoisePass extends Pass {
 		// this.renderTargetB.texture[0].needsUpdate = true
 		// this.renderTargetB.texture[1].needsUpdate = true
 
-		if (options.moments) this.fullscreenMaterial.defines.USE_MOMENT = ""
+		if (options.moment) this.fullscreenMaterial.defines.useMoment = ""
+		if (options.roughness) this.fullscreenMaterial.defines.useRoughness = ""
 	}
 
 	setSize(width, height) {
@@ -84,31 +88,43 @@ export class DenoisePass extends Pass {
 		const diffuseLightingTexture = this.fullscreenMaterial.uniforms.diffuseLightingTexture.value
 		const specularLightingTexture = this.fullscreenMaterial.uniforms.specularLightingTexture.value
 
-		for (let i = 0; i < 2 * this.iterations; i++) {
-			const horizontal = i % 2 === 0
-			const stepSize = 2 ** ~~(i / 2)
+		const skipDenoiseStr = (this.iterations === 0).toString()
 
-			this.fullscreenMaterial.uniforms.horizontal.value = horizontal
-			this.fullscreenMaterial.uniforms.stepSize.value = stepSize
-			this.fullscreenMaterial.uniforms.isLastIteration.value = i === 2 * this.iterations - 1
+		if (this.fullscreenMaterial.defines.skipDenoise !== skipDenoiseStr) {
+			this.fullscreenMaterial.defines.skipDenoise = (this.iterations === 0).toString()
+			this.fullscreenMaterial.needsUpdate = true
+		}
 
-			const renderTarget = horizontal ? this.renderTargetA : this.renderTargetB
+		if (this.iterations > 0) {
+			for (let i = 0; i < 2 * this.iterations; i++) {
+				const horizontal = i % 2 === 0
+				const stepSize = 2 ** ~~(i / 2)
 
-			this.fullscreenMaterial.uniforms.diffuseLightingTexture.value = horizontal
-				? i === 0
-					? diffuseLightingTexture
-					: this.renderTargetB.texture[0]
-				: this.renderTargetA.texture[0]
+				this.fullscreenMaterial.uniforms.horizontal.value = horizontal
+				this.fullscreenMaterial.uniforms.stepSize.value = stepSize
+				this.fullscreenMaterial.uniforms.isLastIteration.value = i === 2 * this.iterations - 1
 
-			// specular
+				const renderTarget = horizontal ? this.renderTargetA : this.renderTargetB
 
-			this.fullscreenMaterial.uniforms.specularLightingTexture.value = horizontal
-				? i === 0
-					? specularLightingTexture
-					: this.renderTargetB.texture[1]
-				: this.renderTargetA.texture[1]
+				this.fullscreenMaterial.uniforms.diffuseLightingTexture.value = horizontal
+					? i === 0
+						? diffuseLightingTexture
+						: this.renderTargetB.texture[0]
+					: this.renderTargetA.texture[0]
 
-			renderer.setRenderTarget(renderTarget)
+				// specular
+
+				this.fullscreenMaterial.uniforms.specularLightingTexture.value = horizontal
+					? i === 0
+						? specularLightingTexture
+						: this.renderTargetB.texture[1]
+					: this.renderTargetA.texture[1]
+
+				renderer.setRenderTarget(renderTarget)
+				renderer.render(this.scene, this.camera)
+			}
+		} else {
+			renderer.setRenderTarget(this.renderTargetB)
 			renderer.render(this.scene, this.camera)
 		}
 

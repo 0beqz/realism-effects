@@ -3,26 +3,26 @@
 const vec3 W = vec3(0.2125, 0.7154, 0.0721);
 #define luminance(a) dot(W, a)
 
-vec4 moments, historyMoments;
-float momentsTemporalResolveMix = max(temporalResolveMix, 0.8);
+vec4 moment, historyMoment;
+float momentTemporalResolveMix = temporalResolveMix;
 
 // diffuse
 if (isReprojectedUvValid) {
     outputColor = mix(inputColor, accumulatedColor, temporalResolveMix);
     gOutput = vec4(outputColor, alpha);
 
-    // diffuse moments
-    historyMoments = textureLod(lastMomentsTexture, reprojectedUv, 0.);
+    // diffuse moment
+    historyMoment = textureLod(lastMomentTexture, reprojectedUv, 0.);
 
-    moments.r = luminance(gOutput.rgb);
-    moments.g = moments.r * moments.r;
+    moment.r = luminance(gOutput.rgb);
+    moment.g = moment.r * moment.r;
 
-    moments.rg = mix(moments.rg, historyMoments.rg, momentsTemporalResolveMix);
+    moment.rg = mix(moment.rg, historyMoment.rg, momentTemporalResolveMix);
 } else {
     gOutput = vec4(inputColor, 0.);
 
     // boost new samples
-    moments.rg = vec2(0., 1000.);
+    moment.rg = vec2(0., 1000.);
 }
 
 // specular
@@ -56,21 +56,21 @@ if (anyReprojectionValid) {
 
     gOutput2 = vec4(mix(specularColor, lastSpecular, temporalResolveMix), specularAlpha);
 
-    // specular moments
-    historyMoments = textureLod(lastMomentsTexture, specularUv, 0.);
+    // specular moment
+    historyMoment = textureLod(lastMomentTexture, specularUv, 0.);
 
-    moments.b = luminance(gOutput2.rgb);
-    moments.a = moments.b * moments.b;
+    moment.b = luminance(gOutput2.rgb);
+    moment.a = moment.b * moment.b;
 
-    moments.ba = mix(moments.ba, historyMoments.ba, momentsTemporalResolveMix);
+    moment.ba = mix(moment.ba, historyMoment.ba, momentTemporalResolveMix);
 } else {
     gOutput2 = vec4(specularColor, 0.);
 
     // boost new samples
-    moments.ba = vec2(0., 1000.);
+    moment.ba = vec2(0., 1000.);
 }
 
-gMoment = moments;
+gMoment = moment;
 
 // gOutput.xyz = didMove ? vec3(0., 1., 0.) : vec3(0., 0., 0.);
 
