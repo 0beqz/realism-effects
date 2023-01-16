@@ -101,11 +101,11 @@ float distToPlane(const vec3 worldPos, const vec3 neighborWorldPos, const vec3 w
     return distToPlane;
 }
 
-void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const float depth, const vec3 normal, const float roughness, const vec3 worldPos, const float lumaDiffuse, const float lumaSpecular,
+void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec2 offset, const float depth, const vec3 normal, const float roughness, const vec3 worldPos, const float lumaDiffuse, const float lumaSpecular,
          const float colorPhiDiffuse, const float colorPhiSpecular,
          inout vec3 diffuseLightingColor, inout vec3 specularLightingColor, inout float totalWeightDiffuse, inout float sumVarianceDiffuse,
          inout float totalWeightSpecular, inout float sumVarianceSpecular) {
-    vec2 neighborUv = vUv + neighborVec * pixelStepOffset + invTexSize;
+    vec2 neighborUv = vUv + neighborVec * pixelStepOffset + offset;
 
     vec4 neighborDepthTexel = textureLod(depthTexture, neighborUv, 0.);
     float neighborDepth = unpackRGBAToDepth(neighborDepthTexel);
@@ -233,17 +233,21 @@ void main() {
     colorPhiSpecular = denoiseSpecular * sqrt(EPSILON + sumVarianceSpecular);
 #endif
 
-    kernel = min(denoiseKernel, floor(denoiseKernel * min((sumVarianceDiffuse + sumVarianceSpecular) * 100000., 1.0)));
+    // kernel = min(denoiseKernel, floor(denoiseKernel * min(pow(sumVarianceDiffuse + sumVarianceSpecular, 2.) * 100000., 1.0)));
 
     int n = int(log2(stepSize));
     bool blurHorizontal = n % 2 == 0;
+
+    vec2 bilinearOffset = invTexSize * vec2(horizontal ? 0.5 : -0.5, blurHorizontal ? 0.5 : -0.5);
 
     if (kernel > EPSILON) {
         if (blurHorizontal) {
             for (float i = -kernel; i <= kernel; i++) {
                 if (i != 0.) {
                     vec2 neighborVec = horizontal ? vec2(i, 0.) : vec2(0., i);
-                    tap(neighborVec, pixelStepOffset, depth, normal, roughness, worldPos, lumaDiffuse, lumaSpecular, colorPhiDiffuse, colorPhiSpecular, diffuseLightingColor, specularLightingColor, totalWeightDiffuse, sumVarianceDiffuse, totalWeightSpecular, sumVarianceSpecular);
+                    vec2 offset = bilinearOffset;
+
+                    tap(neighborVec, pixelStepOffset, offset, depth, normal, roughness, worldPos, lumaDiffuse, lumaSpecular, colorPhiDiffuse, colorPhiSpecular, diffuseLightingColor, specularLightingColor, totalWeightDiffuse, sumVarianceDiffuse, totalWeightSpecular, sumVarianceSpecular);
                 }
             }
 
@@ -252,7 +256,9 @@ void main() {
             for (float i = -kernel; i <= kernel; i++) {
                 if (i != 0.) {
                     vec2 neighborVec = horizontal ? vec2(-i, -i) : vec2(-i, i);
-                    tap(neighborVec, pixelStepOffset, depth, normal, roughness, worldPos, lumaDiffuse, lumaSpecular, colorPhiDiffuse, colorPhiSpecular, diffuseLightingColor, specularLightingColor, totalWeightDiffuse, sumVarianceDiffuse, totalWeightSpecular, sumVarianceSpecular);
+                    vec2 offset = bilinearOffset;
+
+                    tap(neighborVec, pixelStepOffset, offset, depth, normal, roughness, worldPos, lumaDiffuse, lumaSpecular, colorPhiDiffuse, colorPhiSpecular, diffuseLightingColor, specularLightingColor, totalWeightDiffuse, sumVarianceDiffuse, totalWeightSpecular, sumVarianceSpecular);
                 }
             }
         }

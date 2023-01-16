@@ -105,6 +105,9 @@ export class SSGIPass extends Pass {
 		this.emissiveTexture.encoding = sRGBEncoding
 		this.emissiveTexture.needsUpdate = true
 
+		this.normalTexture.type = HalfFloatType
+		this.normalTexture.needsUpdate = true
+
 		this.fullscreenMaterial.uniforms.normalTexture.value = this.normalTexture
 		this.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
 		this.fullscreenMaterial.uniforms.diffuseTexture.value = this.diffuseTexture

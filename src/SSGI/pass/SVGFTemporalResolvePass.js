@@ -1,4 +1,4 @@
-﻿import { GLSL3, HalfFloatType, NearestFilter, Uniform, WebGLMultipleRenderTargets } from "three"
+﻿import { GLSL3, HalfFloatType, LinearFilter, NearestFilter, Uniform, WebGLMultipleRenderTargets } from "three"
 import svgfTemporalResolve from "../shader/svgfTemporalResolve.frag"
 import { TemporalResolvePass } from "../temporal-resolve/TemporalResolvePass"
 
@@ -8,8 +8,6 @@ const defaultSVGFTemporalResolvePassOptions = {
 export class SVGFTemporalResolvePass extends TemporalResolvePass {
 	constructor(scene, camera, options = defaultSVGFTemporalResolvePassOptions) {
 		const temporalResolvePassRenderTarget = new WebGLMultipleRenderTargets(1, 1, 3, {
-			minFilter: NearestFilter,
-			magFilter: NearestFilter,
 			type: HalfFloatType,
 			depthBuffer: false
 		})
@@ -21,7 +19,7 @@ export class SVGFTemporalResolvePass extends TemporalResolvePass {
 				customComposeShader: svgfTemporalResolve,
 				renderTarget: temporalResolvePassRenderTarget,
 				renderVelocity: false,
-				blendStatic: true,
+				// blendStatic: true,
 				catmullRomSampling: true
 			}
 		}
@@ -29,21 +27,21 @@ export class SVGFTemporalResolvePass extends TemporalResolvePass {
 		super(scene, camera, options)
 
 		const momentBuffers = /* glsl */ `
-		layout(location = 0) out vec4 gOutput;
-		layout(location = 1) out vec4 gMoment;
-		layout(location = 2) out vec4 gOutput2;
+		layout(location = 0) out vec4 gDiffuse;
+		layout(location = 1) out vec4 gSpecular;
+		layout(location = 2) out vec4 gMoment;
 
-		uniform sampler2D lastMomentTexture;
 		uniform sampler2D lastSpecularTexture;
 		uniform sampler2D specularTexture;
+		uniform sampler2D lastMomentTexture;
 		`
 
 		this.fullscreenMaterial.fragmentShader = momentBuffers + this.fullscreenMaterial.fragmentShader
 
 		const momentUniforms = {
-			lastMomentTexture: new Uniform(null),
 			lastSpecularTexture: new Uniform(null),
-			specularTexture: new Uniform(null)
+			specularTexture: new Uniform(null),
+			lastMomentTexture: new Uniform(null)
 		}
 
 		this.fullscreenMaterial.uniforms = {
@@ -51,26 +49,33 @@ export class SVGFTemporalResolvePass extends TemporalResolvePass {
 			...momentUniforms
 		}
 
-		if (options.moment) this.fullscreenMaterial.glslVersion = GLSL3
+		this.fullscreenMaterial.glslVersion = GLSL3
 
-		for (const texture of this.renderTarget.texture) {
-			texture.type = HalfFloatType
-			texture.minFilter = NearestFilter
-			texture.magFilter = NearestFilter
+		this.renderTarget.texture[0].type = HalfFloatType
+		this.renderTarget.texture[0].minFilter = LinearFilter
+		this.renderTarget.texture[0].magFilter = LinearFilter
+		this.renderTarget.texture[0].needsUpdate = true
 
-			texture.needsUpdate = true
-		}
+		this.renderTarget.texture[1].type = HalfFloatType
+		this.renderTarget.texture[1].minFilter = LinearFilter
+		this.renderTarget.texture[1].magFilter = LinearFilter
+		this.renderTarget.texture[1].needsUpdate = true
+
+		this.renderTarget.texture[2].type = HalfFloatType
+		this.renderTarget.texture[2].minFilter = NearestFilter
+		this.renderTarget.texture[2].magFilter = NearestFilter
+		this.renderTarget.texture[2].needsUpdate = true
 	}
 
 	get texture() {
 		return this.renderTarget.texture[0]
 	}
 
-	get momentTexture() {
+	get specularTexture() {
 		return this.renderTarget.texture[1]
 	}
 
-	get specularTexture() {
+	get momentTexture() {
 		return this.renderTarget.texture[2]
 	}
 }

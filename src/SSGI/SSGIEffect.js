@@ -1,5 +1,12 @@
 ﻿import { Effect, Selection } from "postprocessing"
-import { EquirectangularReflectionMapping, LinearMipMapLinearFilter, NoToneMapping, Uniform } from "three"
+import {
+	EquirectangularReflectionMapping,
+	LinearMipMapLinearFilter,
+	NoToneMapping,
+	sRGBEncoding,
+	Uniform,
+	WebGLRenderTarget
+} from "three"
 import { SSGIPass } from "./pass/SSGIPass.js"
 import compose from "./shader/compose.frag"
 import utils from "./shader/utils.frag"
@@ -24,6 +31,7 @@ export class SSGIEffect extends Effect {
 			type: "FinalSSGIMaterial",
 			uniforms: new Map([
 				["inputTexture", new Uniform(null)],
+				["sceneTexture", new Uniform(null)],
 				["toneMapping", new Uniform(NoToneMapping)]
 			])
 		})
@@ -73,16 +81,16 @@ export class SSGIEffect extends Effect {
 					"float neighborRoughness = neighborNormalTexel.a;",
 					"float neighborRoughness = min(1., jitter + jitterRoughness * neighborNormalTexel.a);"
 				)
-				.replace(
-					"sumVarianceDiffuse = 1.;",
-					/* glsl */ `
-					// apply diffuse líghting
-					vec3 directLight = textureLod(directLightTexture, vUv, 0.).rgb;
-					// diffuseLightingColor += directLight;
+		// .replace(
+		// 	"sumVarianceDiffuse = 1.;",
+		// 	/* glsl */ `
+		// 	// apply diffuse líghting
+		// 	vec3 directLight = textureLod(directLightTexture, vUv, 0.).rgb;
+		// 	diffuseLightingColor += directLight;
 
-					sumVarianceDiffuse = 1.;
-					`
-				)
+		// 	sumVarianceDiffuse = 1.;
+		// 	`
+		// )
 
 		this.svgf.denoisePass.fullscreenMaterial.uniforms = {
 			...this.svgf.denoisePass.fullscreenMaterial.uniforms,
@@ -100,6 +108,10 @@ export class SSGIEffect extends Effect {
 			height: options.height,
 			resolutionScale: options.resolutionScale
 		}
+
+		this.sceneRenderTarget = new WebGLRenderTarget(1, 1, {
+			encoding: sRGBEncoding
+		})
 
 		this.setSize(options.width, options.height)
 
@@ -215,6 +227,7 @@ export class SSGIEffect extends Effect {
 
 		this.ssgiPass.setSize(width, height)
 		this.svgf.setSize(width, height)
+		this.sceneRenderTarget.setSize(width, height)
 
 		this.lastSize = {
 			width,
@@ -260,14 +273,37 @@ export class SSGIEffect extends Effect {
 	update(renderer, inputBuffer) {
 		this.keepEnvMapUpdated()
 
-		this.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.directLightTexture.value = inputBuffer.texture
-		this.ssgiPass.fullscreenMaterial.uniforms.directLightTexture.value = inputBuffer.texture
-		this.svgf.denoisePass.fullscreenMaterial.uniforms.directLightTexture.value = inputBuffer.texture
+		renderer.setRenderTarget(this.sceneRenderTarget)
+
+		const children = []
+
+		this._scene.traverseVisible(c => {
+			if (c.isScene) return
+
+			c._wasVisible = true
+
+			c.visible = c.constructor.name === "GroundProjectedEnv" || this.selection.has(c)
+
+			if (!c.visible) children.push(c)
+		})
+
+		renderer.render(this._scene, this._camera)
+
+		for (const c of children) {
+			c.visible = true
+			delete c._wasVisible
+		}
+
+		this.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.directLightTexture.value =
+			this.sceneRenderTarget.texture
+		this.ssgiPass.fullscreenMaterial.uniforms.directLightTexture.value = this.sceneRenderTarget.texture
+		this.svgf.denoisePass.fullscreenMaterial.uniforms.directLightTexture.value = this.sceneRenderTarget.texture
 
 		this.ssgiPass.render(renderer)
 		this.svgf.render(renderer)
 
 		this.uniforms.get("inputTexture").value = this.svgf.texture
+		this.uniforms.get("sceneTexture").value = this.sceneRenderTarget.texture
 		this.uniforms.get("toneMapping").value = renderer.toneMapping
 	}
 }

@@ -1,5 +1,5 @@
 ﻿import { Pass } from "postprocessing"
-import { GLSL3, HalfFloatType, ShaderMaterial, Uniform, Vector2, WebGLMultipleRenderTargets } from "three"
+import { GLSL3, HalfFloatType, LinearFilter, ShaderMaterial, Uniform, Vector2, WebGLMultipleRenderTargets } from "three"
 import basicVertexShader from "../shader/basic.vert"
 import fragmentShader from "../shader/denoise.frag"
 
@@ -48,28 +48,40 @@ export class DenoisePass extends Pass {
 		})
 
 		const renderTargetOptions = {
+			minFilter: LinearFilter,
+			magFilter: LinearFilter,
 			type: HalfFloatType,
 			depthBuffer: false
 		}
 
-		this._camera = camera
-
 		this.renderTargetA = new WebGLMultipleRenderTargets(1, 1, 2, renderTargetOptions)
 		this.renderTargetB = new WebGLMultipleRenderTargets(1, 1, 2, renderTargetOptions)
 
-		// this.renderTargetA.texture[0].type = HalfFloatType
-		// this.renderTargetA.texture[1].type = HalfFloatType
-		// this.renderTargetB.texture[0].type = HalfFloatType
-		// this.renderTargetB.texture[1].type = HalfFloatType
+		this.renderTargetA.texture[0].type = HalfFloatType
+		this.renderTargetA.texture[1].type = HalfFloatType
+		this.renderTargetB.texture[0].type = HalfFloatType
+		this.renderTargetB.texture[1].type = HalfFloatType
 
-		// this.renderTargetA.texture[0].needsUpdate = true
-		// this.renderTargetA.texture[1].needsUpdate = true
-		// this.renderTargetB.texture[0].needsUpdate = true
-		// this.renderTargetB.texture[1].needsUpdate = true
+		this.renderTargetA.texture[0].minFilter = LinearFilter
+		this.renderTargetA.texture[1].minFilter = LinearFilter
+		this.renderTargetB.texture[0].minFilter = LinearFilter
+		this.renderTargetB.texture[1].minFilter = LinearFilter
+
+		this.renderTargetA.texture[0].magFilter = LinearFilter
+		this.renderTargetA.texture[1].magFilter = LinearFilter
+		this.renderTargetB.texture[0].magFilter = LinearFilter
+		this.renderTargetB.texture[1].magFilter = LinearFilter
+
+		this.renderTargetA.texture[0].needsUpdate = true
+		this.renderTargetA.texture[1].needsUpdate = true
+		this.renderTargetB.texture[0].needsUpdate = true
+		this.renderTargetB.texture[1].needsUpdate = true
 
 		if (options.moment) this.fullscreenMaterial.defines.useMoment = ""
 		if (options.roughness) this.fullscreenMaterial.defines.useRoughness = ""
 	}
+
+	setReconstructCode(code) {}
 
 	setSize(width, height) {
 		this.renderTargetA.setSize(width, height)
@@ -90,7 +102,6 @@ export class DenoisePass extends Pass {
 		const skipDenoiseStr = (this.iterations === 0).toString()
 
 		if (this.fullscreenMaterial.defines.skipDenoise !== skipDenoiseStr) {
-			console.log("change")
 			this.fullscreenMaterial.defines.skipDenoise = (this.iterations === 0).toString()
 			this.fullscreenMaterial.needsUpdate = true
 		}

@@ -2,6 +2,7 @@ import dragDrop from "drag-drop"
 import * as POSTPROCESSING from "postprocessing"
 import Stats from "stats.js"
 import * as THREE from "three"
+import { AmbientLight } from "three"
 import { Box3, Color, DirectionalLight, DoubleSide, MeshNormalMaterial, Vector3 } from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
@@ -165,6 +166,7 @@ new RGBELoader().load("monbachtal_riverbank_2k.hdr", envMap => {
 	envMesh.scale.setScalar(100)
 	envMesh.updateMatrixWorld()
 	scene.add(envMesh)
+	window.envMesh = envMesh
 
 	scene.background = new Color(0x4c7fe5)
 })
@@ -219,14 +221,15 @@ const initScene = () => {
 		blend: 0.95,
 		denoiseIterations: 3,
 		denoiseKernel: 3,
-		denoiseDiffuse: 6.52,
-		denoiseSpecular: 32.07,
+		denoiseDiffuse: 7.61,
+		denoiseSpecular: 13.59,
 		depthPhi: 6.250000000000002,
-		normalPhi: 81.52000000000001,
+		normalPhi: 46.74000000000001,
 		roughnessPhi: 19.019999999999996,
 		jitter: 3.469446951953614e-18,
 		jitterRoughness: 1,
 		envBlur: 0.53,
+		maxEnvLuminance: 10,
 		steps: 20,
 		refineSteps: 4,
 		spp: 1,
