@@ -32,7 +32,7 @@ export class MotionBlurEffect extends Effect {
 			]),
 			defines: new Map([
 				["samples", options.samples.toFixed(0)],
-				["samplesFloat", options.samples.toFixed(5)]
+				["samplesFloat", options.samples.toFixed(0) + ".0"]
 			])
 		})
 

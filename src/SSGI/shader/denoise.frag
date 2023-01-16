@@ -25,16 +25,11 @@ uniform bool isLastIteration;
 
 #include <packing>
 
-#define EPSILON 0.00001
-#define M_PI    3.1415926535897932384626433832795
-#define PI      M_PI
+#define EPSILON      0.00001
+#define M_PI         3.1415926535897932384626433832795
+#define PI           M_PI
 
-// source: https://github.com/CesiumGS/cesium/blob/main/Source/Shaders/Builtin/Functions/luminance.glsl
-float czm_luminance(const vec3 rgb) {
-    // Algorithm from Chapter 10 of Graphics Shaders.
-    const vec3 W = vec3(0.2125, 0.7154, 0.0721);
-    return dot(rgb, W);
-}
+#define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
 
 // source: https://github.com/mrdoob/three.js/blob/dev/examples/js/shaders/SSAOShader.js
 vec3 getViewPosition(const float depth) {
@@ -139,8 +134,8 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec2 offset, 
     vec4 specularNeighborInputTexel = textureLod(specularLightingTexture, neighborUv, 0.);
     vec3 specularNeighborColor = specularNeighborInputTexel.rgb;
 
-    float neighborLumaDiffuse = czm_luminance(diffuseNeighborColor);
-    float neighborLumaSpecular = czm_luminance(specularNeighborColor);
+    float neighborLumaDiffuse = luminance(diffuseNeighborColor);
+    float neighborLumaSpecular = luminance(specularNeighborColor);
 
     float lumaDiffDiffuse = abs(lumaDiffuse - neighborLumaDiffuse);
     float lumaDiffSpecular = abs(lumaSpecular - neighborLumaSpecular);
@@ -181,17 +176,16 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec2 offset, 
 }
 
 void main() {
-    vec4 diffuseLightingTexel = textureLod(diffuseLightingTexture, vUv, 0.);
-    vec4 specularLightingTexel = textureLod(specularLightingTexture, vUv, 0.);
-
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.);
 
     // skip background
     if (dot(depthTexel.rgb, depthTexel.rgb) == 0.) {
-        gDiffuse = vec4(diffuseLightingTexel.rgb, 0.);
-        gSpecular = vec4(specularLightingTexel.rgb, 0.);
+        discard;
         return;
     }
+
+    vec4 diffuseLightingTexel = textureLod(diffuseLightingTexture, vUv, 0.);
+    vec4 specularLightingTexel = textureLod(specularLightingTexture, vUv, 0.);
 
     vec4 normalTexel = textureLod(normalTexture, vUv, 0.);
     vec3 viewNormal = unpackRGBToNormal(normalTexel.rgb);
@@ -201,8 +195,8 @@ void main() {
     vec3 specularLightingColor = specularLightingTexel.rgb;
 
     float depth = unpackRGBAToDepth(depthTexel);
-    float lumaDiffuse = czm_luminance(diffuseLightingColor);
-    float lumaSpecular = czm_luminance(specularLightingColor);
+    float lumaDiffuse = luminance(diffuseLightingColor);
+    float lumaSpecular = luminance(specularLightingColor);
     vec2 pixelStepOffset = invTexSize * stepSize;
 
     vec3 worldPos = screenSpaceToWorldSpace(vUv, depth, cameraMatrixWorld);
@@ -232,8 +226,6 @@ void main() {
     colorPhiDiffuse = denoiseDiffuse * sqrt(EPSILON + sumVarianceDiffuse);
     colorPhiSpecular = denoiseSpecular * sqrt(EPSILON + sumVarianceSpecular);
 #endif
-
-    // kernel = min(denoiseKernel, floor(denoiseKernel * min(pow(sumVarianceDiffuse + sumVarianceSpecular, 2.) * 100000., 1.0)));
 
     int n = int(log2(stepSize));
     bool blurHorizontal = n % 2 == 0;
@@ -315,8 +307,6 @@ void main() {
 
         sumVarianceDiffuse = 1.;
         sumVarianceSpecular = 1.;
-
-        // diffuseLightingColor = vec3(kernel / 3.);
     }
 
     gDiffuse = vec4(diffuseLightingColor, sumVarianceDiffuse);

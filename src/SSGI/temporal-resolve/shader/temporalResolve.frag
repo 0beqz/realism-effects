@@ -94,18 +94,14 @@ bool normalsDisocclusionCheck(vec3 currentNormal, vec3 lastNormal) {
     return pow(abs(dot(currentNormal, lastNormal)), 2.0) > normalDistance;
 }
 
-bool validateReprojectedUV(vec2 reprojectedUv, float depth, vec3 worldPos, vec4 worldNormalTexel) {
+bool validateReprojectedUV(vec2 reprojectedUv, float depth, vec3 worldPos, vec3 worldNormal) {
     if (!(all(greaterThanEqual(reprojectedUv, vec2(0.))) && all(lessThanEqual(reprojectedUv, vec2(1.))))) return false;
 
 #ifdef neighborhoodClamping
     return true;
 #endif
-
-    vec3 worldNormal = unpackRGBToNormal(worldNormalTexel.xyz);
-    worldNormal = normalize((vec4(worldNormal, 1.) * viewMatrix).xyz);
-
-    vec4 lastWorldNormalTexel = textureLod(lastNormalTexture, reprojectedUv, 0.);
-    vec3 lastWorldNormal = unpackRGBToNormal(lastWorldNormalTexel.xyz);
+    vec4 lastNormalTexel = textureLod(lastNormalTexture, reprojectedUv, 0.);
+    vec3 lastWorldNormal = unpackRGBToNormal(lastNormalTexel.xyz);
     lastWorldNormal = normalize((vec4(lastWorldNormal, 1.) * viewMatrix).xyz);
 
     if (normalsDisocclusionCheck(worldNormal, lastWorldNormal)) return false;
@@ -269,7 +265,11 @@ void main() {
 
     vec4 accumulatedTexel;
     vec3 accumulatedColor;
-    vec4 worldNormalTexel = textureLod(normalTexture, uv, 0.);
+
+    vec4 normalTexel = textureLod(normalTexture, uv, 0.);
+    vec3 worldNormal = unpackRGBToNormal(normalTexel.xyz);
+    worldNormal = normalize((vec4(worldNormal, 1.) * viewMatrix).xyz);
+
     vec3 worldPos = screenSpaceToWorldSpace(uv, depth, cameraMatrixWorld);
 
     if (isBackground) {
@@ -286,7 +286,7 @@ void main() {
         reprojectedUv = reprojectVelocity(uv, didMove);
 #endif
 
-        isReprojectedUvValid = validateReprojectedUV(reprojectedUv, depth, worldPos, worldNormalTexel);
+        isReprojectedUvValid = validateReprojectedUV(reprojectedUv, depth, worldPos, worldNormal);
 
         if (isReprojectedUvValid) {
 #ifdef catmullRomSampling

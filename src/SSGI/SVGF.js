@@ -1,5 +1,4 @@
-﻿import { HalfFloatType, LinearFilter, NearestFilter } from "three"
-import { DenoisePass } from "./pass/DenoisePass.js"
+﻿import { DenoisePass } from "./pass/DenoisePass.js"
 import { SVGFTemporalResolvePass } from "./pass/SVGFTemporalResolvePass.js"
 import { defaultTemporalResolvePassOptions } from "./temporal-resolve/TemporalResolvePass.js"
 
@@ -18,34 +17,6 @@ export class SVGF {
 		this.denoisePass = new DenoisePass(camera, null, options)
 
 		this.denoisePass.fullscreenMaterial.uniforms.momentTexture.value = this.svgfTemporalResolvePass.momentTexture
-		this.svgfTemporalResolvePass.copyPass.fullscreenMaterial.uniforms.inputTexture4.value =
-			this.svgfTemporalResolvePass.momentTexture
-		this.svgfTemporalResolvePass.copyPass.fullscreenMaterial.uniforms.inputTexture5.value =
-			this.svgfTemporalResolvePass.specularTexture
-
-		const lastMomentTexture = this.svgfTemporalResolvePass.copyPass.renderTarget.texture[0].clone()
-		lastMomentTexture.isRenderTargetTexture = true
-		this.svgfTemporalResolvePass.copyPass.renderTarget.texture.push(lastMomentTexture)
-		this.svgfTemporalResolvePass.copyPass.fullscreenMaterial.defines.textureCount++
-
-		lastMomentTexture.type = HalfFloatType
-		lastMomentTexture.minFilter = NearestFilter
-		lastMomentTexture.magFilter = NearestFilter
-		lastMomentTexture.needsUpdate = true
-
-		this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.lastMomentTexture.value = lastMomentTexture
-
-		const lastSpecularTexture = this.svgfTemporalResolvePass.copyPass.renderTarget.texture[0].clone()
-		lastSpecularTexture.isRenderTargetTexture = true
-		this.svgfTemporalResolvePass.copyPass.renderTarget.texture.push(lastSpecularTexture)
-		this.svgfTemporalResolvePass.copyPass.fullscreenMaterial.defines.textureCount++
-
-		lastSpecularTexture.type = HalfFloatType
-		lastMomentTexture.minFilter = LinearFilter
-		lastMomentTexture.magFilter = LinearFilter
-		lastSpecularTexture.needsUpdate = true
-
-		this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.lastSpecularTexture.value = lastSpecularTexture
 	}
 
 	// the denoised texture

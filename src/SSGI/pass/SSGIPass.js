@@ -164,16 +164,17 @@ export class SSGIPass extends Pass {
 					mrtMaterial.needsUpdate = true
 				}
 
-				const map =
-					originalMaterial.map ||
-					originalMaterial.normalMap ||
-					originalMaterial.roughnessMap ||
-					originalMaterial.metalnessMap
-
-				if (map) mrtMaterial.uniforms.uvTransform.value = map.matrix
-
 				this.cachedMaterials.set(c, [originalMaterial, mrtMaterial])
 			}
+
+			const map =
+				originalMaterial.map ||
+				originalMaterial.normalMap ||
+				originalMaterial.roughnessMap ||
+				originalMaterial.metalnessMap
+
+			if (map) mrtMaterial.uniforms.uvTransform.value = map.matrix
+			mrtMaterial.side = originalMaterial.side
 
 			// to ensure SSGI works as good as possible in the scene
 			if (!this.ssgiEffect.reflectionsOnly) {
@@ -188,7 +189,7 @@ export class SSGIPass extends Pass {
 			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "map", "USE_MAP", true)
 			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "emissiveMap", "USE_EMISSIVEMAP", true)
 
-			const visible = originalMaterial.visible
+			const visible = originalMaterial.visible && c.constructor.name !== "GroundProjectedEnv"
 			c.visible &&= visible
 
 			mrtMaterial.uniforms.roughness.value =

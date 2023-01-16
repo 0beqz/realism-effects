@@ -19,7 +19,7 @@ export class SVGFTemporalResolvePass extends TemporalResolvePass {
 				customComposeShader: svgfTemporalResolve,
 				renderTarget: temporalResolvePassRenderTarget,
 				renderVelocity: false,
-				// blendStatic: true,
+				blendStatic: true,
 				catmullRomSampling: true
 			}
 		}
@@ -65,6 +65,33 @@ export class SVGFTemporalResolvePass extends TemporalResolvePass {
 		this.renderTarget.texture[2].minFilter = NearestFilter
 		this.renderTarget.texture[2].magFilter = NearestFilter
 		this.renderTarget.texture[2].needsUpdate = true
+
+		this.copyPass.fullscreenMaterial.uniforms.inputTexture4.value = this.momentTexture
+		this.copyPass.fullscreenMaterial.uniforms.inputTexture5.value = this.specularTexture
+
+		const lastMomentTexture = this.copyPass.renderTarget.texture[0].clone()
+		lastMomentTexture.isRenderTargetTexture = true
+		this.copyPass.renderTarget.texture.push(lastMomentTexture)
+		this.copyPass.fullscreenMaterial.defines.textureCount++
+
+		lastMomentTexture.type = HalfFloatType
+		lastMomentTexture.minFilter = NearestFilter
+		lastMomentTexture.magFilter = NearestFilter
+		lastMomentTexture.needsUpdate = true
+
+		this.fullscreenMaterial.uniforms.lastMomentTexture.value = lastMomentTexture
+
+		const lastSpecularTexture = this.copyPass.renderTarget.texture[0].clone()
+		lastSpecularTexture.isRenderTargetTexture = true
+		this.copyPass.renderTarget.texture.push(lastSpecularTexture)
+		this.copyPass.fullscreenMaterial.defines.textureCount++
+
+		lastSpecularTexture.type = HalfFloatType
+		lastSpecularTexture.minFilter = LinearFilter
+		lastSpecularTexture.magFilter = LinearFilter
+		lastSpecularTexture.needsUpdate = true
+
+		this.fullscreenMaterial.uniforms.lastSpecularTexture.value = lastSpecularTexture
 	}
 
 	get texture() {

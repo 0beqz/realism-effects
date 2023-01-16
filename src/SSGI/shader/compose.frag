@@ -1,6 +1,7 @@
 ﻿
 uniform sampler2D inputTexture;
 uniform sampler2D sceneTexture;
+uniform sampler2D depthTexture;
 uniform int toneMapping;
 
 #include <tonemapping_pars_fragment>
@@ -33,7 +34,9 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 
     ssgiClr *= toneMappingExposure;
 
-    if (ssgiTexel.a == 0.0) {
+    vec4 depthTexel = textureLod(depthTexture, vUv, 0.);
+
+    if (dot(depthTexel.rgb, depthTexel.rgb) == 0.) {
         ssgiClr = textureLod(sceneTexture, vUv, 0.).rgb;
     }
 

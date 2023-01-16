@@ -134,9 +134,7 @@ export class MRTMaterial extends ShaderMaterial {
                     
 
                     if(isDeselected){
-                        gDepth = vec4(0.);
-                        gDiffuse = vec4(0.);
-
+                        discard;
                         return;
                     }
 

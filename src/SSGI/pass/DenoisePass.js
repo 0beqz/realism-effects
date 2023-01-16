@@ -1,4 +1,5 @@
 ﻿import { Pass } from "postprocessing"
+import { Vector4 } from "three"
 import { GLSL3, HalfFloatType, LinearFilter, ShaderMaterial, Uniform, Vector2, WebGLMultipleRenderTargets } from "three"
 import basicVertexShader from "../shader/basic.vert"
 import fragmentShader from "../shader/denoise.frag"

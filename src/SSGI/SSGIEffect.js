@@ -32,6 +32,7 @@ export class SSGIEffect extends Effect {
 			uniforms: new Map([
 				["inputTexture", new Uniform(null)],
 				["sceneTexture", new Uniform(null)],
+				["depthTexture", new Uniform(null)],
 				["toneMapping", new Uniform(NoToneMapping)]
 			])
 		})
@@ -96,6 +97,25 @@ export class SSGIEffect extends Effect {
 			...this.svgf.denoisePass.fullscreenMaterial.uniforms,
 			...{
 				directLightTexture: new Uniform(null),
+				jitter: new Uniform(0),
+				jitterRoughness: new Uniform(0)
+			}
+		}
+
+		// temporal resolve pass
+		this.svgf.svgfTemporalResolvePass.fullscreenMaterial.fragmentShader =
+			/* glsl */ `
+	uniform float jitter;
+	uniform float jitterRoughness;
+	` +
+			this.svgf.svgfTemporalResolvePass.fullscreenMaterial.fragmentShader.replace(
+				"float roughness = inputTexel.a;",
+				"float roughness = min(1., jitter + jitterRoughness * inputTexel.a);"
+			)
+
+		this.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms = {
+			...this.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms,
+			...{
 				jitter: new Uniform(0),
 				jitterRoughness: new Uniform(0)
 			}
@@ -192,6 +212,7 @@ export class SSGIEffect extends Effect {
 							ssgiPassFullscreenMaterialUniforms[key].value = value
 
 							this.svgf.denoisePass.fullscreenMaterial.uniforms[key].value = value
+							this.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms[key].value = value
 							break
 
 						// must be a uniform
@@ -270,7 +291,7 @@ export class SSGIEffect extends Effect {
 		}
 	}
 
-	update(renderer, inputBuffer) {
+	update(renderer) {
 		this.keepEnvMapUpdated()
 
 		renderer.setRenderTarget(this.sceneRenderTarget)
@@ -304,6 +325,7 @@ export class SSGIEffect extends Effect {
 
 		this.uniforms.get("inputTexture").value = this.svgf.texture
 		this.uniforms.get("sceneTexture").value = this.sceneRenderTarget.texture
+		this.uniforms.get("depthTexture").value = this.ssgiPass.depthTexture
 		this.uniforms.get("toneMapping").value = renderer.toneMapping
 	}
 }

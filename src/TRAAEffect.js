@@ -3,7 +3,6 @@ import { Uniform } from "three"
 import compose from "./shader/compose.frag"
 import utils from "./SSGI/shader/utils.frag"
 import { TemporalResolvePass } from "./SSGI/temporal-resolve/TemporalResolvePass.js"
-import { getVisibleChildren } from "./SSGI/utils/Utils"
 
 const finalFragmentShader = compose.replace("#include <utils>", utils)
 

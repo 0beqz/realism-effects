@@ -1,10 +1,7 @@
 ﻿// this shader is from: https://github.com/gkjohnson/threejs-sandbox
 /* eslint-disable camelcase */
 
-import { Vector2 } from "three"
-import { Matrix3 } from "three"
-import { GLSL3, UniformsUtils } from "three"
-import { Matrix4, ShaderChunk, ShaderMaterial } from "three"
+import { GLSL3, Matrix3, Matrix4, ShaderChunk, ShaderMaterial, UniformsUtils, Vector2 } from "three"
 
 // Modified ShaderChunk.skinning_pars_vertex to handle
 // a second set of bone information from the previous frame

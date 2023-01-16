@@ -155,7 +155,7 @@ const params = {}
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
 pmremGenerator.compileEquirectangularShader()
 
-new RGBELoader().load("monbachtal_riverbank_2k.hdr", envMap => {
+new RGBELoader().load("colosseum_2k.hdr", envMap => {
 	envMap.mapping = THREE.EquirectangularReflectionMapping
 
 	scene.environment = envMap
@@ -295,7 +295,7 @@ const initScene = () => {
 		const { depthTexture, normalTexture, texture } = traaEffect.temporalResolvePass.velocityPass
 
 		const motionBlurEffect = new MotionBlurEffect(texture, {
-			jitter: 5
+			jitter: 1
 		})
 
 		// ssgiEffect.setVelocityPass(traaEffect.temporalResolvePass.velocityPass)
@@ -357,6 +357,8 @@ const loop = () => {
 	if (guiParams.Method === "three.js AA") {
 		renderer.render(scene, camera)
 	} else {
+		lastScene.rotation.y += 0.01
+		lastScene.updateMatrixWorld()
 		composer.render()
 	}
 

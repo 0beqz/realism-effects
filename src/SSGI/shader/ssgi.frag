@@ -72,7 +72,7 @@ void main() {
 
     // filter out background
     if (dot(depthTexel.rgb, depthTexel.rgb) == 0.) {
-        gDiffuse = gSpecular = EARLY_OUT_COLOR;
+        discard;
         return;
     }
 
@@ -81,7 +81,7 @@ void main() {
 
     // a roughness of 1 is only being used for deselected meshes
     if (roughnessValue == 1.0 || roughnessValue > maxRoughness) {
-        gDiffuse = gSpecular = EARLY_OUT_COLOR;
+        discard;
         return;
     }
 
@@ -222,7 +222,7 @@ void main() {
         }
     }
 
-    gDiffuse = vec4(diffuseGI, 0.);
+    gDiffuse = vec4(diffuseGI, roughness);
     gSpecular = vec4(specularGI, rayLength);
 }
 
