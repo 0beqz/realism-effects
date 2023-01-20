@@ -1,5 +1,7 @@
 ﻿// a basic shader to implement temporal resolving
 
+varying vec2 vUv;
+
 uniform sampler2D inputTexture;
 uniform sampler2D accumulatedTexture;
 
@@ -16,8 +18,6 @@ uniform float blend;
 uniform bool constantBlend;
 uniform bool blendStatic;
 uniform vec2 invTexSize;
-
-varying vec2 vUv;
 
 uniform mat4 projectionMatrix;
 uniform mat4 projectionMatrixInverse;
@@ -87,15 +87,21 @@ bool planeDistanceDisocclusionCheck(vec3 worldPos, vec3 lastWorldPos, vec3 world
     vec3 toCurrent = worldPos - lastWorldPos;
     float distToPlane = abs(dot(toCurrent, worldNormal));
 
-    return distToPlane > depthDistance;
+    float worldDistFactor = clamp(distance(worldPos, cameraPos) / 100., 0.1, 1.);
+
+    return distToPlane > depthDistance * worldDistFactor;
 }
 
-bool normalsDisocclusionCheck(vec3 currentNormal, vec3 lastNormal) {
-    return pow(abs(dot(currentNormal, lastNormal)), 2.0) > normalDistance;
+bool normalsDisocclusionCheck(vec3 currentNormal, vec3 lastNormal, vec3 worldPos) {
+    float worldDistFactor = clamp(distance(worldPos, cameraPos) / 100., 0.1, 1.);
+
+    return pow(abs(dot(currentNormal, lastNormal)), 2.0) > normalDistance * worldDistFactor;
 }
 
-bool worldDistanceDisocclusionCheck(vec3 currentWorldPos, vec3 lastWorldPos) {
-    return distance(currentWorldPos, lastWorldPos) > 0.025;
+bool worldDistanceDisocclusionCheck(vec3 worldPos, vec3 lastWorldPos, float depth) {
+    float worldDistFactor = clamp(distance(worldPos, cameraPos) / 100., 0.1, 1.);
+
+    return distance(worldPos, lastWorldPos) > 0.25 * worldDistFactor;
 }
 
 bool validateReprojectedUV(vec2 reprojectedUv, float depth, vec3 worldPos, vec3 worldNormal) {
@@ -109,7 +115,7 @@ bool validateReprojectedUV(vec2 reprojectedUv, float depth, vec3 worldPos, vec3 
     vec3 lastNormal = unpackRGBToNormal(lastNormalTexel.xyz);
     vec3 lastWorldNormal = normalize((vec4(lastNormal, 1.) * viewMatrix).xyz);
 
-    if (normalsDisocclusionCheck(worldNormal, lastWorldNormal)) return false;
+    if (normalsDisocclusionCheck(worldNormal, lastWorldNormal, worldPos)) return false;
 
     // the reprojected UV coordinates are inside the view
     float lastDepth = unpackRGBAToDepth(textureLod(lastDepthTexture, reprojectedUv, 0.));
@@ -117,7 +123,7 @@ bool validateReprojectedUV(vec2 reprojectedUv, float depth, vec3 worldPos, vec3 
 
     if (planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal)) return false;
 
-    if (worldDistanceDisocclusionCheck(worldPos, lastWorldPos)) return false;
+    if (worldDistanceDisocclusionCheck(worldPos, lastWorldPos, depth)) return false;
 
     return true;
 }

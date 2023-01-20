@@ -139,10 +139,6 @@ export class TemporalResolvePass extends Pass {
 
 		this.fullscreenMaterial.uniforms.prevCameraMatrixWorld.value.copy(this._camera.matrixWorld)
 		this.fullscreenMaterial.uniforms.prevViewMatrix.value.copy(this._camera.matrixWorldInverse)
-
-		const { elements } = this._camera.matrixWorld
-		// https://github.com/mrdoob/three.js/blob/master/src/math/Matrix4.js#L722
-		this.fullscreenMaterial.uniforms.prevCameraPos.value.set(elements[12], elements[13], elements[14])
 	}
 
 	jitter(jitterScale = 1) {
