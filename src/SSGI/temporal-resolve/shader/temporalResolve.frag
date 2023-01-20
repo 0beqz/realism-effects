@@ -94,15 +94,20 @@ bool normalsDisocclusionCheck(vec3 currentNormal, vec3 lastNormal) {
     return pow(abs(dot(currentNormal, lastNormal)), 2.0) > normalDistance;
 }
 
+bool worldDistanceDisocclusionCheck(vec3 currentWorldPos, vec3 lastWorldPos) {
+    return distance(currentWorldPos, lastWorldPos) > 0.025;
+}
+
 bool validateReprojectedUV(vec2 reprojectedUv, float depth, vec3 worldPos, vec3 worldNormal) {
-    if (!(all(greaterThanEqual(reprojectedUv, vec2(0.))) && all(lessThanEqual(reprojectedUv, vec2(1.))))) return false;
+    if (any(lessThan(reprojectedUv, vec2(0.))) || any(greaterThan(reprojectedUv, vec2(1.)))) return false;
 
 #ifdef neighborhoodClamping
     return true;
 #endif
+
     vec4 lastNormalTexel = textureLod(lastNormalTexture, reprojectedUv, 0.);
-    vec3 lastWorldNormal = unpackRGBToNormal(lastNormalTexel.xyz);
-    lastWorldNormal = normalize((vec4(lastWorldNormal, 1.) * viewMatrix).xyz);
+    vec3 lastNormal = unpackRGBToNormal(lastNormalTexel.xyz);
+    vec3 lastWorldNormal = normalize((vec4(lastNormal, 1.) * viewMatrix).xyz);
 
     if (normalsDisocclusionCheck(worldNormal, lastWorldNormal)) return false;
 
@@ -111,6 +116,8 @@ bool validateReprojectedUV(vec2 reprojectedUv, float depth, vec3 worldPos, vec3 
     vec3 lastWorldPos = screenSpaceToWorldSpace(reprojectedUv, lastDepth, prevCameraMatrixWorld);
 
     if (planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal)) return false;
+
+    if (worldDistanceDisocclusionCheck(worldPos, lastWorldPos)) return false;
 
     return true;
 }

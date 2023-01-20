@@ -9,12 +9,12 @@ const defaultSVGFOptions = {
 }
 
 export class SVGF {
-	constructor(scene, camera, options = defaultSVGFOptions) {
+	constructor(scene, camera, customComposeShader, options = defaultSVGFOptions) {
 		options = { ...defaultSVGFOptions, ...options }
 
 		this.svgfTemporalResolvePass = new SVGFTemporalResolvePass(scene, camera, options)
 
-		this.denoisePass = new DenoisePass(camera, null, options)
+		this.denoisePass = new DenoisePass(camera, null, customComposeShader, options)
 
 		this.denoisePass.fullscreenMaterial.uniforms.momentTexture.value = this.svgfTemporalResolvePass.momentTexture
 	}
@@ -50,12 +50,6 @@ export class SVGF {
 		this.denoisePass.setSize(width, height)
 
 		this.svgfTemporalResolvePass.setSize(width, height)
-
-		this.denoisePass.fullscreenMaterial.uniforms.diffuseLightingTexture.value =
-			this.svgfTemporalResolvePass.accumulatedTexture
-
-		this.denoisePass.fullscreenMaterial.uniforms.specularLightingTexture.value =
-			this.svgfTemporalResolvePass.specularTexture
 	}
 
 	dispose() {
@@ -74,6 +68,12 @@ export class SVGF {
 
 	render(renderer) {
 		this.ensureAllTexturesSet()
+
+		this.denoisePass.fullscreenMaterial.uniforms.diffuseLightingTexture.value =
+			this.svgfTemporalResolvePass.accumulatedTexture
+
+		this.denoisePass.fullscreenMaterial.uniforms.specularLightingTexture.value =
+			this.svgfTemporalResolvePass.specularTexture
 
 		this.svgfTemporalResolvePass.render(renderer)
 		this.denoisePass.render(renderer)

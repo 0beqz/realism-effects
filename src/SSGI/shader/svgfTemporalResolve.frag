@@ -15,8 +15,6 @@ if (isReprojectedUvValid) {
 
     moment.r = luminance(gDiffuse.rgb);
     moment.g = moment.r * moment.r;
-
-    moment.rg = mix(moment.rg, historyMoment.rg, momentTemporalResolveMix);
 } else {
     gDiffuse = vec4(inputColor, 0.);
 
@@ -73,8 +71,6 @@ if (anyReprojectionValid) {
 
     moment.b = luminance(gSpecular.rgb);
     moment.a = moment.b * moment.b;
-
-    moment.ba = mix(moment.ba, historyMoment.ba, momentTemporalResolveMix);
 } else {
     gSpecular = vec4(specularColor, 0.);
 
@@ -82,7 +78,12 @@ if (anyReprojectionValid) {
     moment.ba = vec2(0., 10.);
 }
 
-gMoment = moment;
+gMoment = mix(moment, historyMoment, momentTemporalResolveMix);
+
+// if (isReprojectedUvSpecularValid)
+//     gSpecular.xyz = vec3(0., 1., 0.);
+// else
+//     gSpecular.xyz = vec3(0., 0., 0.);
 
 // gDiffuse.xyz = didMove ? vec3(0., 1., 0.) : vec3(0., 0., 0.);
 

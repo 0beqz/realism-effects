@@ -9,6 +9,7 @@ import {
 } from "three"
 import { SSGIPass } from "./pass/SSGIPass.js"
 import compose from "./shader/compose.frag"
+import denoiseCompose from "./shader/denoiseCompose.frag"
 import utils from "./shader/utils.frag"
 import { defaultSSGIOptions } from "./SSGIOptions"
 import { SVGF } from "./SVGF.js"
@@ -40,7 +41,7 @@ export class SSGIEffect extends Effect {
 		this._scene = scene
 		this._camera = camera
 
-		this.svgf = new SVGF(scene, camera)
+		this.svgf = new SVGF(scene, camera, denoiseCompose)
 
 		// ssgi pass
 		this.ssgiPass = new SSGIPass(this)
@@ -323,7 +324,7 @@ export class SSGIEffect extends Effect {
 		this.ssgiPass.render(renderer)
 		this.svgf.render(renderer)
 
-		this.uniforms.get("inputTexture").value = this.svgf.texture
+		this.uniforms.get("inputTexture").value = this.ssgiPass.texture
 		this.uniforms.get("sceneTexture").value = this.sceneRenderTarget.texture
 		this.uniforms.get("depthTexture").value = this.ssgiPass.depthTexture
 		this.uniforms.get("toneMapping").value = renderer.toneMapping

@@ -41,10 +41,10 @@ export class VelocityPass extends Pass {
 		})
 
 		if (renderDepth) {
-			this.renderTarget.texture[0].type = UnsignedByteType
+			this.renderTarget.texture[0].type = HalfFloatType
 			this.renderTarget.texture[0].needsUpdate = true
 
-			this.renderTarget.texture[1].type = HalfFloatType
+			this.renderTarget.texture[1].type = UnsignedByteType
 			this.renderTarget.texture[1].needsUpdate = true
 
 			this.renderTarget.texture[2].type = HalfFloatType
@@ -115,11 +115,11 @@ export class VelocityPass extends Pass {
 	}
 
 	get texture() {
-		return this.renderTarget.texture[1]
+		return this.renderTarget.texture[0]
 	}
 
 	get depthTexture() {
-		return this.renderTarget.texture[0]
+		return this.renderTarget.texture[1]
 	}
 
 	get normalTexture() {

@@ -225,7 +225,7 @@ const initScene = () => {
 		denoiseSpecular: 13.59,
 		depthPhi: 6.250000000000002,
 		normalPhi: 46.74000000000001,
-		roughnessPhi: 19.019999999999996,
+		roughnessPhi: 100,
 		jitter: 3.469446951953614e-18,
 		jitterRoughness: 1,
 		envBlur: 0.53,
@@ -357,7 +357,7 @@ const loop = () => {
 	if (guiParams.Method === "three.js AA") {
 		renderer.render(scene, camera)
 	} else {
-		lastScene.rotation.y += 0.01
+		// lastScene.rotation.y += 0.01
 		lastScene.updateMatrixWorld()
 		composer.render()
 	}

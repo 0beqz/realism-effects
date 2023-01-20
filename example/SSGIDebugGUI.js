@@ -57,7 +57,7 @@ export class SSGIDebugGUI {
 		})
 		denoiseKernelFolder.addInput(params, "roughnessPhi", {
 			min: 0,
-			max: 50,
+			max: 100,
 			step: 0.01
 		})
 

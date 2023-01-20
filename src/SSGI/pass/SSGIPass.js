@@ -16,7 +16,7 @@ import { generateHalton23Points } from "../temporal-resolve/utils/generateHalton
 import { getVisibleChildren, keepMaterialMapUpdated } from "../utils/Utils.js"
 
 const backgroundColor = new Color(0)
-const points = generateHalton23Points(1024)
+const points = generateHalton23Points(2 ** 16)
 export class SSGIPass extends Pass {
 	cachedMaterials = new WeakMap()
 	visibleMeshes = []
@@ -49,21 +49,6 @@ export class SSGIPass extends Pass {
 
 	initialize(renderer, ...args) {
 		super.initialize(renderer, ...args)
-		// const ktx2Loader = new KTX2Loader()
-		// ktx2Loader.setTranscoderPath("examples/js/libs/basis/")
-		// ktx2Loader.detectSupport(renderer)
-		// ktx2Loader.load("texture/blue_noise_rg.ktx2", blueNoiseTexture => {
-		// 	// generated using "toktx --target_type RG --t2 blue_noise_rg blue_noise_rg.png"
-		// 	blueNoiseTexture.minFilter = NearestFilter
-		// 	blueNoiseTexture.magFilter = NearestFilter
-		// 	blueNoiseTexture.wrapS = RepeatWrapping
-		// 	blueNoiseTexture.wrapT = RepeatWrapping
-		// 	blueNoiseTexture.encoding = LinearEncoding
-
-		// 	this.fullscreenMaterial.uniforms.blueNoiseTexture.value = blueNoiseTexture
-
-		// 	ktx2Loader.dispose()
-		// })
 
 		new TextureLoader().load("texture/blue_noise_3channels_256.png", blueNoiseTexture => {
 			blueNoiseTexture.minFilter = NearestFilter
@@ -119,18 +104,11 @@ export class SSGIPass extends Pass {
 		this.gBuffersRenderTarget.setSize(width, height)
 
 		this.fullscreenMaterial.uniforms.invTexSize.value.set(1 / width, 1 / height)
-
-		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.ssgiEffect.svgf.denoisePass.texture
-
-		this.fullscreenMaterial.needsUpdate = true
 	}
 
 	dispose() {
 		this.renderTarget.dispose()
 		this.gBuffersRenderTarget.dispose()
-		this.renderPass.dispose()
-
-		this.fullscreenMaterial.dispose()
 
 		this.normalTexture = null
 		this.depthTexture = null
@@ -234,6 +212,7 @@ export class SSGIPass extends Pass {
 		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
 		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far
 		this.fullscreenMaterial.uniforms.viewMatrix.value.copy(this._camera.matrixWorldInverse)
+		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.ssgiEffect.svgf.denoisePass.texture
 
 		const noiseTexture = this.fullscreenMaterial.uniforms.blueNoiseTexture.value
 		if (noiseTexture) {

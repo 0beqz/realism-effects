@@ -9,7 +9,7 @@ import motionBlur from "./motionBlur.glsl"
 // reference code: https://github.com/gkjohnson/threejs-sandbox/blob/master/motionBlurPass/src/CompositeShader.js
 
 const defaultOptions = { intensity: 1, jitter: 5, samples: 16 }
-const points = generateHalton23Points(1024)
+const points = generateHalton23Points(2 ** 16)
 
 export class MotionBlurEffect extends Effect {
 	haltonIndex = 0

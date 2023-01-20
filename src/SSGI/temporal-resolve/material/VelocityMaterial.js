@@ -162,8 +162,8 @@ export class VelocityMaterial extends ShaderMaterial {
 					#endif
 
 					#ifdef renderDepth
-					layout(location = 0) out vec4 gDepth;
-					layout(location = 1) out vec4 gVelocity;
+					layout(location = 0) out vec4 gVelocity;
+					layout(location = 1) out vec4 gDepth;
 					layout(location = 2) out vec4 gNormal;
 					#else
 					#define gVelocity gl_FragColor

@@ -1,5 +1,4 @@
 ﻿import { Pass } from "postprocessing"
-import { Vector4 } from "three"
 import { GLSL3, HalfFloatType, LinearFilter, ShaderMaterial, Uniform, Vector2, WebGLMultipleRenderTargets } from "three"
 import basicVertexShader from "../shader/basic.vert"
 import fragmentShader from "../shader/denoise.frag"
@@ -15,13 +14,15 @@ const defaultDenoisePassOptions = {
 export class DenoisePass extends Pass {
 	iterations = 1
 
-	constructor(camera, inputTexture, options = defaultDenoisePassOptions) {
+	constructor(camera, inputTexture, customComposeShader = "", options = defaultDenoisePassOptions) {
 		super("DenoisePass")
+
+		const finalFragmentShader = fragmentShader.replace("customComposeShader", customComposeShader)
 
 		options = { ...defaultDenoisePassOptions, ...options }
 
 		this.fullscreenMaterial = new ShaderMaterial({
-			fragmentShader,
+			fragmentShader: finalFragmentShader,
 			vertexShader: basicVertexShader,
 			uniforms: {
 				diffuseLightingTexture: new Uniform(inputTexture),
@@ -81,8 +82,6 @@ export class DenoisePass extends Pass {
 		if (options.moment) this.fullscreenMaterial.defines.useMoment = ""
 		if (options.roughness) this.fullscreenMaterial.defines.useRoughness = ""
 	}
-
-	setReconstructCode(code) {}
 
 	setSize(width, height) {
 		this.renderTargetA.setSize(width, height)

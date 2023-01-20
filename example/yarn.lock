@@ -121,10 +121,10 @@
     "picocolors" "^1.0.0"
     "source-map-js" "^1.0.2"
 
-"postprocessing@^6.29.2", "postprocessing@>=6.28.0":
-  "integrity" "sha512-L+zyFPkywW4/Zp3A84aZzN3y/UNao9j7+2c4nwnugZyRXnMur6woDG4MrGKpSYlQy5o73NNzgSkx9s5iGpYUfg=="
-  "resolved" "https://registry.npmjs.org/postprocessing/-/postprocessing-6.29.2.tgz"
-  "version" "6.29.2"
+"postprocessing@^6.29.3", "postprocessing@>=6.28.0":
+  "integrity" "sha512-gxXC6LKLRwI4eSySdmxqEfQBMKEdQtxg5aYrdvJ/tPHDOS4aZAb/bY4ulQnL5YGKqCC6SmgNmU4dNIc68TTVMw=="
+  "resolved" "https://registry.npmjs.org/postprocessing/-/postprocessing-6.29.3.tgz"
+  "version" "6.29.3"
 
 "queue-microtask@^1.2.2":
   "integrity" "sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A=="
