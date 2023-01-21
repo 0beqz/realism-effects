@@ -14,10 +14,18 @@ const defaultDenoisePassOptions = {
 export class DenoisePass extends Pass {
 	iterations = 1
 
-	constructor(camera, inputTexture, customComposeShader = "", options = defaultDenoisePassOptions) {
+	constructor(
+		camera,
+		inputTexture,
+		customComposeShader = "",
+		customComposeShaderFunctions = "",
+		options = defaultDenoisePassOptions
+	) {
 		super("DenoisePass")
 
-		const finalFragmentShader = fragmentShader.replace("customComposeShader", customComposeShader)
+		const finalFragmentShader = fragmentShader
+			.replace("#include <customComposeShaderFunctions>", customComposeShaderFunctions)
+			.replace("#include <customComposeShader>", customComposeShader)
 
 		options = { ...defaultDenoisePassOptions, ...options }
 

@@ -30,7 +30,6 @@ export class SSGIPass extends Pass {
 		this._camera = ssgiEffect._camera
 
 		this.fullscreenMaterial = new SSGIMaterial()
-		if (ssgiEffect._camera.isPerspectiveCamera) this.fullscreenMaterial.defines.PERSPECTIVE_CAMERA = ""
 
 		this.renderTarget = new WebGLMultipleRenderTargets(1, 1, 2, {
 			type: HalfFloatType,
@@ -43,6 +42,9 @@ export class SSGIPass extends Pass {
 		this.fullscreenMaterial.uniforms.projectionMatrix.value = this._camera.projectionMatrix
 		this.fullscreenMaterial.uniforms.inverseProjectionMatrix.value = this._camera.projectionMatrixInverse
 		this.fullscreenMaterial.uniforms.cameraPos.value = this._camera.position
+
+		if (ssgiEffect._camera.isPerspectiveCamera) this.fullscreenMaterial.defines.PERSPECTIVE_CAMERA = ""
+		if (ssgiEffect.reflectionsOnly) this.fullscreenMaterial.defines.reflectionsOnly = ""
 
 		this.initMRTRenderTarget()
 	}

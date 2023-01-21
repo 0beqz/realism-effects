@@ -10,6 +10,7 @@ import {
 import { SSGIPass } from "./pass/SSGIPass.js"
 import compose from "./shader/compose.frag"
 import denoiseCompose from "./shader/denoiseCompose.frag"
+import denoiseComposeFunctions from "./shader/denoiseComposeFunctions.frag"
 import utils from "./shader/utils.frag"
 import { defaultSSGIOptions } from "./SSGIOptions"
 import { SVGF } from "./SVGF.js"
@@ -41,7 +42,7 @@ export class SSGIEffect extends Effect {
 		this._scene = scene
 		this._camera = camera
 
-		this.svgf = new SVGF(scene, camera, denoiseCompose)
+		this.svgf = new SVGF(scene, camera, denoiseCompose, denoiseComposeFunctions)
 
 		// ssgi pass
 		this.ssgiPass = new SSGIPass(this)

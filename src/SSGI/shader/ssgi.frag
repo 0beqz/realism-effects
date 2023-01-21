@@ -38,6 +38,7 @@ uniform float maxEnvLuminance;
 #define INVALID_RAY_COORDS vec2(-1.0);
 #define EARLY_OUT_COLOR    vec4(0.0, 0.0, 0.0, 0.0)
 #define EPSILON            0.00001
+#define luminance(a)       dot(vec3(0.2125, 0.7154, 0.0721), a)
 
 float nearMinusFar;
 float nearMulFar;
@@ -117,7 +118,7 @@ void main() {
     vec3 V = (vec4(v, 1.) * viewMatrix).xyz;
     vec3 N = (vec4(n, 1.) * viewMatrix).xyz;
 
-    bool isMissedRay, isDiffuseSample;
+    bool isMissedRay;
     vec2 sampleOffset;
     vec3 SSGI, diffuseGI, specularGI, brdf, hitPos, T, B;
 
@@ -162,8 +163,8 @@ void main() {
         vec3 F = F_Schlick(f0, VoH);
 
         // diffuse and specular wieght
-        float diffW = (1. - metalness) * czm_luminance(diffuse);
-        float specW = czm_luminance(F);
+        float diffW = (1. - metalness) * luminance(diffuse);
+        float specW = luminance(F);
 
         diffW = max(diffW, EPSILON);
         specW = max(specW, EPSILON);
@@ -175,7 +176,7 @@ void main() {
         specW *= invW;
 
         // if diffuse lighting should be sampled
-        isDiffuseSample = random.z < diffW;
+        bool isDiffuseSample = random.z < diffW;
 
         if (isDiffuseSample) {
             l = cosineSampleHemisphere(viewNormal, random.xy);
@@ -294,7 +295,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
         envMapSample = sampleEquirectEnvMapColor(sampleDir, envMap, mip);
 
         // we won't deal with calculating direct sun light from the env map as it is too noisy
-        float envLum = czm_luminance(envMapSample);
+        float envLum = luminance(envMapSample);
 
         if (envLum > maxEnvLuminance) {
             envMapSample *= maxEnvLuminance / envLum;
@@ -329,8 +330,8 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
     }
 
     if (allowMissedRays) {
-        float ssgiLum = czm_luminance(SSGI);
-        float envLum = czm_luminance(envMapSample);
+        float ssgiLum = luminance(SSGI);
+        float envLum = luminance(envMapSample);
 
         if (envLum > ssgiLum) SSGI = envMapSample;
     }

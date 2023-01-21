@@ -86,13 +86,6 @@ mat3 getBasisFromNormal(vec3 normal) {
     return mat3(ortho2, ortho, normal);
 }
 
-// source: https://github.com/CesiumGS/cesium/blob/main/Source/Shaders/Builtin/Functions/luminance.glsl
-float czm_luminance(vec3 rgb) {
-    // Algorithm from Chapter 10 of Graphics Shaders.
-    const vec3 W = vec3(0.2125, 0.7154, 0.0721);
-    return dot(rgb, W);
-}
-
 #define PI M_PI
 
 vec3 F_Schlick(vec3 f0, float theta) {

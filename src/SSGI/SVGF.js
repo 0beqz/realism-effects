@@ -9,12 +9,12 @@ const defaultSVGFOptions = {
 }
 
 export class SVGF {
-	constructor(scene, camera, customComposeShader, options = defaultSVGFOptions) {
+	constructor(scene, camera, denoiseComposeShader, denoiseComposeFunctions, options = defaultSVGFOptions) {
 		options = { ...defaultSVGFOptions, ...options }
 
 		this.svgfTemporalResolvePass = new SVGFTemporalResolvePass(scene, camera, options)
 
-		this.denoisePass = new DenoisePass(camera, null, customComposeShader, options)
+		this.denoisePass = new DenoisePass(camera, null, denoiseComposeShader, denoiseComposeFunctions, options)
 
 		this.denoisePass.fullscreenMaterial.uniforms.momentTexture.value = this.svgfTemporalResolvePass.momentTexture
 	}

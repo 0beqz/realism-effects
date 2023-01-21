@@ -3,7 +3,6 @@
 #define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
 
 vec4 moment, historyMoment;
-float momentTemporalResolveMix = max(blend, 0.8);
 
 // diffuse
 if (isReprojectedUvValid) {
@@ -78,6 +77,7 @@ if (anyReprojectionValid) {
     moment.ba = vec2(0., 10.);
 }
 
+float momentTemporalResolveMix = max(blend, 0.8);
 gMoment = mix(moment, historyMoment, momentTemporalResolveMix);
 
 // if (isReprojectedUvSpecularValid)

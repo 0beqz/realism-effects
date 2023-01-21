@@ -41,7 +41,7 @@ export const defaultSSGIOptions = {
 	roughnessPhi: 1,
 	jitter: 0,
 	jitterRoughness: 0,
-	envBlur: 0,
+	envBlur: 0.5,
 	maxEnvLuminance: 10,
 	steps: 20,
 	refineSteps: 5,
