@@ -30,12 +30,14 @@ l = normalize(l);
 if (dot(viewNormal, l) < 0.) l = -l;
 
 vec3 h = normalize(v + l);  // half vector
-float VoH = max(EPSILON, dot(v, h));
 
+// try to approximate the fresnel term we get when accumulating over multiple samples
+float VoH = max(EPSILON, dot(v, h));
 VoH = pow(VoH, 0.875);
 
 // fresnel
 vec3 f0 = mix(vec3(0.04), diffuse, metalness);
 vec3 F = F_Schlick(f0, VoH);
 
-diffuseLightingColor = diffuse * (1. - metalness) * (1. - F) * diffuseLightingColor + specularLightingColor * F;
+// final output of the denoiser
+finalOutputColor = diffuse * (1. - metalness) * (1. - F) * diffuseLightingColor + specularLightingColor * F;

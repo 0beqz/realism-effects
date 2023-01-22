@@ -1,5 +1,5 @@
 ﻿import { Pass } from "postprocessing"
-import { GLSL3, HalfFloatType, LinearFilter, ShaderMaterial, Uniform, Vector2, WebGLMultipleRenderTargets } from "three"
+import { GLSL3, HalfFloatType, ShaderMaterial, Uniform, Vector2, WebGLMultipleRenderTargets } from "three"
 import basicVertexShader from "../shader/basic.vert"
 import fragmentShader from "../shader/denoise.frag"
 
@@ -9,7 +9,11 @@ import fragmentShader from "../shader/denoise.frag"
 
 const defaultDenoisePassOptions = {
 	moment: true,
-	roughness: true
+	depth: true,
+	normal: false,
+	roughness: false,
+	diffuse: true,
+	specular: true
 }
 export class DenoisePass extends Pass {
 	iterations = 1
@@ -41,6 +45,7 @@ export class DenoisePass extends Pass {
 				momentTexture: new Uniform(null),
 				invTexSize: new Uniform(new Vector2()),
 				horizontal: new Uniform(true),
+				blurHorizontal: new Uniform(true),
 				denoiseKernel: new Uniform(1),
 				denoiseDiffuse: new Uniform(1),
 				denoiseSpecular: new Uniform(1),
@@ -57,38 +62,43 @@ export class DenoisePass extends Pass {
 			glslVersion: GLSL3
 		})
 
+		if (options.diffuse) this.fullscreenMaterial.defines.DENOISE_DIFFUSE = ""
+		if (options.specular) this.fullscreenMaterial.defines.DENOISE_SPECULAR = ""
+
+		if (options.moment) this.fullscreenMaterial.defines.useMoment = ""
+		if (options.depth) this.fullscreenMaterial.defines.useDepth = ""
+		if (options.normal) this.fullscreenMaterial.defines.useNormal = ""
+		if (options.roughness) this.fullscreenMaterial.defines.useRoughness = ""
+
 		const renderTargetOptions = {
-			minFilter: LinearFilter,
-			magFilter: LinearFilter,
 			type: HalfFloatType,
 			depthBuffer: false
 		}
 
-		this.renderTargetA = new WebGLMultipleRenderTargets(1, 1, 2, renderTargetOptions)
-		this.renderTargetB = new WebGLMultipleRenderTargets(1, 1, 2, renderTargetOptions)
+		const bufferCount = this.isUsingDiffuse() && this.isUsingSpecular() ? 2 : 1
+
+		this.renderTargetA = new WebGLMultipleRenderTargets(1, 1, bufferCount, renderTargetOptions)
+		this.renderTargetB = new WebGLMultipleRenderTargets(1, 1, bufferCount, renderTargetOptions)
 
 		this.renderTargetA.texture[0].type = HalfFloatType
-		this.renderTargetA.texture[1].type = HalfFloatType
 		this.renderTargetB.texture[0].type = HalfFloatType
-		this.renderTargetB.texture[1].type = HalfFloatType
-
-		this.renderTargetA.texture[0].minFilter = LinearFilter
-		this.renderTargetA.texture[1].minFilter = LinearFilter
-		this.renderTargetB.texture[0].minFilter = LinearFilter
-		this.renderTargetB.texture[1].minFilter = LinearFilter
-
-		this.renderTargetA.texture[0].magFilter = LinearFilter
-		this.renderTargetA.texture[1].magFilter = LinearFilter
-		this.renderTargetB.texture[0].magFilter = LinearFilter
-		this.renderTargetB.texture[1].magFilter = LinearFilter
-
 		this.renderTargetA.texture[0].needsUpdate = true
-		this.renderTargetA.texture[1].needsUpdate = true
 		this.renderTargetB.texture[0].needsUpdate = true
-		this.renderTargetB.texture[1].needsUpdate = true
 
-		if (options.moment) this.fullscreenMaterial.defines.useMoment = ""
-		if (options.roughness) this.fullscreenMaterial.defines.useRoughness = ""
+		if (bufferCount > 1) {
+			this.renderTargetA.texture[1].type = HalfFloatType
+			this.renderTargetB.texture[1].type = HalfFloatType
+			this.renderTargetA.texture[1].needsUpdate = true
+			this.renderTargetB.texture[1].needsUpdate = true
+		}
+	}
+
+	isUsingDiffuse() {
+		return "DENOISE_DIFFUSE" in this.fullscreenMaterial.defines
+	}
+
+	isUsingSpecular() {
+		return "DENOISE_SPECULAR" in this.fullscreenMaterial.defines
 	}
 
 	setSize(width, height) {
@@ -106,51 +116,63 @@ export class DenoisePass extends Pass {
 	render(renderer) {
 		const diffuseLightingTexture = this.fullscreenMaterial.uniforms.diffuseLightingTexture.value
 		const specularLightingTexture = this.fullscreenMaterial.uniforms.specularLightingTexture.value
+		const denoiseKernel = this.fullscreenMaterial.uniforms.denoiseKernel.value
 
-		const skipDenoiseStr = (this.iterations === 0).toString()
+		const isUsingDiffuse = this.isUsingDiffuse()
+		const isUsingSpecular = this.isUsingSpecular()
 
-		if (this.fullscreenMaterial.defines.skipDenoise !== skipDenoiseStr) {
-			this.fullscreenMaterial.defines.skipDenoise = (this.iterations === 0).toString()
-			this.fullscreenMaterial.needsUpdate = true
-		}
+		const specularOffset = isUsingDiffuse ? 1 : 0
 
 		if (this.iterations > 0) {
 			for (let i = 0; i < 2 * this.iterations; i++) {
 				const horizontal = i % 2 === 0
 				const stepSize = 2 ** ~~(i / 2)
 
+				const n = parseInt(Math.log2(stepSize))
+				const blurHorizontal = n % 2 == 0
+
 				this.fullscreenMaterial.uniforms.horizontal.value = horizontal
+				this.fullscreenMaterial.uniforms.blurHorizontal.value = blurHorizontal
 				this.fullscreenMaterial.uniforms.stepSize.value = stepSize
 				this.fullscreenMaterial.uniforms.isLastIteration.value = i === 2 * this.iterations - 1
 
 				const renderTarget = horizontal ? this.renderTargetA : this.renderTargetB
 
-				this.fullscreenMaterial.uniforms.diffuseLightingTexture.value = horizontal
-					? i === 0
-						? diffuseLightingTexture
-						: this.renderTargetB.texture[0]
-					: this.renderTargetA.texture[0]
+				// diffuse
+				if (isUsingDiffuse) {
+					this.fullscreenMaterial.uniforms.diffuseLightingTexture.value = horizontal
+						? i === 0
+							? diffuseLightingTexture
+							: this.renderTargetB.texture[0]
+						: this.renderTargetA.texture[0]
+				}
 
 				// specular
-
-				this.fullscreenMaterial.uniforms.specularLightingTexture.value = horizontal
-					? i === 0
-						? specularLightingTexture
-						: this.renderTargetB.texture[1]
-					: this.renderTargetA.texture[1]
+				if (isUsingSpecular) {
+					this.fullscreenMaterial.uniforms.specularLightingTexture.value = horizontal
+						? i === 0
+							? specularLightingTexture
+							: this.renderTargetB.texture[specularOffset]
+						: this.renderTargetA.texture[specularOffset]
+				}
 
 				renderer.setRenderTarget(renderTarget)
 				renderer.render(this.scene, this.camera)
 			}
 		} else {
+			this.fullscreenMaterial.uniforms.denoiseKernel.value = 0
+
 			renderer.setRenderTarget(this.renderTargetB)
 			renderer.render(this.scene, this.camera)
+
+			this.fullscreenMaterial.uniforms.denoiseKernel.value = denoiseKernel
 		}
 
 		this.fullscreenMaterial.uniforms.diffuseLightingTexture.value = diffuseLightingTexture
 		this.fullscreenMaterial.uniforms.specularLightingTexture.value = specularLightingTexture
 	}
 
+	// final composition will be written to buffer 0
 	get texture() {
 		return this.renderTargetB.texture[0]
 	}
