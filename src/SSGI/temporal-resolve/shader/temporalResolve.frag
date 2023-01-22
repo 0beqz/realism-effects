@@ -189,14 +189,6 @@ vec2 getDilatedDepthUV(out float currentDepth, out vec4 closestDepthTexel) {
 
 #ifdef catmullRomSampling
 vec4 SampleTextureCatmullRom(sampler2D tex, in vec2 uv, in vec2 texSize) {
-    vec4 center = textureLod(tex, uv, 0.);
-    float pixelFrames = center.a;
-
-    // Catmull Rom Sampling will result in very glitchy sampling when the center texel is noisy over frame so use the center texel in that case
-    if (pixelFrames < 100.) {
-        return center;
-    }
-
     // We're going to sample a a 4x4 grid of texels surrounding the target UV coordinate. We'll do this by rounding
     // down the sample location to get the exact center of our "starting" texel. The starting texel will be at
     // location [1, 1] in the grid, where [0, 0] is the top left corner.
@@ -240,18 +232,13 @@ vec4 SampleTextureCatmullRom(sampler2D tex, in vec2 uv, in vec2 texSize) {
     result += textureLod(tex, vec2(texPos12.x, texPos3.y), 0.0f) * w12.x * w3.y;
     result += textureLod(tex, vec2(texPos3.x, texPos3.y), 0.0f) * w3.x * w3.y;
 
+    result = max(result, vec4(0.));
+
     return result;
 }
 #endif
 
 void main() {
-    vec4 inputTexel = textureLod(inputTexture, vUv, 0.0);
-    vec3 inputColor = inputTexel.rgb;
-
-#ifdef logTransform
-    inputColor = transformColor(inputColor);
-#endif
-
 #ifdef dilation
     vec4 depthTexel;
     float depth;
@@ -263,6 +250,21 @@ void main() {
 #endif
 
     bool isBackground = dot(depthTexel.rgb, depthTexel.rgb) == 0.0;
+
+#ifndef neighborhoodClamping
+    if (isBackground) {
+        discard;
+        return;
+    }
+#endif
+
+    vec4 inputTexel = textureLod(inputTexture, vUv, 0.0);
+    vec3 inputColor = inputTexel.rgb;
+
+#ifdef logTransform
+    inputColor = transformColor(inputColor);
+#endif
+
     bool didMove;
     bool isReprojectedUvValid;
     vec2 reprojectedUv;
@@ -312,8 +314,6 @@ void main() {
             getNeighborhoodAABB(inputTexture, uv, minNeighborColor, maxNeighborColor);
 
             accumulatedColor = clamp(accumulatedColor, minNeighborColor, maxNeighborColor);
-
-            if (isBackground) accumulatedColor = inputColor;
 #endif
         } else {
             // reprojection invalid possibly due to disocclusion

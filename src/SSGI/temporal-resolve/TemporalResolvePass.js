@@ -145,7 +145,7 @@ export class TemporalResolvePass extends Pass {
 		this.unjitter()
 
 		if (this.haltonSequence.length === 0)
-			this.haltonSequence = generateHalton23Points(16).map(([a, b]) => [a - 0.5, b - 0.5])
+			this.haltonSequence = generateHalton23Points(16384).map(([a, b]) => [a - 0.5, b - 0.5])
 
 		// cheap trick to get rid of aliasing on the final buffer (technique known from TAA)
 		this.haltonIndex = (this.haltonIndex + 1) % this.haltonSequence.length

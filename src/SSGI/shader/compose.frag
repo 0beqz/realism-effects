@@ -7,7 +7,7 @@ uniform int toneMapping;
 #include <tonemapping_pars_fragment>
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
-    vec4 ssgiTexel = textureLod(inputTexture, vUv, 0.);
+    vec4 ssgiTexel = textureLod(inputTexture, uv, 0.);
     vec3 ssgiClr = ssgiTexel.rgb;
 
     switch (toneMapping) {
@@ -34,10 +34,10 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 
     ssgiClr *= toneMappingExposure;
 
-    vec4 depthTexel = textureLod(depthTexture, vUv, 0.);
+    vec4 depthTexel = textureLod(depthTexture, uv, 0.);
 
     if (dot(depthTexel.rgb, depthTexel.rgb) == 0.) {
-        ssgiClr = textureLod(sceneTexture, vUv, 0.).rgb;
+        ssgiClr = textureLod(sceneTexture, uv, 0.).rgb;
     }
 
     outputColor = vec4(ssgiClr, 1.0);

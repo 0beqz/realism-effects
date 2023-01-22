@@ -10,11 +10,18 @@ import fragmentShader from "../shader/denoise.frag"
 const defaultDenoisePassOptions = {
 	moment: true,
 	depth: true,
-	normal: false,
-	roughness: false,
+	normal: true,
+	roughness: true,
 	diffuse: true,
 	specular: true
 }
+
+const useEdgeStoppingTypes = [
+	["depth", "depthPhi", "useDepth"],
+	["normal", "normalPhi", "useNormal"],
+	["roughness", "roughnessPhi", "useRoughness"]
+]
+
 export class DenoisePass extends Pass {
 	iterations = 1
 
@@ -66,9 +73,8 @@ export class DenoisePass extends Pass {
 		if (options.specular) this.fullscreenMaterial.defines.DENOISE_SPECULAR = ""
 
 		if (options.moment) this.fullscreenMaterial.defines.useMoment = ""
-		if (options.depth) this.fullscreenMaterial.defines.useDepth = ""
-		if (options.normal) this.fullscreenMaterial.defines.useNormal = ""
-		if (options.roughness) this.fullscreenMaterial.defines.useRoughness = ""
+
+		this.options = options
 
 		const renderTargetOptions = {
 			type: HalfFloatType,
@@ -80,16 +86,9 @@ export class DenoisePass extends Pass {
 		this.renderTargetA = new WebGLMultipleRenderTargets(1, 1, bufferCount, renderTargetOptions)
 		this.renderTargetB = new WebGLMultipleRenderTargets(1, 1, bufferCount, renderTargetOptions)
 
-		this.renderTargetA.texture[0].type = HalfFloatType
-		this.renderTargetB.texture[0].type = HalfFloatType
-		this.renderTargetA.texture[0].needsUpdate = true
-		this.renderTargetB.texture[0].needsUpdate = true
-
-		if (bufferCount > 1) {
-			this.renderTargetA.texture[1].type = HalfFloatType
-			this.renderTargetB.texture[1].type = HalfFloatType
-			this.renderTargetA.texture[1].needsUpdate = true
-			this.renderTargetB.texture[1].needsUpdate = true
+		for (const texture of [...this.renderTargetA.texture, ...this.renderTargetB.texture]) {
+			texture.type = HalfFloatType
+			texture.needsUpdate = true
 		}
 	}
 
@@ -114,6 +113,18 @@ export class DenoisePass extends Pass {
 	}
 
 	render(renderer) {
+		for (const [name, phi, define] of useEdgeStoppingTypes) {
+			const useEdgeStoppingType = this.options[name] && this.fullscreenMaterial.uniforms[phi].value > 0.001
+
+			if (useEdgeStoppingType !== define in this.fullscreenMaterial.defines) {
+				useEdgeStoppingType
+					? (this.fullscreenMaterial.defines[define] = "")
+					: delete this.fullscreenMaterial.defines[define]
+
+				this.fullscreenMaterial.needsUpdate = true
+			}
+		}
+
 		const diffuseLightingTexture = this.fullscreenMaterial.uniforms.diffuseLightingTexture.value
 		const specularLightingTexture = this.fullscreenMaterial.uniforms.specularLightingTexture.value
 		const denoiseKernel = this.fullscreenMaterial.uniforms.denoiseKernel.value

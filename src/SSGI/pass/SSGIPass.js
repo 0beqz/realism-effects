@@ -16,7 +16,7 @@ import { generateHalton23Points } from "../temporal-resolve/utils/generateHalton
 import { getVisibleChildren, keepMaterialMapUpdated } from "../utils/Utils.js"
 
 const backgroundColor = new Color(0)
-const points = generateHalton23Points(2 ** 16)
+const points = generateHalton23Points(16384)
 export class SSGIPass extends Pass {
 	cachedMaterials = new WeakMap()
 	visibleMeshes = []

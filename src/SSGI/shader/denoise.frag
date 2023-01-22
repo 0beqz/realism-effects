@@ -38,12 +38,11 @@ uniform bool isLastIteration;
 #define EPSILON      0.00001
 #define M_PI         3.1415926535897932384626433832795
 #define PI           M_PI
-
 #define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
 
 #include <customComposeShaderFunctions>
 
-vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth, const mat4 curMatrixWorld) {
+vec3 screenSpaceToWorldSpace(in vec2 uv, in float depth, in mat4 curMatrixWorld) {
     vec4 ndc = vec4(
         (uv.x - 0.5) * 2.0,
         (uv.y - 0.5) * 2.0,
@@ -56,15 +55,16 @@ vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth, const mat4 curMat
     return view.xyz;
 }
 
-float distToPlane(const vec3 worldPos, const vec3 neighborWorldPos, const vec3 worldNormal) {
+float distToPlane(in vec3 worldPos, in vec3 neighborWorldPos, in vec3 worldNormal) {
     vec3 toCurrent = worldPos - neighborWorldPos;
     float distToPlane = abs(dot(toCurrent, worldNormal));
 
     return distToPlane;
 }
 
-void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec2 offset, const float depth, const vec3 normal, const float roughness, const vec3 worldPos, const float lumaDiffuse, const float lumaSpecular,
-         const float colorPhiDiffuse, const float colorPhiSpecular,
+void tap(in vec2 neighborVec, in vec2 pixelStepOffset, in vec2 offset, in float depth, in vec3 normal, in float roughness, in vec3 worldPos,
+         in float lumaDiffuse, in float lumaSpecular,
+         in float colorPhiDiffuse, in float colorPhiSpecular,
          inout vec3 diffuseLightingColor, inout vec3 specularLightingColor, inout float totalWeightDiffuse, inout float sumVarianceDiffuse,
          inout float totalWeightSpecular, inout float sumVarianceSpecular) {
     vec2 neighborUv = vUv + neighborVec * pixelStepOffset;
@@ -119,9 +119,7 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec2 offset, 
     float neighborLumaDiffuse = luminance(diffuseNeighborColor);
     float lumaDiffDiffuse = abs(lumaDiffuse - neighborLumaDiffuse);
     float lumaSimilarityDiffuse = max(1.0 - lumaDiffDiffuse / colorPhiDiffuse, 0.0);
-#endif
 
-#ifdef DENOISE_DIFFUSE
     float weightDiffuse = min(basicWeight * lumaSimilarityDiffuse, 1.0);
     diffuseLightingColor += diffuseNeighborColor * weightDiffuse;
     totalWeightDiffuse += weightDiffuse;
@@ -135,9 +133,7 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec2 offset, 
     float neighborLumaSpecular = luminance(specularNeighborColor);
     float lumaDiffSpecular = abs(lumaSpecular - neighborLumaSpecular);
     float lumaSimilaritySpecular = max(1.0 - lumaDiffSpecular / colorPhiSpecular, 0.0);
-#endif
 
-#ifdef DENOISE_SPECULAR
     float weightSpecular = min(basicWeight * lumaSimilaritySpecular, 1.0);
     specularLightingColor += specularNeighborColor * weightSpecular;
     totalWeightSpecular += weightSpecular;
@@ -145,7 +141,6 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec2 offset, 
 
 // evaluate moment
 #ifdef useMoment
-
     // first iteration
     if (horizontal && stepSize == 1.) {
         vec4 neighborMoment = textureLod(momentTexture, neighborUv, 0.);
@@ -223,8 +218,13 @@ void main() {
     if (horizontal && stepSize == 1.) {
         vec4 moment = textureLod(momentTexture, vUv, 0.);
 
+    #ifdef DENOISE_DIFFUSE
         sumVarianceDiffuse = max(0.0, moment.g - moment.r * moment.r);
+    #endif
+
+    #ifdef DENOISE_SPECULAR
         sumVarianceSpecular = max(0.0, moment.a - moment.b * moment.b);
+    #endif
     } else {
     #ifdef DENOISE_DIFFUSE
         sumVarianceDiffuse = diffuseLightingTexel.a;
@@ -282,11 +282,9 @@ void main() {
     }
 
     if (isLastIteration) {
-        vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.);
-        vec3 diffuse = diffuseTexel.rgb;
-        float metalness = diffuseTexel.a;
-
         vec3 finalOutputColor;
+
+        // custom compose shader
 #include <customComposeShader>
 
 #if !defined(DENOISE_DIFFUSE) && defined(DENOISE_SPECULAR)

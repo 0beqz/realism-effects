@@ -38,6 +38,7 @@ uniform float maxEnvLuminance;
 #define INVALID_RAY_COORDS vec2(-1.0);
 #define EARLY_OUT_COLOR    vec4(0.0, 0.0, 0.0, 0.0)
 #define EPSILON            0.00001
+#define ONE_MINUS_EPSILON  1.0 - EPSILON
 #define luminance(a)       dot(vec3(0.2125, 0.7154, 0.0721), a)
 
 float nearMinusFar;
@@ -69,8 +70,6 @@ float getCurvature(vec3 worldNormal) {
 void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.0);
 
-    float unpackedDepth = unpackRGBAToDepth(depthTexel);
-
     // filter out background
     if (dot(depthTexel.rgb, depthTexel.rgb) == 0.) {
         discard;
@@ -85,6 +84,8 @@ void main() {
         discard;
         return;
     }
+
+    float unpackedDepth = unpackRGBAToDepth(depthTexel);
 
     normalTexel.xyz = unpackRGBToNormal(normalTexel.rgb);
 
@@ -154,10 +155,10 @@ void main() {
 
         vec3 h = normalize(v + l);  // half vector
 
-        float NoL = max(EPSILON, dot(n, l));
-        float NoH = max(EPSILON, dot(n, h));
-        float LoH = max(EPSILON, dot(l, h));
-        float VoH = max(EPSILON, dot(v, h));
+        float NoL = clamp(dot(n, l), EPSILON, ONE_MINUS_EPSILON);
+        float NoH = clamp(dot(n, h), EPSILON, ONE_MINUS_EPSILON);
+        float LoH = clamp(dot(l, h), EPSILON, ONE_MINUS_EPSILON);
+        float VoH = clamp(dot(v, h), EPSILON, ONE_MINUS_EPSILON);
 
         // fresnel
         vec3 F = F_Schlick(f0, VoH);

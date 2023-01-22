@@ -31,9 +31,13 @@ if (dot(viewNormal, l) < 0.) l = -l;
 
 vec3 h = normalize(v + l);  // half vector
 
-// try to approximate the fresnel term we get when accumulating over multiple samples
+// try to approximate the fresnel term we get when accumulating over multiple frames
 float VoH = max(EPSILON, dot(v, h));
 VoH = pow(VoH, 0.875);
+
+vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.);
+vec3 diffuse = diffuseTexel.rgb;
+float metalness = diffuseTexel.a;
 
 // fresnel
 vec3 f0 = mix(vec3(0.04), diffuse, metalness);
