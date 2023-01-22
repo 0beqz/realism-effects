@@ -22,7 +22,7 @@ export class SSGIPass extends Pass {
 	visibleMeshes = []
 	haltonIndex = 0
 
-	constructor(ssgiEffect) {
+	constructor(ssgiEffect, diffuse = true, specular = true) {
 		super("SSGIPass")
 
 		this.ssgiEffect = ssgiEffect
@@ -31,7 +31,9 @@ export class SSGIPass extends Pass {
 
 		this.fullscreenMaterial = new SSGIMaterial()
 
-		this.renderTarget = new WebGLMultipleRenderTargets(1, 1, 2, {
+		const bufferCount = diffuse && specular ? 2 : 1
+
+		this.renderTarget = new WebGLMultipleRenderTargets(1, 1, bufferCount, {
 			type: HalfFloatType,
 			depthBuffer: false
 		})
@@ -44,7 +46,9 @@ export class SSGIPass extends Pass {
 		this.fullscreenMaterial.uniforms.cameraPos.value = this._camera.position
 
 		if (ssgiEffect._camera.isPerspectiveCamera) this.fullscreenMaterial.defines.PERSPECTIVE_CAMERA = ""
-		if (ssgiEffect.reflectionsOnly) this.fullscreenMaterial.defines.reflectionsOnly = ""
+
+		if (diffuse && !specular) this.fullscreenMaterial.defines.diffuseOnly = ""
+		if (!diffuse && specular) this.fullscreenMaterial.defines.specularOnly = ""
 
 		this.initMRTRenderTarget()
 	}
@@ -68,7 +72,8 @@ export class SSGIPass extends Pass {
 	}
 
 	get specularTexture() {
-		return this.renderTarget.texture[1]
+		const index = "specularOnly" in this.fullscreenMaterial.defines ? 0 : 1
+		return this.renderTarget.texture[index]
 	}
 
 	initMRTRenderTarget() {

@@ -3,6 +3,7 @@ import { Vector3 } from "three"
 import { ShaderMaterial, Uniform, Vector2 } from "three"
 import vertexShader from "../shader/basicVertexShader.vert"
 import fragmentShader from "../shader/temporalResolve.frag"
+import reprojection from "../shader/reprojection.glsl"
 
 export class TemporalResolveMaterial extends ShaderMaterial {
 	constructor() {
@@ -30,7 +31,7 @@ export class TemporalResolveMaterial extends ShaderMaterial {
 				cameraPos: new Uniform(new Vector3())
 			},
 			vertexShader,
-			fragmentShader,
+			fragmentShader: fragmentShader.replace("#include <reprojection>", reprojection),
 			toneMapped: false
 		})
 	}

@@ -14,8 +14,9 @@ export const defaultTemporalResolvePassOptions = {
 	renderVelocity: true,
 	neighborhoodClamping: false,
 	logTransform: false,
-	depthDistance: 0.25,
+	depthDistance: 0.5,
 	normalDistance: 10,
+	worldDistance: 0.5,
 	reprojectReflectionHitPoints: false,
 	customComposeShader: null,
 	renderTarget: null
@@ -63,6 +64,7 @@ export class TemporalResolvePass extends Pass {
 
 		this.fullscreenMaterial.defines.depthDistance = options.depthDistance.toPrecision(5)
 		this.fullscreenMaterial.defines.normalDistance = options.normalDistance.toPrecision(5)
+		this.fullscreenMaterial.defines.worldDistance = options.worldDistance.toPrecision(5)
 
 		this.fullscreenMaterial.uniforms.blend.value = options.blend
 		this.fullscreenMaterial.uniforms.constantBlend.value = options.constantBlend

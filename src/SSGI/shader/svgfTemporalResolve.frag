@@ -1,79 +1,68 @@
-﻿if (dot(inputColor, inputColor) == 0.0) inputColor = accumulatedColor;
+﻿gDiffuse = vec4(mix(inputColor, accumulatedColor, reprojectedUv.x != -1. ? temporalResolveMix : 0.0), alpha);
 
+// specular
+vec4 specularTexel = dot(inputTexel.rgb, inputTexel.rgb) == 0.0 ? textureLod(specularTexture, uv, 0.) : vec4(0.);
+vec3 specularColor = specularTexel.rgb;
+float rayLength = specularTexel.a;
+
+// specular UV
+vec2 specularUv = reprojectedUv;
+if (rayLength != 0.0) {
+    vec2 hitPointUv = reprojectHitPoint(worldPos, rayLength, uv, depth);
+
+    if (validateReprojectedUV(hitPointUv, depth, worldPos, worldNormal)) specularUv = hitPointUv;
+}
+
+vec3 lastSpecular;
+float specularAlpha = 1.0;
+
+if (specularUv.x != -1.) {
+    vec4 lastSpecularTexel = sampleReprojectedTexture(lastSpecularTexture, specularUv);
+
+    lastSpecular = lastSpecularTexel.rgb;
+    specularAlpha = max(1., lastSpecularTexel.a);
+
+    // check if specular was sampled for this texel this frame
+    if (dot(specularColor, specularColor) != 0.0) {
+        specularAlpha++;
+    } else {
+        specularColor = lastSpecular;
+    }
+
+    temporalResolveMix = min(1. - 1. / specularAlpha, maxValue);
+
+    float roughness = inputTexel.a;
+    float glossines = max(0., 0.01 - roughness) / 0.01;
+    temporalResolveMix *= 1. - glossines;
+}
+
+gSpecular = vec4(mix(specularColor, lastSpecular, specularUv.x != -1. ? temporalResolveMix : 0.), specularAlpha);
+
+// moment
 #define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
 
 vec4 moment, historyMoment;
 
-// diffuse
-if (isReprojectedUvValid) {
-    outputColor = mix(inputColor, accumulatedColor, temporalResolveMix);
-    gDiffuse = vec4(outputColor, alpha);
-
-    // diffuse moment
+// diffuse moment
+if (reprojectedUv.x != -1.) {
     historyMoment = textureLod(lastMomentTexture, reprojectedUv, 0.);
 
     moment.r = luminance(gDiffuse.rgb);
     moment.g = moment.r * moment.r;
 } else {
-    gDiffuse = vec4(inputColor, 0.);
-
-    // boost new samples
     moment.rg = vec2(0., 10.);
 }
 
-// specular
-vec4 specularTexel = textureLod(specularTexture, uv, 0.);
-vec3 specularColor = specularTexel.rgb;
-float rayLength = specularTexel.a;
-bool canReprojectHitPoint = rayLength != 0.0;
-
-vec2 reprojectedUvSpecular = canReprojectHitPoint ? reprojectHitPoint(worldPos, rayLength, uv, depth) : vec2(0.);
-bool isReprojectedUvSpecularValid = canReprojectHitPoint && validateReprojectedUV(reprojectedUv, depth, worldPos, worldNormal);
-
-bool anyReprojectionValid = isReprojectedUvSpecularValid || isReprojectedUvValid;
-
-// choose which UV coordinates to use when reprojecting specular lighting
-vec2 specularUv = anyReprojectionValid ? (isReprojectedUvSpecularValid ? reprojectedUvSpecular : reprojectedUv) : vec2(0.);
-
-if (anyReprojectionValid) {
-#ifdef catmullRomSampling
-    vec4 lastSpecularTexel = SampleTextureCatmullRom(lastSpecularTexture, specularUv, 1.0 / invTexSize);
-#else
-    vec4 lastSpecularTexel = textureLod(lastSpecularTexture, specularUv, 0.0);
-#endif
-
-    vec3 lastSpecular = lastSpecularTexel.rgb;
-    float specularAlpha = max(lastSpecularTexel.a, 1.);
-
-    bool wasSpecularSampled = dot(specularColor, specularColor) != 0.0;
-
-    if (wasSpecularSampled)
-        specularAlpha++;
-    else
-        specularColor = lastSpecular;
-
-    temporalResolveMix = 1. - 1. / specularAlpha;
-    temporalResolveMix = min(temporalResolveMix, maxValue);
-
-    float pixelFrames = max(1., specularAlpha - 1.);
-    float a = 1. - 1. / pixelFrames;
-    if (didMove && a > blend) specularAlpha = 1. / (1. - blend);
-
-    float roughness = inputTexel.a;
-    float glossines = max(0., 0.01 - roughness) / 0.01;
-    temporalResolveMix *= 1. - glossines;
-
-    gSpecular = vec4(mix(specularColor, lastSpecular, temporalResolveMix), specularAlpha);
-
-    // specular moment
-    historyMoment = textureLod(lastMomentTexture, specularUv, 0.);
+// specular moment
+if (specularUv.x != -1.) {
+    // if the specular UV is not equal to the reprojected UV then we reprojected the hit point and need different info for variance
+    if (specularUv != reprojectedUv) {
+        historyMoment.ba = textureLod(lastMomentTexture, specularUv, 0.).ba;
+    }
 
     moment.b = luminance(gSpecular.rgb);
     moment.a = moment.b * moment.b;
 } else {
-    gSpecular = vec4(specularColor, 0.);
-
-    // boost new samples
     moment.ba = vec2(0., 10.);
 }
 

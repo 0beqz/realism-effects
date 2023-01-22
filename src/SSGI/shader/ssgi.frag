@@ -1,5 +1,13 @@
-﻿layout(location = 0) out vec4 gDiffuse;
+﻿#if !defined(diffuseOnly) && !defined(specularOnly)
+layout(location = 0) out vec4 gDiffuse;
 layout(location = 1) out vec4 gSpecular;
+#else
+    #ifdef diffuseOnly
+layout(location = 0) out vec4 gDiffuse;
+    #else
+layout(location = 0) out vec4 gSpecular;
+    #endif
+#endif
 
 varying vec2 vUv;
 
@@ -54,7 +62,7 @@ vec2 RayMarch(in vec3 dir, inout vec3 hitPos);
 vec2 BinarySearch(in vec3 dir, inout vec3 hitPos);
 float fastGetViewZ(const in float depth);
 vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, float metalness,
-              float roughness, bool isDiffuseSample, vec3 F, float NoV, float NoL, float NoH, float LoH, float VoH, vec2 random, inout vec3 reflected,
+              float roughness, bool isDiffuseSample, float NoV, float NoL, float NoH, float LoH, float VoH, vec2 random, inout vec3 l,
               inout vec3 hitPos, out bool isMissedRay, out vec3 brdf);
 
 float getCurvature(vec3 worldNormal) {
@@ -160,10 +168,11 @@ void main() {
         float LoH = clamp(dot(l, h), EPSILON, ONE_MINUS_EPSILON);
         float VoH = clamp(dot(v, h), EPSILON, ONE_MINUS_EPSILON);
 
+#if !defined(diffuseOnly) && !defined(specularOnly)
         // fresnel
         vec3 F = F_Schlick(f0, VoH);
 
-        // diffuse and specular wieght
+        // diffuse and specular weight
         float diffW = (1. - metalness) * luminance(diffuse);
         float specW = luminance(F);
 
@@ -178,6 +187,13 @@ void main() {
 
         // if diffuse lighting should be sampled
         bool isDiffuseSample = random.z < diffW;
+#else
+    #ifdef diffuseOnly
+        const bool isDiffuseSample = true;
+    #else
+        const bool isDiffuseSample = false;
+    #endif
+#endif
 
         if (isDiffuseSample) {
             l = cosineSampleHemisphere(viewNormal, random.xy);
@@ -189,7 +205,7 @@ void main() {
             VoH = max(EPSILON, dot(v, h));
 
             vec3 gi = doSample(
-                viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, F, NoV, NoL, NoH, LoH, VoH, random.xy,
+                viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, NoV, NoL, NoH, LoH, VoH, random.xy,
                 l, hitPos, isMissedRay, brdf);
 
             gi *= brdf;
@@ -200,7 +216,7 @@ void main() {
 
         } else {
             vec3 gi = doSample(
-                viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, F, NoV, NoL, NoH, LoH, VoH, random.xy,
+                viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, NoV, NoL, NoH, LoH, VoH, random.xy,
                 l, hitPos, isMissedRay, brdf);
 
             gi *= brdf;
@@ -211,6 +227,11 @@ void main() {
         }
     }
 
+#ifndef specularOnly
+    gDiffuse = vec4(diffuseGI, roughness);
+#endif
+
+#ifndef diffuseOnly
     // calculate world-space ray length used for reprojecting hit points instead of screen-space pixels in the temporal resolve pass
     float rayLength = 0.0;
     if (!isMissedRay && roughness < 0.5) {
@@ -224,12 +245,12 @@ void main() {
         }
     }
 
-    gDiffuse = vec4(diffuseGI, roughness);
     gSpecular = vec4(specularGI, rayLength);
+#endif
 }
 
 vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, float metalness,
-              float roughness, bool isDiffuseSample, vec3 F, float NoV, float NoL, float NoH, float LoH, float VoH, vec2 random, inout vec3 l,
+              float roughness, bool isDiffuseSample, float NoV, float NoL, float NoH, float LoH, float VoH, vec2 random, inout vec3 l,
               inout vec3 hitPos, out bool isMissedRay, out vec3 brdf) {
     float cosTheta = max(0.0, dot(viewNormal, l));
 
