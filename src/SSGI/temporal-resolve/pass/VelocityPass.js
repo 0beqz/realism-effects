@@ -90,7 +90,7 @@ export class VelocityPass extends Pass {
 				originalMaterial.metalnessMap
 
 			if (map) velocityMaterial.uniforms.uvTransform.value = map.matrix
-			// velocityMaterial.side = originalMaterial.side
+			velocityMaterial.side = originalMaterial.side
 
 			updateVelocityMaterialBeforeRender(c, this._camera)
 		}

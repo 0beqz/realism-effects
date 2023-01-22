@@ -96,10 +96,14 @@ export const saveBoneTexture = object => {
 
 export const updateVelocityMaterialBeforeRender = (c, camera) => {
 	if (c.skeleton?.boneTexture) {
-		c.material.defines.USE_SKINNING = ""
-		c.material.defines.BONE_TEXTURE = ""
-
 		c.material.uniforms.boneTexture.value = c.skeleton.boneTexture
+
+		if (!("USE_SKINNING" in c.material.defines)) {
+			c.material.defines.USE_SKINNING = ""
+			c.material.defines.BONE_TEXTURE = ""
+
+			c.material.needsUpdate = true
+		}
 	}
 
 	c.modelViewMatrix.multiplyMatrices(camera.matrixWorldInverse, c.matrixWorld)
