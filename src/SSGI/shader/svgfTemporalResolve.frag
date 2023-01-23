@@ -1,5 +1,10 @@
-﻿gDiffuse = vec4(mix(inputColor, accumulatedColor, reprojectedUv.x != -1. ? temporalResolveMix : 0.0), alpha);
+﻿#define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
 
+gDiffuse = vec4(mix(inputColor, accumulatedColor, reprojectedUv.x != -1. ? temporalResolveMix : 0.0), alpha);
+
+vec4 moment, historyMoment;
+
+#if !defined(diffuseOnly) && !defined(specularOnly)
 // specular
 vec4 specularTexel = dot(inputTexel.rgb, inputTexel.rgb) == 0.0 ? textureLod(specularTexture, uv, 0.) : vec4(0.);
 vec3 specularColor = specularTexel.rgb;
@@ -38,21 +43,6 @@ if (specularUv.x != -1.) {
 
 gSpecular = vec4(mix(specularColor, lastSpecular, specularUv.x != -1. ? temporalResolveMix : 0.), specularAlpha);
 
-// moment
-#define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
-
-vec4 moment, historyMoment;
-
-// diffuse moment
-if (reprojectedUv.x != -1.) {
-    historyMoment = textureLod(lastMomentTexture, reprojectedUv, 0.);
-
-    moment.r = luminance(gDiffuse.rgb);
-    moment.g = moment.r * moment.r;
-} else {
-    moment.rg = vec2(0., 10.);
-}
-
 // specular moment
 if (specularUv.x != -1.) {
     // if the specular UV is not equal to the reprojected UV then we reprojected the hit point and need different info for variance
@@ -64,6 +54,26 @@ if (specularUv.x != -1.) {
     moment.a = moment.b * moment.b;
 } else {
     moment.ba = vec2(0., 10.);
+}
+#endif
+
+// diffuse moment
+if (reprojectedUv.x != -1.) {
+    historyMoment = textureLod(lastMomentTexture, reprojectedUv, 0.);
+
+#ifdef specularOnly
+    moment.b = luminance(gDiffuse.rgb);
+    moment.a = moment.b * moment.b;
+#else
+    moment.r = luminance(gDiffuse.rgb);
+    moment.g = moment.r * moment.r;
+#endif
+} else {
+#ifdef specularOnly
+    moment.ba = vec2(0., 10.);
+#else
+    moment.rg = vec2(0., 10.);
+#endif
 }
 
 float momentTemporalResolveMix = max(blend, 0.8);

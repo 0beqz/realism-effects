@@ -159,7 +159,6 @@ void main() {
         // convert reflected vector back to view-space
         l = (vec4(l, 1.) * cameraMatrixWorld).xyz;
         l = normalize(l);
-        if (dot(viewNormal, l) < 0.) l = -l;
 
         vec3 h = normalize(v + l);  // half vector
 
@@ -199,10 +198,10 @@ void main() {
             l = cosineSampleHemisphere(viewNormal, random.xy);
             h = normalize(v + l);  // half vector
 
-            NoL = max(EPSILON, dot(n, l));
-            NoH = max(EPSILON, dot(n, h));
-            LoH = max(EPSILON, dot(l, h));
-            VoH = max(EPSILON, dot(v, h));
+            NoL = clamp(dot(n, l), EPSILON, ONE_MINUS_EPSILON);
+            NoH = clamp(dot(n, h), EPSILON, ONE_MINUS_EPSILON);
+            LoH = clamp(dot(l, h), EPSILON, ONE_MINUS_EPSILON);
+            VoH = clamp(dot(v, h), EPSILON, ONE_MINUS_EPSILON);
 
             vec3 gi = doSample(
                 viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, NoV, NoL, NoH, LoH, VoH, random.xy,
@@ -244,7 +243,6 @@ void main() {
             rayLength = distance(worldPos, hitPosWS);
         }
     }
-
     gSpecular = vec4(specularGI, rayLength);
 #endif
 }

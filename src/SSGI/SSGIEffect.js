@@ -42,15 +42,25 @@ export class SSGIEffect extends Effect {
 		this._scene = scene
 		this._camera = camera
 
-		this.svgf = new SVGF(scene, camera, denoiseCompose, denoiseComposeFunctions)
+		const lightOptions = {
+			// specularOnly: true
+		}
+
+		this.svgf = new SVGF(scene, camera, denoiseCompose, denoiseComposeFunctions, lightOptions)
 
 		// ssgi pass
-		this.ssgiPass = new SSGIPass(this)
+		this.ssgiPass = new SSGIPass(this, lightOptions)
 		this.svgf.setInputTexture(this.ssgiPass.texture)
-		this.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.specularTexture.value = this.ssgiPass.specularTexture
+		this.svgf.setSpecularTexture(this.ssgiPass.specularTexture)
 
-		this.svgf.setNormalTexture(this.ssgiPass.normalTexture)
-		this.svgf.setDepthTexture(this.ssgiPass.depthTexture)
+		// the denoiser always uses the same G-buffers as the SSGI pass
+		const denoisePassUniforms = this.svgf.denoisePass.fullscreenMaterial.uniforms
+		denoisePassUniforms.depthTexture.value = this.ssgiPass.depthTexture
+		denoisePassUniforms.normalTexture.value = this.ssgiPass.normalTexture
+
+		// unless overridden, SVGF's temporal resolve pass also uses the same G-buffers as the SSGI pass
+		// when TRAA is being used, the temporal resolve pass needs to use different G-buffers without jittering
+		this.svgf.setNonJitteredGBuffers(this.ssgiPass.depthTexture, this.ssgiPass.normalTexture)
 		this.svgf.setDiffuseTexture(this.ssgiPass.diffuseTexture)
 
 		// modify the temporal resolve pass of SVGF denoiser for the SSGI effect
@@ -257,6 +267,13 @@ export class SSGIEffect extends Effect {
 			height,
 			resolutionScale: this.resolutionScale
 		}
+	}
+
+	setVelocityPass(velocityPass) {
+		this.ssgiPass.fullscreenMaterial.uniforms.velocityTexture.value = velocityPass.texture
+		this.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.velocityTexture.value = velocityPass.texture
+
+		this.svgf.setNonJitteredGBuffers(velocityPass.depthTexture, velocityPass.normalTexture)
 	}
 
 	dispose() {

@@ -1,18 +1,15 @@
 ﻿import { DenoisePass } from "./pass/DenoisePass.js"
 import { SVGFTemporalResolvePass } from "./pass/SVGFTemporalResolvePass.js"
-import { defaultTemporalResolvePassOptions } from "./temporal-resolve/TemporalResolvePass.js"
 
 const requiredTextures = ["inputTexture", "depthTexture", "normalTexture", "velocityTexture"]
 
-const defaultSVGFOptions = {
-	...defaultTemporalResolvePassOptions
-}
-
 export class SVGF {
-	constructor(scene, camera, denoiseComposeShader, denoiseComposeFunctions, options = defaultSVGFOptions) {
-		options = { ...defaultSVGFOptions, ...options }
-
+	constructor(scene, camera, denoiseComposeShader, denoiseComposeFunctions, options = {}) {
 		this.svgfTemporalResolvePass = new SVGFTemporalResolvePass(scene, camera, options)
+
+		// options for the denoise pass
+		options.diffuse = !options.specularOnly
+		options.specular = !options.diffuseOnly
 
 		this.denoisePass = new DenoisePass(camera, null, denoiseComposeShader, denoiseComposeFunctions, options)
 
@@ -28,22 +25,21 @@ export class SVGF {
 		this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = texture
 	}
 
-	setDepthTexture(texture) {
-		this.denoisePass.fullscreenMaterial.uniforms.depthTexture.value = texture
-		this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.depthTexture.value = texture
+	setSpecularTexture(texture) {
+		this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.specularTexture.value = texture
 	}
 
-	setNormalTexture(texture) {
-		this.denoisePass.fullscreenMaterial.uniforms.normalTexture.value = texture
-		this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.normalTexture.value = texture
-	}
-
-	setDiffuseTexture(texture) {
-		this.denoisePass.fullscreenMaterial.uniforms.diffuseTexture.value = texture
+	setNonJitteredGBuffers(depthTexture, normalTexture) {
+		this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.depthTexture.value = depthTexture
+		this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.normalTexture.value = normalTexture
 	}
 
 	setVelocityTexture(texture) {
 		this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.velocityTexture.value = texture
+	}
+
+	setDiffuseTexture(texture) {
+		this.denoisePass.fullscreenMaterial.uniforms.diffuseTexture.value = texture
 	}
 
 	setSize(width, height) {
@@ -58,12 +54,12 @@ export class SVGF {
 	}
 
 	ensureAllTexturesSet() {
-		requiredTextures.forEach(bufferName => {
+		for (const bufferName of requiredTextures) {
 			if (!this.svgfTemporalResolvePass.fullscreenMaterial.uniforms[bufferName].value?.isTexture) {
 				const functionName = "set" + bufferName[0].toUpperCase() + bufferName.slice(1)
 				console.error("SVGF has no " + bufferName + ". Set a " + bufferName + " through " + functionName + "().")
 			}
-		})
+		}
 	}
 
 	render(renderer) {

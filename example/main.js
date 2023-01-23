@@ -301,10 +301,7 @@ const initScene = () => {
 
 		// ssgiEffect.setVelocityPass(traaEffect.temporalResolvePass.velocityPass)
 
-		ssgiEffect.ssgiPass.fullscreenMaterial.uniforms.velocityTexture.value = texture
-		ssgiEffect.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.velocityTexture.value = texture
-		ssgiEffect.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.normalTexture.value = normalTexture
-		ssgiEffect.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.depthTexture.value = depthTexture
+		ssgiEffect.setVelocityPass(traaEffect.temporalResolvePass.velocityPass)
 
 		traaEffect.temporalResolvePass.velocityPass.needsSwap = false
 		composer.addPass(traaEffect.temporalResolvePass.velocityPass)

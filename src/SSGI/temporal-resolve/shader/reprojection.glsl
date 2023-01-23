@@ -38,8 +38,8 @@ vec3 undoColorTransform(vec3 color) {
 }
 
 void getNeighborhoodAABB(sampler2D tex, vec2 uv, inout vec3 minNeighborColor, inout vec3 maxNeighborColor) {
-    for (int x = -1; x <= 1; x++) {
-        for (int y = -1; y <= 1; y++) {
+    for (int x = -2; x <= 2; x++) {
+        for (int y = -2; y <= 2; y++) {
             if (x != 0 || y != 0) {
                 vec2 offset = vec2(x, y) * invTexSize;
                 vec2 neighborUv = uv + offset;
@@ -124,6 +124,8 @@ vec2 reprojectHitPoint(vec3 rayOrig, float rayLength, vec2 uv, float depth) {
 }
 
 vec2 getReprojectedUV(vec2 uv, float depth, vec3 worldPos, vec3 worldNormal, float rayLength) {
+// hit point reprojection
+#ifdef reprojectReflectionHitPoints
     if (rayLength != 0.0) {
         vec2 reprojectedUv = reprojectHitPoint(worldPos, rayLength, uv, depth);
 
@@ -131,7 +133,9 @@ vec2 getReprojectedUV(vec2 uv, float depth, vec3 worldPos, vec3 worldNormal, flo
             return reprojectedUv;
         }
     }
+#endif
 
+    // reprojection using motion vectors
     vec2 reprojectedUv = reprojectVelocity(uv);
 
     if (validateReprojectedUV(reprojectedUv, depth, worldPos, worldNormal)) {

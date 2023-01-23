@@ -154,7 +154,6 @@ void tap(in vec2 neighborVec, in vec2 pixelStepOffset, in vec2 offset, in float 
         float neighborVarianceSpecular = max(0.0, neighborMoment.a - neighborMoment.b * neighborMoment.b);
         sumVarianceSpecular += weightSpecular * weightSpecular * neighborVarianceSpecular;
     #endif
-
     } else {
         // after first iteration (moment is now stored in the alpha channel)
 

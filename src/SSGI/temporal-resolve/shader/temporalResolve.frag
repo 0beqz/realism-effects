@@ -58,7 +58,7 @@ void main() {
     worldNormal = normalize((vec4(worldNormal, 1.) * viewMatrix).xyz);
     vec3 worldPos = screenSpaceToWorldSpace(uv, depth, cameraMatrixWorld);
 
-    vec2 reprojectedUv = getReprojectedUV(vUv, depth, worldPos, worldNormal, 0.);
+    vec2 reprojectedUv = getReprojectedUV(vUv, depth, worldPos, worldNormal, inputTexel.a);
 
     if (reprojectedUv.x != -1.0) {
         vec4 accumulatedTexel = sampleReprojectedTexture(accumulatedTexture, reprojectedUv);

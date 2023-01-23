@@ -3,11 +3,19 @@ import svgfTemporalResolve from "../shader/svgfTemporalResolve.frag"
 import { TemporalResolvePass } from "../temporal-resolve/TemporalResolvePass"
 
 const defaultSVGFTemporalResolvePassOptions = {
-	moment: true
+	moment: true,
+	diffuseOnly: false,
+	specularOnly: false,
+	renderVelocity: false,
+	blendStatic: true,
+	catmullRomSampling: true,
+	customComposeShader: svgfTemporalResolve
 }
 export class SVGFTemporalResolvePass extends TemporalResolvePass {
 	constructor(scene, camera, options = defaultSVGFTemporalResolvePassOptions) {
-		const temporalResolvePassRenderTarget = new WebGLMultipleRenderTargets(1, 1, 3, {
+		const bufferCount = !options.diffuseOnly && !options.specularOnly ? 3 : 2
+
+		const temporalResolvePassRenderTarget = new WebGLMultipleRenderTargets(1, 1, bufferCount, {
 			type: HalfFloatType,
 			depthBuffer: false
 		})
@@ -16,23 +24,34 @@ export class SVGFTemporalResolvePass extends TemporalResolvePass {
 			...defaultSVGFTemporalResolvePassOptions,
 			...options,
 			...{
-				customComposeShader: svgfTemporalResolve,
-				renderTarget: temporalResolvePassRenderTarget,
-				renderVelocity: false,
-				blendStatic: true,
-				catmullRomSampling: true
+				renderTarget: temporalResolvePassRenderTarget
 			}
+		}
+
+		let diffuseAndSpecularBuffers
+		if (bufferCount > 2) {
+			diffuseAndSpecularBuffers = /* glsl */ `
+			layout(location = 1) out vec4 gDiffuse;
+			layout(location = 2) out vec4 gSpecular;
+
+			uniform sampler2D lastSpecularTexture;
+			uniform sampler2D specularTexture;
+			`
+		} else {
+			diffuseAndSpecularBuffers = /* glsl */ `
+			layout(location = 1) out vec4 gDiffuse;
+			`
 		}
 
 		super(scene, camera, options)
 
 		const momentBuffers = /* glsl */ `
-		layout(location = 0) out vec4 gDiffuse;
-		layout(location = 1) out vec4 gSpecular;
-		layout(location = 2) out vec4 gMoment;
+		layout(location = 0) out vec4 gMoment;
+		
+		${diffuseAndSpecularBuffers}
 
-		uniform sampler2D lastSpecularTexture;
-		uniform sampler2D specularTexture;
+
+
 		uniform sampler2D lastMomentTexture;
 		`
 
@@ -51,20 +70,18 @@ export class SVGFTemporalResolvePass extends TemporalResolvePass {
 
 		this.fullscreenMaterial.glslVersion = GLSL3
 
+		// moment
 		this.renderTarget.texture[0].type = HalfFloatType
-		this.renderTarget.texture[0].minFilter = LinearFilter
-		this.renderTarget.texture[0].magFilter = LinearFilter
+		this.renderTarget.texture[0].minFilter = NearestFilter
+		this.renderTarget.texture[0].magFilter = NearestFilter
 		this.renderTarget.texture[0].needsUpdate = true
 
-		this.renderTarget.texture[1].type = HalfFloatType
-		this.renderTarget.texture[1].minFilter = LinearFilter
-		this.renderTarget.texture[1].magFilter = LinearFilter
-		this.renderTarget.texture[1].needsUpdate = true
-
-		this.renderTarget.texture[2].type = HalfFloatType
-		this.renderTarget.texture[2].minFilter = NearestFilter
-		this.renderTarget.texture[2].magFilter = NearestFilter
-		this.renderTarget.texture[2].needsUpdate = true
+		for (const texture of this.renderTarget.texture.slice(1)) {
+			texture.type = HalfFloatType
+			texture.minFilter = LinearFilter
+			texture.magFilter = LinearFilter
+			texture.needsUpdate = true
+		}
 
 		this.copyPass.fullscreenMaterial.uniforms.inputTexture4.value = this.momentTexture
 		this.copyPass.fullscreenMaterial.uniforms.inputTexture5.value = this.specularTexture
@@ -81,28 +98,40 @@ export class SVGFTemporalResolvePass extends TemporalResolvePass {
 
 		this.fullscreenMaterial.uniforms.lastMomentTexture.value = lastMomentTexture
 
-		const lastSpecularTexture = this.copyPass.renderTarget.texture[0].clone()
-		lastSpecularTexture.isRenderTargetTexture = true
-		this.copyPass.renderTarget.texture.push(lastSpecularTexture)
-		this.copyPass.fullscreenMaterial.defines.textureCount++
+		if (bufferCount > 2) {
+			const lastSpecularTexture = this.copyPass.renderTarget.texture[0].clone()
+			lastSpecularTexture.isRenderTargetTexture = true
+			this.copyPass.renderTarget.texture.push(lastSpecularTexture)
+			this.copyPass.fullscreenMaterial.defines.textureCount++
 
-		lastSpecularTexture.type = HalfFloatType
-		lastSpecularTexture.minFilter = LinearFilter
-		lastSpecularTexture.magFilter = LinearFilter
-		lastSpecularTexture.needsUpdate = true
+			lastSpecularTexture.type = HalfFloatType
+			lastSpecularTexture.minFilter = LinearFilter
+			lastSpecularTexture.magFilter = LinearFilter
+			lastSpecularTexture.needsUpdate = true
 
-		this.fullscreenMaterial.uniforms.lastSpecularTexture.value = lastSpecularTexture
+			this.fullscreenMaterial.uniforms.lastSpecularTexture.value = lastSpecularTexture
+		}
+
+		if (options.specularOnly) {
+			this.fullscreenMaterial.defines.specularOnly = ""
+			this.fullscreenMaterial.defines.reprojectReflectionHitPoints = ""
+		}
+
+		if (options.diffuseOnly) {
+			this.fullscreenMaterial.defines.diffuseOnly = ""
+		}
 	}
 
 	get texture() {
-		return this.renderTarget.texture[0]
-	}
-
-	get specularTexture() {
 		return this.renderTarget.texture[1]
 	}
 
+	get specularTexture() {
+		const index = this.options.specularOnly ? 1 : 2
+		return this.renderTarget.texture[index]
+	}
+
 	get momentTexture() {
-		return this.renderTarget.texture[2]
+		return this.renderTarget.texture[0]
 	}
 }

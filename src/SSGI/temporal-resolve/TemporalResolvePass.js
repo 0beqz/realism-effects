@@ -78,8 +78,16 @@ export class TemporalResolvePass extends Pass {
 		this.fullscreenMaterial.uniforms.prevViewMatrix.value = camera.matrixWorldInverse.clone()
 		this.fullscreenMaterial.uniforms.prevCameraMatrixWorld.value = camera.matrixWorld.clone()
 
+		// init copy pass to save the accumulated textures and the textures from the last frame
 		this.copyPass = new CopyPass(3)
+
 		this.accumulatedTexture = this.copyPass.renderTarget.texture[0]
+
+		this.accumulatedTexture.type = HalfFloatType
+		this.accumulatedTexture.minFilter = LinearFilter
+		this.accumulatedTexture.magFilter = LinearFilter
+		this.accumulatedTexture.needsUpdate = true
+
 		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.accumulatedTexture
 		this.fullscreenMaterial.uniforms.lastDepthTexture.value = this.copyPass.renderTarget.texture[1]
 		this.fullscreenMaterial.uniforms.lastNormalTexture.value = this.copyPass.renderTarget.texture[2]
@@ -90,14 +98,11 @@ export class TemporalResolvePass extends Pass {
 		this.fullscreenMaterial.uniforms.velocityTexture.value = this.velocityPass.texture
 		this.fullscreenMaterial.uniforms.depthTexture.value = this.velocityPass.depthTexture
 		this.fullscreenMaterial.uniforms.normalTexture.value = this.velocityPass.normalTexture
-
-		this.accumulatedTexture.type = HalfFloatType
-		this.accumulatedTexture.minFilter = LinearFilter
-		this.accumulatedTexture.magFilter = LinearFilter
-		this.accumulatedTexture.needsUpdate = true
 		// }
 
 		this.renderVelocity = options.renderVelocity
+
+		this.options = options
 	}
 
 	get velocityTexture() {
@@ -139,6 +144,7 @@ export class TemporalResolvePass extends Pass {
 		this.accumulatedTexture = this.copyPass.fullscreenMaterial.uniforms.inputTexture.value
 		this.copyPass.render(renderer)
 
+		// save last transformations
 		this.fullscreenMaterial.uniforms.prevCameraMatrixWorld.value.copy(this._camera.matrixWorld)
 		this.fullscreenMaterial.uniforms.prevViewMatrix.value.copy(this._camera.matrixWorldInverse)
 	}
@@ -149,7 +155,6 @@ export class TemporalResolvePass extends Pass {
 		if (this.haltonSequence.length === 0)
 			this.haltonSequence = generateHalton23Points(16384).map(([a, b]) => [a - 0.5, b - 0.5])
 
-		// cheap trick to get rid of aliasing on the final buffer (technique known from TAA)
 		this.haltonIndex = (this.haltonIndex + 1) % this.haltonSequence.length
 
 		const [x, y] = this.haltonSequence[this.haltonIndex]
