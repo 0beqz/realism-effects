@@ -18,7 +18,7 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
         return;
     }
 
-    velocity.xy = unpackRGBATo2Half(velocity);
+    // velocity.xy = unpackRGBATo2Half(velocity);
 
     velocity.xy *= intensity;
 

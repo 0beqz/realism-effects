@@ -36,12 +36,15 @@ void main() {
 
     getDepthAndUv(depth, uv, depthTexel);
 
-#ifndef neighborhoodClamping
     if (dot(depthTexel.rgb, depthTexel.rgb) == 0.0) {
+#ifdef neighborhoodClamping
+        gl_FragColor = textureLod(inputTexture, vUv, 0.0);
+        return;
+#else
         discard;
         return;
-    }
 #endif
+    }
 
     vec4 inputTexel = textureLod(inputTexture, vUv, 0.0);
     vec3 inputColor = inputTexel.rgb;
@@ -58,7 +61,7 @@ void main() {
     worldNormal = normalize((vec4(worldNormal, 1.) * viewMatrix).xyz);
     vec3 worldPos = screenSpaceToWorldSpace(uv, depth, cameraMatrixWorld);
 
-    vec2 reprojectedUv = getReprojectedUV(vUv, depth, worldPos, worldNormal, inputTexel.a);
+    vec2 reprojectedUv = getReprojectedUV(uv, depth, worldPos, worldNormal, inputTexel.a);
 
     if (reprojectedUv.x != -1.0) {
         vec4 accumulatedTexel = sampleReprojectedTexture(accumulatedTexture, reprojectedUv);
@@ -67,11 +70,7 @@ void main() {
         alpha = accumulatedTexel.a + 1.0;  // add one more frame
 
 #ifdef neighborhoodClamping
-        vec3 minNeighborColor = inputColor;
-        vec3 maxNeighborColor = inputColor;
-        getNeighborhoodAABB(inputTexture, vUv, minNeighborColor, maxNeighborColor);
-
-        accumulatedColor = clamp(accumulatedColor, minNeighborColor, maxNeighborColor);
+        clampNeighborhood(accumulatedColor, inputTexture, inputColor);
 #endif
     } else {
         // reprojection invalid possibly due to disocclusion

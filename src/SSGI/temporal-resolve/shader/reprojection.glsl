@@ -37,12 +37,12 @@ vec3 undoColorTransform(vec3 color) {
 #endif
 }
 
-void getNeighborhoodAABB(sampler2D tex, vec2 uv, inout vec3 minNeighborColor, inout vec3 maxNeighborColor) {
+void getNeighborhoodAABB(sampler2D tex, inout vec3 minNeighborColor, inout vec3 maxNeighborColor) {
     for (int x = -2; x <= 2; x++) {
         for (int y = -2; y <= 2; y++) {
             if (x != 0 || y != 0) {
                 vec2 offset = vec2(x, y) * invTexSize;
-                vec2 neighborUv = uv + offset;
+                vec2 neighborUv = vUv + offset;
 
                 vec4 neighborTexel = textureLod(tex, neighborUv, 0.0);
 
@@ -57,6 +57,52 @@ void getNeighborhoodAABB(sampler2D tex, vec2 uv, inout vec3 minNeighborColor, in
             }
         }
     }
+}
+
+void clampNeighborhood(inout vec3 color, sampler2D tex, vec3 inputColor) {
+    vec3 minNeighborColor = inputColor;
+    vec3 maxNeighborColor = inputColor;
+
+    getNeighborhoodAABB(inputTexture, minNeighborColor, maxNeighborColor);
+
+    color = clamp(color, minNeighborColor, maxNeighborColor);
+}
+
+#ifdef dilation
+vec2 getDilatedDepthUV(sampler2D tex, vec2 centerUv, out float currentDepth, out vec4 closestDepthTexel) {
+    float closestDepth = 0.0;
+    vec2 uv;
+
+    for (int x = -1; x <= 1; x++) {
+        for (int y = -1; y <= 1; y++) {
+            vec2 offset = vec2(x, y) * invTexSize;
+            vec2 neighborUv = centerUv + offset;
+
+            vec4 neighborDepthTexel = textureLod(tex, neighborUv, 0.0);
+            float depth = unpackRGBAToDepth(neighborDepthTexel);
+
+            if (depth > closestDepth) {
+                closestDepth = depth;
+                closestDepthTexel = neighborDepthTexel;
+                uv = neighborUv;
+            }
+        }
+    }
+
+    currentDepth = closestDepth;
+
+    return uv;
+}
+#endif
+
+void getDepthAndUv(out float depth, out vec2 uv, out vec4 depthTexel) {
+#ifdef dilation
+    uv = getDilatedDepthUV(depthTexture, vUv, depth, depthTexel);
+#else
+    depthTexel = textureLod(depthTexture, vUv, 0.);
+    depth = unpackRGBAToDepth(depthTexel);
+    uv = vUv;
+#endif
 }
 
 bool planeDistanceDisocclusionCheck(vec3 worldPos, vec3 lastWorldPos, vec3 worldNormal) {
@@ -87,31 +133,38 @@ bool validateReprojectedUV(vec2 reprojectedUv, float depth, vec3 worldPos, vec3 
     return true;
 #endif
 
+    float lastDepth;
+    vec4 lastDepthTexel;
+
+#ifdef dilation
+    getDilatedDepthUV(lastDepthTexture, reprojectedUv, lastDepth, lastDepthTexel);
+#else
+    lastDepthTexel = textureLod(lastDepthTexture, reprojectedUv, 0.);
+    lastDepth = unpackRGBAToDepth(lastDepthTexel);
+#endif
+
+    vec3 lastWorldPos = screenSpaceToWorldSpace(reprojectedUv, lastDepth, prevCameraMatrixWorld);
+
+    if (worldDistanceDisocclusionCheck(worldPos, lastWorldPos, depth)) return false;
+
     vec4 lastNormalTexel = textureLod(lastNormalTexture, reprojectedUv, 0.);
     vec3 lastNormal = unpackRGBToNormal(lastNormalTexel.xyz);
     vec3 lastWorldNormal = normalize((vec4(lastNormal, 1.) * viewMatrix).xyz);
 
     if (normalsDisocclusionCheck(worldNormal, lastWorldNormal, worldPos)) return false;
 
-    // the reprojected UV coordinates are inside the view
-    float lastDepth = unpackRGBAToDepth(textureLod(lastDepthTexture, reprojectedUv, 0.));
-    vec3 lastWorldPos = screenSpaceToWorldSpace(reprojectedUv, lastDepth, prevCameraMatrixWorld);
-
     if (planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal)) return false;
-
-    if (worldDistanceDisocclusionCheck(worldPos, lastWorldPos, depth)) return false;
 
     return true;
 }
 
 vec2 reprojectVelocity(vec2 sampleUv) {
     vec4 velocity = textureLod(velocityTexture, sampleUv, 0.0);
-    velocity.xy = unpackRGBATo2Half(velocity);
 
-    return sampleUv - velocity.xy;
+    return vUv - velocity.xy;
 }
 
-vec2 reprojectHitPoint(vec3 rayOrig, float rayLength, vec2 uv, float depth) {
+vec2 reprojectHitPoint(vec3 rayOrig, float rayLength, float depth) {
     vec3 cameraRay = normalize(rayOrig - cameraPos);
     float cameraRayLength = distance(rayOrig, cameraPos);
 
@@ -127,7 +180,7 @@ vec2 getReprojectedUV(vec2 uv, float depth, vec3 worldPos, vec3 worldNormal, flo
 // hit point reprojection
 #ifdef reprojectReflectionHitPoints
     if (rayLength != 0.0) {
-        vec2 reprojectedUv = reprojectHitPoint(worldPos, rayLength, uv, depth);
+        vec2 reprojectedUv = reprojectHitPoint(worldPos, rayLength, depth);
 
         if (validateReprojectedUV(reprojectedUv, depth, worldPos, worldNormal)) {
             return reprojectedUv;
@@ -144,35 +197,6 @@ vec2 getReprojectedUV(vec2 uv, float depth, vec3 worldPos, vec3 worldNormal, flo
 
     return vec2(-1.);
 }
-
-#ifdef dilation
-vec2 getDilatedDepthUV(out float currentDepth, out vec4 closestDepthTexel) {
-    float closestDepth = 0.0;
-    vec2 uv;
-
-    for (int x = -1; x <= 1; x++) {
-        for (int y = -1; y <= 1; y++) {
-            vec2 offset = vec2(x, y) * invTexSize;
-            vec2 neighborUv = vUv + offset;
-
-            vec4 neighborDepthTexel = textureLod(depthTexture, neighborUv, 0.0);
-            float depth = unpackRGBAToDepth(neighborDepthTexel);
-
-            if (depth > closestDepth) {
-                closestDepth = depth;
-                closestDepthTexel = neighborDepthTexel;
-                uv = neighborUv;
-            }
-
-            if (x == 0 && y == 0) {
-                currentDepth = depth;
-            }
-        }
-    }
-
-    return uv;
-}
-#endif
 
 #ifdef catmullRomSampling
 vec4 SampleTextureCatmullRom(sampler2D tex, in vec2 uv, in vec2 texSize) {
@@ -230,15 +254,5 @@ vec4 sampleReprojectedTexture(sampler2D tex, vec2 reprojectedUv) {
     return SampleTextureCatmullRom(tex, reprojectedUv, 1.0 / invTexSize);
 #else
     return textureLod(tex, reprojectedUv, 0.0);
-#endif
-}
-
-void getDepthAndUv(out float depth, out vec2 uv, out vec4 depthTexel) {
-#ifdef dilation
-    uv = getDilatedDepthUV(depth, depthTexel);
-#else
-    depthTexel = textureLod(depthTexture, vUv, 0.);
-    depth = unpackRGBAToDepth(depthTexel);
-    uv = vUv;
 #endif
 }

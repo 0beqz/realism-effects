@@ -1,6 +1,7 @@
 ﻿import { Pass } from "postprocessing"
 import {
 	Color,
+	FloatType,
 	HalfFloatType,
 	NearestFilter,
 	Quaternion,
@@ -41,7 +42,7 @@ export class VelocityPass extends Pass {
 		})
 
 		if (renderDepth) {
-			this.renderTarget.texture[0].type = HalfFloatType
+			this.renderTarget.texture[0].type = FloatType
 			this.renderTarget.texture[0].needsUpdate = true
 
 			this.renderTarget.texture[1].type = UnsignedByteType
@@ -90,7 +91,7 @@ export class VelocityPass extends Pass {
 				originalMaterial.metalnessMap
 
 			if (map) velocityMaterial.uniforms.uvTransform.value = map.matrix
-			// velocityMaterial.side = originalMaterial.side
+			velocityMaterial.side = originalMaterial.side
 
 			updateVelocityMaterialBeforeRender(c, this._camera)
 		}

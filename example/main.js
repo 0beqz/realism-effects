@@ -116,7 +116,7 @@ window.controls = controls
 const composer = new POSTPROCESSING.EffectComposer(renderer)
 window.composer = composer
 const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
-// composer.addPass(renderPass)
+composer.addPass(renderPass)
 
 const lightParams = {
 	yaw: 55,
@@ -160,16 +160,17 @@ new RGBELoader().load("colosseum_2k.hdr", envMap => {
 	envMap.mapping = THREE.EquirectangularReflectionMapping
 
 	scene.environment = envMap
+	scene.background = envMap
 
 	envMesh = new GroundProjectedEnv(envMap)
 	envMesh.radius = 440
 	envMesh.height = 20
 	envMesh.scale.setScalar(100)
 	envMesh.updateMatrixWorld()
-	scene.add(envMesh)
+	// scene.add(envMesh)
 	window.envMesh = envMesh
 
-	scene.background = new Color(0x4c7fe5)
+	// scene.background = new Color(0x4c7fe5)
 })
 
 const gltflLoader = new GLTFLoader()
@@ -293,7 +294,7 @@ const initScene = () => {
 	new POSTPROCESSING.LUT3dlLoader().load("lut.3dl").then(lutTexture => {
 		const lutEffect = new POSTPROCESSING.LUT3DEffect(lutTexture)
 
-		const { depthTexture, normalTexture, texture } = traaEffect.temporalResolvePass.velocityPass
+		const { texture } = traaEffect.temporalResolvePass.velocityPass
 
 		const motionBlurEffect = new MotionBlurEffect(texture, {
 			jitter: 1
@@ -306,8 +307,8 @@ const initScene = () => {
 		traaEffect.temporalResolvePass.velocityPass.needsSwap = false
 		composer.addPass(traaEffect.temporalResolvePass.velocityPass)
 
-		composer.addPass(ssgiPass)
-		composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect, bloomEffect, vignetteEffect, lutEffect))
+		// composer.addPass(ssgiPass)
+		composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, vignetteEffect, lutEffect))
 
 		traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
 		composer.addPass(traaPass)

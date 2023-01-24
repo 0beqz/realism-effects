@@ -88,9 +88,7 @@ vec2 vel = pos1 - pos0;
 float fragCoordZ = 0.5 * vHighPrecisionZW[0] / vHighPrecisionZW[1] + 0.5;
 #endif
 
-vec4 outputVel = pack2HalfToRGBA(vel);
-
-gl_FragColor = outputVel;
+gl_FragColor = vec4(vel.x, vel.y, 0., 0.);
 `
 
 export const velocity_uniforms = {

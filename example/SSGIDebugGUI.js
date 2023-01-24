@@ -37,7 +37,7 @@ export class SSGIDebugGUI {
 		denoiseKernelFolder.addInput(params, "denoiseKernel", { min: 1, max: 5, step: 1 })
 		denoiseKernelFolder.addInput(params, "denoiseDiffuse", {
 			min: 0,
-			max: 20,
+			max: 50,
 			step: 0.01
 		})
 		denoiseKernelFolder.addInput(params, "denoiseSpecular", {

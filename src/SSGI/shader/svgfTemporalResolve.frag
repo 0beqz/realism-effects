@@ -13,7 +13,7 @@ float rayLength = specularTexel.a;
 // specular UV
 vec2 specularUv = reprojectedUv;
 if (rayLength != 0.0) {
-    vec2 hitPointUv = reprojectHitPoint(worldPos, rayLength, uv, depth);
+    vec2 hitPointUv = reprojectHitPoint(worldPos, rayLength, depth);
 
     if (validateReprojectedUV(hitPointUv, depth, worldPos, worldNormal)) specularUv = hitPointUv;
 }
