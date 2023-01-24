@@ -327,7 +327,6 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
 
     // reproject the coords from the last frame
     vec4 velocity = textureLod(velocityTexture, coords.xy, 0.0);
-    // velocity.xy = unpackRGBATo2Half(velocity);
 
     vec2 reprojectedUv = coords.xy - velocity.xy;
 

@@ -8,8 +8,8 @@ const finalFragmentShader = compose.replace("#include <utils>", utils)
 
 export const defaultTRAAOptions = {
 	blend: 0.9,
-	constantBlend: true,
-	blendStatic: false,
+	constantBlend: false,
+	blendStatic: true,
 	dilation: true,
 	catmullRomSampling: true,
 	logTransform: true,
