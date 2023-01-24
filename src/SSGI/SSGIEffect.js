@@ -310,7 +310,7 @@ export class SSGIEffect extends Effect {
 		}
 	}
 
-	update(renderer) {
+	update(renderer, inputBuffer) {
 		this.keepEnvMapUpdated()
 
 		renderer.setRenderTarget(this.sceneRenderTarget)
@@ -336,8 +336,8 @@ export class SSGIEffect extends Effect {
 
 		this.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.directLightTexture.value =
 			this.sceneRenderTarget.texture
-		this.ssgiPass.fullscreenMaterial.uniforms.directLightTexture.value = this.sceneRenderTarget.texture
-		this.svgf.denoisePass.fullscreenMaterial.uniforms.directLightTexture.value = this.sceneRenderTarget.texture
+		this.ssgiPass.fullscreenMaterial.uniforms.directLightTexture.value = inputBuffer.texture
+		this.svgf.denoisePass.fullscreenMaterial.uniforms.directLightTexture.value = inputBuffer.texture
 
 		this.ssgiPass.render(renderer)
 		this.svgf.render(renderer)

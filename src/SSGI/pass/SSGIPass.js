@@ -12,11 +12,11 @@ import {
 } from "three"
 import { MRTMaterial } from "../material/MRTMaterial.js"
 import { SSGIMaterial } from "../material/SSGIMaterial.js"
-import { generateHalton23Points } from "../temporal-resolve/utils/generateHalton23Points.js"
+import { generateR2 } from "../temporal-resolve/utils/QuasirandomGenerator"
 import { getVisibleChildren, keepMaterialMapUpdated } from "../utils/Utils.js"
 
 const backgroundColor = new Color(0)
-const points = generateHalton23Points(16384)
+const points = generateR2(16384)
 export class SSGIPass extends Pass {
 	cachedMaterials = new WeakMap()
 	visibleMeshes = []

@@ -235,11 +235,11 @@ void main() {
     }
 
     #ifdef DENOISE_DIFFUSE
-    colorPhiDiffuse = denoiseDiffuse * sqrt(max(0.0, sumVarianceDiffuse));
+    colorPhiDiffuse = denoiseDiffuse * sqrt(0.00001 + sumVarianceDiffuse);
     #endif
 
     #ifdef DENOISE_SPECULAR
-    colorPhiSpecular = denoiseSpecular * sqrt(max(0.0, sumVarianceSpecular));
+    colorPhiSpecular = denoiseSpecular * sqrt(0.00001 + sumVarianceSpecular);
     #endif
 #endif
 

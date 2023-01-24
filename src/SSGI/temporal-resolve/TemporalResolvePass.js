@@ -3,7 +3,7 @@ import { HalfFloatType, LinearFilter, Quaternion, Vector3, WebGLRenderTarget } f
 import { CopyPass } from "../pass/CopyPass"
 import { TemporalResolveMaterial } from "./material/TemporalResolveMaterial"
 import { VelocityPass } from "./pass/VelocityPass"
-import { generateHalton23Points } from "./utils/generateHalton23Points"
+import { generateR2 } from "./utils/QuasirandomGenerator"
 
 export const defaultTemporalResolvePassOptions = {
 	blend: 0.9,
@@ -16,7 +16,7 @@ export const defaultTemporalResolvePassOptions = {
 	logTransform: false,
 	depthDistance: 0.5,
 	normalDistance: 10,
-	worldDistance: 0.5,
+	worldDistance: 1,
 	reprojectReflectionHitPoints: false,
 	customComposeShader: null,
 	renderTarget: null
@@ -152,8 +152,7 @@ export class TemporalResolvePass extends Pass {
 	jitter(jitterScale = 1) {
 		this.unjitter()
 
-		if (this.haltonSequence.length === 0)
-			this.haltonSequence = generateHalton23Points(16384).map(([a, b]) => [a - 0.5, b - 0.5])
+		if (this.haltonSequence.length === 0) this.haltonSequence = generateR2(16384).map(([a, b]) => [a - 0.5, b - 0.5])
 
 		this.haltonIndex = (this.haltonIndex + 1) % this.haltonSequence.length
 

@@ -243,6 +243,7 @@ void main() {
             rayLength = distance(worldPos, hitPosWS);
         }
     }
+
     gSpecular = vec4(specularGI, rayLength);
 #endif
 }
@@ -343,7 +344,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
 
         vec3 reprojectedGI = textureLod(accumulatedTexture, reprojectedUv, 0.).rgb;
 
-        SSGI = reprojectedGI + emissiveColor;
+        SSGI = reprojectedGI + emissiveColor + textureLod(directLightTexture, coords.xy, 0.).rgb * 3.;
     } else {
         SSGI = textureLod(directLightTexture, vUv, 0.).rgb;
     }

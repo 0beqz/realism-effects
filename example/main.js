@@ -116,7 +116,7 @@ window.controls = controls
 const composer = new POSTPROCESSING.EffectComposer(renderer)
 window.composer = composer
 const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
-// composer.addPass(renderPass)
+composer.addPass(renderPass)
 
 const lightParams = {
 	yaw: 55,
@@ -156,7 +156,7 @@ const params = {}
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
 pmremGenerator.compileEquirectangularShader()
 
-new RGBELoader().load("colosseum_2k.hdr", envMap => {
+new RGBELoader().load("monbachtal_riverbank_2k.hdr", envMap => {
 	envMap.mapping = THREE.EquirectangularReflectionMapping
 
 	scene.environment = envMap
@@ -167,7 +167,8 @@ new RGBELoader().load("colosseum_2k.hdr", envMap => {
 	envMesh.height = 20
 	envMesh.scale.setScalar(100)
 	envMesh.updateMatrixWorld()
-	scene.add(envMesh)
+	// scene.add(envMesh)
+
 	window.envMesh = envMesh
 
 	// scene.background = new Color(0x4c7fe5)
@@ -223,10 +224,10 @@ const initScene = () => {
 		blend: 0.95,
 		denoiseIterations: 2,
 		denoiseKernel: 3,
-		denoiseDiffuse: 17.830000000000002,
-		denoiseSpecular: 39.67,
-		depthPhi: 5.980000000000002,
-		normalPhi: 7.610000000000008,
+		denoiseDiffuse: 33.15,
+		denoiseSpecular: 8.700000000000001,
+		depthPhi: 6.250000000000002,
+		normalPhi: 10.59800000000001,
 		roughnessPhi: 100,
 		jitter: 3.469446951953614e-18,
 		jitterRoughness: 1,
@@ -338,6 +339,8 @@ document.body.addEventListener("mousemove", ev => {
 	mX = (window.innerHeight - ev.clientY) / window.innerHeight
 })
 
+let didRemoveRenderPass = false
+
 const loop = () => {
 	if (stats) stats.begin()
 
@@ -359,6 +362,11 @@ const loop = () => {
 		// lastScene.rotation.y += 0.01
 		lastScene.updateMatrixWorld()
 		composer.render()
+
+		if (!didRemoveRenderPass) {
+			// composer.removePass(renderPass)
+			didRemoveRenderPass = true
+		}
 	}
 
 	if (stats) stats.end()

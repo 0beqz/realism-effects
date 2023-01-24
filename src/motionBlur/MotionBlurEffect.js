@@ -1,7 +1,7 @@
 ﻿import { Effect } from "postprocessing"
 import { LinearEncoding, NearestFilter, RepeatWrapping, Uniform, Vector2 } from "three"
 import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader"
-import { generateHalton23Points } from "../SSGI/temporal-resolve/utils/generateHalton23Points"
+import { generateR2 } from "../SSGI/temporal-resolve/utils/QuasirandomGenerator"
 import motionBlur from "./motionBlur.glsl"
 
 // https://www.nvidia.com/docs/io/8230/gdc2003_openglshadertricks.pdf
@@ -9,7 +9,7 @@ import motionBlur from "./motionBlur.glsl"
 // reference code: https://github.com/gkjohnson/threejs-sandbox/blob/master/motionBlurPass/src/CompositeShader.js
 
 const defaultOptions = { intensity: 1, jitter: 5, samples: 16 }
-const points = generateHalton23Points(16384)
+const points = generateR2(16384)
 
 export class MotionBlurEffect extends Effect {
 	haltonIndex = 0

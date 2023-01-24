@@ -1,4 +1,12 @@
-﻿import { GLSL3, HalfFloatType, LinearFilter, NearestFilter, Uniform, WebGLMultipleRenderTargets } from "three"
+﻿import {
+	FloatType,
+	GLSL3,
+	HalfFloatType,
+	LinearFilter,
+	NearestFilter,
+	Uniform,
+	WebGLMultipleRenderTargets
+} from "three"
 import svgfTemporalResolve from "../shader/svgfTemporalResolve.frag"
 import { TemporalResolvePass } from "../temporal-resolve/TemporalResolvePass"
 
@@ -50,8 +58,6 @@ export class SVGFTemporalResolvePass extends TemporalResolvePass {
 		
 		${diffuseAndSpecularBuffers}
 
-
-
 		uniform sampler2D lastMomentTexture;
 		`
 
@@ -71,7 +77,7 @@ export class SVGFTemporalResolvePass extends TemporalResolvePass {
 		this.fullscreenMaterial.glslVersion = GLSL3
 
 		// moment
-		this.renderTarget.texture[0].type = HalfFloatType
+		this.renderTarget.texture[0].type = FloatType
 		this.renderTarget.texture[0].minFilter = NearestFilter
 		this.renderTarget.texture[0].magFilter = NearestFilter
 		this.renderTarget.texture[0].needsUpdate = true
@@ -91,7 +97,7 @@ export class SVGFTemporalResolvePass extends TemporalResolvePass {
 		this.copyPass.renderTarget.texture.push(lastMomentTexture)
 		this.copyPass.fullscreenMaterial.defines.textureCount++
 
-		lastMomentTexture.type = HalfFloatType
+		lastMomentTexture.type = FloatType
 		lastMomentTexture.minFilter = NearestFilter
 		lastMomentTexture.magFilter = NearestFilter
 		lastMomentTexture.needsUpdate = true
