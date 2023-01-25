@@ -58,22 +58,13 @@ float farMinusNear;
 // helper functions
 #include <utils>
 
-vec2 RayMarch(in vec3 dir, inout vec3 hitPos);
-vec2 BinarySearch(in vec3 dir, inout vec3 hitPos);
-float fastGetViewZ(const in float depth);
-vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, float metalness,
-              float roughness, bool isDiffuseSample, float NoV, float NoL, float NoH, float LoH, float VoH, vec2 random, inout vec3 l,
-              inout vec3 hitPos, out bool isMissedRay, out vec3 brdf);
-
-float getCurvature(vec3 worldNormal) {
-    vec3 dx = dFdx(worldNormal);
-    vec3 dy = dFdy(worldNormal);
-
-    float x = dot(dx, dx);
-    float y = dot(dy, dy);
-
-    return sqrt(x * x + y * y);
-}
+vec2 RayMarch(inout vec3 dir, inout vec3 hitPos);
+vec2 BinarySearch(inout vec3 dir, inout vec3 hitPos);
+float fastGetViewZ(const float depth);
+float getCurvature(const vec3 worldNormal);
+vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, const vec3 worldPosition, const float metalness,
+              const float roughness, const bool isDiffuseSample, const float NoV, const float NoL, const float NoH, const float LoH,
+              const float VoH, const vec2 random, inout vec3 l, inout vec3 hitPos, out bool isMissedRay, out vec3 brdf);
 
 void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.0);
@@ -248,8 +239,8 @@ void main() {
 #endif
 }
 
-vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, float metalness,
-              float roughness, bool isDiffuseSample, float NoV, float NoL, float NoH, float LoH, float VoH, vec2 random, inout vec3 l,
+vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, const vec3 worldPosition, const float metalness,
+              const float roughness, const bool isDiffuseSample, const float NoV, const float NoL, const float NoH, const float LoH, const float VoH, const vec2 random, inout vec3 l,
               inout vec3 hitPos, out bool isMissedRay, out vec3 brdf) {
     float cosTheta = max(0.0, dot(viewNormal, l));
 
@@ -344,7 +335,11 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
 
         vec3 reprojectedGI = textureLod(accumulatedTexture, reprojectedUv, 0.).rgb;
 
-        SSGI = reprojectedGI + emissiveColor + textureLod(directLightTexture, coords.xy, 0.).rgb * 3.;
+        SSGI = reprojectedGI + emissiveColor;
+
+#ifdef useDirectLight
+        SSGI += textureLod(directLightTexture, coords.xy, 0.).rgb * 3.;
+#endif
     } else {
         SSGI = textureLod(directLightTexture, vUv, 0.).rgb;
     }
@@ -359,7 +354,7 @@ vec3 doSample(vec3 viewPos, vec3 viewDir, vec3 viewNormal, vec3 worldPosition, f
     return SSGI;
 }
 
-vec2 RayMarch(in vec3 dir, inout vec3 hitPos) {
+vec2 RayMarch(inout vec3 dir, inout vec3 hitPos) {
     float stepsFloat = float(steps);
     float rayHitDepthDifference;
 
@@ -399,7 +394,7 @@ vec2 RayMarch(in vec3 dir, inout vec3 hitPos) {
     return uv;
 }
 
-vec2 BinarySearch(in vec3 dir, inout vec3 hitPos) {
+vec2 BinarySearch(inout vec3 dir, inout vec3 hitPos) {
     float depth;
     float unpackedDepth;
     vec4 depthTexel;
@@ -427,10 +422,20 @@ vec2 BinarySearch(in vec3 dir, inout vec3 hitPos) {
 }
 
 // source: https://github.com/mrdoob/three.js/blob/342946c8392639028da439b6dc0597e58209c696/examples/js/shaders/SAOShader.js#L123
-float fastGetViewZ(const in float depth) {
+float fastGetViewZ(const float depth) {
 #ifdef PERSPECTIVE_CAMERA
     return nearMulFar / (farMinusNear * depth - cameraFar);
 #else
     return depth * nearMinusFar - cameraNear;
 #endif
+}
+
+float getCurvature(const vec3 worldNormal) {
+    vec3 dx = dFdx(worldNormal);
+    vec3 dy = dFdy(worldNormal);
+
+    float x = dot(dx, dx);
+    float y = dot(dy, dy);
+
+    return sqrt(x * x + y * y);
 }

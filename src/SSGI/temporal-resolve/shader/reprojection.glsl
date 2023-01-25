@@ -11,7 +11,7 @@ vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth, mat4 curMatrixWor
     return view.xyz;
 }
 
-vec2 viewSpaceToScreenSpace(vec3 position) {
+vec2 viewSpaceToScreenSpace(const vec3 position) {
     vec4 projectedCoord = projectionMatrix * vec4(position, 1.0);
     projectedCoord.xy /= projectedCoord.w;
     // [-1, 1] --> [0, 1] (NDC to screen position)
@@ -21,7 +21,7 @@ vec2 viewSpaceToScreenSpace(vec3 position) {
 }
 
 // idea from: https://www.elopezr.com/temporal-aa-and-the-quest-for-the-holy-trail/
-vec3 transformColor(vec3 color) {
+vec3 transformColor(const vec3 color) {
 #ifdef logTransform
     return log(max(color, vec3(EPSILON)));
 #else
@@ -29,7 +29,7 @@ vec3 transformColor(vec3 color) {
 #endif
 }
 
-vec3 undoColorTransform(vec3 color) {
+vec3 undoColorTransform(const vec3 color) {
 #ifdef logTransform
     return exp(color);
 #else
@@ -37,7 +37,7 @@ vec3 undoColorTransform(vec3 color) {
 #endif
 }
 
-void getNeighborhoodAABB(sampler2D tex, inout vec3 minNeighborColor, inout vec3 maxNeighborColor) {
+void getNeighborhoodAABB(const sampler2D tex, inout vec3 minNeighborColor, inout vec3 maxNeighborColor) {
     for (int x = -2; x <= 2; x++) {
         for (int y = -2; y <= 2; y++) {
             if (x != 0 || y != 0) {
@@ -59,7 +59,7 @@ void getNeighborhoodAABB(sampler2D tex, inout vec3 minNeighborColor, inout vec3 
     }
 }
 
-void clampNeighborhood(inout vec3 color, sampler2D tex, vec3 inputColor) {
+void clampNeighborhood(inout vec3 color, const sampler2D tex, const vec3 inputColor) {
     vec3 minNeighborColor = inputColor;
     vec3 maxNeighborColor = inputColor;
 
@@ -69,7 +69,7 @@ void clampNeighborhood(inout vec3 color, sampler2D tex, vec3 inputColor) {
 }
 
 #ifdef dilation
-vec2 getDilatedDepthUV(sampler2D tex, vec2 centerUv, out float currentDepth, out vec4 closestDepthTexel) {
+vec2 getDilatedDepthUV(const sampler2D tex, const vec2 centerUv, out float currentDepth, out vec4 closestDepthTexel) {
     float closestDepth = 0.0;
     vec2 uv;
 
@@ -105,7 +105,7 @@ void getDepthAndUv(out float depth, out vec2 uv, out vec4 depthTexel) {
 #endif
 }
 
-bool planeDistanceDisocclusionCheck(vec3 worldPos, vec3 lastWorldPos, vec3 worldNormal) {
+bool planeDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos, const vec3 worldNormal) {
     vec3 toCurrent = worldPos - lastWorldPos;
     float distToPlane = abs(dot(toCurrent, worldNormal));
 
@@ -114,19 +114,19 @@ bool planeDistanceDisocclusionCheck(vec3 worldPos, vec3 lastWorldPos, vec3 world
     return distToPlane > depthDistance * worldDistFactor;
 }
 
-bool normalsDisocclusionCheck(vec3 currentNormal, vec3 lastNormal, vec3 worldPos) {
+bool normalsDisocclusionCheck(const vec3 currentNormal, const vec3 lastNormal, const vec3 worldPos) {
     float worldDistFactor = clamp(distance(worldPos, cameraPos) / 100., 0.1, 1.);
 
     return pow(abs(dot(currentNormal, lastNormal)), 2.0) > normalDistance * worldDistFactor;
 }
 
-bool worldDistanceDisocclusionCheck(vec3 worldPos, vec3 lastWorldPos, float depth) {
+bool worldDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos, const float depth) {
     float worldDistFactor = clamp(distance(worldPos, cameraPos) / 100., 0.1, 1.);
 
     return distance(worldPos, lastWorldPos) > worldDistance * worldDistFactor;
 }
 
-bool validateReprojectedUV(vec2 reprojectedUv, float depth, vec3 worldPos, vec3 worldNormal) {
+bool validateReprojectedUV(const vec2 reprojectedUv, const float depth, const vec3 worldPos, const vec3 worldNormal) {
     if (any(lessThan(reprojectedUv, vec2(0.))) || any(greaterThan(reprojectedUv, vec2(1.)))) return false;
 
 #ifdef neighborhoodClamping
@@ -158,13 +158,13 @@ bool validateReprojectedUV(vec2 reprojectedUv, float depth, vec3 worldPos, vec3 
     return true;
 }
 
-vec2 reprojectVelocity(vec2 sampleUv) {
+vec2 reprojectVelocity(const vec2 sampleUv) {
     vec4 velocity = textureLod(velocityTexture, sampleUv, 0.0);
 
     return vUv - velocity.xy;
 }
 
-vec2 reprojectHitPoint(vec3 rayOrig, float rayLength, float depth) {
+vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength, const float depth) {
     vec3 cameraRay = normalize(rayOrig - cameraPos);
     float cameraRayLength = distance(rayOrig, cameraPos);
 
@@ -176,7 +176,7 @@ vec2 reprojectHitPoint(vec3 rayOrig, float rayLength, float depth) {
     return hitPointUv;
 }
 
-vec2 getReprojectedUV(vec2 uv, float depth, vec3 worldPos, vec3 worldNormal, float rayLength) {
+vec2 getReprojectedUV(const vec2 uv, const float depth, const vec3 worldPos, const vec3 worldNormal, const float rayLength) {
 // hit point reprojection
 #ifdef reprojectReflectionHitPoints
     if (rayLength != 0.0) {
@@ -199,7 +199,7 @@ vec2 getReprojectedUV(vec2 uv, float depth, vec3 worldPos, vec3 worldNormal, flo
 }
 
 #ifdef catmullRomSampling
-vec4 SampleTextureCatmullRom(sampler2D tex, in vec2 uv, in vec2 texSize) {
+vec4 SampleTextureCatmullRom(const sampler2D tex, const vec2 uv, const vec2 texSize) {
     // We're going to sample a a 4x4 grid of texels surrounding the target UV coordinate. We'll do this by rounding
     // down the sample location to get the exact center of our "starting" texel. The starting texel will be at
     // location [1, 1] in the grid, where [0, 0] is the top left corner.
@@ -249,7 +249,7 @@ vec4 SampleTextureCatmullRom(sampler2D tex, in vec2 uv, in vec2 texSize) {
 }
 #endif
 
-vec4 sampleReprojectedTexture(sampler2D tex, vec2 reprojectedUv) {
+vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv) {
 #ifdef catmullRomSampling
     return SampleTextureCatmullRom(tex, reprojectedUv, 1.0 / invTexSize);
 #else

@@ -117,9 +117,9 @@ export class SSGIEffect extends Effect {
 		// temporal resolve pass
 		this.svgf.svgfTemporalResolvePass.fullscreenMaterial.fragmentShader =
 			/* glsl */ `
-	uniform float jitter;
-	uniform float jitterRoughness;
-	` +
+			uniform float jitter;
+			uniform float jitterRoughness;
+		` +
 			this.svgf.svgfTemporalResolvePass.fullscreenMaterial.fragmentShader.replace(
 				"float roughness = inputTexel.a;",
 				"float roughness = min(1., jitter + jitterRoughness * inputTexel.a);"
@@ -131,6 +131,11 @@ export class SSGIEffect extends Effect {
 				jitter: new Uniform(0),
 				jitterRoughness: new Uniform(0)
 			}
+		}
+
+		if (options.useDirectLight) {
+			this.ssgiPass.fullscreenMaterial.defines.useDirectLight = ""
+			this.svgf.denoisePass.fullscreenMaterial.defines.useDirectLight = ""
 		}
 
 		this.svgf.denoisePass.fullscreenMaterial.uniforms.diffuseTexture.value = this.ssgiPass.diffuseTexture

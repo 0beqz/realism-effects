@@ -46,4 +46,6 @@ vec3 F = F_Schlick(f0, VoH);
 // final output of the denoiser
 finalOutputColor = diffuse * (1. - metalness) * (1. - F) * diffuseLightingColor + specularLightingColor * F;
 
+#ifdef useDirectLight
 finalOutputColor += textureLod(directLightTexture, vUv, 0.).rgb;
+#endif

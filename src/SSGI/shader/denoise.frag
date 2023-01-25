@@ -42,7 +42,7 @@ uniform bool isLastIteration;
 
 #include <customComposeShaderFunctions>
 
-vec3 screenSpaceToWorldSpace(in vec2 uv, in float depth, in mat4 curMatrixWorld) {
+vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth, const mat4 curMatrixWorld) {
     vec4 ndc = vec4(
         (uv.x - 0.5) * 2.0,
         (uv.y - 0.5) * 2.0,
@@ -55,16 +55,16 @@ vec3 screenSpaceToWorldSpace(in vec2 uv, in float depth, in mat4 curMatrixWorld)
     return view.xyz;
 }
 
-float distToPlane(in vec3 worldPos, in vec3 neighborWorldPos, in vec3 worldNormal) {
+float distToPlane(const vec3 worldPos, const vec3 neighborWorldPos, const vec3 worldNormal) {
     vec3 toCurrent = worldPos - neighborWorldPos;
     float distToPlane = abs(dot(toCurrent, worldNormal));
 
     return distToPlane;
 }
 
-void tap(in vec2 neighborVec, in vec2 pixelStepOffset, in vec2 offset, in float depth, in vec3 normal, in float roughness, in vec3 worldPos,
-         in float lumaDiffuse, in float lumaSpecular,
-         in float colorPhiDiffuse, in float colorPhiSpecular,
+void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec2 offset, const float depth, const vec3 normal, const float roughness, const vec3 worldPos,
+         const float lumaDiffuse, const float lumaSpecular,
+         const float colorPhiDiffuse, const float colorPhiSpecular,
          inout vec3 diffuseLightingColor, inout vec3 specularLightingColor, inout float totalWeightDiffuse, inout float sumVarianceDiffuse,
          inout float totalWeightSpecular, inout float sumVarianceSpecular) {
     vec2 neighborUv = vUv + neighborVec * pixelStepOffset;

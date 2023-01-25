@@ -6,11 +6,11 @@ vec3 getViewPosition(const float depth) {
     return (projectionMatrixInverse * clipPosition).xyz;
 }
 
-vec3 F_Schlick(vec3 f0, float theta) {
+vec3 F_Schlick(const vec3 f0, const float theta) {
     return f0 + (1. - f0) * pow(1.0 - theta, 5.);
 }
 
-vec3 SampleGGXVNDF(vec3 V, float ax, float ay, float r1, float r2) {
+vec3 SampleGGXVNDF(const vec3 V, const float ax, const float ay, const float r1, const float r2) {
     vec3 Vh = normalize(vec3(ax * V.x, ay * V.y, V.z));
 
     float lensq = Vh.x * Vh.x + Vh.y * Vh.y;
@@ -29,16 +29,16 @@ vec3 SampleGGXVNDF(vec3 V, float ax, float ay, float r1, float r2) {
     return normalize(vec3(ax * Nh.x, ay * Nh.y, max(0.0, Nh.z)));
 }
 
-void Onb(in vec3 N, inout vec3 T, inout vec3 B) {
+void Onb(const vec3 N, inout vec3 T, inout vec3 B) {
     vec3 up = abs(N.z) < 0.9999999 ? vec3(0, 0, 1) : vec3(1, 0, 0);
     T = normalize(cross(up, N));
     B = cross(N, T);
 }
 
-vec3 ToLocal(vec3 X, vec3 Y, vec3 Z, vec3 V) {
+vec3 ToLocal(const vec3 X, const vec3 Y, const vec3 Z, const vec3 V) {
     return vec3(dot(V, X), dot(V, Y), dot(V, Z));
 }
 
-vec3 ToWorld(vec3 X, vec3 Y, vec3 Z, vec3 V) {
+vec3 ToWorld(const vec3 X, const vec3 Y, const vec3 Z, const vec3 V) {
     return V.x * X + V.y * Y + V.z * Z;
 }

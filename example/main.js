@@ -364,7 +364,7 @@ const loop = () => {
 		composer.render()
 
 		if (!didRemoveRenderPass) {
-			// composer.removePass(renderPass)
+			composer.removePass(renderPass)
 			didRemoveRenderPass = true
 		}
 	}

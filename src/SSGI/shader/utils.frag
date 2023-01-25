@@ -13,7 +13,7 @@ vec3 screenSpaceToWorldSpace(vec2 uv, float depth, mat4 camMatrixWorld) {
 }
 
 // source: https://github.com/mrdoob/three.js/blob/342946c8392639028da439b6dc0597e58209c696/examples/js/shaders/SAOShader.js#L123
-float getViewZ(const in float depth) {
+float getViewZ(const float depth) {
 #ifdef PERSPECTIVE_CAMERA
     return perspectiveDepthToViewZ(depth, cameraNear, cameraFar);
 #else
@@ -21,7 +21,7 @@ float getViewZ(const in float depth) {
 #endif
 }
 
-vec2 viewSpaceToScreenSpace(vec3 position) {
+vec2 viewSpaceToScreenSpace(const vec3 position) {
     vec4 projectedCoord = projectionMatrix * vec4(position, 1.0);
     projectedCoord.xy /= projectedCoord.w;
     // [-1, 1] --> [0, 1] (NDC to screen position)
@@ -30,7 +30,7 @@ vec2 viewSpaceToScreenSpace(vec3 position) {
     return projectedCoord.xy;
 }
 
-vec2 worldSpaceToScreenSpace(vec3 worldPos) {
+vec2 worldSpaceToScreenSpace(const vec3 worldPos) {
     vec4 vsPos = vec4(worldPos, 1.0) * cameraMatrixWorld;
 
     return viewSpaceToScreenSpace(vsPos.xyz);
@@ -40,7 +40,7 @@ vec2 worldSpaceToScreenSpace(vec3 worldPos) {
 uniform vec3 envMapSize;
 uniform vec3 envMapPosition;
 
-vec3 parallaxCorrectNormal(vec3 v, vec3 cubeSize, vec3 cubePos, vec3 worldPosition) {
+vec3 parallaxCorrectNormal(const vec3 v, const vec3 cubeSize, const vec3 cubePos, const vec3 worldPosition) {
     vec3 nDir = normalize(v);
     vec3 rbmax = (.5 * cubeSize + cubePos - worldPosition) / nDir;
     vec3 rbmin = (-.5 * cubeSize + cubePos - worldPosition) / nDir;
@@ -58,7 +58,7 @@ vec3 parallaxCorrectNormal(vec3 v, vec3 cubeSize, vec3 cubePos, vec3 worldPositi
 #define M_PI 3.1415926535897932384626433832795
 
 // ray sampling x and z are swapped to align with expected background view
-vec2 equirectDirectionToUv(vec3 direction) {
+vec2 equirectDirectionToUv(const vec3 direction) {
     // from Spherical.setFromCartesianCoords
     vec2 uv = vec2(atan(direction.z, direction.x), acos(direction.y));
     uv /= vec2(2.0 * M_PI, M_PI);
@@ -70,11 +70,11 @@ vec2 equirectDirectionToUv(vec3 direction) {
     return uv;
 }
 
-vec3 sampleEquirectEnvMapColor(vec3 direction, sampler2D map, float lod) {
+vec3 sampleEquirectEnvMapColor(const vec3 direction, const sampler2D map, const float lod) {
     return textureLod(map, equirectDirectionToUv(direction), lod).rgb;
 }
 
-mat3 getBasisFromNormal(vec3 normal) {
+mat3 getBasisFromNormal(const vec3 normal) {
     vec3 other;
     if (abs(normal.x) > 0.5) {
         other = vec3(0.0, 1.0, 0.0);
@@ -88,39 +88,39 @@ mat3 getBasisFromNormal(vec3 normal) {
 
 #define PI M_PI
 
-vec3 F_Schlick(vec3 f0, float theta) {
+vec3 F_Schlick(const vec3 f0, const float theta) {
     return f0 + (1. - f0) * pow(1.0 - theta, 5.);
 }
 
-float F_Schlick(float f0, float f90, float theta) {
+float F_Schlick(const float f0, const float f90, const float theta) {
     return f0 + (f90 - f0) * pow(1.0 - theta, 5.0);
 }
 
-float D_GTR(float roughness, float NoH, float k) {
+float D_GTR(const float roughness, const float NoH, const float k) {
     float a2 = pow(roughness, 2.);
     return a2 / (PI * pow((NoH * NoH) * (a2 * a2 - 1.) + 1., k));
 }
 
-float SmithG(float NDotV, float alphaG) {
+float SmithG(const float NDotV, const float alphaG) {
     float a = alphaG * alphaG;
     float b = NDotV * NDotV;
     return (2.0 * NDotV) / (NDotV + sqrt(a + b - a * b));
 }
 
-float GGXVNDFPdf(float NoH, float NoV, float roughness) {
+float GGXVNDFPdf(const float NoH, const float NoV, const float roughness) {
     float D = D_GTR(roughness, NoH, 2.);
     float G1 = SmithG(NoV, roughness * roughness);
     return (D * G1) / max(0.00001, 4.0f * NoV);
 }
 
-float GeometryTerm(float NoL, float NoV, float roughness) {
+float GeometryTerm(const float NoL, const float NoV, const float roughness) {
     float a2 = roughness * roughness;
     float G1 = SmithG(NoV, a2);
     float G2 = SmithG(NoL, a2);
     return G1 * G2;
 }
 
-float evalDisneyDiffuse(float NoL, float NoV, float LoH, float roughness, float metalness) {
+float evalDisneyDiffuse(const float NoL, const float NoV, const float LoH, const float roughness, const float metalness) {
     float FD90 = 0.5 + 2. * roughness * pow(LoH, 2.);
     float a = F_Schlick(1., FD90, NoL);
     float b = F_Schlick(1., FD90, NoV);
@@ -128,7 +128,7 @@ float evalDisneyDiffuse(float NoL, float NoV, float LoH, float roughness, float 
     return (a * b / PI) * (1. - metalness);
 }
 
-vec3 evalDisneySpecular(float roughness, float NoH, float NoV, float NoL) {
+vec3 evalDisneySpecular(const float roughness, const float NoH, const float NoV, const float NoL) {
     float D = D_GTR(roughness, NoH, 2.);
     float G = GeometryTerm(NoL, NoV, pow(0.5 + roughness * .5, 2.));
 
@@ -137,7 +137,7 @@ vec3 evalDisneySpecular(float roughness, float NoH, float NoV, float NoL) {
     return spec;
 }
 
-vec3 SampleGGXVNDF(vec3 V, float ax, float ay, float r1, float r2) {
+vec3 SampleGGXVNDF(const vec3 V, const float ax, const float ay, const float r1, const float r2) {
     vec3 Vh = normalize(vec3(ax * V.x, ay * V.y, V.z));
 
     float lensq = Vh.x * Vh.x + Vh.y * Vh.y;
@@ -156,22 +156,22 @@ vec3 SampleGGXVNDF(vec3 V, float ax, float ay, float r1, float r2) {
     return normalize(vec3(ax * Nh.x, ay * Nh.y, max(0.0, Nh.z)));
 }
 
-void Onb(in vec3 N, inout vec3 T, inout vec3 B) {
+void Onb(const vec3 N, inout vec3 T, inout vec3 B) {
     vec3 up = abs(N.z) < 0.9999999 ? vec3(0, 0, 1) : vec3(1, 0, 0);
     T = normalize(cross(up, N));
     B = cross(N, T);
 }
 
-vec3 ToLocal(vec3 X, vec3 Y, vec3 Z, vec3 V) {
+vec3 ToLocal(const vec3 X, const vec3 Y, const vec3 Z, const vec3 V) {
     return vec3(dot(V, X), dot(V, Y), dot(V, Z));
 }
 
-vec3 ToWorld(vec3 X, vec3 Y, vec3 Z, vec3 V) {
+vec3 ToWorld(const vec3 X, const vec3 Y, const vec3 Z, const vec3 V) {
     return V.x * X + V.y * Y + V.z * Z;
 }
 
 // source: https://www.shadertoy.com/view/cll3R4
-vec3 cosineSampleHemisphere(vec3 n, vec2 u) {
+vec3 cosineSampleHemisphere(const vec3 n, const vec2 u) {
     float r = sqrt(u.x);
     float theta = 2.0 * PI * u.y;
 
