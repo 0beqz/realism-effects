@@ -28,6 +28,7 @@ export class SSGIMaterial extends ShaderMaterial {
 				thickness: new Uniform(0),
 				jitter: new Uniform(0),
 				jitterRoughness: new Uniform(0),
+				r3Offset: new Uniform(new Vector3()),
 				envBlur: new Uniform(0),
 				maxRoughness: new Uniform(0),
 				maxEnvMapMipLevel: new Uniform(0),
@@ -37,10 +38,8 @@ export class SSGIMaterial extends ShaderMaterial {
 				viewMatrix: new Uniform(new Matrix4()),
 				invTexSize: new Uniform(new Vector2()),
 				blueNoiseRepeat: new Uniform(new Vector2()),
-				blueNoiseOffset: new Uniform(new Vector2()),
 				envMapSize: new Uniform(new Vector3()),
-				cameraPos: new Uniform(new Vector3()),
-				renderDiffuseThisFrame: new Uniform(false)
+				cameraPos: new Uniform(new Vector3())
 			},
 
 			defines: {

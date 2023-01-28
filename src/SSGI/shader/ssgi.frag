@@ -35,8 +35,7 @@ uniform float thickness;
 uniform vec2 invTexSize;
 uniform vec2 blueNoiseRepeat;
 
-uniform float samples;
-uniform vec2 blueNoiseOffset;
+uniform vec3 r3Offset;
 
 uniform float jitter;
 uniform float jitterRoughness;
@@ -119,7 +118,6 @@ void main() {
     vec3 N = (vec4(n, 1.) * viewMatrix).xyz;
 
     bool isMissedRay;
-    vec2 sampleOffset;
     vec3 SSGI, diffuseGI, specularGI, brdf, hitPos, T, B;
 
     Onb(N, T, B);
@@ -135,10 +133,10 @@ void main() {
     // start taking samples
     for (int s = 0; s < spp; s++) {
         float sF = float(s);
-        if (s != 0) sampleOffset = vec2(sF / sppPlus1);
 
-        vec2 blueNoiseUv = (vUv + blueNoiseOffset + sampleOffset) * blueNoiseRepeat;
+        vec2 blueNoiseUv = vUv * blueNoiseRepeat;
         vec3 random = textureLod(blueNoiseTexture, blueNoiseUv, 0.).rgb;
+        random = fract(random + r3Offset * (sF + 1.0));
 
         // calculate GGX reflection ray
         vec3 H = SampleGGXVNDF(V, roughness, roughness, random.x, random.y);

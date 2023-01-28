@@ -40,3 +40,16 @@ export const generateR2 = count => {
 
 	return points
 }
+
+export const getR2Index = n => {
+	return [(0.5 + a1 * n) % 1, (0.5 + a2 * n) % 1]
+}
+
+export const getR3Index = n => {
+	const g = 1.2207440846057596
+	const a1 = 1.0 / g
+	const a2 = 1.0 / (g * g)
+	const a3 = 1.0 / (g * g * g)
+
+	return [(0.5 + a1 * n) % 1, (0.5 + a2 * n) % 1, (0.5 + a3 * n) % 1]
+}

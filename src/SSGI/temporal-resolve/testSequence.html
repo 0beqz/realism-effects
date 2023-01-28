@@ -26,6 +26,20 @@
 				return points
 			}
 
+			const generateR3 = count => {
+				let points = []
+				let g = 1.2207440846057596
+				let a1 = 1.0 / g
+				let a2 = 1.0 / (g * g)
+				let a3 = 1.0 / (g * g * g)
+
+				for (let n = 0; n < count; n++) {
+					points.push([(0.5 + a1 * n) % 1, (0.5 + a2 * n) % 1, (0.5 + a3 * n) % 1])
+				}
+
+				return points
+			}
+
 			const harmoniousNumber = (power = 2, value = 0, n = 100) => {
 				if (n === 0) return value
 
@@ -70,7 +84,7 @@
 				return data
 			}
 
-			let count = 120
+			let count = 500
 			let dim = count ** 0.5
 
 			const getCoverage = points => {

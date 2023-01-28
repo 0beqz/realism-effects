@@ -12,7 +12,7 @@ import {
 } from "three"
 import { MRTMaterial } from "../material/MRTMaterial.js"
 import { SSGIMaterial } from "../material/SSGIMaterial.js"
-import { generateR2 } from "../temporal-resolve/utils/QuasirandomGenerator"
+import { generateR2, getR3Index } from "../temporal-resolve/utils/QuasirandomGenerator"
 import { getVisibleChildren, keepMaterialMapUpdated } from "../utils/Utils.js"
 
 const backgroundColor = new Color(0)
@@ -214,8 +214,9 @@ export class SSGIPass extends Pass {
 		this.unsetMRTMaterialInScene()
 
 		// update uniforms
+		this.fullscreenMaterial.uniforms.r3Offset.value.fromArray(getR3Index(~~(renderer.info.render.frame % 65536)))
+
 		this.haltonIndex = (this.haltonIndex + 1) % points.length
-		this.fullscreenMaterial.uniforms.blueNoiseOffset.value.fromArray(points[this.haltonIndex])
 		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
 		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far
 		this.fullscreenMaterial.uniforms.viewMatrix.value.copy(this._camera.matrixWorldInverse)
