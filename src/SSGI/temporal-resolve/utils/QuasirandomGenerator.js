@@ -27,7 +27,7 @@ export const generateHalton23Points = count => {
 // from: https://news.ycombinator.com/item?id=17876741
 // reference: http://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/
 
-const g = 1.32471795724474602596090885447809
+const g = 1.32471795724474602596090885447809 // Plastic number
 const a1 = 1.0 / g
 const a2 = 1.0 / (g * g)
 

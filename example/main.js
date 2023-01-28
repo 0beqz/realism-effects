@@ -156,7 +156,7 @@ const params = {}
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
 pmremGenerator.compileEquirectangularShader()
 
-new RGBELoader().load("monbachtal_riverbank_2k.hdr", envMap => {
+new RGBELoader().load("colosseum_2k.hdr", envMap => {
 	envMap.mapping = THREE.EquirectangularReflectionMapping
 
 	scene.environment = envMap
@@ -237,7 +237,8 @@ const initScene = () => {
 		refineSteps: 4,
 		spp: 1,
 		resolutionScale: 1,
-		missedRays: false
+		missedRays: false,
+		useDirectLight: true
 	}
 
 	traaEffect = new TRAAEffect(scene, camera, params)
@@ -364,7 +365,7 @@ const loop = () => {
 		composer.render()
 
 		if (!didRemoveRenderPass) {
-			composer.removePass(renderPass)
+			// composer.removePass(renderPass)
 			didRemoveRenderPass = true
 		}
 	}

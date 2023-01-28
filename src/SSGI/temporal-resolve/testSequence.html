@@ -7,6 +7,7 @@
 	<body>
 		<!--Step 2-->
 		<svg id="r2" width="500" height="500" style="margin-right: 64px"></svg>
+		<svg id="r2supergolden" width="500" height="500" style="margin-right: 64px"></svg>
 		<svg id="halton" width="500" height="500" style="margin-right: 64px"></svg>
 		<svg id="random" width="500" height="500"></svg>
 		<script>
@@ -15,6 +16,25 @@
 			const generateR2 = count => {
 				let points = []
 				let g = 1.32471795724474602596090885447809
+				let a1 = 1.0 / g
+				let a2 = 1.0 / (g * g)
+
+				for (let n = 0; n < count; n++) {
+					points.push([(0.5 + a1 * n) % 1, (0.5 + a2 * n) % 1])
+				}
+
+				return points
+			}
+
+			const harmoniousNumber = (power = 2, value = 0, n = 100) => {
+				if (n === 0) return value
+
+				return (1 + harmoniousNumber(power, value, n - 1)) ** (1 / power)
+			}
+
+			const generateR2SupergoldenRatio = count => {
+				let points = []
+				let g = 1.4655712318767680266567312
 				let a1 = 1.0 / g
 				let a2 = 1.0 / (g * g)
 
@@ -48,6 +68,28 @@
 				}
 
 				return data
+			}
+
+			let count = 120
+			let dim = count ** 0.5
+
+			const getCoverage = points => {
+				let n = 0
+				let grid = []
+
+				for (let [x, y] of points) {
+					let absX = ~~(x * dim)
+					let absY = ~~(y * dim)
+
+					let offset = absY * dim + absX
+
+					if (!grid[offset]) {
+						grid[offset] = true
+						n++
+					}
+				}
+
+				return Math.round((n / count) * 100 * 100) / 100 + "%"
 			}
 
 			let create = (name, id, dataset) => {
@@ -90,19 +132,24 @@
 					})
 					.attr("r", 2)
 					.attr("transform", "translate(" + 100 + "," + 100 + ")")
-					.style("fill", "#CC0000")
+					.style("fill", function (d, i) {
+						if (i / count < 1 / 3) return "red"
+						if (i / count < 2 / 3) return "green"
+						return "blue"
+					})
 			}
 
-			create("R2", "#r2", generateR2(500))
-			create("Halton (2, 3)", "#halton", generateHalton23Points(500))
+			let pointsPlastic = generateR2(count)
+			let pointsSupergolden = generateR2SupergoldenRatio(count)
+			let pointsHalton = generateHalton23Points(count)
+			let pointsRandom = Array(count)
+				.fill(null)
+				.map(() => [Math.random(), Math.random()])
 
-			create(
-				"Math.random()",
-				"#random",
-				Array(500)
-					.fill(null)
-					.map(() => [Math.random(), Math.random()])
-			)
+			create("R2 (Plastic Number) - " + getCoverage(pointsPlastic), "#r2", pointsPlastic)
+			create("R2 (Supergolden Ratio) - " + getCoverage(pointsSupergolden), "#r2supergolden", pointsSupergolden)
+			create("Halton 2,3 - " + getCoverage(pointsHalton), "#halton", pointsHalton)
+			create("Math.random() - " + getCoverage(pointsRandom), "#random", pointsRandom)
 		</script>
 	</body>
 </html>

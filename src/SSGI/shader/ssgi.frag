@@ -338,7 +338,7 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
         SSGI = reprojectedGI + emissiveColor;
 
 #ifdef useDirectLight
-        SSGI += textureLod(directLightTexture, coords.xy, 0.).rgb * 3.;
+        SSGI += textureLod(directLightTexture, coords.xy, 0.).rgb * 3.0;
 #endif
     } else {
         SSGI = textureLod(directLightTexture, vUv, 0.).rgb;

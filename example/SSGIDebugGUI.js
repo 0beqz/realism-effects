@@ -47,12 +47,12 @@ export class SSGIDebugGUI {
 		})
 		denoiseKernelFolder.addInput(params, "depthPhi", {
 			min: 0,
-			max: 25,
+			max: 15,
 			step: 0.001
 		})
 		denoiseKernelFolder.addInput(params, "normalPhi", {
 			min: 0,
-			max: 25,
+			max: 15,
 			step: 0.001
 		})
 		denoiseKernelFolder.addInput(params, "roughnessPhi", {
