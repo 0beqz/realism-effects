@@ -24,7 +24,7 @@ export const defaultTemporalResolvePassOptions = {
 
 export class TemporalResolvePass extends Pass {
 	haltonSequence = []
-	haltonIndex = 0
+	pointsIndex = 0
 	lastCameraTransform = {
 		position: new Vector3(),
 		quaternion: new Quaternion()
@@ -154,9 +154,9 @@ export class TemporalResolvePass extends Pass {
 
 		if (this.haltonSequence.length === 0) this.haltonSequence = generateR2(16384).map(([a, b]) => [a - 0.5, b - 0.5])
 
-		this.haltonIndex = (this.haltonIndex + 1) % this.haltonSequence.length
+		this.pointsIndex = (this.pointsIndex + 1) % this.haltonSequence.length
 
-		const [x, y] = this.haltonSequence[this.haltonIndex]
+		const [x, y] = this.haltonSequence[this.pointsIndex]
 
 		const { width, height } = this.renderTarget
 

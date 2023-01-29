@@ -1,6 +1,5 @@
 ﻿import { Effect } from "postprocessing"
-import { LinearEncoding, NearestFilter, RepeatWrapping, Uniform, Vector2 } from "three"
-import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader"
+import { LinearEncoding, NearestFilter, RepeatWrapping, TextureLoader, Uniform, Vector2 } from "three"
 import { generateR2 } from "../SSGI/temporal-resolve/utils/QuasirandomGenerator"
 import motionBlur from "./motionBlur.glsl"
 
@@ -12,7 +11,7 @@ const defaultOptions = { intensity: 1, jitter: 5, samples: 16 }
 const points = generateR2(16384)
 
 export class MotionBlurEffect extends Effect {
-	haltonIndex = 0
+	pointsIndex = 0
 
 	constructor(velocityTexture, options = defaultOptions) {
 		options = { ...defaultOptions, ...options }
@@ -64,12 +63,7 @@ export class MotionBlurEffect extends Effect {
 	initialize(renderer, ...args) {
 		super.initialize(renderer, ...args)
 
-		// load blue noise texture
-		const ktx2Loader = new KTX2Loader()
-		ktx2Loader.setTranscoderPath("examples/js/libs/basis/")
-		ktx2Loader.detectSupport(renderer)
-		ktx2Loader.load("texture/blue_noise_rg.ktx2", blueNoiseTexture => {
-			// generated using "toktx --target_type RG --t2 blue_noise_rg blue_noise_rg.png"
+		new TextureLoader().load("texture/LDR_RGB1_1.png", blueNoiseTexture => {
 			blueNoiseTexture.minFilter = NearestFilter
 			blueNoiseTexture.magFilter = NearestFilter
 			blueNoiseTexture.wrapS = RepeatWrapping
@@ -77,8 +71,6 @@ export class MotionBlurEffect extends Effect {
 			blueNoiseTexture.encoding = LinearEncoding
 
 			this.uniforms.get("blueNoiseTexture").value = blueNoiseTexture
-
-			ktx2Loader.dispose()
 		})
 	}
 
@@ -86,8 +78,8 @@ export class MotionBlurEffect extends Effect {
 		this.uniforms.get("inputTexture").value = inputBuffer.texture
 		this.uniforms.get("deltaTime").value = Math.max(1 / 1000, deltaTime)
 
-		this.haltonIndex = (this.haltonIndex + 1) % points.length
-		this.uniforms.get("blueNoiseOffset").value.fromArray(points[this.haltonIndex])
+		this.pointsIndex = (this.pointsIndex + 1) % points.length
+		this.uniforms.get("blueNoiseOffset").value.fromArray(points[this.pointsIndex])
 
 		const noiseTexture = this.uniforms.get("blueNoiseTexture").value
 		if (noiseTexture) {
