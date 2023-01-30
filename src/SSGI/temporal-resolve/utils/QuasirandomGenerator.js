@@ -4,19 +4,20 @@
 const g = 1.32471795724474602596090885447809 // Plastic number
 const a1 = 1.0 / g
 const a2 = 1.0 / (g * g)
+const base = 1.1127756842787055 // harmoniousNumber(7), yields better coverage compared to using 0.5
 
 export const generateR2 = count => {
 	const points = []
 
 	for (let n = 0; n < count; n++) {
-		points.push([(0.5 + a1 * n) % 1, (0.5 + a2 * n) % 1])
+		points.push([(base + a1 * n) % 1, (base + a2 * n) % 1])
 	}
 
 	return points
 }
 
 export const getR2Index = n => {
-	return [(0.5 + a1 * n) % 1, (0.5 + a2 * n) % 1]
+	return [(base + a1 * n) % 1, (base + a2 * n) % 1]
 }
 
 export const getR3Index = n => {
@@ -25,5 +26,5 @@ export const getR3Index = n => {
 	const a2 = 1.0 / (g * g)
 	const a3 = 1.0 / (g * g * g)
 
-	return [(0.5 + a1 * n) % 1, (0.5 + a2 * n) % 1, (0.5 + a3 * n) % 1]
+	return [(base + a1 * n) % 1, (base + a2 * n) % 1, (base + a3 * n) % 1]
 }

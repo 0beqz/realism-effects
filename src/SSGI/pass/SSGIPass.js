@@ -12,16 +12,14 @@ import {
 } from "three"
 import { MRTMaterial } from "../material/MRTMaterial.js"
 import { SSGIMaterial } from "../material/SSGIMaterial.js"
-import { generateR2, getR3Index } from "../temporal-resolve/utils/QuasirandomGenerator"
+import { getR3Index } from "../temporal-resolve/utils/QuasirandomGenerator"
 import { getVisibleChildren, keepMaterialMapUpdated } from "../utils/Utils.js"
 
 const backgroundColor = new Color(0)
-const points = generateR2(16384)
 
 export class SSGIPass extends Pass {
 	cachedMaterials = new WeakMap()
 	visibleMeshes = []
-	pointsIndex = 0
 
 	constructor(ssgiEffect, { diffuseOnly = false, specularOnly = false }) {
 		super("SSGIPass")
@@ -217,7 +215,6 @@ export class SSGIPass extends Pass {
 		// update uniforms
 		this.fullscreenMaterial.uniforms.r3Offset.value.fromArray(getR3Index(~~(renderer.info.render.frame % 65536)))
 
-		this.pointsIndex = (this.pointsIndex + 1) % points.length
 		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
 		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far
 		this.fullscreenMaterial.uniforms.viewMatrix.value.copy(this._camera.matrixWorldInverse)
