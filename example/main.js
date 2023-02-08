@@ -226,19 +226,19 @@ const initScene = () => {
 		denoiseKernel: 3,
 		denoiseDiffuse: 33.15,
 		denoiseSpecular: 8.700000000000001,
-		depthPhi: 6.250000000000002,
-		normalPhi: 10.59800000000001,
+		depthPhi: 3.5870000000000015,
+		normalPhi: 35.326000000000015,
 		roughnessPhi: 100,
 		jitter: 3.469446951953614e-18,
 		jitterRoughness: 1,
 		envBlur: 0.53,
-		maxEnvLuminance: 10,
+		sunMultiplier: 1,
+		maxEnvLuminance: 3,
 		steps: 20,
 		refineSteps: 4,
 		spp: 1,
 		resolutionScale: 1,
-		missedRays: false,
-		useDirectLight: true
+		missedRays: false
 	}
 
 	traaEffect = new TRAAEffect(scene, camera, params)
@@ -301,8 +301,6 @@ const initScene = () => {
 		const motionBlurEffect = new MotionBlurEffect(texture, {
 			jitter: 1
 		})
-
-		// ssgiEffect.setVelocityPass(traaEffect.temporalResolvePass.velocityPass)
 
 		ssgiEffect.setVelocityPass(traaEffect.temporalResolvePass.velocityPass)
 

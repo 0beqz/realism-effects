@@ -23,7 +23,7 @@ export const defaultTemporalResolvePassOptions = {
 }
 
 export class TemporalResolvePass extends Pass {
-	haltonSequence = []
+	r2Sequence = []
 	pointsIndex = 0
 	lastCameraTransform = {
 		position: new Vector3(),
@@ -152,11 +152,11 @@ export class TemporalResolvePass extends Pass {
 	jitter(jitterScale = 1) {
 		this.unjitter()
 
-		if (this.haltonSequence.length === 0) this.haltonSequence = generateR2(16384).map(([a, b]) => [a - 0.5, b - 0.5])
+		if (this.r2Sequence.length === 0) this.r2Sequence = generateR2(256).map(([a, b]) => [a - 0.5, b - 0.5])
 
-		this.pointsIndex = (this.pointsIndex + 1) % this.haltonSequence.length
+		this.pointsIndex = (this.pointsIndex + 1) % this.r2Sequence.length
 
-		const [x, y] = this.haltonSequence[this.pointsIndex]
+		const [x, y] = this.r2Sequence[this.pointsIndex]
 
 		const { width, height } = this.renderTarget
 

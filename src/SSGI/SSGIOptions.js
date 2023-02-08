@@ -42,6 +42,7 @@ export const defaultSSGIOptions = {
 	jitter: 0,
 	jitterRoughness: 0,
 	envBlur: 0.5,
+	sunMultiplier: 1,
 	maxEnvLuminance: 10,
 	steps: 20,
 	refineSteps: 5,

@@ -133,7 +133,8 @@ export class SSGIEffect extends Effect {
 			}
 		}
 
-		if (options.useDirectLight) {
+		if (options.sunMultiplier > 0) {
+			this.ssgiPass.fullscreenMaterial.defines.sunMultiplier = options.sunMultiplier.toPrecision(5)
 			this.ssgiPass.fullscreenMaterial.defines.useDirectLight = ""
 			this.svgf.denoisePass.fullscreenMaterial.defines.useDirectLight = ""
 		}
