@@ -286,6 +286,7 @@ const initScene = () => {
 	})
 
 	ssgiEffect = new SSGIEffect(scene, camera, options)
+	// ssgiEffect = new SSREffect(scene, camera, options)
 	window.ssgiEffect = ssgiEffect
 
 	gui2 = new SSGIDebugGUI(ssgiEffect, options)

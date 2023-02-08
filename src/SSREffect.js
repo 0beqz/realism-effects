@@ -11,18 +11,18 @@ ShaderChunk.envmap_physical_pars_fragment = ShaderChunk.envmap_physical_pars_fra
     `
 )
 
-const globaliblRadianceDisabledUniform = {
+const globalIblRadianceDisabledUniform = {
 	value: true
 }
 
-ShaderLib.physical.uniforms.iblRadianceDisabled = globaliblRadianceDisabledUniform
+ShaderLib.physical.uniforms.iblRadianceDisabled = globalIblRadianceDisabledUniform
 
 const { clone } = UniformsUtils
 UniformsUtils.clone = uniforms => {
 	const result = clone(uniforms)
 
 	if ("iblRadianceDisabled" in uniforms) {
-		result.iblRadianceDisabled = globaliblRadianceDisabledUniform
+		result.iblRadianceDisabled = globalIblRadianceDisabledUniform
 	}
 
 	return result
@@ -34,7 +34,7 @@ let rAF2
 export class SSREffect extends SSGIEffect {
 	constructor(scene, camera, options = defaultSSGIOptions) {
 		options = { ...defaultSSGIOptions, ...options }
-		options.reflectionsOnly = true
+		options.specularOnly = true
 
 		super(scene, camera, options)
 	}
@@ -42,13 +42,13 @@ export class SSREffect extends SSGIEffect {
 	update(renderer, inputBuffer) {
 		super.update(renderer, inputBuffer)
 
-		globaliblRadianceDisabledUniform.value = true
+		globalIblRadianceDisabledUniform.value = true
 
 		cancelAnimationFrame(rAF2)
 		cancelAnimationFrame(rAF)
 
 		rAF = requestAnimationFrame(() => {
-			rAF2 = requestAnimationFrame(() => (globaliblRadianceDisabledUniform.value = false))
+			rAF2 = requestAnimationFrame(() => (globalIblRadianceDisabledUniform.value = false))
 		})
 	}
 }

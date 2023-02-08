@@ -12,7 +12,6 @@ import {
 } from "three"
 import { MRTMaterial } from "../material/MRTMaterial.js"
 import { SSGIMaterial } from "../material/SSGIMaterial.js"
-import { getR3Index } from "../temporal-resolve/utils/QuasirandomGenerator"
 import { getVisibleChildren, keepMaterialMapUpdated } from "../utils/Utils.js"
 
 const backgroundColor = new Color(0)
@@ -134,8 +133,6 @@ export class SSGIPass extends Pass {
 				if (mrtMaterial) mrtMaterial.dispose()
 
 				mrtMaterial = new MRTMaterial()
-				if (originalMaterial.emissive) mrtMaterial.uniforms.emissive.value = originalMaterial.emissive
-				if (originalMaterial.color) mrtMaterial.uniforms.color.value = originalMaterial.color
 
 				mrtMaterial.uniforms.normalScale.value = originalMaterial.normalScale
 
@@ -160,8 +157,11 @@ export class SSGIPass extends Pass {
 			if (map) mrtMaterial.uniforms.uvTransform.value = map.matrix
 			mrtMaterial.side = originalMaterial.side
 
+			if (originalMaterial.emissive) mrtMaterial.uniforms.emissive.value = originalMaterial.emissive
+			if (originalMaterial.color) mrtMaterial.uniforms.color.value = originalMaterial.color
+
 			// to ensure SSGI works as good as possible in the scene
-			if (!this.ssgiEffect.reflectionsOnly) {
+			if (!this.ssgiEffect.specularOnly) {
 				mrtMaterial.envMapIntensity = originalMaterial.envMapIntensity
 				originalMaterial.envMapIntensity = 0
 			}
@@ -212,9 +212,11 @@ export class SSGIPass extends Pass {
 
 		this.unsetMRTMaterialInScene()
 
-		// update uniforms
-		this.fullscreenMaterial.uniforms.r3Offset.value.fromArray(getR3Index(~~(renderer.info.render.frame % 65536)))
+		const frame = renderer.info.render.frame % 65536
+		const samples = frame * this.ssgiEffect.spp
 
+		// update uniforms
+		this.fullscreenMaterial.uniforms.samples.value = samples
 		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
 		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far
 		this.fullscreenMaterial.uniforms.viewMatrix.value.copy(this._camera.matrixWorldInverse)

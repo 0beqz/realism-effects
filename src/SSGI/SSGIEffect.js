@@ -42,14 +42,10 @@ export class SSGIEffect extends Effect {
 		this._scene = scene
 		this._camera = camera
 
-		const lightOptions = {
-			// specularOnly: true
-		}
-
-		this.svgf = new SVGF(scene, camera, denoiseCompose, denoiseComposeFunctions, lightOptions)
+		this.svgf = new SVGF(scene, camera, denoiseCompose, denoiseComposeFunctions, options)
 
 		// ssgi pass
-		this.ssgiPass = new SSGIPass(this, lightOptions)
+		this.ssgiPass = new SSGIPass(this, options)
 		this.svgf.setInputTexture(this.ssgiPass.texture)
 		this.svgf.setSpecularTexture(this.ssgiPass.specularTexture)
 
@@ -319,37 +315,41 @@ export class SSGIEffect extends Effect {
 	update(renderer, inputBuffer) {
 		this.keepEnvMapUpdated()
 
-		renderer.setRenderTarget(this.sceneRenderTarget)
+		const renderScene = false
+		const sceneBuffer = renderScene ? this.sceneRenderTarget : inputBuffer
 
-		const children = []
+		if (renderScene) {
+			renderer.setRenderTarget(this.sceneRenderTarget)
 
-		this._scene.traverseVisible(c => {
-			if (c.isScene) return
+			const children = []
 
-			c._wasVisible = true
+			this._scene.traverseVisible(c => {
+				if (c.isScene) return
 
-			c.visible = c.constructor.name === "GroundProjectedEnv" || this.selection.has(c)
+				c._wasVisible = true
 
-			if (!c.visible) children.push(c)
-		})
+				c.visible = c.constructor.name === "GroundProjectedEnv" || this.selection.has(c)
 
-		renderer.render(this._scene, this._camera)
+				if (!c.visible) children.push(c)
+			})
 
-		for (const c of children) {
-			c.visible = true
-			delete c._wasVisible
+			renderer.render(this._scene, this._camera)
+
+			for (const c of children) {
+				c.visible = true
+				delete c._wasVisible
+			}
 		}
 
-		this.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.directLightTexture.value =
-			this.sceneRenderTarget.texture
-		this.ssgiPass.fullscreenMaterial.uniforms.directLightTexture.value = inputBuffer.texture
-		this.svgf.denoisePass.fullscreenMaterial.uniforms.directLightTexture.value = inputBuffer.texture
+		this.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.directLightTexture.value = sceneBuffer.texture
+		this.ssgiPass.fullscreenMaterial.uniforms.directLightTexture.value = sceneBuffer.texture
+		this.svgf.denoisePass.fullscreenMaterial.uniforms.directLightTexture.value = sceneBuffer.texture
 
 		this.ssgiPass.render(renderer)
 		this.svgf.render(renderer)
 
 		this.uniforms.get("inputTexture").value = this.svgf.texture
-		this.uniforms.get("sceneTexture").value = this.sceneRenderTarget.texture
+		this.uniforms.get("sceneTexture").value = sceneBuffer.texture
 		this.uniforms.get("depthTexture").value = this.ssgiPass.depthTexture
 		this.uniforms.get("toneMapping").value = renderer.toneMapping
 	}

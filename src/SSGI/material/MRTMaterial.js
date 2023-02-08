@@ -158,7 +158,10 @@ export class MRTMaterial extends ShaderMaterial {
                 }
             `,
 			glslVersion: GLSL3,
-			toneMapped: false
+			toneMapped: false,
+			alphaTest: false,
+			fog: false,
+			lights: false
 		})
 
 		this.normalMapType = TangentSpaceNormalMap
