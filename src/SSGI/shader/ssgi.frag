@@ -35,7 +35,7 @@ uniform float thickness;
 uniform vec2 invTexSize;
 uniform vec2 blueNoiseRepeat;
 
-uniform float samples;
+uniform float frames;
 
 uniform float jitter;
 uniform float jitterRoughness;
@@ -145,13 +145,18 @@ void main() {
         float sF = float(s);
 
         vec2 blueNoiseUv = vUv * blueNoiseRepeat;
-        vec3 random = textureLod(blueNoiseTexture, blueNoiseUv, 0.).rgb;
 
-        const vec3 harmoniousNumbers234 = vec3(1.618033988749895, 1.3247179572447458, 1.2207440846057596);
-        random = fract(random + harmoniousNumbers234 * (samples + sF));
+        vec3 blueNoise = textureLod(blueNoiseTexture, blueNoiseUv, 0.).rgb;
+
+        const vec3 harmoniousNumbers123 = vec3(
+            1.618033988749895,
+            1.3247179572447458,
+            1.2207440846057596);
+
+        blueNoise = fract(blueNoise + harmoniousNumbers123 * frames);
 
         // calculate GGX reflection ray
-        vec3 H = SampleGGXVNDF(V, roughness, roughness, random.x, random.y);
+        vec3 H = SampleGGXVNDF(V, roughness, roughness, blueNoise.x, blueNoise.y);
         if (H.z < 0.0) H = -H;
 
         vec3 l = normalize(reflect(-V, H));
@@ -186,7 +191,7 @@ void main() {
         specW *= invW;
 
         // if diffuse lighting should be sampled
-        bool isDiffuseSample = random.z < diffW;
+        bool isDiffuseSample = blueNoise.z < diffW;
 #else
     #ifdef diffuseOnly
         const bool isDiffuseSample = true;
@@ -196,7 +201,7 @@ void main() {
 #endif
 
         if (isDiffuseSample) {
-            l = cosineSampleHemisphere(viewNormal, random.xy);
+            l = cosineSampleHemisphere(viewNormal, blueNoise.xy);
             h = normalize(v + l);  // half vector
 
             NoL = clamp(dot(n, l), EPSILON, ONE_MINUS_EPSILON);
@@ -205,7 +210,7 @@ void main() {
             VoH = clamp(dot(v, h), EPSILON, ONE_MINUS_EPSILON);
 
             vec3 gi = doSample(
-                viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, NoV, NoL, NoH, LoH, VoH, random.xy,
+                viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, NoV, NoL, NoH, LoH, VoH, blueNoise.xy,
                 l, hitPos, isMissedRay, brdf);
 
             gi *= brdf;
@@ -216,7 +221,7 @@ void main() {
 
         } else {
             vec3 gi = doSample(
-                viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, NoV, NoL, NoH, LoH, VoH, random.xy,
+                viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, NoV, NoL, NoH, LoH, VoH, blueNoise.xy,
                 l, hitPos, isMissedRay, brdf);
 
             gi *= brdf;

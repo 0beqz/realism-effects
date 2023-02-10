@@ -24,9 +24,10 @@ export class MotionBlurEffect extends Effect {
 				["blueNoiseTexture", new Uniform(null)],
 				["blueNoiseRepeat", new Uniform(new Vector2())],
 				["blueNoiseOffset", new Uniform(new Vector2())],
+				["invTexSize", new Uniform(new Vector2())],
 				["intensity", new Uniform(1)],
 				["jitter", new Uniform(1)],
-				["seed", new Uniform(0)],
+				["frames", new Uniform(0)],
 				["deltaTime", new Uniform(0)]
 			]),
 			defines: new Map([
@@ -77,6 +78,11 @@ export class MotionBlurEffect extends Effect {
 	update(renderer, inputBuffer, deltaTime) {
 		this.uniforms.get("inputTexture").value = inputBuffer.texture
 		this.uniforms.get("deltaTime").value = Math.max(1 / 1000, deltaTime)
+
+		const frames = renderer.info.render.frame % 65536
+		this.uniforms.get("frames").value = frames
+
+		this.uniforms.get("invTexSize").value.set(1 / window.innerWidth, 1 / window.innerHeight)
 
 		this.pointsIndex = (this.pointsIndex + 1) % points.length
 		this.uniforms.get("blueNoiseOffset").value.fromArray(points[this.pointsIndex])

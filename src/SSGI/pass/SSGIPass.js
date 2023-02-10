@@ -212,11 +212,11 @@ export class SSGIPass extends Pass {
 
 		this.unsetMRTMaterialInScene()
 
-		const frame = renderer.info.render.frame % 65536
-		const samples = frame * this.ssgiEffect.spp
+		const frames = renderer.info.render.frame % 65536
+		const framesSpp = frames * this.ssgiEffect.spp
 
 		// update uniforms
-		this.fullscreenMaterial.uniforms.samples.value = samples
+		this.fullscreenMaterial.uniforms.frames.value = framesSpp
 		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
 		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far
 		this.fullscreenMaterial.uniforms.viewMatrix.value.copy(this._camera.matrixWorldInverse)

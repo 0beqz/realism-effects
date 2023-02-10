@@ -3,11 +3,13 @@ uniform sampler2D inputTexture;
 uniform sampler2D velocityTexture;
 uniform sampler2D blueNoiseTexture;
 uniform vec2 blueNoiseRepeat;
+uniform vec2 invTexSize;
 uniform float intensity;
 uniform float jitter;
 
 uniform vec2 blueNoiseOffset;
 uniform float deltaTime;
+uniform float frames;
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
     vec4 velocity = textureLod(velocityTexture, vUv, 0.0);
@@ -18,12 +20,17 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
         return;
     }
 
-    // velocity.xy = unpackRGBATo2Half(velocity);
-
     velocity.xy *= intensity;
 
     vec2 blueNoiseUv = (vUv + blueNoiseOffset) * blueNoiseRepeat;
+
     vec2 blueNoise = textureLod(blueNoiseTexture, blueNoiseUv, 0.).rg;
+
+    const vec2 harmoniousNumbers12 = vec2(
+        1.618033988749895,
+        1.3247179572447458);
+
+    blueNoise = fract(blueNoise + harmoniousNumbers12 * frames);
 
     vec2 jitterOffset = jitter * velocity.xy * blueNoise;
 
@@ -31,8 +38,8 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
     vec2 startUv = vUv - velocity.xy * 0.5;
     vec2 endUv = vUv + velocity.xy * 0.5;
 
-    // startUv = max(vec2(0.), startUv);
-    // endUv = min(vec2(1.), endUv);
+    startUv = max(vec2(0.), startUv);
+    endUv = min(vec2(1.), endUv);
 
     float samplesMinus1Float = samplesFloat - 1.0;
 
