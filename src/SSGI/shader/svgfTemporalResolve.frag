@@ -42,8 +42,8 @@ if (specularUv.x != -1.) {
     temporalResolveMix = min(1. - 1. / specularAlpha, maxValue);
 
     float roughness = inputTexel.a;
-    float glossines = max(0., 0.01 - roughness) / 0.01;
-    temporalResolveMix *= 1. - glossines;
+    float glossines = max(0., 0.0125 - roughness) / 0.0125;
+    temporalResolveMix *= 1. - glossines * glossines;
 }
 
 gSpecular = vec4(mix(specularColor, lastSpecular, specularUv.x != -1. ? temporalResolveMix : 0.), specularAlpha);

@@ -60,6 +60,7 @@ export class DenoisePass extends Pass {
 				normalPhi: new Uniform(1),
 				roughnessPhi: new Uniform(1),
 				stepSize: new Uniform(1),
+				isFirstIteration: new Uniform(false),
 				isLastIteration: new Uniform(false),
 				viewMatrix: new Uniform(camera.matrixWorldInverse),
 				projectionMatrix: new Uniform(camera.projectionMatrix),
@@ -127,6 +128,7 @@ export class DenoisePass extends Pass {
 
 		const diffuseLightingTexture = this.fullscreenMaterial.uniforms.diffuseLightingTexture.value
 		const specularLightingTexture = this.fullscreenMaterial.uniforms.specularLightingTexture.value
+
 		const denoiseKernel = this.fullscreenMaterial.uniforms.denoiseKernel.value
 
 		const isUsingDiffuse = this.isUsingDiffuse()
@@ -144,7 +146,9 @@ export class DenoisePass extends Pass {
 
 				this.fullscreenMaterial.uniforms.horizontal.value = horizontal
 				this.fullscreenMaterial.uniforms.blurHorizontal.value = blurHorizontal
+
 				this.fullscreenMaterial.uniforms.stepSize.value = stepSize
+				this.fullscreenMaterial.uniforms.isFirstIteration.value = i === 0
 				this.fullscreenMaterial.uniforms.isLastIteration.value = i === 2 * this.iterations - 1
 
 				const renderTarget = horizontal ? this.renderTargetA : this.renderTargetB

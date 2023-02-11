@@ -32,30 +32,30 @@ export class SSGIDebugGUI {
 		const temporalResolveFolder = pane.addFolder({ title: "Temporal Resolve" })
 
 		temporalResolveFolder.addInput(params, "blend", { min: 0, max: 1, step: 0.001 })
-		const denoiseKernelFolder = pane.addFolder({ title: "Denoise" })
-		denoiseKernelFolder.addInput(params, "denoiseIterations", { min: 0, max: 5, step: 1 })
-		denoiseKernelFolder.addInput(params, "denoiseKernel", { min: 1, max: 5, step: 1 })
-		denoiseKernelFolder.addInput(params, "denoiseDiffuse", {
+		const denoiseFolder = pane.addFolder({ title: "Denoise" })
+		denoiseFolder.addInput(params, "denoiseIterations", { min: 0, max: 5, step: 1 })
+		denoiseFolder.addInput(params, "denoiseKernel", { min: 1, max: 5, step: 1 })
+		denoiseFolder.addInput(params, "denoiseDiffuse", {
 			min: 0,
 			max: 50,
 			step: 0.01
 		})
-		denoiseKernelFolder.addInput(params, "denoiseSpecular", {
+		denoiseFolder.addInput(params, "denoiseSpecular", {
 			min: 0,
 			max: 50,
 			step: 0.01
 		})
-		denoiseKernelFolder.addInput(params, "depthPhi", {
+		denoiseFolder.addInput(params, "depthPhi", {
 			min: 0,
 			max: 15,
 			step: 0.001
 		})
-		denoiseKernelFolder.addInput(params, "normalPhi", {
+		denoiseFolder.addInput(params, "normalPhi", {
 			min: 0,
 			max: 50,
 			step: 0.001
 		})
-		denoiseKernelFolder.addInput(params, "roughnessPhi", {
+		denoiseFolder.addInput(params, "roughnessPhi", {
 			min: 0,
 			max: 25,
 			step: 0.001

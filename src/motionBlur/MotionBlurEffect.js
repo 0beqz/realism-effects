@@ -1,6 +1,5 @@
 ﻿import { Effect } from "postprocessing"
 import { LinearEncoding, NearestFilter, RepeatWrapping, TextureLoader, Uniform, Vector2 } from "three"
-import { generateR2 } from "../SSGI/temporal-resolve/utils/QuasirandomGenerator"
 import motionBlur from "./motionBlur.glsl"
 
 // https://www.nvidia.com/docs/io/8230/gdc2003_openglshadertricks.pdf
@@ -8,7 +7,6 @@ import motionBlur from "./motionBlur.glsl"
 // reference code: https://github.com/gkjohnson/threejs-sandbox/blob/master/motionBlurPass/src/CompositeShader.js
 
 const defaultOptions = { intensity: 1, jitter: 5, samples: 16 }
-const points = generateR2(16384)
 
 export class MotionBlurEffect extends Effect {
 	pointsIndex = 0
@@ -83,9 +81,6 @@ export class MotionBlurEffect extends Effect {
 		this.uniforms.get("frames").value = frames
 
 		this.uniforms.get("invTexSize").value.set(1 / window.innerWidth, 1 / window.innerHeight)
-
-		this.pointsIndex = (this.pointsIndex + 1) % points.length
-		this.uniforms.get("blueNoiseOffset").value.fromArray(points[this.pointsIndex])
 
 		const noiseTexture = this.uniforms.get("blueNoiseTexture").value
 		if (noiseTexture) {

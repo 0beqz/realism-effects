@@ -233,7 +233,7 @@ void main() {
     }
 
 #ifndef specularOnly
-    gDiffuse = vec4(diffuseGI, roughness);
+    gDiffuse = vec4(diffuseGI, sqrt(roughness));
 #endif
 
 #ifndef diffuseOnly

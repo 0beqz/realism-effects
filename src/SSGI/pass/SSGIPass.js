@@ -17,6 +17,7 @@ import { getVisibleChildren, keepMaterialMapUpdated } from "../utils/Utils.js"
 const backgroundColor = new Color(0)
 
 export class SSGIPass extends Pass {
+	frames = 0
 	cachedMaterials = new WeakMap()
 	visibleMeshes = []
 
@@ -212,11 +213,10 @@ export class SSGIPass extends Pass {
 
 		this.unsetMRTMaterialInScene()
 
-		const frames = renderer.info.render.frame % 65536
-		const framesSpp = frames * this.ssgiEffect.spp
+		this.frames = (this.frames + this.ssgiEffect.spp) % 65536
 
 		// update uniforms
-		this.fullscreenMaterial.uniforms.frames.value = framesSpp
+		this.fullscreenMaterial.uniforms.frames.value = this.frames
 		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
 		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far
 		this.fullscreenMaterial.uniforms.viewMatrix.value.copy(this._camera.matrixWorldInverse)

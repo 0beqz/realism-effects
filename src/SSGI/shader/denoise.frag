@@ -31,6 +31,7 @@ uniform float stepSize;
 uniform mat4 projectionMatrixInverse;
 uniform mat4 projectionMatrix;
 uniform mat4 cameraMatrixWorld;
+uniform bool isFirstIteration;
 uniform bool isLastIteration;
 
 #include <packing>
@@ -62,20 +63,22 @@ float distToPlane(const vec3 worldPos, const vec3 neighborWorldPos, const vec3 w
     return distToPlane;
 }
 
-void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec2 offset, const float depth, const vec3 normal, const float roughness, const vec3 worldPos,
-         const float lumaDiffuse, const float lumaSpecular,
+void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec2 offset, const float depth, const vec3 normal, const float roughness, const float roughnessSqrt,
+         const vec3 worldPos, const float lumaDiffuse, const float lumaSpecular,
          const float colorPhiDiffuse, const float colorPhiSpecular,
          inout vec3 diffuseLightingColor, inout vec3 specularLightingColor, inout float totalWeightDiffuse, inout float sumVarianceDiffuse,
          inout float totalWeightSpecular, inout float sumVarianceSpecular) {
-    vec2 neighborUv = vUv + neighborVec * pixelStepOffset;
-    vec2 bilinearNeighborUv = neighborUv + offset;  // neighborUv displaced by a half pixel to take advantage of bilinear filtering
+    vec2 fullNeighborUv = neighborVec * pixelStepOffset + offset;
+    vec2 neighborUvDiffuse = vUv + fullNeighborUv;
+    vec2 neighborUvSpecular = vUv + fullNeighborUv * roughnessSqrt;
+
     float basicWeight = 1.0;
 
 // depth similarity
 #ifdef useDepth
-    vec4 neighborDepthTexel = textureLod(depthTexture, neighborUv, 0.);
+    vec4 neighborDepthTexel = textureLod(depthTexture, neighborUvDiffuse, 0.);
     float neighborDepth = unpackRGBAToDepth(neighborDepthTexel);
-    vec3 neighborWorldPos = screenSpaceToWorldSpace(neighborUv, neighborDepth, cameraMatrixWorld);
+    vec3 neighborWorldPos = screenSpaceToWorldSpace(neighborUvDiffuse, neighborDepth, cameraMatrixWorld);
     float depthDiff = (1. - distToPlane(worldPos, neighborWorldPos, normal));
     float depthSimilarity = max(depthDiff / depthPhi, 0.);
 
@@ -86,7 +89,7 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec2 offset, 
 
 // the normal texel saves the normal in the RGB channels and the roughness in the A channel
 #if defined(useNormal) || defined(useRoughness)
-    vec4 neighborNormalTexel = textureLod(normalTexture, neighborUv, 0.);
+    vec4 neighborNormalTexel = textureLod(normalTexture, neighborUvDiffuse, 0.);
 #endif
 
 // normal similarity
@@ -113,7 +116,7 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec2 offset, 
 
 // denoise diffuse
 #ifdef DENOISE_DIFFUSE
-    vec4 diffuseNeighborInputTexel = textureLod(diffuseLightingTexture, bilinearNeighborUv, 0.);
+    vec4 diffuseNeighborInputTexel = textureLod(diffuseLightingTexture, neighborUvDiffuse, 0.);
     vec3 diffuseNeighborColor = diffuseNeighborInputTexel.rgb;
 
     float neighborLumaDiffuse = luminance(diffuseNeighborColor);
@@ -127,7 +130,7 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec2 offset, 
 
 // denoise specular
 #ifdef DENOISE_SPECULAR
-    vec4 specularNeighborInputTexel = textureLod(specularLightingTexture, bilinearNeighborUv, 0.);
+    vec4 specularNeighborInputTexel = textureLod(specularLightingTexture, neighborUvSpecular, 0.);
     vec3 specularNeighborColor = specularNeighborInputTexel.rgb;
 
     float neighborLumaSpecular = luminance(specularNeighborColor);
@@ -141,9 +144,8 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec2 offset, 
 
 // evaluate moment
 #ifdef useMoment
-    // first iteration
-    if (horizontal && stepSize == 1.) {
-        vec4 neighborMoment = textureLod(momentTexture, neighborUv, 0.);
+    if (isFirstIteration) {
+        vec4 neighborMoment = textureLod(momentTexture, neighborUvDiffuse, 0.);
 
     #ifdef DENOISE_DIFFUSE
         float neighborVarianceDiffuse = max(0.0, neighborMoment.g - neighborMoment.r * neighborMoment.r);
@@ -214,7 +216,7 @@ void main() {
     float colorPhiDiffuse = denoiseDiffuse, colorPhiSpecular = denoiseSpecular;
 
 #ifdef useMoment
-    if (horizontal && stepSize == 1.) {
+    if (isFirstIteration) {
         vec4 moment = textureLod(momentTexture, vUv, 0.);
 
     #ifdef DENOISE_DIFFUSE
@@ -245,6 +247,7 @@ void main() {
 
     vec2 pixelStepOffset = invTexSize * stepSize;
     vec2 bilinearOffset = invTexSize * vec2(horizontal ? 0.5 : -0.5, blurHorizontal ? 0.5 : -0.5);
+    float roughnessSqrt = max(0.05, sqrt(roughness));
 
     if (denoiseKernel > EPSILON) {
         if (blurHorizontal) {
@@ -253,7 +256,9 @@ void main() {
                     vec2 neighborVec = horizontal ? vec2(i, 0.) : vec2(0., i);
                     vec2 offset = bilinearOffset;
 
-                    tap(neighborVec, pixelStepOffset, offset, depth, normal, roughness, worldPos, lumaDiffuse, lumaSpecular, colorPhiDiffuse, colorPhiSpecular, diffuseLightingColor, specularLightingColor, totalWeightDiffuse, sumVarianceDiffuse, totalWeightSpecular, sumVarianceSpecular);
+                    tap(neighborVec, pixelStepOffset, offset, depth, normal, roughness, roughnessSqrt, worldPos,
+                        lumaDiffuse, lumaSpecular, colorPhiDiffuse, colorPhiSpecular, diffuseLightingColor, specularLightingColor,
+                        totalWeightDiffuse, sumVarianceDiffuse, totalWeightSpecular, sumVarianceSpecular);
                 }
             }
 
@@ -264,7 +269,9 @@ void main() {
                     vec2 neighborVec = horizontal ? vec2(-i, -i) : vec2(-i, i);
                     vec2 offset = bilinearOffset;
 
-                    tap(neighborVec, pixelStepOffset, offset, depth, normal, roughness, worldPos, lumaDiffuse, lumaSpecular, colorPhiDiffuse, colorPhiSpecular, diffuseLightingColor, specularLightingColor, totalWeightDiffuse, sumVarianceDiffuse, totalWeightSpecular, sumVarianceSpecular);
+                    tap(neighborVec, pixelStepOffset, offset, depth, normal, roughness, roughnessSqrt, worldPos,
+                        lumaDiffuse, lumaSpecular, colorPhiDiffuse, colorPhiSpecular, diffuseLightingColor, specularLightingColor,
+                        totalWeightDiffuse, sumVarianceDiffuse, totalWeightSpecular, sumVarianceSpecular);
                 }
             }
         }
