@@ -1,7 +1,15 @@
 ﻿import { DenoisePass } from "./pass/DenoisePass.js"
 import { SVGFTemporalResolvePass } from "./pass/SVGFTemporalResolvePass.js"
 
-const requiredTextures = ["inputTexture", "depthTexture", "normalTexture", "velocityTexture"]
+const requiredTexturesSvgf = ["inputTexture", "depthTexture", "normalTexture", "velocityTexture"]
+const requiredTexturesDenoiser = [
+	"diffuseLightingTexture",
+	"specularLightingTexture",
+	"diffuseTexture",
+	"depthTexture",
+	"normalTexture",
+	"momentTexture"
+]
 
 export class SVGF {
 	constructor(scene, camera, denoiseComposeShader, denoiseComposeFunctions, options = {}) {
@@ -11,9 +19,17 @@ export class SVGF {
 		options.diffuse = !options.specularOnly
 		options.specular = !options.diffuseOnly
 
-		this.denoisePass = new DenoisePass(camera, null, denoiseComposeShader, denoiseComposeFunctions, options)
+		this.denoisePass = new DenoisePass(camera, denoiseComposeShader, denoiseComposeFunctions, options)
 
 		this.denoisePass.fullscreenMaterial.uniforms.momentTexture.value = this.svgfTemporalResolvePass.momentTexture
+
+		this.denoisePass.fullscreenMaterial.uniforms.diffuseLightingTexture.value =
+			this.svgfTemporalResolvePass.accumulatedTexture
+
+		this.denoisePass.fullscreenMaterial.uniforms.specularLightingTexture.value =
+			this.svgfTemporalResolvePass.specularTexture
+
+		this.options = options
 	}
 
 	// the denoised texture
@@ -27,6 +43,16 @@ export class SVGF {
 
 	setSpecularTexture(texture) {
 		this.svgfTemporalResolvePass.fullscreenMaterial.uniforms.specularTexture.value = texture
+	}
+
+	setGBuffers(depthTexture, normalTexture) {
+		this.setJitteredGBuffers(depthTexture, normalTexture)
+		this.setNonJitteredGBuffers(depthTexture, normalTexture)
+	}
+
+	setJitteredGBuffers(depthTexture, normalTexture) {
+		this.denoisePass.fullscreenMaterial.uniforms.depthTexture.value = depthTexture
+		this.denoisePass.fullscreenMaterial.uniforms.normalTexture.value = normalTexture
 	}
 
 	setNonJitteredGBuffers(depthTexture, normalTexture) {
@@ -54,22 +80,24 @@ export class SVGF {
 	}
 
 	ensureAllTexturesSet() {
-		for (const bufferName of requiredTextures) {
+		for (const bufferName of requiredTexturesSvgf) {
 			if (!this.svgfTemporalResolvePass.fullscreenMaterial.uniforms[bufferName].value?.isTexture) {
-				const functionName = "set" + bufferName[0].toUpperCase() + bufferName.slice(1)
-				console.error("SVGF has no " + bufferName + ". Set a " + bufferName + " through " + functionName + "().")
+				console.error("SVGF has no non-jittered " + bufferName)
+			}
+		}
+
+		for (const bufferName of requiredTexturesDenoiser) {
+			if (!this.options.diffuse && bufferName === "diffuseLightingTexture") continue
+			if (!this.options.specular && bufferName === "specularLightingTexture") continue
+
+			if (!this.denoisePass.fullscreenMaterial.uniforms[bufferName].value?.isTexture) {
+				console.error("SVGF has no non-jittered " + bufferName)
 			}
 		}
 	}
 
 	render(renderer) {
 		this.ensureAllTexturesSet()
-
-		this.denoisePass.fullscreenMaterial.uniforms.diffuseLightingTexture.value =
-			this.svgfTemporalResolvePass.accumulatedTexture
-
-		this.denoisePass.fullscreenMaterial.uniforms.specularLightingTexture.value =
-			this.svgfTemporalResolvePass.specularTexture
 
 		this.svgfTemporalResolvePass.render(renderer)
 		this.denoisePass.render(renderer)

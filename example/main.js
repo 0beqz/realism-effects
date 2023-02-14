@@ -9,6 +9,7 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader"
 import { GroundProjectedEnv } from "three/examples/jsm/objects/GroundProjectedEnv"
 import { MotionBlurEffect } from "../src/motionBlur/MotionBlurEffect"
+import { SSDGIEffect } from "../src/SSDGIEffect"
 import { SSGIEffect } from "../src/SSGI/index"
 import { SSREffect } from "../src/SSREffect"
 import { TRAAEffect } from "../src/TRAAEffect"
@@ -167,7 +168,7 @@ new RGBELoader().load("monbachtal_riverbank_2k.hdr", envMap => {
 	envMesh.height = 20
 	envMesh.scale.setScalar(100)
 	envMesh.updateMatrixWorld()
-	// scene.add(envMesh)
+	scene.add(envMesh)
 
 	window.envMesh = envMesh
 
@@ -286,7 +287,6 @@ const initScene = () => {
 	})
 
 	ssgiEffect = new SSGIEffect(scene, camera, options)
-	// ssgiEffect = new SSREffect(scene, camera, options)
 	window.ssgiEffect = ssgiEffect
 
 	gui2 = new SSGIDebugGUI(ssgiEffect, options)
@@ -416,12 +416,6 @@ document.addEventListener("keydown", ev => {
 
 	if (ev.code === "KeyQ") {
 		ssgiPass.enabled = !ssgiPass.enabled
-
-		scene.traverse(c => {
-			if (c.material) {
-				c.material.envMapIntensity = ssgiPass.enabled ? 0 : 1
-			}
-		})
 
 		refreshLighting()
 	}

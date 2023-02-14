@@ -11,7 +11,6 @@ import svgfTemporalResolve from "../shader/svgfTemporalResolve.frag"
 import { TemporalResolvePass } from "../temporal-resolve/TemporalResolvePass"
 
 const defaultSVGFTemporalResolvePassOptions = {
-	moment: true,
 	diffuseOnly: false,
 	specularOnly: false,
 	renderVelocity: false,

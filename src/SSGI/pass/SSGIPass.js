@@ -161,12 +161,6 @@ export class SSGIPass extends Pass {
 			if (originalMaterial.emissive) mrtMaterial.uniforms.emissive.value = originalMaterial.emissive
 			if (originalMaterial.color) mrtMaterial.uniforms.color.value = originalMaterial.color
 
-			// to ensure SSGI works as good as possible in the scene
-			if (!this.ssgiEffect.specularOnly) {
-				mrtMaterial.envMapIntensity = originalMaterial.envMapIntensity
-				originalMaterial.envMapIntensity = 0
-			}
-
 			// update the child's MRT material
 			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "normalMap", "USE_NORMALMAP", true)
 			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "roughnessMap", "USE_ROUGHNESSMAP", true)
@@ -194,8 +188,6 @@ export class SSGIPass extends Pass {
 
 			// set material back to the original one
 			const [originalMaterial] = this.cachedMaterials.get(c)
-
-			if (!this.ssgiEffect.reflectionsOnly) originalMaterial.envMapIntensity = c.material.envMapIntensity
 
 			c.material = originalMaterial
 		}

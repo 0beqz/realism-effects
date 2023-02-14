@@ -17,6 +17,7 @@ Onb(N, T, B);
 
 V = ToLocal(T, B, N, V);
 
+// seems to approximate Fresnel very well
 vec3 H = SampleGGXVNDF(V, roughness, roughness, 0.25, 0.25);
 if (H.z < 0.0) H = -H;
 
@@ -46,10 +47,13 @@ vec3 F = F_Schlick(f0, VoH);
 vec3 diffuseComponent = diffuse * (1. - metalness) * (1. - F) * diffuseLightingColor;
 vec3 specularComponent = specularLightingColor * F;
 
+#if defined(DENOISE_DIFFUSE) && defined(DENOISE_SPECULAR)
 // final output of the denoiser
 finalOutputColor = diffuseComponent + specularComponent;
+#endif
 
 #if defined(DENOISE_DIFFUSE) && !defined(DENOISE_SPECULAR)
+finalOutputColor = textureLod(directLightTexture, vUv, 0.).rgb + diffuseComponent;
 #endif
 
 #if !defined(DENOISE_DIFFUSE) && defined(DENOISE_SPECULAR)

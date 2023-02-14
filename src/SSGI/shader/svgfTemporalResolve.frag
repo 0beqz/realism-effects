@@ -42,7 +42,7 @@ if (specularUv.x != -1.) {
     temporalResolveMix = min(1. - 1. / specularAlpha, maxValue);
 
     float roughness = inputTexel.a;
-    float glossines = max(0., 0.0125 - roughness) / 0.0125;
+    float glossines = max(0., 0.025 - roughness) / 0.025;
     temporalResolveMix *= 1. - glossines * glossines;
 }
 

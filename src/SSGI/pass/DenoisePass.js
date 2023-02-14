@@ -27,7 +27,6 @@ export class DenoisePass extends Pass {
 
 	constructor(
 		camera,
-		inputTexture,
 		customComposeShader = "",
 		customComposeShaderFunctions = "",
 		options = defaultDenoisePassOptions
@@ -44,8 +43,8 @@ export class DenoisePass extends Pass {
 			fragmentShader: finalFragmentShader,
 			vertexShader: basicVertexShader,
 			uniforms: {
-				diffuseLightingTexture: new Uniform(inputTexture),
-				specularLightingTexture: new Uniform(inputTexture),
+				diffuseLightingTexture: new Uniform(null),
+				specularLightingTexture: new Uniform(null),
 				diffuseTexture: new Uniform(null),
 				depthTexture: new Uniform(null),
 				normalTexture: new Uniform(null),
@@ -73,10 +72,6 @@ export class DenoisePass extends Pass {
 		if (options.diffuse) this.fullscreenMaterial.defines.DENOISE_DIFFUSE = ""
 		if (options.specular) this.fullscreenMaterial.defines.DENOISE_SPECULAR = ""
 
-		if (options.moment) this.fullscreenMaterial.defines.useMoment = ""
-
-		this.options = options
-
 		const renderTargetOptions = {
 			type: HalfFloatType,
 			depthBuffer: false
@@ -91,6 +86,8 @@ export class DenoisePass extends Pass {
 			texture.type = HalfFloatType
 			texture.needsUpdate = true
 		}
+
+		this.options = options
 	}
 
 	isUsingDiffuse() {

@@ -65,16 +65,6 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
               const float roughness, const bool isDiffuseSample, const float NoV, const float NoL, const float NoH, const float LoH,
               const float VoH, const vec2 random, inout vec3 l, inout vec3 hitPos, out bool isMissedRay, out vec3 brdf);
 
-const float g = 1.2207440846057596;
-const float a1 = 1.0 / g;
-const float a2 = 1.0 / (g * g);
-const float a3 = 1.0 / (g * g * g);
-const float base = 1.1127756842787055;  // harmoniousNumber(7), yields better coverage compared to using 0.5
-
-vec3 r3(float n) {
-    return vec3(fract(base + a1 * n), fract(base + a2 * n), fract(base + a3 * n));
-}
-
 void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.0);
 

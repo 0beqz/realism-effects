@@ -142,34 +142,32 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec2 offset, 
     totalWeightSpecular += weightSpecular;
 #endif
 
-// evaluate moment
-#ifdef useMoment
+    // evaluate moment
     if (isFirstIteration) {
         vec4 neighborMoment = textureLod(momentTexture, neighborUvDiffuse, 0.);
 
-    #ifdef DENOISE_DIFFUSE
+#ifdef DENOISE_DIFFUSE
         float neighborVarianceDiffuse = max(0.0, neighborMoment.g - neighborMoment.r * neighborMoment.r);
         sumVarianceDiffuse += weightDiffuse * weightDiffuse * neighborVarianceDiffuse;
-    #endif
+#endif
 
-    #ifdef DENOISE_SPECULAR
+#ifdef DENOISE_SPECULAR
         float neighborVarianceSpecular = max(0.0, neighborMoment.a - neighborMoment.b * neighborMoment.b);
         sumVarianceSpecular += weightSpecular * weightSpecular * neighborVarianceSpecular;
-    #endif
+#endif
     } else {
         // after first iteration (moment is now stored in the alpha channel)
 
-    #ifdef DENOISE_DIFFUSE
+#ifdef DENOISE_DIFFUSE
         float neighborVarianceDiffuse = diffuseNeighborInputTexel.a;
         sumVarianceDiffuse += weightDiffuse * weightDiffuse * neighborVarianceDiffuse;
-    #endif
+#endif
 
-    #ifdef DENOISE_SPECULAR
+#ifdef DENOISE_SPECULAR
         float neighborVarianceSpecular = specularNeighborInputTexel.a;
         sumVarianceSpecular += weightSpecular * weightSpecular * neighborVarianceSpecular;
-    #endif
-    }
 #endif
+    }
 }
 
 void main() {
@@ -215,34 +213,32 @@ void main() {
 
     float colorPhiDiffuse = denoiseDiffuse, colorPhiSpecular = denoiseSpecular;
 
-#ifdef useMoment
     if (isFirstIteration) {
         vec4 moment = textureLod(momentTexture, vUv, 0.);
 
-    #ifdef DENOISE_DIFFUSE
+#ifdef DENOISE_DIFFUSE
         sumVarianceDiffuse = max(0.0, moment.g - moment.r * moment.r);
-    #endif
+#endif
 
-    #ifdef DENOISE_SPECULAR
+#ifdef DENOISE_SPECULAR
         sumVarianceSpecular = max(0.0, moment.a - moment.b * moment.b);
-    #endif
+#endif
     } else {
-    #ifdef DENOISE_DIFFUSE
+#ifdef DENOISE_DIFFUSE
         sumVarianceDiffuse = diffuseLightingTexel.a;
-    #endif
+#endif
 
-    #ifdef DENOISE_SPECULAR
+#ifdef DENOISE_SPECULAR
         sumVarianceSpecular = specularLightingTexel.a;
-    #endif
+#endif
     }
 
-    #ifdef DENOISE_DIFFUSE
-    colorPhiDiffuse = denoiseDiffuse * sqrt(0.0001 + sumVarianceDiffuse);
-    #endif
+#ifdef DENOISE_DIFFUSE
+    colorPhiDiffuse = denoiseDiffuse * sqrt(0.00005 + sumVarianceDiffuse);
+#endif
 
-    #ifdef DENOISE_SPECULAR
-    colorPhiSpecular = denoiseSpecular * sqrt(0.0001 + sumVarianceSpecular);
-    #endif
+#ifdef DENOISE_SPECULAR
+    colorPhiSpecular = denoiseSpecular * sqrt(0.00005 + sumVarianceSpecular);
 #endif
 
     vec2 pixelStepOffset = invTexSize * stepSize;
@@ -266,7 +262,7 @@ void main() {
             // diagonal (top left to bottom right) / diagonal (top right to bottom left)
             for (float i = -denoiseKernel; i <= denoiseKernel; i++) {
                 if (i != 0.) {
-                    vec2 neighborVec = horizontal ? vec2(-i, -i) : vec2(-i, i);
+                    vec2 neighborVec = horizontal ? vec2(-i, -i) : vec2(i, -i);
                     vec2 offset = bilinearOffset;
 
                     tap(neighborVec, pixelStepOffset, offset, depth, normal, roughness, roughnessSqrt, worldPos,

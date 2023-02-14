@@ -13,7 +13,6 @@ uniform float frames;
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
     vec4 velocity = textureLod(velocityTexture, vUv, 0.0);
 
-    // skip background
     if (dot(velocity.xyz, velocity.xyz) == 0.0) {
         outputColor = inputColor;
         return;

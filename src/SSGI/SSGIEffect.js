@@ -1,8 +1,11 @@
 ﻿import { Effect, Selection } from "postprocessing"
+import { UniformsUtils } from "three"
 import {
 	EquirectangularReflectionMapping,
 	LinearMipMapLinearFilter,
 	NoToneMapping,
+	ShaderChunk,
+	ShaderLib,
 	sRGBEncoding,
 	Uniform,
 	WebGLRenderTarget
@@ -17,6 +20,80 @@ import { SVGF } from "./SVGF.js"
 import { getMaxMipLevel } from "./utils/Utils.js"
 
 const finalFragmentShader = compose.replace("#include <utils>", utils)
+
+export const createGlobalDisableIblRadianceUniform = () => {
+	if (!ShaderChunk.envmap_physical_pars_fragment.includes("iblRadianceDisabled")) {
+		ShaderChunk.envmap_physical_pars_fragment = ShaderChunk.envmap_physical_pars_fragment.replace(
+			"vec3 getIBLRadiance( const in vec3 viewDir, const in vec3 normal, const in float roughness ) {",
+			/* glsl */ `
+		uniform bool iblRadianceDisabled;
+	
+		vec3 getIBLRadiance( const in vec3 viewDir, const in vec3 normal, const in float roughness ) {
+		 if(iblRadianceDisabled) return vec3(0.);
+		`
+		)
+	}
+
+	if ("iblRadianceDisabled" in ShaderLib.physical.uniforms) return ShaderLib.physical.uniforms["iblRadianceDisabled"]
+
+	const globalIblRadianceDisabledUniform = {
+		value: false
+	}
+
+	ShaderLib.physical.uniforms.iblRadianceDisabled = globalIblRadianceDisabledUniform
+
+	const { clone } = UniformsUtils
+	UniformsUtils.clone = uniforms => {
+		const result = clone(uniforms)
+
+		if ("iblRadianceDisabled" in uniforms) {
+			result.iblRadianceDisabled = globalIblRadianceDisabledUniform
+		}
+
+		return result
+	}
+
+	return globalIblRadianceDisabledUniform
+}
+
+export const createGlobalDisableIblIradianceUniform = () => {
+	if (!ShaderChunk.envmap_physical_pars_fragment.includes("iblIrradianceDisabled")) {
+		ShaderChunk.envmap_physical_pars_fragment = ShaderChunk.envmap_physical_pars_fragment.replace(
+			"vec3 getIBLIrradiance( const in vec3 normal ) {",
+			/* glsl */ `
+			uniform bool iblIrradianceDisabled;
+		
+			vec3 getIBLIrradiance( const in vec3 normal ) {
+			 if(iblIrradianceDisabled) return vec3(0.);
+			`
+		)
+	}
+
+	if ("iblIrradianceDisabled" in ShaderLib.physical.uniforms)
+		return ShaderLib.physical.uniforms["iblIrradianceDisabled"]
+
+	const globalIblIrradianceDisabledUniform = {
+		value: false
+	}
+
+	ShaderLib.physical.uniforms.iblIrradianceDisabled = globalIblIrradianceDisabledUniform
+
+	const { clone } = UniformsUtils
+	UniformsUtils.clone = uniforms => {
+		const result = clone(uniforms)
+
+		if ("iblIrradianceDisabled" in uniforms) {
+			result.iblIrradianceDisabled = globalIblIrradianceDisabledUniform
+		}
+
+		return result
+	}
+
+	return globalIblIrradianceDisabledUniform
+}
+
+const globalIblIrradianceDisabledUniform = createGlobalDisableIblIradianceUniform()
+const globalIblRadianceDisabledUniform = createGlobalDisableIblRadianceUniform()
 
 export class SSGIEffect extends Effect {
 	selection = new Selection()
@@ -54,24 +131,12 @@ export class SSGIEffect extends Effect {
 		denoisePassUniforms.depthTexture.value = this.ssgiPass.depthTexture
 		denoisePassUniforms.normalTexture.value = this.ssgiPass.normalTexture
 
+		this.svgf.setJitteredGBuffers(this.ssgiPass.depthTexture, this.ssgiPass.normalTexture)
+
 		// unless overridden, SVGF's temporal resolve pass also uses the same G-buffers as the SSGI pass
 		// when TRAA is being used, the temporal resolve pass needs to use different G-buffers without jittering
 		this.svgf.setNonJitteredGBuffers(this.ssgiPass.depthTexture, this.ssgiPass.normalTexture)
 		this.svgf.setDiffuseTexture(this.ssgiPass.diffuseTexture)
-
-		// modify the temporal resolve pass of SVGF denoiser for the SSGI effect
-		this.svgf.svgfTemporalResolvePass.fullscreenMaterial.fragmentShader =
-			/* glsl */ `
-		uniform sampler2D directLightTexture;
-
-		` + this.svgf.svgfTemporalResolvePass.fullscreenMaterial.fragmentShader
-
-		this.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms = {
-			...this.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms,
-			...{
-				directLightTexture: new Uniform(null)
-			}
-		}
 
 		// patch the denoise pass
 
@@ -90,16 +155,6 @@ export class SSGIEffect extends Effect {
 					"float neighborRoughness = neighborNormalTexel.a;",
 					"float neighborRoughness = min(1., jitter + jitterRoughness * neighborNormalTexel.a);"
 				)
-		// .replace(
-		// 	"sumVarianceDiffuse = 1.;",
-		// 	/* glsl */ `
-		// 	// apply diffuse líghting
-		// 	vec3 directLight = textureLod(directLightTexture, vUv, 0.).rgb;
-		// 	diffuseLightingColor += directLight;
-
-		// 	sumVarianceDiffuse = 1.;
-		// 	`
-		// )
 
 		this.svgf.denoisePass.fullscreenMaterial.uniforms = {
 			...this.svgf.denoisePass.fullscreenMaterial.uniforms,
@@ -341,7 +396,6 @@ export class SSGIEffect extends Effect {
 			}
 		}
 
-		this.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.directLightTexture.value = sceneBuffer.texture
 		this.ssgiPass.fullscreenMaterial.uniforms.directLightTexture.value = sceneBuffer.texture
 		this.svgf.denoisePass.fullscreenMaterial.uniforms.directLightTexture.value = sceneBuffer.texture
 
@@ -352,5 +406,20 @@ export class SSGIEffect extends Effect {
 		this.uniforms.get("sceneTexture").value = sceneBuffer.texture
 		this.uniforms.get("depthTexture").value = this.ssgiPass.depthTexture
 		this.uniforms.get("toneMapping").value = renderer.toneMapping
+
+		const fullGi = !this.diffuseOnly && !this.specularOnly
+
+		globalIblIrradianceDisabledUniform.value = fullGi || this.diffuseOnly === true
+		globalIblRadianceDisabledUniform.value = fullGi || this.specularOnly == true
+
+		cancelAnimationFrame(this.rAF2)
+		cancelAnimationFrame(this.rAF)
+
+		this.rAF = requestAnimationFrame(() => {
+			this.rAF2 = requestAnimationFrame(() => {
+				globalIblIrradianceDisabledUniform.value = false
+				globalIblRadianceDisabledUniform.value = false
+			})
+		})
 	}
 }
