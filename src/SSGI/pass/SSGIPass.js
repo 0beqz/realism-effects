@@ -1,4 +1,4 @@
-﻿import { Pass } from "postprocessing"
+import { Pass } from "postprocessing"
 import {
 	Color,
 	HalfFloatType,
@@ -93,7 +93,7 @@ export class SSGIPass extends Pass {
 
 		this.emissiveTexture.minFilter = LinearFilter
 		this.emissiveTexture.magFilter = LinearFilter
-		this.emissiveTexture.encoding = sRGBEncoding
+		this.emissiveTexture.type = HalfFloatType
 		this.emissiveTexture.needsUpdate = true
 
 		this.normalTexture.type = HalfFloatType
@@ -168,8 +168,11 @@ export class SSGIPass extends Pass {
 			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "map", "USE_MAP", true)
 			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "emissiveMap", "USE_EMISSIVEMAP", true)
 
-			const visible = originalMaterial.visible && c.constructor.name !== "GroundProjectedEnv"
-			c.visible &&= visible
+			c.visible =
+				originalMaterial.visible &&
+				originalMaterial.depthWrite &&
+				originalMaterial.depthTest &&
+				c.constructor.name !== "GroundProjectedEnv"
 
 			mrtMaterial.uniforms.roughness.value =
 				this.ssgiEffect.selection.size === 0 || this.ssgiEffect.selection.has(c)

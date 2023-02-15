@@ -2,16 +2,24 @@ import dragDrop from "drag-drop"
 import * as POSTPROCESSING from "postprocessing"
 import Stats from "stats.js"
 import * as THREE from "three"
-import { AmbientLight } from "three"
-import { Box3, Color, DirectionalLight, DoubleSide, MeshNormalMaterial, Vector3 } from "three"
+import {
+	BackSide,
+	Box3,
+	Color,
+	DirectionalLight,
+	DoubleSide,
+	Mesh,
+	MeshNormalMaterial,
+	ShaderMaterial,
+	SphereGeometry,
+	Vector3
+} from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader"
 import { GroundProjectedEnv } from "three/examples/jsm/objects/GroundProjectedEnv"
 import { MotionBlurEffect } from "../src/motionBlur/MotionBlurEffect"
-import { SSDGIEffect } from "../src/SSDGIEffect"
 import { SSGIEffect } from "../src/SSGI/index"
-import { SSREffect } from "../src/SSREffect"
 import { TRAAEffect } from "../src/TRAAEffect"
 import { SSGIDebugGUI } from "./SSGIDebugGUI"
 import "./style.css"
@@ -157,22 +165,60 @@ const params = {}
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
 pmremGenerator.compileEquirectangularShader()
 
+let sphere
+
 new RGBELoader().load("monbachtal_riverbank_2k.hdr", envMap => {
 	envMap.mapping = THREE.EquirectangularReflectionMapping
 
 	scene.environment = envMap
-	scene.background = envMap
+	// scene.background = envMap
 
 	envMesh = new GroundProjectedEnv(envMap)
 	envMesh.radius = 440
 	envMesh.height = 20
 	envMesh.scale.setScalar(100)
 	envMesh.updateMatrixWorld()
-	scene.add(envMesh)
+	// scene.add(envMesh)
+
+	sphere = new Mesh(
+		new SphereGeometry(1, 64, 64),
+		new ShaderMaterial({
+			vertexShader: /* glsl */ `
+			varying vec3 pos; 
+		
+			void main() {
+				vec4 modelViewPosition = modelViewMatrix * vec4(position, 1.0);
+				gl_Position = projectionMatrix * modelViewPosition;
+
+				vec4 p = inverse(modelViewMatrix) * modelViewPosition;
+
+				pos = (p.xyz + 0.5) / 1.;
+			}
+			`,
+			fragmentShader: /* glsl */ `
+			varying vec3 pos;
+
+			void main() {
+				vec3 a = vec3(230., 156., 87.) / 255.;
+				vec3 b = vec3(53., 100., 230.) / 255.;
+
+				vec3 col = mix(a, b, pos.y);
+
+				gl_FragColor = vec4(col, 1.0);
+			}
+			`,
+			side: BackSide,
+			depthTest: false,
+			depthWrite: false,
+			fog: false
+		})
+	)
+
+	scene.add(sphere)
 
 	window.envMesh = envMesh
 
-	// scene.background = new Color(0x4c7fe5)
+	scene.background = new Color(0x4c7fe5)
 })
 
 const gltflLoader = new GLTFLoader()
@@ -233,7 +279,7 @@ const initScene = () => {
 		jitter: 3.469446951953614e-18,
 		jitterRoughness: 1,
 		envBlur: 0.53,
-		sunMultiplier: 1,
+		sunMultiplier: 0,
 		maxEnvLuminance: 3,
 		steps: 20,
 		refineSteps: 4,
@@ -321,7 +367,6 @@ const initScene = () => {
 		const fxaaEffect = new POSTPROCESSING.FXAAEffect()
 
 		fxaaPass = new POSTPROCESSING.EffectPass(camera, fxaaEffect)
-		// composer.addPass(fxaaPass)
 
 		loop()
 
@@ -356,6 +401,9 @@ const loop = () => {
 	controls.update()
 	camera.updateMatrixWorld()
 
+	sphere.position.copy(camera.position)
+	sphere.updateMatrixWorld()
+
 	if (guiParams.Method === "three.js AA") {
 		renderer.render(scene, camera)
 	} else {
@@ -364,7 +412,7 @@ const loop = () => {
 		composer.render()
 
 		if (!didRemoveRenderPass) {
-			// composer.removePass(renderPass)
+			composer.removePass(renderPass)
 			didRemoveRenderPass = true
 		}
 	}

@@ -23,8 +23,8 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
     vec2 blueNoise = textureLod(blueNoiseTexture, vUv * blueNoiseRepeat, 0.).rg;
 
     const vec2 harmoniousNumbers12 = vec2(
-        1.618033988749895,
-        1.3247179572447458);
+        1.3247179572447458,
+        1.618033988749895);
 
     blueNoise = fract(blueNoise + harmoniousNumbers12 * frames);
 

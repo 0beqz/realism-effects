@@ -1,14 +1,5 @@
 ﻿import { Pass } from "postprocessing"
-import {
-	Color,
-	FloatType,
-	HalfFloatType,
-	NearestFilter,
-	Quaternion,
-	UnsignedByteType,
-	Vector3,
-	WebGLMultipleRenderTargets
-} from "three"
+import { Color, FloatType, HalfFloatType, NearestFilter, UnsignedByteType, WebGLMultipleRenderTargets } from "three"
 import {
 	getVisibleChildren,
 	keepMaterialMapUpdated,
@@ -22,10 +13,6 @@ const backgroundColor = new Color(0)
 
 export class VelocityPass extends Pass {
 	cachedMaterials = new WeakMap()
-	lastCameraTransform = {
-		position: new Vector3(),
-		quaternion: new Quaternion()
-	}
 	visibleMeshes = []
 
 	constructor(scene, camera, { renderDepth = false } = {}) {
@@ -77,8 +64,11 @@ export class VelocityPass extends Pass {
 
 			c.material = velocityMaterial
 
-			const visible = originalMaterial.visible
-			c.visible = visible
+			c.visible =
+				originalMaterial.visible &&
+				originalMaterial.depthWrite &&
+				originalMaterial.depthTest &&
+				c.constructor.name !== "GroundProjectedEnv"
 
 			if (this.renderDepth) velocityMaterial.defines.renderDepth = ""
 
@@ -91,7 +81,7 @@ export class VelocityPass extends Pass {
 				originalMaterial.metalnessMap
 
 			if (map) velocityMaterial.uniforms.uvTransform.value = map.matrix
-			// velocityMaterial.side = originalMaterial.side
+			velocityMaterial.side = originalMaterial.side
 
 			updateVelocityMaterialBeforeRender(c, this._camera)
 		}

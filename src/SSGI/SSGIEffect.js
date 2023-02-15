@@ -1,5 +1,4 @@
 ﻿import { Effect, Selection } from "postprocessing"
-import { UniformsUtils } from "three"
 import {
 	EquirectangularReflectionMapping,
 	LinearMipMapLinearFilter,
@@ -8,6 +7,7 @@ import {
 	ShaderLib,
 	sRGBEncoding,
 	Uniform,
+	UniformsUtils,
 	WebGLRenderTarget
 } from "three"
 import { SSGIPass } from "./pass/SSGIPass.js"
@@ -17,7 +17,7 @@ import denoiseComposeFunctions from "./shader/denoiseComposeFunctions.frag"
 import utils from "./shader/utils.frag"
 import { defaultSSGIOptions } from "./SSGIOptions"
 import { SVGF } from "./SVGF.js"
-import { getMaxMipLevel } from "./utils/Utils.js"
+import { getMaxMipLevel, getVisibleChildren } from "./utils/Utils.js"
 
 const finalFragmentShader = compose.replace("#include <utils>", utils)
 
@@ -370,30 +370,35 @@ export class SSGIEffect extends Effect {
 	update(renderer, inputBuffer) {
 		this.keepEnvMapUpdated()
 
-		const renderScene = false
-		const sceneBuffer = renderScene ? this.sceneRenderTarget : inputBuffer
+		const renderNoGiMeshes = this.sunMultiplier === 0
+		const sceneBuffer = renderNoGiMeshes ? this.sceneRenderTarget : inputBuffer
 
-		if (renderScene) {
+		const hideMeshes = []
+
+		if (renderNoGiMeshes) {
 			renderer.setRenderTarget(this.sceneRenderTarget)
 
 			const children = []
 
-			this._scene.traverseVisible(c => {
+			for (const c of getVisibleChildren(this._scene)) {
 				if (c.isScene) return
 
-				c._wasVisible = true
+				const originalMaterial = c.material
 
-				c.visible = c.constructor.name === "GroundProjectedEnv" || this.selection.has(c)
+				c.visible = !(
+					originalMaterial.visible &&
+					originalMaterial.depthWrite &&
+					originalMaterial.depthTest &&
+					c.constructor.name !== "GroundProjectedEnv"
+				)
 
-				if (!c.visible) children.push(c)
-			})
+				c.visible ? hideMeshes.push(c) : children.push(c)
+			}
 
 			renderer.render(this._scene, this._camera)
 
-			for (const c of children) {
-				c.visible = true
-				delete c._wasVisible
-			}
+			for (const c of children) c.visible = true
+			for (const c of hideMeshes) c.visible = false
 		}
 
 		this.ssgiPass.fullscreenMaterial.uniforms.directLightTexture.value = sceneBuffer.texture
@@ -406,6 +411,8 @@ export class SSGIEffect extends Effect {
 		this.uniforms.get("sceneTexture").value = sceneBuffer.texture
 		this.uniforms.get("depthTexture").value = this.ssgiPass.depthTexture
 		this.uniforms.get("toneMapping").value = renderer.toneMapping
+
+		for (const c of hideMeshes) c.visible = true
 
 		const fullGi = !this.diffuseOnly && !this.specularOnly
 

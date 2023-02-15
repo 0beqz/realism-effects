@@ -139,9 +139,9 @@ void main() {
         vec3 blueNoise = textureLod(blueNoiseTexture, blueNoiseUv, 0.).rgb;
 
         const vec3 harmoniousNumbers123 = vec3(
-            1.618033988749895,
+            1.2207440846057596,
             1.3247179572447458,
-            1.2207440846057596);
+            1.618033988749895);
 
         blueNoise = fract(blueNoise + harmoniousNumbers123 * frames);
 
@@ -336,7 +336,7 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
     // check if the reprojected coordinates are within the screen
     if (all(reprojectedUvInScreen)) {
         vec4 emissiveTexel = textureLod(emissiveTexture, coords.xy, 0.);
-        vec3 emissiveColor = emissiveTexel.rgb;
+        vec3 emissiveColor = emissiveTexel.rgb * 10.;
 
         vec3 reprojectedGI = textureLod(accumulatedTexture, reprojectedUv, 0.).rgb;
 

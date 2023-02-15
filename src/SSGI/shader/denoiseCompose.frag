@@ -52,14 +52,16 @@ vec3 specularComponent = specularLightingColor * F;
 finalOutputColor = diffuseComponent + specularComponent;
 #endif
 
+vec3 directLight = textureLod(directLightTexture, vUv, 0.).rgb;
+
 #if defined(DENOISE_DIFFUSE) && !defined(DENOISE_SPECULAR)
-finalOutputColor = textureLod(directLightTexture, vUv, 0.).rgb + diffuseComponent;
+finalOutputColor = diffuseComponent;
 #endif
 
 #if !defined(DENOISE_DIFFUSE) && defined(DENOISE_SPECULAR)
-finalOutputColor = textureLod(directLightTexture, vUv, 0.).rgb + specularComponent;
+finalOutputColor = specularComponent;
 #endif
 
 #ifdef useDirectLight
-finalOutputColor += textureLod(directLightTexture, vUv, 0.).rgb;
+finalOutputColor += directLight;
 #endif
