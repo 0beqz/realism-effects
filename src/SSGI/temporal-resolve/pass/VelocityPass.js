@@ -15,31 +15,26 @@ export class VelocityPass extends Pass {
 	cachedMaterials = new WeakMap()
 	visibleMeshes = []
 
-	constructor(scene, camera, { renderDepth = false } = {}) {
+	constructor(scene, camera) {
 		super("VelocityPass")
 
 		this._scene = scene
 		this._camera = camera
 
-		const bufferCount = renderDepth ? 3 : 1
-		this.renderTarget = new WebGLMultipleRenderTargets(1, 1, bufferCount, {
+		this.renderTarget = new WebGLMultipleRenderTargets(1, 1, 3, {
 			minFilter: NearestFilter,
 			magFilter: NearestFilter,
 			type: HalfFloatType
 		})
 
-		if (renderDepth) {
-			this.renderTarget.texture[0].type = FloatType
-			this.renderTarget.texture[0].needsUpdate = true
+		this.renderTarget.texture[0].type = FloatType
+		this.renderTarget.texture[0].needsUpdate = true
 
-			this.renderTarget.texture[1].type = UnsignedByteType
-			this.renderTarget.texture[1].needsUpdate = true
+		this.renderTarget.texture[1].type = UnsignedByteType
+		this.renderTarget.texture[1].needsUpdate = true
 
-			this.renderTarget.texture[2].type = HalfFloatType
-			this.renderTarget.texture[2].needsUpdate = true
-		}
-
-		this.renderDepth = renderDepth
+		this.renderTarget.texture[2].type = HalfFloatType
+		this.renderTarget.texture[2].needsUpdate = true
 	}
 
 	setVelocityMaterialInScene() {
@@ -70,7 +65,7 @@ export class VelocityPass extends Pass {
 				originalMaterial.depthTest &&
 				c.constructor.name !== "GroundProjectedEnv"
 
-			if (this.renderDepth) velocityMaterial.defines.renderDepth = ""
+			velocityMaterial.defines.renderDepth = ""
 
 			keepMaterialMapUpdated(velocityMaterial, originalMaterial, "normalMap", "USE_NORMALMAP", true)
 

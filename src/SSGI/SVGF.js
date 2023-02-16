@@ -12,8 +12,8 @@ const requiredTexturesDenoiser = [
 ]
 
 export class SVGF {
-	constructor(scene, camera, denoiseComposeShader, denoiseComposeFunctions, options = {}) {
-		this.svgfTemporalResolvePass = new SVGFTemporalResolvePass(scene, camera, options)
+	constructor(scene, camera, velocityPass, denoiseComposeShader, denoiseComposeFunctions, options = {}) {
+		this.svgfTemporalResolvePass = new SVGFTemporalResolvePass(scene, camera, velocityPass, options)
 
 		// options for the denoise pass
 		options.diffuse = !options.specularOnly

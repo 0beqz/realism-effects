@@ -20,7 +20,7 @@ const defaultSVGFTemporalResolvePassOptions = {
 	customComposeShader: svgfTemporalResolve
 }
 export class SVGFTemporalResolvePass extends TemporalResolvePass {
-	constructor(scene, camera, options = defaultSVGFTemporalResolvePassOptions) {
+	constructor(scene, camera, velocityPass, options = defaultSVGFTemporalResolvePassOptions) {
 		const bufferCount = !options.diffuseOnly && !options.specularOnly ? 3 : 2
 
 		const temporalResolvePassRenderTarget = new WebGLMultipleRenderTargets(1, 1, bufferCount, {
@@ -36,6 +36,8 @@ export class SVGFTemporalResolvePass extends TemporalResolvePass {
 			}
 		}
 
+		super(scene, camera, velocityPass, options)
+
 		let diffuseAndSpecularBuffers
 		if (bufferCount > 2) {
 			diffuseAndSpecularBuffers = /* glsl */ `
@@ -50,8 +52,6 @@ export class SVGFTemporalResolvePass extends TemporalResolvePass {
 			layout(location = 1) out vec4 gDiffuse;
 			`
 		}
-
-		super(scene, camera, options)
 
 		const momentBuffers = /* glsl */ `
 		layout(location = 0) out vec4 gMoment;

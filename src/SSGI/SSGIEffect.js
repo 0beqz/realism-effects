@@ -104,9 +104,10 @@ export class SSGIEffect extends Effect {
 	/**
 	 * @param {THREE.Scene} scene The scene of the SSGI effect
 	 * @param {THREE.Camera} camera The camera with which SSGI is being rendered
+	 * @param {VelocityPass} velocityPass Required velocity pass
 	 * @param {SSGIOptions} [options] The optional options for the SSGI effect
 	 */
-	constructor(scene, camera, options = defaultSSGIOptions) {
+	constructor(scene, camera, velocityPass, options = defaultSSGIOptions) {
 		options = { ...defaultSSGIOptions, ...options }
 
 		super("SSGIEffect", finalFragmentShader, {
@@ -122,7 +123,7 @@ export class SSGIEffect extends Effect {
 		this._scene = scene
 		this._camera = camera
 
-		this.svgf = new SVGF(scene, camera, denoiseCompose, denoiseComposeFunctions, options)
+		this.svgf = new SVGF(scene, camera, velocityPass, denoiseCompose, denoiseComposeFunctions, options)
 
 		// ssgi pass
 		this.ssgiPass = new SSGIPass(this, options)

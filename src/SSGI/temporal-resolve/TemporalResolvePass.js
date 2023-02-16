@@ -30,11 +30,12 @@ export class TemporalResolvePass extends Pass {
 		quaternion: new Quaternion()
 	}
 
-	constructor(scene, camera, options = defaultTemporalResolvePassOptions) {
+	constructor(scene, camera, velocityPass, options = defaultTemporalResolvePassOptions) {
 		super("TemporalResolvePass")
 
 		this._scene = scene
 		this._camera = camera
+		this.velocityPass = velocityPass
 		options = { ...defaultTemporalResolvePassOptions, ...options }
 
 		this.renderTarget =
@@ -92,13 +93,9 @@ export class TemporalResolvePass extends Pass {
 		this.fullscreenMaterial.uniforms.lastDepthTexture.value = this.copyPass.renderTarget.texture[1]
 		this.fullscreenMaterial.uniforms.lastNormalTexture.value = this.copyPass.renderTarget.texture[2]
 
-		// if (options.renderVelocity) {
-		this.velocityPass = new VelocityPass(scene, camera, { renderDepth: true })
-
 		this.fullscreenMaterial.uniforms.velocityTexture.value = this.velocityPass.texture
 		this.fullscreenMaterial.uniforms.depthTexture.value = this.velocityPass.depthTexture
 		this.fullscreenMaterial.uniforms.normalTexture.value = this.velocityPass.normalTexture
-		// }
 
 		this.renderVelocity = options.renderVelocity
 

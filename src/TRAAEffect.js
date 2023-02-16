@@ -21,7 +21,7 @@ export const defaultTRAAOptions = {
 export class TRAAEffect extends Effect {
 	#lastSize
 
-	constructor(scene, camera, options = defaultTRAAOptions) {
+	constructor(scene, camera, velocityPass, options = defaultTRAAOptions) {
 		super("TRAAEffect", finalFragmentShader, {
 			type: "FinalTRAAEffectMaterial",
 			uniforms: new Map([["inputTexture", new Uniform(null)]])
@@ -34,7 +34,7 @@ export class TRAAEffect extends Effect {
 
 		this.#lastSize = { width: options.width, height: options.height, resolutionScale: options.resolutionScale }
 
-		this.temporalResolvePass = new TemporalResolvePass(scene, camera, options)
+		this.temporalResolvePass = new TemporalResolvePass(scene, camera, velocityPass, options)
 
 		this.uniforms.get("inputTexture").value = this.temporalResolvePass.texture
 

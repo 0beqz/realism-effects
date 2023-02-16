@@ -11,14 +11,14 @@ const defaultOptions = { intensity: 1, jitter: 5, samples: 16 }
 export class MotionBlurEffect extends Effect {
 	pointsIndex = 0
 
-	constructor(velocityTexture, options = defaultOptions) {
+	constructor(velocityPass, options = defaultOptions) {
 		options = { ...defaultOptions, ...options }
 
 		super("MotionBlurEffect", motionBlur, {
 			type: "MotionBlurMaterial",
 			uniforms: new Map([
 				["inputTexture", new Uniform(null)],
-				["velocityTexture", new Uniform(velocityTexture)],
+				["velocityTexture", new Uniform(velocityPass.texture)],
 				["blueNoiseTexture", new Uniform(null)],
 				["blueNoiseRepeat", new Uniform(new Vector2())],
 				["blueNoiseOffset", new Uniform(new Vector2())],

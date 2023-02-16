@@ -20,6 +20,7 @@ import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader"
 import { GroundProjectedEnv } from "three/examples/jsm/objects/GroundProjectedEnv"
 import { MotionBlurEffect } from "../src/motionBlur/MotionBlurEffect"
 import { SSGIEffect } from "../src/SSGI/index"
+import { VelocityPass } from "../src/SSGI/temporal-resolve/pass/VelocityPass"
 import { TRAAEffect } from "../src/TRAAEffect"
 import { SSGIDebugGUI } from "./SSGIDebugGUI"
 import "./style.css"
@@ -235,7 +236,7 @@ gltflLoader.load(url, asset => {
 const loadingEl = document.querySelector("#loading")
 
 let loadedCount = 0
-const loadFiles = 3
+const loadFiles = 6
 THREE.DefaultLoadingManager.onProgress = () => {
 	loadedCount++
 
@@ -287,7 +288,10 @@ const initScene = () => {
 		missedRays: false
 	}
 
-	traaEffect = new TRAAEffect(scene, camera, params)
+	const velocityPass = new VelocityPass(scene, camera)
+	composer.addPass(velocityPass)
+
+	traaEffect = new TRAAEffect(scene, camera, velocityPass, params)
 
 	window.traaEffect = traaEffect
 
@@ -331,27 +335,19 @@ const initScene = () => {
 		offset: 0.3
 	})
 
-	ssgiEffect = new SSGIEffect(scene, camera, options)
+	ssgiEffect = new SSGIEffect(scene, camera, velocityPass, options)
 	window.ssgiEffect = ssgiEffect
 
 	gui2 = new SSGIDebugGUI(ssgiEffect, options)
 	gui2.pane.containerElem_.style.left = "8px"
 
-	ssgiPass = new POSTPROCESSING.EffectPass(camera, ssgiEffect)
-
 	new POSTPROCESSING.LUT3dlLoader().load("lut.3dl").then(lutTexture => {
+		ssgiPass = new POSTPROCESSING.EffectPass(camera, ssgiEffect)
 		const lutEffect = new POSTPROCESSING.LUT3DEffect(lutTexture)
 
-		const { texture } = traaEffect.temporalResolvePass.velocityPass
-
-		const motionBlurEffect = new MotionBlurEffect(texture, {
+		const motionBlurEffect = new MotionBlurEffect(velocityPass, {
 			jitter: 1
 		})
-
-		ssgiEffect.setVelocityPass(traaEffect.temporalResolvePass.velocityPass)
-
-		traaEffect.temporalResolvePass.velocityPass.needsSwap = false
-		composer.addPass(traaEffect.temporalResolvePass.velocityPass)
 
 		composer.addPass(ssgiPass)
 		composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect, bloomEffect, vignetteEffect, lutEffect))
@@ -665,5 +661,3 @@ const setupAsset = asset => {
 
 	requestAnimationFrame(refreshLighting)
 }
-
-window.gltflLoader = gltflLoader
