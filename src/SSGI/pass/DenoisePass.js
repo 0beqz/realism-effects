@@ -1,7 +1,7 @@
 ﻿import { Pass } from "postprocessing"
 import { GLSL3, HalfFloatType, ShaderMaterial, Uniform, Vector2, WebGLMultipleRenderTargets } from "three"
 import basicVertexShader from "../shader/basic.vert"
-import fragmentShader from "../shader/denoise.frag"
+import fragmentShader from "../shader/denoise/denoise.frag"
 
 // https://research.nvidia.com/sites/default/files/pubs/2017-07_Spatiotemporal-Variance-Guided-Filtering%3A//svgf_preprint.pdf
 // https://diharaw.github.io/post/adventures_in_hybrid_rendering/

@@ -33,13 +33,12 @@ uniform vec3 cameraPos;
 uniform float rayDistance;
 uniform float maxRoughness;
 uniform float thickness;
-uniform vec2 invTexSize;
-uniform vec2 blueNoiseRepeat;
-
-uniform float frames;
-
 uniform float envBlur;
 uniform float maxEnvLuminance;
+
+uniform float frames;
+uniform vec2 texSize;
+uniform vec2 blueNoiseRepeat;
 
 #define INVALID_RAY_COORDS vec2(-1.0);
 #define EARLY_OUT_COLOR    vec4(0.0, 0.0, 0.0, 0.0)
@@ -131,11 +130,14 @@ void main() {
     // fresnel f0
     vec3 f0 = mix(vec3(0.04), diffuse, metalness);
 
-    vec2 size = vUv / invTexSize;
-    float absPos = size.y / invTexSize.x + size.x;
-    vec2 blueNoiseSize = (1. / invTexSize) / blueNoiseRepeat;
+    // set up blue noise
+    vec2 size = vUv * texSize;
+    float absPos = size.y * texSize.x + size.x;
+
+    vec2 blueNoiseSize = texSize / blueNoiseRepeat;
     float blueNoiseIndex = floor(floor(size.y / blueNoiseSize.y) * blueNoiseRepeat.x) + floor(size.x / blueNoiseSize.x);
 
+    // get the offset of this pixel's blue noise tile
     float blueNoiseTileOffset = r1(blueNoiseIndex + 1.0) * 65536.;
 
     // start taking samples
@@ -148,6 +150,7 @@ void main() {
         // animate the blue noise depending on the frame and samples taken this frame
         blueNoise = fract(blueNoise + harmoniousNumbers321 * (frames + float(s) + blueNoiseTileOffset));
 
+        // Disney BRDF and sampling source: https://www.shadertoy.com/view/cll3R4
         // calculate GGX reflection ray
         vec3 H = SampleGGXVNDF(V, roughness, roughness, blueNoise.x, blueNoise.y);
         if (H.z < 0.0) H = -H;

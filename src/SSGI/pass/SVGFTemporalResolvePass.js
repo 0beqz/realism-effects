@@ -7,7 +7,7 @@
 	Uniform,
 	WebGLMultipleRenderTargets
 } from "three"
-import svgfTemporalResolve from "../shader/svgfTemporalResolve.frag"
+import svgfTemporalResolve from "../svgf/shader/svgfTemporalResolve.frag"
 import { TemporalResolvePass } from "../temporal-resolve/TemporalResolvePass"
 
 const defaultSVGFTemporalResolvePassOptions = {

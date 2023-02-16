@@ -1,5 +1,5 @@
-﻿import { DenoisePass } from "./pass/DenoisePass.js"
-import { SVGFTemporalResolvePass } from "./pass/SVGFTemporalResolvePass.js"
+﻿import { DenoisePass } from "../pass/DenoisePass.js"
+import { SVGFTemporalResolvePass } from "../pass/SVGFTemporalResolvePass.js"
 
 const requiredTexturesSvgf = ["inputTexture", "depthTexture", "normalTexture", "velocityTexture"]
 const requiredTexturesDenoiser = [

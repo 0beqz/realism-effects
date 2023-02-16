@@ -1,7 +1,8 @@
 ﻿import { GLSL3, Matrix4, ShaderMaterial, Uniform, Vector2, Vector3 } from "three"
 import vertexShader from "../shader/basic.vert"
-import fragmentShader from "../shader/ssgi.frag"
-import utils from "../shader/utils.frag"
+import fragmentShader from "../shader/ssgi/ssgi.frag"
+// eslint-disable-next-line camelcase
+import ssgi_utils from "../shader/ssgi/ssgi_utils.glsl"
 
 export class SSGIMaterial extends ShaderMaterial {
 	constructor() {
@@ -36,7 +37,7 @@ export class SSGIMaterial extends ShaderMaterial {
 				envMapPosition: new Uniform(new Vector3()),
 				envMapSize: new Uniform(new Vector3()),
 				viewMatrix: new Uniform(new Matrix4()),
-				invTexSize: new Uniform(new Vector2()),
+				texSize: new Uniform(new Vector2()),
 				blueNoiseRepeat: new Uniform(new Vector2()),
 				envMapSize: new Uniform(new Vector3()),
 				cameraPos: new Uniform(new Vector3())
@@ -53,7 +54,7 @@ export class SSGIMaterial extends ShaderMaterial {
 				vWorldPosition: "worldPos"
 			},
 
-			fragmentShader: fragmentShader.replace("#include <utils>", utils),
+			fragmentShader: fragmentShader.replace("#include <utils>", ssgi_utils),
 			vertexShader,
 
 			toneMapped: false,

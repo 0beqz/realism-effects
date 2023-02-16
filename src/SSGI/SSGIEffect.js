@@ -8,20 +8,17 @@ import {
 	WebGLRenderTarget
 } from "three"
 import { SSGIPass } from "./pass/SSGIPass.js"
-import compose from "./shader/compose.frag"
-import denoiseCompose from "./shader/denoiseCompose.frag"
-import denoiseComposeFunctions from "./shader/denoiseComposeFunctions.frag"
-import utils from "./shader/utils.frag"
+import compose from "./shader/ssgi/compose.frag"
+import denoiseCompose from "./shader/denoise/denoiseCompose.frag"
+import denoiseComposeFunctions from "./shader/denoise/denoiseComposeFunctions.frag"
 import { defaultSSGIOptions } from "./SSGIOptions"
-import { SVGF } from "./SVGF.js"
+import { SVGF } from "./svgf/SVGF.js"
 import {
 	createGlobalDisableIblIradianceUniform,
 	createGlobalDisableIblRadianceUniform,
 	getMaxMipLevel,
 	getVisibleChildren
 } from "./utils/Utils.js"
-
-const finalFragmentShader = compose.replace("#include <utils>", utils)
 
 const { render } = RenderPass.prototype
 
@@ -41,7 +38,7 @@ export class SSGIEffect extends Effect {
 	constructor(scene, camera, velocityPass, options = defaultSSGIOptions) {
 		options = { ...defaultSSGIOptions, ...options }
 
-		super("SSGIEffect", finalFragmentShader, {
+		super("SSGIEffect", compose, {
 			type: "FinalSSGIMaterial",
 			uniforms: new Map([
 				["inputTexture", new Uniform(null)],

@@ -1,4 +1,12 @@
-﻿// source: https://github.com/mrdoob/three.js/blob/dev/examples/js/shaders/SSAOShader.js
+﻿const float g = 1.6180339887498948482;
+const float a1 = 1.0 / g;
+
+// reference: https://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/
+float r1(float n) {
+    return fract(0.5 + a1 * n);
+}
+
+// source: https://github.com/mrdoob/three.js/blob/dev/examples/js/shaders/SSAOShader.js
 vec3 getViewPosition(const float depth) {
     float clipW = projectionMatrix[2][3] * depth + projectionMatrix[3][3];
     vec4 clipPosition = vec4((vec3(vUv, depth) - 0.5) * 2.0, 1.0);
@@ -57,6 +65,7 @@ vec3 parallaxCorrectNormal(const vec3 v, const vec3 cubeSize, const vec3 cubePos
 
 #define M_PI 3.1415926535897932384626433832795
 
+// source: https://github.com/gkjohnson/three-gpu-pathtracer/blob/4de53ebc08dffdb21dbb14beb5c9953b600978cc/src/shader/shaderUtils.js#L215
 // ray sampling x and z are swapped to align with expected background view
 vec2 equirectDirectionToUv(const vec3 direction) {
     // from Spherical.setFromCartesianCoords
@@ -70,9 +79,12 @@ vec2 equirectDirectionToUv(const vec3 direction) {
     return uv;
 }
 
+// source: https://github.com/gkjohnson/three-gpu-pathtracer/blob/3340cc19c796a01abe0ec121930154ec3301e4f2/src/shader/shaderEnvMapSampling.js#L3
 vec3 sampleEquirectEnvMapColor(const vec3 direction, const sampler2D map, const float lod) {
     return textureLod(map, equirectDirectionToUv(direction), lod).rgb;
 }
+
+// source of the following functions: https://www.shadertoy.com/view/cll3R4
 
 mat3 getBasisFromNormal(const vec3 normal) {
     vec3 other;
@@ -181,10 +193,4 @@ vec3 cosineSampleHemisphere(const vec3 n, const vec2 u) {
     return normalize(r * sin(theta) * b + sqrt(1.0 - u.x) * n + r * cos(theta) * t);
 }
 
-const float g = 1.6180339887498948482;
-const float a1 = 1.0 / g;
-
-// source: https://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/
-float r1(float n) {
-    return fract(0.5 + a1 * n);
-}
+// end: functions

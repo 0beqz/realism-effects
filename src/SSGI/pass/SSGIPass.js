@@ -116,7 +116,7 @@ export class SSGIPass extends Pass {
 		this.gBuffersRenderTarget.setSize(width, height)
 		this.backSideDepthPass.setSize(width, height)
 
-		this.fullscreenMaterial.uniforms.invTexSize.value.set(1 / width, 1 / height)
+		this.fullscreenMaterial.uniforms.texSize.value.set(width, height)
 	}
 
 	dispose() {

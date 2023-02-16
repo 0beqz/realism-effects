@@ -1,11 +1,8 @@
 ﻿import { Effect } from "postprocessing"
 import { Uniform } from "three"
 import compose from "./shader/compose.frag"
-import utils from "./SSGI/shader/utils.frag"
 import { TemporalResolvePass } from "./SSGI/temporal-resolve/TemporalResolvePass.js"
 import { getVisibleChildren } from "./SSGI/utils/Utils"
-
-const finalFragmentShader = compose.replace("#include <utils>", utils)
 
 export const defaultTRAAOptions = {
 	blend: 0.9,
@@ -20,7 +17,7 @@ export const defaultTRAAOptions = {
 
 export class TRAAEffect extends Effect {
 	constructor(scene, camera, velocityPass, options = defaultTRAAOptions) {
-		super("TRAAEffect", finalFragmentShader, {
+		super("TRAAEffect", compose, {
 			type: "FinalTRAAEffectMaterial",
 			uniforms: new Map([["inputTexture", new Uniform(null)]])
 		})
