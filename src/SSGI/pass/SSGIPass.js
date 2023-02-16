@@ -15,6 +15,8 @@ import { SSGIMaterial } from "../material/SSGIMaterial.js"
 import { BackSideDepthPass } from "../temporal-resolve/pass/BackSideDepthPass.js"
 import { getVisibleChildren, keepMaterialMapUpdated } from "../utils/Utils.js"
 
+import blueNoiseImage from "./../../blue-noise/blue_noise_64.png"
+
 const backgroundColor = new Color(0)
 
 export class SSGIPass extends Pass {
@@ -56,7 +58,7 @@ export class SSGIPass extends Pass {
 	initialize(renderer, ...args) {
 		super.initialize(renderer, ...args)
 
-		new TextureLoader().load("texture/LDR_RGB1_1.png", blueNoiseTexture => {
+		new TextureLoader().load(blueNoiseImage, blueNoiseTexture => {
 			blueNoiseTexture.minFilter = NearestFilter
 			blueNoiseTexture.magFilter = NearestFilter
 			blueNoiseTexture.wrapS = RepeatWrapping
@@ -214,7 +216,7 @@ export class SSGIPass extends Pass {
 
 		this.unsetMRTMaterialInScene()
 
-		this.backSideDepthPass.render(renderer)
+		if (this.ssgiEffect.autoThickness) this.backSideDepthPass.render(renderer)
 
 		this.frames = (this.frames + this.ssgiEffect.spp) % 65536
 

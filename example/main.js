@@ -15,6 +15,7 @@ import {
 	Vector3
 } from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
+import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader"
 import { GroundProjectedEnv } from "three/examples/jsm/objects/GroundProjectedEnv"
@@ -161,8 +162,6 @@ const stats = new Stats()
 stats.showPanel(0)
 document.body.appendChild(stats.dom)
 
-const params = {}
-
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
 pmremGenerator.compileEquirectangularShader()
 
@@ -223,6 +222,11 @@ new RGBELoader().load("monbachtal_riverbank_2k.hdr", envMap => {
 })
 
 const gltflLoader = new GLTFLoader()
+
+const draco = new DRACOLoader()
+draco.setDecoderConfig({ type: "js" })
+draco.setDecoderPath("https://www.gstatic.com/draco/v1/decoders/")
+gltflLoader.setDRACOLoader(draco)
 
 const url = "squid_game__pinksoldier.glb"
 
@@ -291,9 +295,9 @@ const initScene = () => {
 	const velocityPass = new VelocityPass(scene, camera)
 	composer.addPass(velocityPass)
 
-	traaEffect = new TRAAEffect(scene, camera, velocityPass, params)
+	const params = {}
 
-	window.traaEffect = traaEffect
+	traaEffect = new TRAAEffect(scene, camera, velocityPass, params)
 
 	gui = new TRAADebugGUI(traaEffect, params)
 
@@ -394,8 +398,10 @@ const loop = () => {
 	controls.update()
 	camera.updateMatrixWorld()
 
-	sphere.position.copy(camera.position)
-	sphere.updateMatrixWorld()
+	if (sphere) {
+		sphere.position.copy(camera.position)
+		sphere.updateMatrixWorld()
+	}
 
 	if (guiParams.Method === "three.js AA") {
 		renderer.render(scene, camera)

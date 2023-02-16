@@ -424,7 +424,7 @@
     "picocolors" "^1.0.0"
     "source-map-js" "^1.0.2"
 
-"postprocessing@^6.29.3", "postprocessing@>=6.28.0":
+"postprocessing@^6.29.3":
   "integrity" "sha512-gxXC6LKLRwI4eSySdmxqEfQBMKEdQtxg5aYrdvJ/tPHDOS4aZAb/bY4ulQnL5YGKqCC6SmgNmU4dNIc68TTVMw=="
   "resolved" "https://registry.npmjs.org/postprocessing/-/postprocessing-6.29.3.tgz"
   "version" "6.29.3"
@@ -472,11 +472,6 @@
   "resolved" "https://registry.npmjs.org/safer-buffer/-/safer-buffer-2.1.2.tgz"
   "version" "2.1.2"
 
-"screen-space-reflections@^2.1.2":
-  "integrity" "sha512-lGLy58EqkQvQyA2srM8wqJ2Zt0sq7hqGXTBZsLzQQ8axx5zZzRI3g2Nxd920s8wyrUIJ7snvu7iEnEGz0xDBlg=="
-  "resolved" "https://registry.npmjs.org/screen-space-reflections/-/screen-space-reflections-2.1.2.tgz"
-  "version" "2.1.2"
-
 "source-map-js@^1.0.2":
   "integrity" "sha512-R0XvVJ9WusLiqTCEiGCmICCMplcCkIwwR11mOSD9CR5u+IXYdiseeEuXCVAjS54zqwkLcPNnmU4OeJ6tUrWhDw=="
   "resolved" "https://registry.npmjs.org/source-map-js/-/source-map-js-1.0.2.tgz"
@@ -492,7 +487,7 @@
   "resolved" "https://registry.npmjs.org/supports-preserve-symlinks-flag/-/supports-preserve-symlinks-flag-1.0.0.tgz"
   "version" "1.0.0"
 
-"three@^0.148.0", "three@>= 0.125.0 < 0.149.0", "three@>=0.141.0":
+"three@^0.148.0", "three@>= 0.125.0 < 0.149.0":
   "integrity" "sha512-8uzVV+qhTPi0bOFs/3te3RW6hb3urL8jYEl6irjCWo/l6sr8MPNMcClFev/MMYeIxr0gmDcoXTy/8LXh/LXkfw=="
   "resolved" "https://registry.npmjs.org/three/-/three-0.148.0.tgz"
   "version" "0.148.0"

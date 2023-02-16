@@ -3,11 +3,8 @@ import {
 	EquirectangularReflectionMapping,
 	LinearMipMapLinearFilter,
 	NoToneMapping,
-	ShaderChunk,
-	ShaderLib,
 	sRGBEncoding,
 	Uniform,
-	UniformsUtils,
 	WebGLRenderTarget
 } from "three"
 import { SSGIPass } from "./pass/SSGIPass.js"
@@ -17,89 +14,23 @@ import denoiseComposeFunctions from "./shader/denoiseComposeFunctions.frag"
 import utils from "./shader/utils.frag"
 import { defaultSSGIOptions } from "./SSGIOptions"
 import { SVGF } from "./SVGF.js"
-import { getMaxMipLevel, getVisibleChildren } from "./utils/Utils.js"
+import {
+	createGlobalDisableIblIradianceUniform,
+	createGlobalDisableIblRadianceUniform,
+	getMaxMipLevel,
+	getVisibleChildren
+} from "./utils/Utils.js"
 
 const finalFragmentShader = compose.replace("#include <utils>", utils)
 
 const { render } = RenderPass.prototype
-
-export const createGlobalDisableIblRadianceUniform = () => {
-	if (!ShaderChunk.envmap_physical_pars_fragment.includes("iblRadianceDisabled")) {
-		ShaderChunk.envmap_physical_pars_fragment = ShaderChunk.envmap_physical_pars_fragment.replace(
-			"vec3 getIBLRadiance( const in vec3 viewDir, const in vec3 normal, const in float roughness ) {",
-			/* glsl */ `
-		uniform bool iblRadianceDisabled;
-	
-		vec3 getIBLRadiance( const in vec3 viewDir, const in vec3 normal, const in float roughness ) {
-		 if(iblRadianceDisabled) return vec3(0.);
-		`
-		)
-	}
-
-	if ("iblRadianceDisabled" in ShaderLib.physical.uniforms) return ShaderLib.physical.uniforms["iblRadianceDisabled"]
-
-	const globalIblRadianceDisabledUniform = {
-		value: false
-	}
-
-	ShaderLib.physical.uniforms.iblRadianceDisabled = globalIblRadianceDisabledUniform
-
-	const { clone } = UniformsUtils
-	UniformsUtils.clone = uniforms => {
-		const result = clone(uniforms)
-
-		if ("iblRadianceDisabled" in uniforms) {
-			result.iblRadianceDisabled = globalIblRadianceDisabledUniform
-		}
-
-		return result
-	}
-
-	return globalIblRadianceDisabledUniform
-}
-
-export const createGlobalDisableIblIradianceUniform = () => {
-	if (!ShaderChunk.envmap_physical_pars_fragment.includes("iblIrradianceDisabled")) {
-		ShaderChunk.envmap_physical_pars_fragment = ShaderChunk.envmap_physical_pars_fragment.replace(
-			"vec3 getIBLIrradiance( const in vec3 normal ) {",
-			/* glsl */ `
-			uniform bool iblIrradianceDisabled;
-		
-			vec3 getIBLIrradiance( const in vec3 normal ) {
-			 if(iblIrradianceDisabled) return vec3(0.);
-			`
-		)
-	}
-
-	if ("iblIrradianceDisabled" in ShaderLib.physical.uniforms)
-		return ShaderLib.physical.uniforms["iblIrradianceDisabled"]
-
-	const globalIblIrradianceDisabledUniform = {
-		value: false
-	}
-
-	ShaderLib.physical.uniforms.iblIrradianceDisabled = globalIblIrradianceDisabledUniform
-
-	const { clone } = UniformsUtils
-	UniformsUtils.clone = uniforms => {
-		const result = clone(uniforms)
-
-		if ("iblIrradianceDisabled" in uniforms) {
-			result.iblIrradianceDisabled = globalIblIrradianceDisabledUniform
-		}
-
-		return result
-	}
-
-	return globalIblIrradianceDisabledUniform
-}
 
 const globalIblIrradianceDisabledUniform = createGlobalDisableIblIradianceUniform()
 const globalIblRadianceDisabledUniform = createGlobalDisableIblRadianceUniform()
 
 export class SSGIEffect extends Effect {
 	selection = new Selection()
-	isUsingRenderPass = false
+	isUsingRenderPass = true
 
 	/**
 	 * @param {THREE.Scene} scene The scene of the SSGI effect
@@ -354,6 +285,8 @@ export class SSGIEffect extends Effect {
 	}
 
 	update(renderer, inputBuffer) {
+		// ! todo: make SSGI's accumulation no longer FPS-dependent
+
 		this.keepEnvMapUpdated()
 
 		const sceneBuffer = this.isUsingRenderPass ? inputBuffer : this.sceneRenderTarget

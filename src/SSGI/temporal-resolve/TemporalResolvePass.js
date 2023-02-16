@@ -2,7 +2,6 @@
 import { HalfFloatType, LinearFilter, Quaternion, Vector3, WebGLRenderTarget } from "three"
 import { CopyPass } from "../pass/CopyPass"
 import { TemporalResolveMaterial } from "./material/TemporalResolveMaterial"
-import { VelocityPass } from "./pass/VelocityPass"
 import { generateR2 } from "./utils/QuasirandomGenerator"
 
 export const defaultTemporalResolvePassOptions = {

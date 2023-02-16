@@ -2,6 +2,8 @@
 import { LinearEncoding, NearestFilter, RepeatWrapping, TextureLoader, Uniform, Vector2 } from "three"
 import motionBlur from "./motionBlur.glsl"
 
+import blueNoiseImage from "./../blue-noise/blue_noise_64.png"
+
 // https://www.nvidia.com/docs/io/8230/gdc2003_openglshadertricks.pdf
 // http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html
 // reference code: https://github.com/gkjohnson/threejs-sandbox/blob/master/motionBlurPass/src/CompositeShader.js
@@ -62,7 +64,7 @@ export class MotionBlurEffect extends Effect {
 	initialize(renderer, ...args) {
 		super.initialize(renderer, ...args)
 
-		new TextureLoader().load("texture/LDR_RGB1_1.png", blueNoiseTexture => {
+		new TextureLoader().load(blueNoiseImage, blueNoiseTexture => {
 			blueNoiseTexture.minFilter = NearestFilter
 			blueNoiseTexture.magFilter = NearestFilter
 			blueNoiseTexture.wrapS = RepeatWrapping

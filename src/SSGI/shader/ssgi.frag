@@ -138,19 +138,14 @@ void main() {
 
     float blueNoiseTileOffset = r1(blueNoiseIndex + 1.0) * 65536.;
 
-    int ind = int(blueNoiseIndex) % 4;
-    vec3 blueNoiseFlip = vec3(
-        ind == 1 || ind == 2 ? 1.0 : 0.0,
-        ind == 1 || ind == 3 ? 1.0 : 0.0,
-        ind == 2 || ind == 3 ? 1.0 : 0.0);
-
     // start taking samples
     for (int s = 0; s < spp; s++) {
         vec2 blueNoiseUv = vUv * blueNoiseRepeat;
 
+        // fetch blue noise for this pixel
         vec3 blueNoise = textureLod(blueNoiseTexture, blueNoiseUv, 0.).rgb;
-        blueNoise = abs(blueNoiseFlip - blueNoise);
 
+        // animate the blue noise depending on the frame and samples taken this frame
         blueNoise = fract(blueNoise + harmoniousNumbers321 * (frames + float(s) + blueNoiseTileOffset));
 
         // calculate GGX reflection ray

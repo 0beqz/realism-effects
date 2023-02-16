@@ -1,4 +1,5 @@
-﻿import { DataTexture, FloatType, RGBAFormat } from "three"
+﻿import { UniformsUtils } from "three"
+import { DataTexture, FloatType, RGBAFormat, ShaderChunk, ShaderLib } from "three"
 
 export const getVisibleChildren = object => {
 	const queue = [object]
@@ -115,4 +116,75 @@ export const updateVelocityMaterialAfterRender = (c, camera) => {
 	c.material.uniforms.prevVelocityMatrix.value.multiplyMatrices(camera.projectionMatrix, c.modelViewMatrix)
 
 	if (c.skeleton?.boneTexture) saveBoneTexture(c)
+}
+
+export const createGlobalDisableIblRadianceUniform = () => {
+	if (!ShaderChunk.envmap_physical_pars_fragment.includes("iblRadianceDisabled")) {
+		ShaderChunk.envmap_physical_pars_fragment = ShaderChunk.envmap_physical_pars_fragment.replace(
+			"vec3 getIBLRadiance( const in vec3 viewDir, const in vec3 normal, const in float roughness ) {",
+			/* glsl */ `
+		uniform bool iblRadianceDisabled;
+	
+		vec3 getIBLRadiance( const in vec3 viewDir, const in vec3 normal, const in float roughness ) {
+		 if(iblRadianceDisabled) return vec3(0.);
+		`
+		)
+	}
+
+	if ("iblRadianceDisabled" in ShaderLib.physical.uniforms) return ShaderLib.physical.uniforms["iblRadianceDisabled"]
+
+	const globalIblRadianceDisabledUniform = {
+		value: false
+	}
+
+	ShaderLib.physical.uniforms.iblRadianceDisabled = globalIblRadianceDisabledUniform
+
+	const { clone } = UniformsUtils
+	UniformsUtils.clone = uniforms => {
+		const result = clone(uniforms)
+
+		if ("iblRadianceDisabled" in uniforms) {
+			result.iblRadianceDisabled = globalIblRadianceDisabledUniform
+		}
+
+		return result
+	}
+
+	return globalIblRadianceDisabledUniform
+}
+
+export const createGlobalDisableIblIradianceUniform = () => {
+	if (!ShaderChunk.envmap_physical_pars_fragment.includes("iblIrradianceDisabled")) {
+		ShaderChunk.envmap_physical_pars_fragment = ShaderChunk.envmap_physical_pars_fragment.replace(
+			"vec3 getIBLIrradiance( const in vec3 normal ) {",
+			/* glsl */ `
+			uniform bool iblIrradianceDisabled;
+		
+			vec3 getIBLIrradiance( const in vec3 normal ) {
+			 if(iblIrradianceDisabled) return vec3(0.);
+			`
+		)
+	}
+
+	if ("iblIrradianceDisabled" in ShaderLib.physical.uniforms)
+		return ShaderLib.physical.uniforms["iblIrradianceDisabled"]
+
+	const globalIblIrradianceDisabledUniform = {
+		value: false
+	}
+
+	ShaderLib.physical.uniforms.iblIrradianceDisabled = globalIblIrradianceDisabledUniform
+
+	const { clone } = UniformsUtils
+	UniformsUtils.clone = uniforms => {
+		const result = clone(uniforms)
+
+		if ("iblIrradianceDisabled" in uniforms) {
+			result.iblIrradianceDisabled = globalIblIrradianceDisabledUniform
+		}
+
+		return result
+	}
+
+	return globalIblIrradianceDisabledUniform
 }
