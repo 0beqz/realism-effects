@@ -1,6 +1,8 @@
-﻿import { Effect } from "postprocessing"
+﻿/* eslint-disable camelcase */
+
+import { Effect } from "postprocessing"
 import { LinearEncoding, NearestFilter, RepeatWrapping, TextureLoader, Uniform, Vector2 } from "three"
-import motionBlur from "./motionBlur.glsl"
+import motion_blur from "./motion_blur.glsl"
 
 import blueNoiseImage from "./../blue-noise/blue_noise_64.png"
 
@@ -16,7 +18,7 @@ export class MotionBlurEffect extends Effect {
 	constructor(velocityPass, options = defaultOptions) {
 		options = { ...defaultOptions, ...options }
 
-		super("MotionBlurEffect", motionBlur, {
+		super("MotionBlurEffect", motion_blur, {
 			type: "MotionBlurMaterial",
 			uniforms: new Map([
 				["inputTexture", new Uniform(null)],

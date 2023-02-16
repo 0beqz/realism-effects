@@ -1,4 +1,5 @@
-﻿import {
+﻿/* eslint-disable camelcase */
+import {
 	FloatType,
 	GLSL3,
 	HalfFloatType,
@@ -7,7 +8,7 @@
 	Uniform,
 	WebGLMultipleRenderTargets
 } from "three"
-import svgfTemporalResolve from "../svgf/shader/svgfTemporalResolve.frag"
+import svgf_temporal_resolve from "../svgf/shader/svgf_temporal_resolve.frag"
 import { TemporalResolvePass } from "../temporal-resolve/TemporalResolvePass"
 
 const defaultSVGFTemporalResolvePassOptions = {
@@ -17,7 +18,7 @@ const defaultSVGFTemporalResolvePassOptions = {
 	fullAccumulate: false,
 	logTransform: false,
 	catmullRomSampling: true,
-	customComposeShader: svgfTemporalResolve
+	customComposeShader: svgf_temporal_resolve
 }
 export class SVGFTemporalResolvePass extends TemporalResolvePass {
 	constructor(scene, camera, velocityPass, options = defaultSVGFTemporalResolvePassOptions) {

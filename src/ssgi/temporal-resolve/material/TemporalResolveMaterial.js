@@ -1,7 +1,7 @@
 ﻿import { Matrix4 } from "three"
 import { Vector3 } from "three"
 import { ShaderMaterial, Uniform, Vector2 } from "three"
-import vertexShader from "../shader/basicVertexShader.vert"
+import vertexShader from "./../../../traa/shader/basic.vert"
 import fragmentShader from "../shader/temporalResolve.frag"
 import reprojection from "../shader/reprojection.glsl"
 

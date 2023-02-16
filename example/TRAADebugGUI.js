@@ -1,5 +1,5 @@
 ﻿import { Pane } from "tweakpane"
-import { defaultTRAAOptions } from "../src/TRAAEffect"
+import { defaultTRAAOptions } from "../src/traa/TRAAEffect"
 
 export class TRAADebugGUI {
 	constructor(traaEffect, params = defaultTRAAOptions) {
