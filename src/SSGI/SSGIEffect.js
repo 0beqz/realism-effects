@@ -252,17 +252,18 @@ export class SSGIEffect extends Effect {
 							break
 
 						case "missedRays":
+						case "autoThickness":
 							if (value) {
-								this.ssgiPass.fullscreenMaterial.defines.missedRays = ""
+								this.ssgiPass.fullscreenMaterial.defines[key] = ""
 							} else {
-								delete this.ssgiPass.fullscreenMaterial.defines.missedRays
+								delete this.ssgiPass.fullscreenMaterial.defines[key]
 							}
 
 							this.ssgiPass.fullscreenMaterial.needsUpdate = needsUpdate
 							break
 
 						case "correctionRadius":
-							this.svgf.svgfTemporalResolvePass.fullscreenMaterial.defines.correctionRadius = Math.round(value)
+							this.svgf.svgfTemporalResolvePass.fullscreenMaterial.defines[key] = Math.round(value)
 
 							this.svgf.svgfTemporalResolvePass.fullscreenMaterial.needsUpdate = needsUpdate
 							break

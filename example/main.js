@@ -266,6 +266,7 @@ const refreshLighting = () => {
 const initScene = () => {
 	const options = {
 		distance: 2.7200000000000104,
+		autoThickness: false,
 		thickness: 1.2999999999999972,
 		maxRoughness: 1,
 		blend: 0.95,

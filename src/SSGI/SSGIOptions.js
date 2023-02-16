@@ -3,6 +3,7 @@
  * @typedef {Object} SSGIOptions
  * @property {Number} [distance] maximum distance a SSGI ray can travel to find what it reflects
  * @property {Number} [thickness] maximum depth difference between a ray and the particular depth at its screen position before refining with binary search; higher values will result in better performance
+ * @property {Number} [autoThickness] whether to use a back-side depth buffer to approximate the actual thickness; enabling this may decrease performance; the thickness parameter will also be used as the minimum value
  * @property {Number} [maxRoughness] maximum roughness a texel can have to have SSGI calculated for it
  * @property {Number} [blend] a value between 0 and 1 to set how much the last frame's SSGI should be blended in; higher values will result in less noisy SSGI when moving the camera but a more smeary look
  * @property {Number} [denoiseIterations] how many times the denoise filter runs, more iterations will denoise the frame better but need more performance
@@ -30,6 +31,7 @@
 export const defaultSSGIOptions = {
 	distance: 10,
 	thickness: 10,
+	autoThickness: false,
 	maxRoughness: 1,
 	blend: 0.9,
 	denoiseIterations: 1,

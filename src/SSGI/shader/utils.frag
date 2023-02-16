@@ -180,3 +180,11 @@ vec3 cosineSampleHemisphere(const vec3 n, const vec2 u) {
 
     return normalize(r * sin(theta) * b + sqrt(1.0 - u.x) * n + r * cos(theta) * t);
 }
+
+const float g = 1.6180339887498948482;
+const float a1 = 1.0 / g;
+
+// source: https://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/
+float r1(float n) {
+    return fract(0.5 + a1 * n);
+}

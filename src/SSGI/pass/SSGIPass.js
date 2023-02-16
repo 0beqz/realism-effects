@@ -12,6 +12,7 @@ import {
 } from "three"
 import { MRTMaterial } from "../material/MRTMaterial.js"
 import { SSGIMaterial } from "../material/SSGIMaterial.js"
+import { BackSideDepthPass } from "../temporal-resolve/pass/BackSideDepthPass.js"
 import { getVisibleChildren, keepMaterialMapUpdated } from "../utils/Utils.js"
 
 const backgroundColor = new Color(0)
@@ -21,7 +22,7 @@ export class SSGIPass extends Pass {
 	cachedMaterials = new WeakMap()
 	visibleMeshes = []
 
-	constructor(ssgiEffect, { diffuseOnly = false, specularOnly = false }) {
+	constructor(ssgiEffect, options) {
 		super("SSGIPass")
 
 		this.ssgiEffect = ssgiEffect
@@ -30,7 +31,7 @@ export class SSGIPass extends Pass {
 
 		this.fullscreenMaterial = new SSGIMaterial()
 
-		const bufferCount = !diffuseOnly && !specularOnly ? 2 : 1
+		const bufferCount = !options.diffuseOnly && !options.specularOnly ? 2 : 1
 
 		this.renderTarget = new WebGLMultipleRenderTargets(1, 1, bufferCount, {
 			type: HalfFloatType,
@@ -46,8 +47,8 @@ export class SSGIPass extends Pass {
 
 		if (ssgiEffect._camera.isPerspectiveCamera) this.fullscreenMaterial.defines.PERSPECTIVE_CAMERA = ""
 
-		if (diffuseOnly) this.fullscreenMaterial.defines.diffuseOnly = ""
-		if (specularOnly) this.fullscreenMaterial.defines.specularOnly = ""
+		if (options.diffuseOnly) this.fullscreenMaterial.defines.diffuseOnly = ""
+		if (options.specularOnly) this.fullscreenMaterial.defines.specularOnly = ""
 
 		this.initMRTRenderTarget()
 	}
@@ -81,6 +82,8 @@ export class SSGIPass extends Pass {
 			magFilter: NearestFilter
 		})
 
+		this.backSideDepthPass = new BackSideDepthPass(this._scene, this._camera)
+
 		this.depthTexture = this.gBuffersRenderTarget.texture[0]
 		this.normalTexture = this.gBuffersRenderTarget.texture[1]
 		this.diffuseTexture = this.gBuffersRenderTarget.texture[2]
@@ -103,11 +106,13 @@ export class SSGIPass extends Pass {
 		this.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
 		this.fullscreenMaterial.uniforms.diffuseTexture.value = this.diffuseTexture
 		this.fullscreenMaterial.uniforms.emissiveTexture.value = this.emissiveTexture
+		this.fullscreenMaterial.uniforms.backSideDepthTexture.value = this.backSideDepthPass.renderTarget.texture
 	}
 
 	setSize(width, height) {
 		this.renderTarget.setSize(width * this.ssgiEffect.resolutionScale, height * this.ssgiEffect.resolutionScale)
 		this.gBuffersRenderTarget.setSize(width, height)
+		this.backSideDepthPass.setSize(width, height)
 
 		this.fullscreenMaterial.uniforms.invTexSize.value.set(1 / width, 1 / height)
 	}
@@ -115,6 +120,7 @@ export class SSGIPass extends Pass {
 	dispose() {
 		this.renderTarget.dispose()
 		this.gBuffersRenderTarget.dispose()
+		this.backSideDepthPass.dispose()
 
 		this.normalTexture = null
 		this.depthTexture = null
@@ -207,6 +213,8 @@ export class SSGIPass extends Pass {
 		renderer.render(this._scene, this._camera)
 
 		this.unsetMRTMaterialInScene()
+
+		this.backSideDepthPass.render(renderer)
 
 		this.frames = (this.frames + this.ssgiEffect.spp) % 65536
 

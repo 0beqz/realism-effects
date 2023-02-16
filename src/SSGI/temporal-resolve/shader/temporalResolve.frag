@@ -47,11 +47,7 @@ void main() {
     }
 
     vec4 inputTexel = textureLod(inputTexture, vUv, 0.0);
-    vec3 inputColor = inputTexel.rgb;
-
-#ifdef logTransform
-    inputColor = transformColor(inputColor);
-#endif
+    vec3 inputColor = transformColor(inputTexel.rgb);
 
     vec3 accumulatedColor;
     float alpha = 1.0;

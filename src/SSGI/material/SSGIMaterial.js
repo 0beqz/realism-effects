@@ -17,6 +17,7 @@ export class SSGIMaterial extends ShaderMaterial {
 				emissiveTexture: new Uniform(null),
 				velocityTexture: new Uniform(null),
 				blueNoiseTexture: new Uniform(null),
+				backSideDepthTexture: new Uniform(null),
 				envMap: new Uniform(null),
 				projectionMatrix: new Uniform(new Matrix4()),
 				inverseProjectionMatrix: new Uniform(new Matrix4()),

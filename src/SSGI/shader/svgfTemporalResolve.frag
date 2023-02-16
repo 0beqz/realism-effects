@@ -9,7 +9,7 @@ historyMoment = textureLod(lastMomentTexture, reprojectedUv, 0.);
 #if !defined(diffuseOnly) && !defined(specularOnly)
 // specular
 vec4 specularTexel = dot(inputTexel.rgb, inputTexel.rgb) == 0.0 ? textureLod(specularTexture, uv, 0.) : vec4(0.);
-vec3 specularColor = specularTexel.rgb;
+vec3 specularColor = transformColor(specularTexel.rgb);
 float rayLength = specularTexel.a;
 
 // specular UV
@@ -29,7 +29,7 @@ float specularAlpha = 1.0;
 if (specularUv.x != -1.) {
     vec4 lastSpecularTexel = sampleReprojectedTexture(lastSpecularTexture, specularUv);
 
-    lastSpecular = lastSpecularTexel.rgb;
+    lastSpecular = transformColor(lastSpecularTexel.rgb);
     specularAlpha = max(1., lastSpecularTexel.a);
 
     // check if specular was sampled for this texel this frame
@@ -47,6 +47,7 @@ if (specularUv.x != -1.) {
 }
 
 gSpecular = vec4(mix(specularColor, lastSpecular, specularUv.x != -1. ? temporalResolveMix : 0.), specularAlpha);
+gSpecular.rgb = undoColorTransform(gSpecular.rgb);
 
 // specular moment
 if (specularUv.x != -1.) {

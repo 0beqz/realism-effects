@@ -19,6 +19,7 @@ uniform sampler2D diffuseTexture;
 uniform sampler2D emissiveTexture;
 uniform sampler2D blueNoiseTexture;
 uniform sampler2D velocityTexture;
+uniform sampler2D backSideDepthTexture;
 uniform sampler2D envMap;
 
 uniform mat4 projectionMatrix;
@@ -47,6 +48,11 @@ uniform float maxEnvLuminance;
 #define EPSILON            0.00001
 #define ONE_MINUS_EPSILON  1.0 - EPSILON
 #define luminance(a)       dot(vec3(0.2125, 0.7154, 0.0721), a)
+
+const vec3 harmoniousNumbers321 = vec3(
+    1.2207440846057596,
+    1.3247179572447458,
+    1.618033988749895);
 
 float nearMinusFar;
 float nearMulFar;
@@ -128,22 +134,30 @@ void main() {
     // fresnel f0
     vec3 f0 = mix(vec3(0.04), diffuse, metalness);
 
+    vec2 size = vUv / invTexSize;
+    float absPos = size.y / invTexSize.x + size.x;
+    vec2 blueNoiseSize = (1. / invTexSize) / blueNoiseRepeat;
+    float blueNoiseIndex = floor(size.y / blueNoiseSize.y) * blueNoiseRepeat.x + floor(size.x / blueNoiseSize.x);
+    blueNoiseIndex = floor(blueNoiseIndex);
+
+    float blueNoiseTileOffset = r1(blueNoiseIndex) * 65536.;
+
+    int ind = int(blueNoiseIndex) % 4;
+    vec3 blueNoiseFlip = vec3(
+        ind == 1 || ind == 2 ? 1.0 : 0.0,
+        ind == 1 || ind == 3 ? 1.0 : 0.0,
+        ind == 2 || ind == 3 ? 1.0 : 0.0);
+
     float sppPlus1 = float(spp + 1);
 
     // start taking samples
     for (int s = 0; s < spp; s++) {
-        float sF = float(s);
-
         vec2 blueNoiseUv = vUv * blueNoiseRepeat;
 
         vec3 blueNoise = textureLod(blueNoiseTexture, blueNoiseUv, 0.).rgb;
+        blueNoise = abs(blueNoiseFlip - blueNoise);
 
-        const vec3 harmoniousNumbers123 = vec3(
-            1.2207440846057596,
-            1.3247179572447458,
-            1.618033988749895);
-
-        blueNoise = fract(blueNoise + harmoniousNumbers123 * frames);
+        blueNoise = fract(blueNoise + harmoniousNumbers321 * (frames + float(s) + blueNoiseTileOffset));
 
         // calculate GGX reflection ray
         vec3 H = SampleGGXVNDF(V, roughness, roughness, blueNoise.x, blueNoise.y);
@@ -365,7 +379,6 @@ vec2 RayMarch(inout vec3 dir, inout vec3 hitPos) {
 
     dir *= rayDistance / float(steps);
 
-    float depth, unpackedDepth;
     vec2 uv;
 
     for (int i = 0; i < steps; i++) {
@@ -378,12 +391,21 @@ vec2 RayMarch(inout vec3 dir, inout vec3 hitPos) {
         if (any(lessThan(uv, vec2(0.))) || any(greaterThan(uv, vec2(1.)))) return INVALID_RAY_COORDS;
 #endif
 
-        unpackedDepth = unpackRGBAToDepth(textureLod(depthTexture, uv, 0.0));
-        depth = fastGetViewZ(unpackedDepth);
+        float unpackedDepth = unpackRGBAToDepth(textureLod(depthTexture, uv, 0.0));
+        float depth = fastGetViewZ(unpackedDepth);
+
+#ifdef autoThickness
+        float unpackedBackSideDepth = unpackRGBAToDepth(textureLod(backSideDepthTexture, uv, 0.0));
+        float backSideDepth = fastGetViewZ(unpackedBackSideDepth);
+
+        float currentThickness = max(abs(depth - backSideDepth), thickness);
+#else
+        float currentThickness = thickness;
+#endif
 
         rayHitDepthDifference = depth - hitPos.z;
 
-        if (rayHitDepthDifference >= 0.0 && rayHitDepthDifference < thickness) {
+        if (rayHitDepthDifference >= 0.0 && rayHitDepthDifference < currentThickness) {
 #if refineSteps == 0
             return uv;
 #else
@@ -400,9 +422,6 @@ vec2 RayMarch(inout vec3 dir, inout vec3 hitPos) {
 }
 
 vec2 BinarySearch(inout vec3 dir, inout vec3 hitPos) {
-    float depth;
-    float unpackedDepth;
-    vec4 depthTexel;
     float rayHitDepthDifference;
     vec2 uv;
 
@@ -412,8 +431,8 @@ vec2 BinarySearch(inout vec3 dir, inout vec3 hitPos) {
     for (int i = 0; i < refineSteps; i++) {
         uv = viewSpaceToScreenSpace(hitPos);
 
-        unpackedDepth = unpackRGBAToDepth(textureLod(depthTexture, uv, 0.0));
-        depth = fastGetViewZ(unpackedDepth);
+        float unpackedDepth = unpackRGBAToDepth(textureLod(depthTexture, uv, 0.0));
+        float depth = fastGetViewZ(unpackedDepth);
 
         rayHitDepthDifference = depth - hitPos.z;
 

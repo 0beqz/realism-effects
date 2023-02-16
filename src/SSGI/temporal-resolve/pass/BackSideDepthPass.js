@@ -8,9 +8,6 @@ const overrideMaterial = new MeshDepthMaterial({
 })
 
 export class BackSideDepthPass extends Pass {
-	cachedMaterials = new WeakMap()
-	visibleMeshes = []
-
 	constructor(scene, camera) {
 		super("VelocityPass")
 
