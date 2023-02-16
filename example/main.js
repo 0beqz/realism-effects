@@ -124,8 +124,8 @@ window.controls = controls
 
 const composer = new POSTPROCESSING.EffectComposer(renderer)
 window.composer = composer
-const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
-composer.addPass(renderPass)
+// const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
+// composer.addPass(renderPass)
 
 const lightParams = {
 	yaw: 55,
@@ -277,11 +277,9 @@ const initScene = () => {
 		depthPhi: 3.5870000000000015,
 		normalPhi: 35.326000000000015,
 		roughnessPhi: 100,
-		jitter: 3.469446951953614e-18,
-		jitterRoughness: 1,
 		envBlur: 0.53,
-		sunMultiplier: 0,
-		maxEnvLuminance: 3,
+		directLightMultiplier: 1,
+		maxEnvLuminance: 5,
 		steps: 20,
 		refineSteps: 4,
 		spp: 1,
@@ -385,8 +383,6 @@ document.body.addEventListener("mousemove", ev => {
 	mX = (window.innerHeight - ev.clientY) / window.innerHeight
 })
 
-let didRemoveRenderPass = false
-
 const loop = () => {
 	if (stats) stats.begin()
 
@@ -408,14 +404,8 @@ const loop = () => {
 	if (guiParams.Method === "three.js AA") {
 		renderer.render(scene, camera)
 	} else {
-		// lastScene.rotation.y += 0.01
 		lastScene.updateMatrixWorld()
 		composer.render()
-
-		if (!didRemoveRenderPass) {
-			composer.removePass(renderPass)
-			didRemoveRenderPass = true
-		}
 	}
 
 	if (stats) stats.end()

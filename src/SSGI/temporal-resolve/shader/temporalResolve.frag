@@ -13,7 +13,7 @@ uniform sampler2D lastNormalTexture;
 
 uniform float blend;
 uniform bool constantBlend;
-uniform bool blendStatic;
+uniform bool fullAccumulate;
 uniform vec2 invTexSize;
 
 uniform mat4 projectionMatrix;
@@ -24,7 +24,8 @@ uniform mat4 prevCameraMatrixWorld;
 uniform vec3 cameraPos;
 uniform vec3 prevCameraPos;
 
-#define EPSILON 0.00001
+#define EPSILON      0.00001
+#define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
 
 #include <packing>
 #include <reprojection>
@@ -78,7 +79,7 @@ void main() {
 
     vec2 deltaUv = vUv - reprojectedUv;
     bool didMove = dot(deltaUv, deltaUv) > 0.;
-    float maxValue = (!blendStatic || didMove) ? blend : 1.0;
+    float maxValue = (!fullAccumulate || didMove) ? blend : 1.0;
 
     float temporalResolveMix = blend;
     if (!constantBlend) {

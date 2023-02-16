@@ -62,11 +62,6 @@ export class SSGIDebugGUI {
 			step: 0.001
 		})
 
-		const jitterFolder = pane.addFolder({ title: "Jitter" })
-
-		jitterFolder.addInput(params, "jitter", { min: 0, max: 1, step: 0.01 })
-		jitterFolder.addInput(params, "jitterRoughness", { min: 0, max: 1, step: 0.01 })
-
 		const definesFolder = pane.addFolder({ title: "Tracing" })
 
 		definesFolder.addInput(params, "steps", { min: 0, max: 256, step: 1 })

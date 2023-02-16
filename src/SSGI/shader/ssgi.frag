@@ -38,8 +38,6 @@ uniform vec2 blueNoiseRepeat;
 
 uniform float frames;
 
-uniform float jitter;
-uniform float jitterRoughness;
 uniform float envBlur;
 uniform float maxEnvLuminance;
 
@@ -81,13 +79,15 @@ void main() {
     }
 
     vec4 normalTexel = textureLod(normalTexture, vUv, 0.0);
-    float roughnessValue = normalTexel.a;
+    float roughness = normalTexel.a;
 
     // a roughness of 1 is only being used for deselected meshes
-    if (roughnessValue == 1.0 || roughnessValue > maxRoughness) {
+    if (roughness == 1.0 || roughness > maxRoughness) {
         discard;
         return;
     }
+
+    roughness = clamp(roughness * roughness, 0.0001, 1.0);
 
     float unpackedDepth = unpackRGBAToDepth(depthTexel);
 
@@ -107,9 +107,6 @@ void main() {
     vec3 viewNormal = normalTexel.xyz;
 
     vec3 worldPos = vec4(vec4(viewPos, 1.) * viewMatrix).xyz;
-
-    float roughness = jitter + roughnessValue * jitterRoughness;
-    roughness = clamp(roughness * roughness, 0.0001, 1.0);
 
     vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.);
     vec3 diffuse = diffuseTexel.rgb;
@@ -137,18 +134,15 @@ void main() {
     vec2 size = vUv / invTexSize;
     float absPos = size.y / invTexSize.x + size.x;
     vec2 blueNoiseSize = (1. / invTexSize) / blueNoiseRepeat;
-    float blueNoiseIndex = floor(size.y / blueNoiseSize.y) * blueNoiseRepeat.x + floor(size.x / blueNoiseSize.x);
-    blueNoiseIndex = floor(blueNoiseIndex);
+    float blueNoiseIndex = floor(floor(size.y / blueNoiseSize.y) * blueNoiseRepeat.x) + floor(size.x / blueNoiseSize.x);
 
-    float blueNoiseTileOffset = r1(blueNoiseIndex) * 65536.;
+    float blueNoiseTileOffset = r1(blueNoiseIndex + 1.0) * 65536.;
 
     int ind = int(blueNoiseIndex) % 4;
     vec3 blueNoiseFlip = vec3(
         ind == 1 || ind == 2 ? 1.0 : 0.0,
         ind == 1 || ind == 3 ? 1.0 : 0.0,
         ind == 2 || ind == 3 ? 1.0 : 0.0);
-
-    float sppPlus1 = float(spp + 1);
 
     // start taking samples
     for (int s = 0; s < spp; s++) {
@@ -357,7 +351,7 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
         SSGI = reprojectedGI + emissiveColor;
 
 #ifdef useDirectLight
-        SSGI += textureLod(directLightTexture, coords.xy, 0.).rgb * sunMultiplier;
+        SSGI += textureLod(directLightTexture, coords.xy, 0.).rgb * directLightMultiplier;
 #endif
     } else {
         SSGI = textureLod(directLightTexture, vUv, 0.).rgb;

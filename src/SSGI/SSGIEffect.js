@@ -1,4 +1,4 @@
-﻿import { Effect, Selection } from "postprocessing"
+﻿import { Effect, RenderPass, Selection } from "postprocessing"
 import {
 	EquirectangularReflectionMapping,
 	LinearMipMapLinearFilter,
@@ -20,6 +20,8 @@ import { SVGF } from "./SVGF.js"
 import { getMaxMipLevel, getVisibleChildren } from "./utils/Utils.js"
 
 const finalFragmentShader = compose.replace("#include <utils>", utils)
+
+const { render } = RenderPass.prototype
 
 export const createGlobalDisableIblRadianceUniform = () => {
 	if (!ShaderChunk.envmap_physical_pars_fragment.includes("iblRadianceDisabled")) {
@@ -97,6 +99,7 @@ const globalIblRadianceDisabledUniform = createGlobalDisableIblRadianceUniform()
 
 export class SSGIEffect extends Effect {
 	selection = new Selection()
+	isUsingRenderPass = false
 
 	/**
 	 * @param {THREE.Scene} scene The scene of the SSGI effect
@@ -143,52 +146,16 @@ export class SSGIEffect extends Effect {
 		this.svgf.denoisePass.fullscreenMaterial.fragmentShader =
 			/* glsl */ `
 		uniform sampler2D directLightTexture;
-		uniform float jitter;
-		uniform float jitterRoughness;
-		` +
-			this.svgf.denoisePass.fullscreenMaterial.fragmentShader
-				.replace(
-					"float roughness = normalTexel.a;",
-					"float roughness = min(1., jitter + jitterRoughness * normalTexel.a);"
-				)
-				.replace(
-					"float neighborRoughness = neighborNormalTexel.a;",
-					"float neighborRoughness = min(1., jitter + jitterRoughness * neighborNormalTexel.a);"
-				)
+		` + this.svgf.denoisePass.fullscreenMaterial.fragmentShader
 
 		this.svgf.denoisePass.fullscreenMaterial.uniforms = {
 			...this.svgf.denoisePass.fullscreenMaterial.uniforms,
 			...{
-				directLightTexture: new Uniform(null),
-				jitter: new Uniform(0),
-				jitterRoughness: new Uniform(0)
+				directLightTexture: new Uniform(null)
 			}
 		}
 
-		// temporal resolve pass
-		this.svgf.svgfTemporalResolvePass.fullscreenMaterial.fragmentShader =
-			/* glsl */ `
-			uniform float jitter;
-			uniform float jitterRoughness;
-		` +
-			this.svgf.svgfTemporalResolvePass.fullscreenMaterial.fragmentShader.replace(
-				"float roughness = inputTexel.a;",
-				"float roughness = min(1., jitter + jitterRoughness * inputTexel.a);"
-			)
-
-		this.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms = {
-			...this.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms,
-			...{
-				jitter: new Uniform(0),
-				jitterRoughness: new Uniform(0)
-			}
-		}
-
-		if (options.sunMultiplier > 0) {
-			this.ssgiPass.fullscreenMaterial.defines.sunMultiplier = options.sunMultiplier.toPrecision(5)
-			this.ssgiPass.fullscreenMaterial.defines.useDirectLight = ""
-			this.svgf.denoisePass.fullscreenMaterial.defines.useDirectLight = ""
-		}
+		this.ssgiPass.fullscreenMaterial.defines.directLightMultiplier = options.directLightMultiplier.toPrecision(5)
 
 		this.svgf.denoisePass.fullscreenMaterial.uniforms.diffuseTexture.value = this.ssgiPass.diffuseTexture
 
@@ -204,7 +171,30 @@ export class SSGIEffect extends Effect {
 
 		this.setSize(options.width, options.height)
 
+		const th = this
+		RenderPass.prototype.render = function(...args) {
+			const wasUsingRenderPass = th.isUsingRenderPass
+			th.isUsingRenderPass = true
+
+			if (wasUsingRenderPass != th.isUsingRenderPass) th.updateUsingRenderPass()
+
+			render.call(this, ...args)
+		}
+
 		this.makeOptionsReactive(options)
+	}
+
+	updateUsingRenderPass() {
+		if (this.isUsingRenderPass) {
+			this.ssgiPass.fullscreenMaterial.defines.useDirectLight = ""
+			this.svgf.denoisePass.fullscreenMaterial.defines.useDirectLight = ""
+		} else {
+			delete this.ssgiPass.fullscreenMaterial.defines.useDirectLight
+			delete this.svgf.denoisePass.fullscreenMaterial.defines.useDirectLight
+		}
+
+		this.ssgiPass.fullscreenMaterial.needsUpdate = true
+		this.svgf.denoisePass.fullscreenMaterial.needsUpdate = true
 	}
 
 	makeOptionsReactive(options) {
@@ -277,14 +267,6 @@ export class SSGIEffect extends Effect {
 							ssgiPassFullscreenMaterialUniforms.rayDistance.value = value
 							break
 
-						case "jitter":
-						case "jitterRoughness":
-							ssgiPassFullscreenMaterialUniforms[key].value = value
-
-							this.svgf.denoisePass.fullscreenMaterial.uniforms[key].value = value
-							this.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms[key].value = value
-							break
-
 						// must be a uniform
 						default:
 							if (ssgiPassFullscreenMaterialUniformsKeys.includes(key)) {
@@ -339,6 +321,8 @@ export class SSGIEffect extends Effect {
 
 		this.ssgiPass.dispose()
 		this.svgf.dispose()
+
+		RenderPass.prototype.render = render
 	}
 
 	keepEnvMapUpdated() {
@@ -371,12 +355,11 @@ export class SSGIEffect extends Effect {
 	update(renderer, inputBuffer) {
 		this.keepEnvMapUpdated()
 
-		const renderNoGiMeshes = this.sunMultiplier === 0
-		const sceneBuffer = renderNoGiMeshes ? this.sceneRenderTarget : inputBuffer
+		const sceneBuffer = this.isUsingRenderPass ? inputBuffer : this.sceneRenderTarget
 
 		const hideMeshes = []
 
-		if (renderNoGiMeshes) {
+		if (!this.isUsingRenderPass) {
 			renderer.setRenderTarget(this.sceneRenderTarget)
 
 			const children = []
@@ -422,12 +405,19 @@ export class SSGIEffect extends Effect {
 
 		cancelAnimationFrame(this.rAF2)
 		cancelAnimationFrame(this.rAF)
+		cancelAnimationFrame(this.usingRenderPassRAF)
 
 		this.rAF = requestAnimationFrame(() => {
 			this.rAF2 = requestAnimationFrame(() => {
 				globalIblIrradianceDisabledUniform.value = false
 				globalIblRadianceDisabledUniform.value = false
 			})
+		})
+		this.usingRenderPassRAF = requestAnimationFrame(() => {
+			const wasUsingRenderPass = this.isUsingRenderPass
+			this.isUsingRenderPass = false
+
+			if (wasUsingRenderPass != this.isUsingRenderPass) this.updateUsingRenderPass()
 		})
 	}
 }

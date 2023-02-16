@@ -9,7 +9,7 @@ export const defaultTemporalResolvePassOptions = {
 	blend: 0.9,
 	dilation: false,
 	constantBlend: false,
-	blendStatic: false,
+	fullAccumulate: false,
 	catmullRomSampling: true,
 	renderVelocity: true,
 	neighborhoodClamping: false,
@@ -68,7 +68,7 @@ export class TemporalResolvePass extends Pass {
 
 		this.fullscreenMaterial.uniforms.blend.value = options.blend
 		this.fullscreenMaterial.uniforms.constantBlend.value = options.constantBlend
-		this.fullscreenMaterial.uniforms.blendStatic.value = options.blendStatic
+		this.fullscreenMaterial.uniforms.fullAccumulate.value = options.fullAccumulate
 
 		this.fullscreenMaterial.uniforms.projectionMatrix.value = camera.projectionMatrix
 		this.fullscreenMaterial.uniforms.projectionMatrixInverse.value = camera.projectionMatrixInverse

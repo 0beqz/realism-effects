@@ -14,7 +14,7 @@ const defaultSVGFTemporalResolvePassOptions = {
 	diffuseOnly: false,
 	specularOnly: false,
 	renderVelocity: false,
-	blendStatic: false,
+	fullAccumulate: false,
 	logTransform: false,
 	catmullRomSampling: true,
 	customComposeShader: svgfTemporalResolve

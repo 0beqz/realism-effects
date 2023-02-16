@@ -1,5 +1,4 @@
-﻿#define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
-
+﻿
 gDiffuse = vec4(mix(inputColor, accumulatedColor, reprojectedUv.x != -1. ? temporalResolveMix : 0.0), alpha);
 
 vec4 moment, historyMoment;
