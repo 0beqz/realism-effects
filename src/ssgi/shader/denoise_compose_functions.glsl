@@ -1,3 +1,6 @@
+uniform sampler2D diffuseTexture;
+uniform sampler2D directLightTexture;
+
 // source: https://github.com/mrdoob/three.js/blob/dev/examples/js/shaders/SSAOShader.js
 vec3 getViewPosition(const float depth) {
     float clipW = projectionMatrix[2][3] * depth + projectionMatrix[3][3];

@@ -69,18 +69,12 @@ export class SSGIEffect extends Effect {
 		// unless overridden, SVGF's temporal reproject pass also uses the same G-buffers as the SSGI pass
 		// when TRAA is being used, the temporal reproject pass needs to use different G-buffers without jittering
 		this.svgf.setNonJitteredGBuffers(this.ssgiPass.depthTexture, this.ssgiPass.normalTexture)
-		this.svgf.setDiffuseTexture(this.ssgiPass.diffuseTexture)
 
 		// patch the denoise pass
-
-		this.svgf.denoisePass.fullscreenMaterial.fragmentShader =
-			/* glsl */ `
-		uniform sampler2D directLightTexture;
-		` + this.svgf.denoisePass.fullscreenMaterial.fragmentShader
-
 		this.svgf.denoisePass.fullscreenMaterial.uniforms = {
 			...this.svgf.denoisePass.fullscreenMaterial.uniforms,
 			...{
+				diffuseTexture: new Uniform(null),
 				directLightTexture: new Uniform(null)
 			}
 		}

@@ -28,7 +28,7 @@ uniform vec3 prevCameraPos;
 #define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
 
 #include <packing>
-#include <reprojection>
+#include <reproject>
 
 void main() {
     vec4 depthTexel;

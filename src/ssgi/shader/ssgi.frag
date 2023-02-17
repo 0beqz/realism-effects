@@ -19,8 +19,11 @@ uniform sampler2D diffuseTexture;
 uniform sampler2D emissiveTexture;
 uniform sampler2D blueNoiseTexture;
 uniform sampler2D velocityTexture;
-uniform sampler2D backSideDepthTexture;
 uniform sampler2D envMap;
+
+#ifdef autoThickness
+uniform sampler2D backSideDepthTexture;
+#endif
 
 uniform mat4 projectionMatrix;
 uniform mat4 inverseProjectionMatrix;

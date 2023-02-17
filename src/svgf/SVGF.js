@@ -64,10 +64,6 @@ export class SVGF {
 		this.svgfTemporalReprojectPass.fullscreenMaterial.uniforms.velocityTexture.value = texture
 	}
 
-	setDiffuseTexture(texture) {
-		this.denoisePass.fullscreenMaterial.uniforms.diffuseTexture.value = texture
-	}
-
 	setSize(width, height) {
 		this.denoisePass.setSize(width, height)
 

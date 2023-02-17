@@ -3,7 +3,8 @@ const float a1 = 1.0 / g;
 
 // reference: https://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/
 float r1(float n) {
-    return fract(0.5 + a1 * n);
+    // 7th harmonious number
+    return fract(1.1127756842787055 + a1 * n);
 }
 
 // source: https://github.com/mrdoob/three.js/blob/dev/examples/js/shaders/SSAOShader.js

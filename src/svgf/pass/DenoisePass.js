@@ -45,7 +45,6 @@ export class DenoisePass extends Pass {
 			uniforms: {
 				diffuseLightingTexture: new Uniform(null),
 				specularLightingTexture: new Uniform(null),
-				diffuseTexture: new Uniform(null),
 				depthTexture: new Uniform(null),
 				normalTexture: new Uniform(null),
 				momentTexture: new Uniform(null),

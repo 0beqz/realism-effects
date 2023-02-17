@@ -16,7 +16,6 @@ uniform sampler2D diffuseLightingTexture;
 uniform sampler2D specularLightingTexture;
 uniform sampler2D depthTexture;
 uniform sampler2D normalTexture;
-uniform sampler2D diffuseTexture;
 uniform sampler2D momentTexture;
 uniform vec2 invTexSize;
 uniform bool horizontal;
