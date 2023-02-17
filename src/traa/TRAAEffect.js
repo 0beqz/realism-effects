@@ -1,7 +1,7 @@
 ﻿import { Effect } from "postprocessing"
 import { Uniform } from "three"
 import compose from "./shader/compose.frag"
-import { TemporalResolvePass } from "../temporal-resolve/TemporalResolvePass.js"
+import { TemporalReprojectPass } from "../temporal-reproject/TemporalReprojectPass.js"
 import { getVisibleChildren } from "../ssgi/utils/Utils"
 
 export const defaultTRAAOptions = {
@@ -27,27 +27,27 @@ export class TRAAEffect extends Effect {
 
 		options = { ...defaultTRAAOptions, ...options }
 
-		this.temporalResolvePass = new TemporalResolvePass(scene, camera, velocityPass, options)
+		this.temporalReprojectPass = new TemporalReprojectPass(scene, camera, velocityPass, options)
 
-		this.uniforms.get("inputTexture").value = this.temporalResolvePass.texture
+		this.uniforms.get("inputTexture").value = this.temporalReprojectPass.texture
 
 		this.setSize(options.width, options.height)
 	}
 
 	setSize(width, height) {
-		this.temporalResolvePass.setSize(width, height)
+		this.temporalReprojectPass.setSize(width, height)
 	}
 
 	dispose() {
 		super.dispose()
 
-		this.temporalResolvePass.dispose()
+		this.temporalReprojectPass.dispose()
 	}
 
 	update(renderer, inputBuffer) {
 		// TODO: FIX RIGGED MESHES ISSUE
 
-		this.temporalResolvePass.unjitter()
+		this.temporalReprojectPass.unjitter()
 		this.unjitteredProjectionMatrix = this._camera.projectionMatrix.clone()
 
 		this._camera.projectionMatrix.copy(this.unjitteredProjectionMatrix)
@@ -84,10 +84,10 @@ export class TRAAEffect extends Effect {
 			})
 		}
 
-		this.temporalResolvePass.fullscreenMaterial.uniforms.inputTexture.value = inputBuffer.texture
+		this.temporalReprojectPass.fullscreenMaterial.uniforms.inputTexture.value = inputBuffer.texture
 
-		this.temporalResolvePass.render(renderer)
+		this.temporalReprojectPass.render(renderer)
 
-		this.temporalResolvePass.jitter()
+		this.temporalReprojectPass.jitter()
 	}
 }

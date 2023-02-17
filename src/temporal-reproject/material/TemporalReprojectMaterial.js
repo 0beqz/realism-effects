@@ -2,13 +2,13 @@
 import { Vector3 } from "three"
 import { ShaderMaterial, Uniform, Vector2 } from "three"
 import vertexShader from "../../utils/shader/basic.vert"
-import fragmentShader from "../shader/temporal_resolve.frag"
+import fragmentShader from "../shader/temporal_reproject.frag"
 import reprojection from "../shader/reprojection.glsl"
 
-export class TemporalResolveMaterial extends ShaderMaterial {
+export class TemporalReprojectMaterial extends ShaderMaterial {
 	constructor() {
 		super({
-			type: "TemporalResolveMaterial",
+			type: "TemporalReprojectMaterial",
 			uniforms: {
 				inputTexture: new Uniform(null),
 				accumulatedTexture: new Uniform(null),

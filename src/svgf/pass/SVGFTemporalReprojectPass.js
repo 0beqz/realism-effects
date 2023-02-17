@@ -8,32 +8,32 @@ import {
 	Uniform,
 	WebGLMultipleRenderTargets
 } from "three"
-import svgf_temporal_resolve from "../shader/svgf_temporal_resolve.frag"
-import { TemporalResolvePass } from "../../temporal-resolve/TemporalResolvePass"
+import svgf_temporal_reproject from "../shader/svgf_temporal_reproject.frag"
+import { TemporalReprojectPass } from "../../temporal-reproject/TemporalReprojectPass"
 
-const defaultSVGFTemporalResolvePassOptions = {
+const defaultSVGFTemporalReprojectPassOptions = {
 	diffuseOnly: false,
 	specularOnly: false,
 	renderVelocity: false,
 	fullAccumulate: false,
 	logTransform: false,
 	catmullRomSampling: true,
-	customComposeShader: svgf_temporal_resolve
+	customComposeShader: svgf_temporal_reproject
 }
-export class SVGFTemporalResolvePass extends TemporalResolvePass {
-	constructor(scene, camera, velocityPass, options = defaultSVGFTemporalResolvePassOptions) {
+export class SVGFTemporalReprojectPass extends TemporalReprojectPass {
+	constructor(scene, camera, velocityPass, options = defaultSVGFTemporalReprojectPassOptions) {
 		const bufferCount = !options.diffuseOnly && !options.specularOnly ? 3 : 2
 
-		const temporalResolvePassRenderTarget = new WebGLMultipleRenderTargets(1, 1, bufferCount, {
+		const temporalReprojectPassRenderTarget = new WebGLMultipleRenderTargets(1, 1, bufferCount, {
 			type: HalfFloatType,
 			depthBuffer: false
 		})
 
 		options = {
-			...defaultSVGFTemporalResolvePassOptions,
+			...defaultSVGFTemporalReprojectPassOptions,
 			...options,
 			...{
-				renderTarget: temporalResolvePassRenderTarget
+				renderTarget: temporalReprojectPassRenderTarget
 			}
 		}
 

@@ -1,10 +1,10 @@
 ﻿import { Pass } from "postprocessing"
 import { HalfFloatType, LinearFilter, Quaternion, Vector3, WebGLRenderTarget } from "three"
 import { CopyPass } from "../ssgi/pass/CopyPass"
-import { TemporalResolveMaterial } from "./material/TemporalResolveMaterial"
+import { TemporalReprojectMaterial } from "./material/TemporalReprojectMaterial"
 import { generateR2 } from "./utils/QuasirandomGenerator"
 
-export const defaultTemporalResolvePassOptions = {
+export const defaultTemporalReprojectPassOptions = {
 	blend: 0.9,
 	dilation: false,
 	constantBlend: false,
@@ -21,7 +21,7 @@ export const defaultTemporalResolvePassOptions = {
 	renderTarget: null
 }
 
-export class TemporalResolvePass extends Pass {
+export class TemporalReprojectPass extends Pass {
 	r2Sequence = []
 	pointsIndex = 0
 	lastCameraTransform = {
@@ -29,13 +29,13 @@ export class TemporalResolvePass extends Pass {
 		quaternion: new Quaternion()
 	}
 
-	constructor(scene, camera, velocityPass, options = defaultTemporalResolvePassOptions) {
-		super("TemporalResolvePass")
+	constructor(scene, camera, velocityPass, options = defaultTemporalReprojectPassOptions) {
+		super("TemporalReprojectPass")
 
 		this._scene = scene
 		this._camera = camera
 		this.velocityPass = velocityPass
-		options = { ...defaultTemporalResolvePassOptions, ...options }
+		options = { ...defaultTemporalReprojectPassOptions, ...options }
 
 		this.renderTarget =
 			options.renderTarget ||
@@ -46,7 +46,7 @@ export class TemporalResolvePass extends Pass {
 				depthBuffer: false
 			})
 
-		this.fullscreenMaterial = new TemporalResolveMaterial()
+		this.fullscreenMaterial = new TemporalReprojectMaterial()
 		if (typeof options.customComposeShader === "string") {
 			this.fullscreenMaterial.defines.useCustomComposeShader = ""
 

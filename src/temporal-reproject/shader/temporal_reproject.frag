@@ -81,21 +81,21 @@ void main() {
     bool didMove = dot(deltaUv, deltaUv) > 0.;
     float maxValue = (!fullAccumulate || didMove) ? blend : 1.0;
 
-    float temporalResolveMix = blend;
+    float temporalReprojectMix = blend;
     if (!constantBlend) {
         if (dot(inputColor, inputColor) == 0.0) {
             alpha = max(1., alpha - 1.);
             inputColor = accumulatedColor;
         }
 
-        temporalResolveMix = min(1. - 1. / alpha, maxValue);
+        temporalReprojectMix = min(1. - 1. / alpha, maxValue);
     }
 
 // the user's shader to compose a final outputColor from the inputTexel and accumulatedTexel
 #ifdef useCustomComposeShader
     customComposeShader
 #else
-    outputColor = mix(inputColor, accumulatedColor, temporalResolveMix);
+    outputColor = mix(inputColor, accumulatedColor, temporalReprojectMix);
 
     gl_FragColor = vec4(undoColorTransform(outputColor), alpha);
 #endif

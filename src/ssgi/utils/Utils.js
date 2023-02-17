@@ -95,7 +95,7 @@ export const saveBoneTexture = object => {
 	}
 }
 
-export const updateReprojectMaterialBeforeRender = (c, camera) => {
+export const updateVelocityDepthNormalMaterialBeforeRender = (c, camera) => {
 	if (c.skeleton?.boneTexture) {
 		c.material.uniforms.boneTexture.value = c.skeleton.boneTexture
 
@@ -112,7 +112,7 @@ export const updateReprojectMaterialBeforeRender = (c, camera) => {
 	c.material.uniforms.velocityMatrix.value.multiplyMatrices(camera.projectionMatrix, c.modelViewMatrix)
 }
 
-export const updateReprojectMaterialAfterRender = (c, camera) => {
+export const updateVelocityDepthNormalMaterialAfterRender = (c, camera) => {
 	c.material.uniforms.prevVelocityMatrix.value.multiplyMatrices(camera.projectionMatrix, c.modelViewMatrix)
 
 	if (c.skeleton?.boneTexture) saveBoneTexture(c)

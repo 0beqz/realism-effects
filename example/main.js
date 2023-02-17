@@ -21,7 +21,7 @@ import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader"
 import { GroundProjectedEnv } from "three/examples/jsm/objects/GroundProjectedEnv"
 import { MotionBlurEffect } from "../src/motion-blur/MotionBlurEffect"
 import { SSGIEffect } from "../src/SSGI/index"
-import { ReprojectPass } from "../src/temporal-resolve/pass/ReprojectPass"
+import { VelocityDepthNormalPass } from "../src/temporal-reproject/pass/VelocityDepthNormalPass"
 import { TRAAEffect } from "../src/traa/TRAAEffect"
 import { SSGIDebugGUI } from "./SSGIDebugGUI"
 import "./style.css"
@@ -292,12 +292,12 @@ const initScene = () => {
 		missedRays: false
 	}
 
-	const reprojectPass = new ReprojectPass(scene, camera)
-	composer.addPass(reprojectPass)
+	const velocityDepthNormalPass = new VelocityDepthNormalPass(scene, camera)
+	composer.addPass(velocityDepthNormalPass)
 
 	const params = {}
 
-	traaEffect = new TRAAEffect(scene, camera, reprojectPass, params)
+	traaEffect = new TRAAEffect(scene, camera, velocityDepthNormalPass, params)
 
 	gui = new TRAADebugGUI(traaEffect, params)
 
@@ -339,7 +339,7 @@ const initScene = () => {
 		offset: 0.3
 	})
 
-	ssgiEffect = new SSGIEffect(scene, camera, reprojectPass, options)
+	ssgiEffect = new SSGIEffect(scene, camera, velocityDepthNormalPass, options)
 	window.ssgiEffect = ssgiEffect
 
 	gui2 = new SSGIDebugGUI(ssgiEffect, options)
@@ -349,7 +349,7 @@ const initScene = () => {
 		ssgiPass = new POSTPROCESSING.EffectPass(camera, ssgiEffect)
 		const lutEffect = new POSTPROCESSING.LUT3DEffect(lutTexture)
 
-		const motionBlurEffect = new MotionBlurEffect(reprojectPass, {
+		const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass, {
 			jitter: 1
 		})
 

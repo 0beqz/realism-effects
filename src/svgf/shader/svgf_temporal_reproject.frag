@@ -1,5 +1,5 @@
 ﻿
-gDiffuse = vec4(mix(inputColor, accumulatedColor, reprojectedUv.x != -1. ? temporalResolveMix : 0.0), alpha);
+gDiffuse = vec4(mix(inputColor, accumulatedColor, reprojectedUv.x != -1. ? temporalReprojectMix : 0.0), alpha);
 
 vec4 moment, historyMoment;
 
@@ -38,14 +38,14 @@ if (specularUv.x != -1.) {
         specularColor = lastSpecular;
     }
 
-    temporalResolveMix = min(1. - 1. / specularAlpha, maxValue);
+    temporalReprojectMix = min(1. - 1. / specularAlpha, maxValue);
 
     float roughness = inputTexel.a;
     float glossines = max(0., 0.025 - roughness) / 0.025;
-    temporalResolveMix *= 1. - glossines * glossines;
+    temporalReprojectMix *= 1. - glossines * glossines;
 }
 
-gSpecular = vec4(mix(specularColor, lastSpecular, specularUv.x != -1. ? temporalResolveMix : 0.), specularAlpha);
+gSpecular = vec4(mix(specularColor, lastSpecular, specularUv.x != -1. ? temporalReprojectMix : 0.), specularAlpha);
 gSpecular.rgb = undoColorTransform(gSpecular.rgb);
 
 // specular moment
@@ -74,8 +74,8 @@ if (reprojectedUv.x != -1.) {
 #endif
 }
 
-float momentTemporalResolveMix = max(blend, 0.8);
-gMoment = mix(moment, historyMoment, momentTemporalResolveMix);
+float momentTemporalReprojectMix = max(blend, 0.8);
+gMoment = mix(moment, historyMoment, momentTemporalReprojectMix);
 
 // if (isReprojectedUvSpecularValid)
 //     gSpecular.xyz = vec3(0., 1., 0.);

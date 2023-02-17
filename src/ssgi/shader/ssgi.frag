@@ -233,7 +233,7 @@ void main() {
 #endif
 
 #ifndef diffuseOnly
-    // calculate world-space ray length used for reprojecting hit points instead of screen-space pixels in the temporal resolve pass
+    // calculate world-space ray length used for reprojecting hit points instead of screen-space pixels in the temporal reproject pass
     float rayLength = 0.0;
     if (!isMissedRay && roughness < 0.5) {
         vec3 worldNormal = (vec4(viewNormal, 1.) * viewMatrix).xyz;

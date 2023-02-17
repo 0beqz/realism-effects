@@ -101,7 +101,7 @@ export const velocity_uniforms = {
 	uvTransform: { value: new Matrix3() }
 }
 
-export class ReprojectMaterial extends ShaderMaterial {
+export class VelocityDepthNormalMaterial extends ShaderMaterial {
 	constructor() {
 		super({
 			uniforms: UniformsUtils.clone(velocity_uniforms),

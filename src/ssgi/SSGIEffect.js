@@ -66,8 +66,8 @@ export class SSGIEffect extends Effect {
 
 		this.svgf.setJitteredGBuffers(this.ssgiPass.depthTexture, this.ssgiPass.normalTexture)
 
-		// unless overridden, SVGF's temporal resolve pass also uses the same G-buffers as the SSGI pass
-		// when TRAA is being used, the temporal resolve pass needs to use different G-buffers without jittering
+		// unless overridden, SVGF's temporal reproject pass also uses the same G-buffers as the SSGI pass
+		// when TRAA is being used, the temporal reproject pass needs to use different G-buffers without jittering
 		this.svgf.setNonJitteredGBuffers(this.ssgiPass.depthTexture, this.ssgiPass.normalTexture)
 		this.svgf.setDiffuseTexture(this.ssgiPass.diffuseTexture)
 
@@ -130,7 +130,7 @@ export class SSGIEffect extends Effect {
 	makeOptionsReactive(options) {
 		let needsUpdate = false
 
-		if (options.reflectionsOnly) this.svgf.svgfTemporalResolvePass.fullscreenMaterial.defines.reflectionsOnly = ""
+		if (options.reflectionsOnly) this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.defines.reflectionsOnly = ""
 
 		const ssgiPassFullscreenMaterialUniforms = this.ssgiPass.fullscreenMaterial.uniforms
 		const ssgiPassFullscreenMaterialUniformsKeys = Object.keys(ssgiPassFullscreenMaterialUniforms)
@@ -183,14 +183,14 @@ export class SSGIEffect extends Effect {
 							break
 
 						case "correctionRadius":
-							this.svgf.svgfTemporalResolvePass.fullscreenMaterial.defines[key] = Math.round(value)
+							this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.defines[key] = Math.round(value)
 
-							this.svgf.svgfTemporalResolvePass.fullscreenMaterial.needsUpdate = needsUpdate
+							this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.needsUpdate = needsUpdate
 							break
 
 						case "blend":
 						case "correction":
-							this.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms[key].value = value
+							this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.uniforms[key].value = value
 							break
 
 						case "distance":
@@ -241,7 +241,7 @@ export class SSGIEffect extends Effect {
 
 	setVelocityPass(velocityPass) {
 		this.ssgiPass.fullscreenMaterial.uniforms.velocityTexture.value = velocityPass.texture
-		this.svgf.svgfTemporalResolvePass.fullscreenMaterial.uniforms.velocityTexture.value = velocityPass.texture
+		this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.uniforms.velocityTexture.value = velocityPass.texture
 
 		this.svgf.setNonJitteredGBuffers(velocityPass.depthTexture, velocityPass.normalTexture)
 	}
