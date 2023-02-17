@@ -1,8 +1,8 @@
 ﻿import { Matrix4 } from "three"
 import { Vector3 } from "three"
 import { ShaderMaterial, Uniform, Vector2 } from "three"
-import vertexShader from "./../../../traa/shader/basic.vert"
-import fragmentShader from "../shader/temporalResolve.frag"
+import vertexShader from "../../utils/shader/basic.vert"
+import fragmentShader from "../shader/temporal_resolve.frag"
 import reprojection from "../shader/reprojection.glsl"
 
 export class TemporalResolveMaterial extends ShaderMaterial {

@@ -1,4 +1,5 @@
-﻿import { defaultSSGIOptions, SSGIEffect } from "./SSGI"
+﻿import { SSGIEffect } from "./SSGIEffect"
+import { defaultSSGIOptions } from "./SSGIOptions"
 
 export class SSDGIEffect extends SSGIEffect {
 	constructor(scene, camera, options = defaultSSGIOptions) {

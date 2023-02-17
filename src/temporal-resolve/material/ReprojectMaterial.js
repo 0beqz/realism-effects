@@ -44,7 +44,7 @@ uniform mat4 prevVelocityMatrix;
 varying vec4 prevPosition;
 varying vec4 newPosition;
 
-#ifdef renderDepth
+#ifdef renderDepthNormal
 varying vec2 vHighPrecisionZW;
 #endif
 `
@@ -64,7 +64,7 @@ prevPosition = prevVelocityMatrix * vec4( transformed, 1.0 );
 
 gl_Position = newPosition;
 
-#ifdef renderDepth
+#ifdef renderDepthNormal
 vHighPrecisionZW = gl_Position.zw;
 #endif
 `
@@ -73,7 +73,7 @@ export const velocity_fragment_pars = /* glsl */ `
 varying vec4 prevPosition;
 varying vec4 newPosition;
 
-#ifdef renderDepth
+#ifdef renderDepthNormal
 varying vec2 vHighPrecisionZW;
 #endif
 `
@@ -84,7 +84,7 @@ vec2 pos1 = (newPosition.xy / newPosition.w) * 0.5 + 0.5;
 
 vec2 vel = pos1 - pos0;
 
-#ifdef renderDepth
+#ifdef renderDepthNormal
 float fragCoordZ = 0.5 * vHighPrecisionZW[0] / vHighPrecisionZW[1] + 0.5;
 #endif
 
@@ -101,7 +101,7 @@ export const velocity_uniforms = {
 	uvTransform: { value: new Matrix3() }
 }
 
-export class VelocityMaterial extends ShaderMaterial {
+export class ReprojectMaterial extends ShaderMaterial {
 	constructor() {
 		super({
 			uniforms: UniformsUtils.clone(velocity_uniforms),
@@ -151,7 +151,7 @@ export class VelocityMaterial extends ShaderMaterial {
 						varying vec3 vViewPosition;
 					#endif
 
-					#ifdef renderDepth
+					#ifdef renderDepthNormal
 					layout(location = 0) out vec4 gVelocity;
 					layout(location = 1) out vec4 gDepth;
 					layout(location = 2) out vec4 gNormal;
@@ -173,7 +173,7 @@ export class VelocityMaterial extends ShaderMaterial {
 
 						${velocity_fragment_main.replaceAll("gl_FragColor", "gVelocity")}
 
-						#ifdef renderDepth
+						#ifdef renderDepthNormal
 						gDepth = packDepthToRGBA(fragCoordZ);
 
 						gNormal = vec4(packNormalToRGB( normal ), 0.);

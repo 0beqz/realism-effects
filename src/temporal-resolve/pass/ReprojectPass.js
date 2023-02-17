@@ -4,24 +4,26 @@ import {
 	getVisibleChildren,
 	keepMaterialMapUpdated,
 	saveBoneTexture,
-	updateVelocityMaterialAfterRender,
-	updateVelocityMaterialBeforeRender
-} from "../../utils/Utils.js"
-import { VelocityMaterial } from "../material/VelocityMaterial.js"
+	updateReprojectMaterialAfterRender,
+	updateReprojectMaterialBeforeRender
+} from "../../ssgi/utils/Utils"
+import { ReprojectMaterial } from "../material/ReprojectMaterial.js"
 
 const backgroundColor = new Color(0)
 
-export class VelocityPass extends Pass {
+export class ReprojectPass extends Pass {
 	cachedMaterials = new WeakMap()
 	visibleMeshes = []
 
-	constructor(scene, camera) {
+	constructor(scene, camera, renderDepthNormal = true) {
 		super("VelocityPass")
 
 		this._scene = scene
 		this._camera = camera
 
-		this.renderTarget = new WebGLMultipleRenderTargets(1, 1, 3, {
+		const bufferCount = renderDepthNormal ? 3 : 1
+
+		this.renderTarget = new WebGLMultipleRenderTargets(1, 1, bufferCount, {
 			minFilter: NearestFilter,
 			magFilter: NearestFilter,
 			type: HalfFloatType
@@ -30,34 +32,38 @@ export class VelocityPass extends Pass {
 		this.renderTarget.texture[0].type = FloatType
 		this.renderTarget.texture[0].needsUpdate = true
 
-		this.renderTarget.texture[1].type = UnsignedByteType
-		this.renderTarget.texture[1].needsUpdate = true
+		if (renderDepthNormal) {
+			this.renderTarget.texture[1].type = UnsignedByteType
+			this.renderTarget.texture[1].needsUpdate = true
 
-		this.renderTarget.texture[2].type = HalfFloatType
-		this.renderTarget.texture[2].needsUpdate = true
+			this.renderTarget.texture[2].type = HalfFloatType
+			this.renderTarget.texture[2].needsUpdate = true
+		}
+
+		this.renderDepthNormal = renderDepthNormal
 	}
 
-	setVelocityMaterialInScene() {
+	setReprojectMaterialInScene() {
 		this.visibleMeshes = getVisibleChildren(this._scene)
 
 		for (const c of this.visibleMeshes) {
 			const originalMaterial = c.material
 
-			let [cachedOriginalMaterial, velocityMaterial] = this.cachedMaterials.get(c) || []
+			let [cachedOriginalMaterial, reprojectMaterial] = this.cachedMaterials.get(c) || []
 
 			if (originalMaterial !== cachedOriginalMaterial) {
-				velocityMaterial = new VelocityMaterial()
-				velocityMaterial.normalScale = originalMaterial.normalScale
-				velocityMaterial.uniforms.normalScale.value = originalMaterial.normalScale
+				reprojectMaterial = new ReprojectMaterial()
+				reprojectMaterial.normalScale = originalMaterial.normalScale
+				reprojectMaterial.uniforms.normalScale.value = originalMaterial.normalScale
 
-				c.material = velocityMaterial
+				c.material = reprojectMaterial
 
 				if (c.skeleton?.boneTexture) saveBoneTexture(c)
 
-				this.cachedMaterials.set(c, [originalMaterial, velocityMaterial])
+				this.cachedMaterials.set(c, [originalMaterial, reprojectMaterial])
 			}
 
-			c.material = velocityMaterial
+			c.material = reprojectMaterial
 
 			c.visible =
 				originalMaterial.visible &&
@@ -65,9 +71,9 @@ export class VelocityPass extends Pass {
 				originalMaterial.depthTest &&
 				c.constructor.name !== "GroundProjectedEnv"
 
-			velocityMaterial.defines.renderDepth = ""
+			if (this.renderDepthNormal) reprojectMaterial.defines.renderDepthNormal = ""
 
-			keepMaterialMapUpdated(velocityMaterial, originalMaterial, "normalMap", "USE_NORMALMAP", true)
+			keepMaterialMapUpdated(reprojectMaterial, originalMaterial, "normalMap", "USE_NORMALMAP", true)
 
 			const map =
 				originalMaterial.map ||
@@ -75,18 +81,18 @@ export class VelocityPass extends Pass {
 				originalMaterial.roughnessMap ||
 				originalMaterial.metalnessMap
 
-			if (map) velocityMaterial.uniforms.uvTransform.value = map.matrix
-			velocityMaterial.side = originalMaterial.side
+			if (map) reprojectMaterial.uniforms.uvTransform.value = map.matrix
+			reprojectMaterial.side = originalMaterial.side
 
-			updateVelocityMaterialBeforeRender(c, this._camera)
+			updateReprojectMaterialBeforeRender(c, this._camera)
 		}
 	}
 
-	unsetVelocityMaterialInScene() {
+	unsetReprojectMaterialInScene() {
 		for (const c of this.visibleMeshes) {
 			c.visible = true
 
-			updateVelocityMaterialAfterRender(c, this._camera)
+			updateReprojectMaterialAfterRender(c, this._camera)
 
 			c.material = this.cachedMaterials.get(c)[0]
 		}
@@ -101,7 +107,7 @@ export class VelocityPass extends Pass {
 	}
 
 	get texture() {
-		return this.renderTarget.texture[0]
+		return Array.isArray(this.renderTarget.texture) ? this.renderTarget.texture[0] : this.renderTarget.texture
 	}
 
 	get depthTexture() {
@@ -112,14 +118,10 @@ export class VelocityPass extends Pass {
 		return this.renderTarget.texture[2]
 	}
 
-	get depthRenderTarget() {
-		return this.renderTarget
-	}
-
 	render(renderer) {
 		this._camera.clearViewOffset()
 
-		this.setVelocityMaterialInScene()
+		this.setReprojectMaterialInScene()
 
 		const { background } = this._scene
 
@@ -130,7 +132,7 @@ export class VelocityPass extends Pass {
 
 		this._scene.background = background
 
-		this.unsetVelocityMaterialInScene()
+		this.unsetReprojectMaterialInScene()
 
 		if (this._camera.view) this._camera.view.enabled = true
 		this._camera.updateProjectionMatrix()

@@ -8,7 +8,7 @@ import {
 	WebGLMultipleRenderTargets,
 	WebGLRenderTarget
 } from "three"
-import basicVertexShader from "../shader/basic.vert"
+import basicVertexShader from "../../utils/shader/basic.vert"
 
 export class CopyPass extends Pass {
 	constructor(textureCount = 1) {

@@ -1,7 +1,7 @@
 ﻿import { Effect } from "postprocessing"
 import { Uniform } from "three"
 import compose from "./shader/compose.frag"
-import { TemporalResolvePass } from "../ssgi/temporal-resolve/TemporalResolvePass.js"
+import { TemporalResolvePass } from "../temporal-resolve/TemporalResolvePass.js"
 import { getVisibleChildren } from "../ssgi/utils/Utils"
 
 export const defaultTRAAOptions = {

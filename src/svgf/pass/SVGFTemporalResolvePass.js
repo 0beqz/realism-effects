@@ -8,8 +8,8 @@ import {
 	Uniform,
 	WebGLMultipleRenderTargets
 } from "three"
-import svgf_temporal_resolve from "../svgf/shader/svgf_temporal_resolve.frag"
-import { TemporalResolvePass } from "../temporal-resolve/TemporalResolvePass"
+import svgf_temporal_resolve from "../shader/svgf_temporal_resolve.frag"
+import { TemporalResolvePass } from "../../temporal-resolve/TemporalResolvePass"
 
 const defaultSVGFTemporalResolvePassOptions = {
 	diffuseOnly: false,

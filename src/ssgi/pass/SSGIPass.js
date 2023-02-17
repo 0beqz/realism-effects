@@ -12,10 +12,10 @@ import {
 } from "three"
 import { MRTMaterial } from "../material/MRTMaterial.js"
 import { SSGIMaterial } from "../material/SSGIMaterial.js"
-import { BackSideDepthPass } from "../temporal-resolve/pass/BackSideDepthPass.js"
-import { getVisibleChildren, keepMaterialMapUpdated } from "../utils/Utils.js"
+import { BackSideDepthPass } from "./BackSideDepthPass"
+import { getVisibleChildren, keepMaterialMapUpdated } from "../utils/Utils"
 
-import blueNoiseImage from "./../../blue-noise/blue_noise_64.png"
+import blueNoiseImage from "./../../utils/blue_noise_64.png"
 
 const backgroundColor = new Color(0)
 

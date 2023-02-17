@@ -1,6 +1,6 @@
 ﻿import { Pass } from "postprocessing"
 import { HalfFloatType, LinearFilter, Quaternion, Vector3, WebGLRenderTarget } from "three"
-import { CopyPass } from "../pass/CopyPass"
+import { CopyPass } from "../ssgi/pass/CopyPass"
 import { TemporalResolveMaterial } from "./material/TemporalResolveMaterial"
 import { generateR2 } from "./utils/QuasirandomGenerator"
 

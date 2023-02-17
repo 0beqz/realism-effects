@@ -1,4 +1,5 @@
-﻿import { Effect, RenderPass, Selection } from "postprocessing"
+﻿/* eslint-disable camelcase */
+import { Effect, RenderPass, Selection } from "postprocessing"
 import {
 	EquirectangularReflectionMapping,
 	LinearMipMapLinearFilter,
@@ -8,11 +9,11 @@ import {
 	WebGLRenderTarget
 } from "three"
 import { SSGIPass } from "./pass/SSGIPass.js"
-import compose from "./shader/ssgi/compose.frag"
-import denoiseCompose from "./shader/denoise/denoiseCompose.frag"
-import denoiseComposeFunctions from "./shader/denoise/denoiseComposeFunctions.frag"
+import compose from "./shader/compose.frag"
+import denoise_compose from "./shader/denoise_compose.frag"
+import denoise_compose_functions from "./shader/denoise_compose_functions.glsl"
 import { defaultSSGIOptions } from "./SSGIOptions"
-import { SVGF } from "./svgf/SVGF.js"
+import { SVGF } from "../svgf/SVGF.js"
 import {
 	createGlobalDisableIblIradianceUniform,
 	createGlobalDisableIblRadianceUniform,
@@ -51,7 +52,7 @@ export class SSGIEffect extends Effect {
 		this._scene = scene
 		this._camera = camera
 
-		this.svgf = new SVGF(scene, camera, velocityPass, denoiseCompose, denoiseComposeFunctions, options)
+		this.svgf = new SVGF(scene, camera, velocityPass, denoise_compose, denoise_compose_functions, options)
 
 		// ssgi pass
 		this.ssgiPass = new SSGIPass(this, options)

@@ -1,8 +1,8 @@
 ﻿import { GLSL3, Matrix4, ShaderMaterial, Uniform, Vector2, Vector3 } from "three"
-import vertexShader from "../shader/basic.vert"
-import fragmentShader from "../shader/ssgi/ssgi.frag"
+import vertexShader from "../../utils/shader/basic.vert"
+import fragmentShader from "../shader/ssgi.frag"
 // eslint-disable-next-line camelcase
-import ssgi_utils from "../shader/ssgi/ssgi_utils.glsl"
+import ssgi_utils from "../shader/ssgi_utils.glsl"
 
 export class SSGIMaterial extends ShaderMaterial {
 	constructor() {

@@ -2,9 +2,9 @@
 
 import { Effect } from "postprocessing"
 import { LinearEncoding, NearestFilter, RepeatWrapping, TextureLoader, Uniform, Vector2 } from "three"
-import motion_blur from "./motion_blur.glsl"
+import motion_blur from "./shader/motion_blur.glsl"
 
-import blueNoiseImage from "./../blue-noise/blue_noise_64.png"
+import blueNoiseImage from "./../utils/blue_noise_64.png"
 
 // https://www.nvidia.com/docs/io/8230/gdc2003_openglshadertricks.pdf
 // http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html
