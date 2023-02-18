@@ -63,22 +63,22 @@ for (int i = 0; i < 2; i++) {
     lastReprojectedUvSpecular = isReprojectedUvSpecular;
 }
 
-if (reprojectedUv.x != -1.) {
+if (reprojectedUvDiffuse.x >= 0.0 || reprojectedUvSpecular[0].x >= 0.0) {
     moment.r = luminance(gOutput[0].rgb);
     moment.g = moment.r * moment.r;
 
     moment.b = luminance(gOutput[1].rgb);
     moment.a = moment.b * moment.b;
 } else {
-    moment.ba = vec2(0., 10.);
     moment.rg = vec2(0., 10.);
+    moment.ba = vec2(0., 10.);
 }
 
 float momentTemporalReprojectMix = max(blend, 0.8);
 gMoment = mix(moment, historyMoment, momentTemporalReprojectMix);
 
-// if (lastReprojectedUvSpecular) {
-//     gOutput1.rgb = vec3(0., 1., 0.);
+// if (reprojectedUvDiffuse.x < 0. && dot(inputTexel[0].rgb, inputTexel[0].rgb) != 0.0) {
+//     gOutput0.rgb = vec3(0., 1., 0.);
 // }
 
 // float variance = max(0.0, gMoment.a - gMoment.b * gMoment.b);
