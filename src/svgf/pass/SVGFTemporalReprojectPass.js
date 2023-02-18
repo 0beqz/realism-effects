@@ -90,32 +90,23 @@ export class SVGFTemporalReprojectPass extends TemporalReprojectPass {
 			texture.needsUpdate = true
 		}
 
-		this.copyPass.fullscreenMaterial.uniforms.inputTexture4.value = this.momentTexture
-		this.copyPass.fullscreenMaterial.uniforms.inputTexture5.value = this.specularTexture
+		this.copyPass.setTextureCount(5)
+		this.copyPass.fullscreenMaterial.uniforms.inputTexture3.value = this.momentTexture
+		this.copyPass.fullscreenMaterial.uniforms.inputTexture4.value = this.specularTexture
 
-		const lastMomentTexture = this.copyPass.renderTarget.texture[0].clone()
-		lastMomentTexture.isRenderTargetTexture = true
-		this.copyPass.renderTarget.texture.push(lastMomentTexture)
-		this.copyPass.fullscreenMaterial.defines.textureCount++
-
+		const lastMomentTexture = this.copyPass.renderTarget.texture[3]
 		lastMomentTexture.type = FloatType
 		lastMomentTexture.minFilter = NearestFilter
 		lastMomentTexture.magFilter = NearestFilter
 		lastMomentTexture.needsUpdate = true
-
 		this.fullscreenMaterial.uniforms.lastMomentTexture.value = lastMomentTexture
 
 		if (bufferCount > 2) {
-			const lastSpecularTexture = this.copyPass.renderTarget.texture[0].clone()
-			lastSpecularTexture.isRenderTargetTexture = true
-			this.copyPass.renderTarget.texture.push(lastSpecularTexture)
-			this.copyPass.fullscreenMaterial.defines.textureCount++
-
+			const lastSpecularTexture = this.copyPass.renderTarget.texture[4]
 			lastSpecularTexture.type = HalfFloatType
 			lastSpecularTexture.minFilter = LinearFilter
 			lastSpecularTexture.magFilter = LinearFilter
 			lastSpecularTexture.needsUpdate = true
-
 			this.fullscreenMaterial.uniforms.lastSpecularTexture.value = lastSpecularTexture
 		}
 

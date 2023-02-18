@@ -10,7 +10,6 @@ export const defaultTemporalReprojectPassOptions = {
 	constantBlend: false,
 	fullAccumulate: false,
 	catmullRomSampling: true,
-	renderVelocity: true,
 	neighborhoodClamping: false,
 	logTransform: false,
 	depthDistance: 0.5,
@@ -34,7 +33,6 @@ export class TemporalReprojectPass extends Pass {
 
 		this._scene = scene
 		this._camera = camera
-		this.velocityPass = velocityPass
 		options = { ...defaultTemporalReprojectPassOptions, ...options }
 
 		this.renderTarget =
@@ -82,7 +80,6 @@ export class TemporalReprojectPass extends Pass {
 		this.copyPass = new CopyPass(3)
 
 		this.accumulatedTexture = this.copyPass.renderTarget.texture[0]
-
 		this.accumulatedTexture.type = HalfFloatType
 		this.accumulatedTexture.minFilter = LinearFilter
 		this.accumulatedTexture.magFilter = LinearFilter
@@ -92,17 +89,11 @@ export class TemporalReprojectPass extends Pass {
 		this.fullscreenMaterial.uniforms.lastDepthTexture.value = this.copyPass.renderTarget.texture[1]
 		this.fullscreenMaterial.uniforms.lastNormalTexture.value = this.copyPass.renderTarget.texture[2]
 
-		this.fullscreenMaterial.uniforms.velocityTexture.value = this.velocityPass.texture
-		this.fullscreenMaterial.uniforms.depthTexture.value = this.velocityPass.depthTexture
-		this.fullscreenMaterial.uniforms.normalTexture.value = this.velocityPass.normalTexture
-
-		this.renderVelocity = options.renderVelocity
+		this.fullscreenMaterial.uniforms.velocityTexture.value = velocityPass.texture
+		this.fullscreenMaterial.uniforms.depthTexture.value = velocityPass.depthTexture
+		this.fullscreenMaterial.uniforms.normalTexture.value = velocityPass.normalTexture
 
 		this.options = options
-	}
-
-	get velocityTexture() {
-		return this.velocityPass?.texture
 	}
 
 	dispose() {
@@ -110,14 +101,11 @@ export class TemporalReprojectPass extends Pass {
 		this.copyPass.dispose()
 		this.accumulatedTexture.dispose()
 		this.fullscreenMaterial.dispose()
-
-		this.velocityPass?.dispose()
 	}
 
 	setSize(width, height) {
 		this.renderTarget.setSize(width, height)
 		this.copyPass.setSize(width, height)
-		this.velocityPass?.setSize(width, height)
 
 		this.fullscreenMaterial.uniforms.invTexSize.value.set(1 / width, 1 / height)
 	}
@@ -127,17 +115,14 @@ export class TemporalReprojectPass extends Pass {
 	}
 
 	render(renderer) {
-		if (this.renderVelocity) this.velocityPass.render(renderer)
-
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)
 
 		// save the last depth and normal buffers
-		this.copyPass.fullscreenMaterial.uniforms.inputTexture.value = this.texture
-		this.copyPass.fullscreenMaterial.uniforms.inputTexture2.value = this.fullscreenMaterial.uniforms.depthTexture.value
-		this.copyPass.fullscreenMaterial.uniforms.inputTexture3.value = this.fullscreenMaterial.uniforms.normalTexture.value
+		this.copyPass.fullscreenMaterial.uniforms.inputTexture0.value = this.texture
+		this.copyPass.fullscreenMaterial.uniforms.inputTexture1.value = this.fullscreenMaterial.uniforms.depthTexture.value
+		this.copyPass.fullscreenMaterial.uniforms.inputTexture2.value = this.fullscreenMaterial.uniforms.normalTexture.value
 
-		this.accumulatedTexture = this.copyPass.fullscreenMaterial.uniforms.inputTexture.value
 		this.copyPass.render(renderer)
 
 		// save last transformations

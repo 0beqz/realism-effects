@@ -1,91 +1,59 @@
 ﻿import { Pass } from "postprocessing"
-import {
-	GLSL3,
-	HalfFloatType,
-	NearestFilter,
-	ShaderMaterial,
-	Uniform,
-	WebGLMultipleRenderTargets,
-	WebGLRenderTarget
-} from "three"
+import { GLSL3, NearestFilter, ShaderMaterial, Uniform, WebGLMultipleRenderTargets } from "three"
 import basicVertexShader from "../../utils/shader/basic.vert"
 
 export class CopyPass extends Pass {
 	constructor(textureCount = 1) {
 		super("CopyPass")
 
-		this.fullscreenMaterial = new ShaderMaterial({
-			fragmentShader: /* glsl */ `
-            varying vec2 vUv;
-
-			uniform sampler2D inputTexture;
-			layout(location = 0) out vec4 gOutput0;
-			
-			#if textureCount > 1
-			uniform sampler2D inputTexture2;
-			layout(location = 1) out vec4 gOutput1;
-			#endif
-
-			#if textureCount > 2
-			uniform sampler2D inputTexture3;
-			layout(location = 2) out vec4 gOutput2;
-			#endif
-
-			#if textureCount > 3
-			uniform sampler2D inputTexture4;
-			layout(location = 3) out vec4 gOutput3;
-			#endif
-
-			#if textureCount > 4
-			uniform sampler2D inputTexture5;
-			layout(location = 4) out vec4 gOutput4;
-			#endif
-
-            void main() {
-                gOutput0 = textureLod(inputTexture, vUv, 0.);
-
-				#if textureCount > 1
-				gOutput1 = textureLod(inputTexture2, vUv, 0.);
-				#endif
-
-				#if textureCount > 2
-				gOutput2 = textureLod(inputTexture3, vUv, 0.);
-				#endif
-
-				#if textureCount > 3
-				gOutput3 = textureLod(inputTexture4, vUv, 0.);
-				#endif
-
-				#if textureCount > 4
-				gOutput4 = textureLod(inputTexture5, vUv, 0.);
-				#endif
-            }
-            `,
-			vertexShader: basicVertexShader,
-			uniforms: {
-				inputTexture: new Uniform(null),
-				inputTexture2: new Uniform(null),
-				inputTexture3: new Uniform(null),
-				inputTexture4: new Uniform(null),
-				inputTexture5: new Uniform(null)
-			},
-			defines: {
-				textureCount
-			},
-			glslVersion: GLSL3
-		})
-
 		const renderTargetOptions = {
 			minFilter: NearestFilter,
 			magFilter: NearestFilter,
-			type: HalfFloatType,
 			depthBuffer: false
 		}
 
-		this.renderTarget =
-			textureCount === 1
-				? new WebGLRenderTarget(1, 1, renderTargetOptions)
-				: new WebGLMultipleRenderTargets(1, 1, textureCount)
+		this.renderTarget = new WebGLMultipleRenderTargets(1, 1, 1, renderTargetOptions)
+
+		this.setTextureCount(textureCount)
+	}
+
+	setTextureCount(textureCount) {
+		let definitions = ""
+		let body = ""
+		for (let i = 0; i < textureCount; i++) {
+			definitions += /* glsl */ `
+				uniform sampler2D inputTexture${i};
+				layout(location = ${i}) out vec4 gOutput${i};
+			`
+
+			body += /* glsl */ `gOutput${i} = textureLod(inputTexture${i}, vUv, 0.);`
+		}
+
+		this.fullscreenMaterial?.dispose()
+
+		this.fullscreenMaterial = new ShaderMaterial({
+			fragmentShader: /* glsl */ `
+            varying vec2 vUv;
+			
+			${definitions}
+
+            void main() {
+				${body}
+            }
+            `,
+			vertexShader: basicVertexShader,
+			glslVersion: GLSL3
+		})
+
+		for (let i = 0; i < textureCount; i++) {
+			this.fullscreenMaterial.uniforms["inputTexture" + i] = new Uniform(null)
+
+			if (i >= this.renderTarget.texture.length) {
+				const texture = this.renderTarget.texture[0].clone()
+				texture.isRenderTargetTexture = true
+				this.renderTarget.texture.push(texture)
+			}
+		}
 	}
 
 	setSize(width, height) {
