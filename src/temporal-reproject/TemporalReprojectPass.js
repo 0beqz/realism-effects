@@ -12,9 +12,9 @@ export const defaultTemporalReprojectPassOptions = {
 	catmullRomSampling: true,
 	neighborhoodClamping: false,
 	logTransform: false,
-	depthDistance: 0.5,
-	normalDistance: 10,
-	worldDistance: 1,
+	depthDistance: 0.1,
+	normalDistance: 5,
+	worldDistance: 0.15,
 	reprojectSpecular: false,
 	customComposeShader: null,
 	renderTarget: null

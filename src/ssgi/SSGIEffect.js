@@ -53,8 +53,23 @@ export class SSGIEffect extends Effect {
 		this._camera = camera
 
 		options.reprojectSpecular = [false, true]
-		options.catmullRomSampling = [true, false]
+		options.catmullRomSampling = [false, true]
+		options.roughnessDependentKernel = [false, true]
 		this.svgf = new SVGF(scene, camera, velocityPass, 2, denoise_compose, denoise_compose_functions, options)
+
+		this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.fragmentShader =
+			this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.fragmentShader.replace(
+				"outputColor = mix(inputTexel[ 1 ].rgb, accumulatedTexel[ 1 ].rgb, temporalReprojectMix);",
+				/* glsl */ `
+			float roughness = inputTexel[0].a;
+			float glossines = max(0., 0.025 - roughness) / 0.025;
+			temporalReprojectMix *= 1. - glossines * glossines;
+			
+			outputColor = mix(inputTexel[ 1 ].rgb, accumulatedTexel[ 1 ].rgb, temporalReprojectMix);
+			`
+			)
+
+		this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.needsUpdate = true
 
 		// ssgi pass
 		this.ssgiPass = new SSGIPass(this, options)
@@ -67,10 +82,6 @@ export class SSGIEffect extends Effect {
 		denoisePassUniforms.normalTexture.value = this.ssgiPass.normalTexture
 
 		this.svgf.setJitteredGBuffers(this.ssgiPass.depthTexture, this.ssgiPass.normalTexture)
-
-		// unless overridden, SVGF's temporal reproject pass also uses the same G-buffers as the SSGI pass
-		// when TRAA is being used, the temporal reproject pass needs to use different G-buffers without jittering
-		this.svgf.setNonJitteredGBuffers(this.ssgiPass.depthTexture, this.ssgiPass.normalTexture)
 
 		// patch the denoise pass
 		this.svgf.denoisePass.fullscreenMaterial.uniforms = {

@@ -36,9 +36,6 @@
 
 //     temporalReprojectMix = min(1. - 1. / specularAlpha, maxValue);
 
-//     float roughness = inputTexel.a;
-//     float glossines = max(0., 0.025 - roughness) / 0.025;
-//     temporalReprojectMix *= 1. - glossines * glossines;
 // }
 
 // gSpecular = vec4(mix(specularColor, lastSpecular, specularUv.x != -1. ? temporalReprojectMix : 0.), specularAlpha);
@@ -68,7 +65,7 @@ if (reprojectedUvDiffuse.x >= 0.0 || reprojectedUvSpecular[0].x >= 0.0) {
     moment.g = moment.r * moment.r;
 
     moment.b = luminance(gOutput[1].rgb);
-    moment.a = moment.b * moment.b;
+    moment.a = 0.;
 } else {
     moment.rg = vec2(0., 10.);
     moment.ba = vec2(0., 10.);
@@ -82,5 +79,4 @@ gMoment = mix(moment, historyMoment, momentTemporalReprojectMix);
 // }
 
 // float variance = max(0.0, gMoment.a - gMoment.b * gMoment.b);
-// variance = abs(variance);
-// gDiffuse.xyz = vec3(variance);
+// gOutput0.xyz = vec3(variance);

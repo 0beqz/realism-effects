@@ -61,19 +61,15 @@ void main() {
     worldNormal = normalize((vec4(worldNormal, 1.) * viewMatrix).xyz);
     vec3 worldPos = screenSpaceToWorldSpace(uv, depth, cameraMatrixWorld);
 
-    //! todo: add specular reprojection back
     vec2 reprojectedUvDiffuse = vec2(-10.0);
     vec2 reprojectedUvSpecular[textureCount];
 
     vec2 reprojectedUv;
-    bool useSpecularUv;
 
 #pragma unroll_loop_start
     for (int i = 0; i < textureCount; i++) {
-        useSpecularUv = reprojectSpecular[i] && inputTexel[i].a != 0.0;
-
         // specular
-        if (useSpecularUv) {
+        if (reprojectSpecular[i] && inputTexel[i].a != 0.0) {
             reprojectedUvSpecular[i] = getReprojectedUV(uv, depth, worldPos, worldNormal, inputTexel[i].a);
         } else {
             reprojectedUvSpecular[i] = vec2(-1.0);
@@ -124,6 +120,7 @@ void main() {
         if (!constantBlend) temporalReprojectMix = min(1. - 1. / accumulatedTexel[i].a, maxValue);
 
         outputColor = mix(inputTexel[i].rgb, accumulatedTexel[i].rgb, temporalReprojectMix);
+
         gOutput[i] = vec4(undoColorTransform(outputColor), accumulatedTexel[i].a);
     }
 #pragma unroll_loop_end

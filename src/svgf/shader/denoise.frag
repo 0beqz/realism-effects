@@ -47,21 +47,35 @@ float distToPlane(const vec3 worldPos, const vec3 neighborWorldPos, const vec3 w
     return distToPlane;
 }
 
+// source: https://iquilezles.org/articles/texture/
+vec4 getTexel(const sampler2D tex, vec2 p) {
+    p = p / invTexSize + 0.5;
+
+    vec2 i = floor(p);
+    vec2 f = p - i;
+    f = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+    p = i + f;
+
+    p = (p - 0.5) * invTexSize;
+    return textureLod(tex, p, 0.0);
+}
+
 void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec2 offset, const float depth, const vec3 normal,
          const float roughness, const float roughnessSqrt, const vec3 worldPos,
          const float luma[textureCount], const float colorPhi[textureCount],
          inout vec3 denoisedColor[textureCount], inout float totalWeight[textureCount], inout float sumVariance[textureCount]) {
-    vec2 fullNeighborUv = neighborVec * pixelStepOffset + offset;
-    vec2 neighborUvDiffuse = vUv + fullNeighborUv;
-    vec2 neighborUvSpecular = vUv + fullNeighborUv * roughnessSqrt;
+    vec2 fullNeighborUv = neighborVec * pixelStepOffset;
+    vec2 neighborUvNearest = vUv + fullNeighborUv;
+    vec2 neighborUv = vUv + fullNeighborUv + offset;
+    vec2 neighborUvRoughness = vUv + (fullNeighborUv + offset) * roughnessSqrt;
 
     float basicWeight = 1.0;
 
 // depth similarity
 #ifdef useDepth
-    vec4 neighborDepthTexel = textureLod(depthTexture, neighborUvDiffuse, 0.);
+    vec4 neighborDepthTexel = textureLod(depthTexture, neighborUvNearest, 0.);
     float neighborDepth = unpackRGBAToDepth(neighborDepthTexel);
-    vec3 neighborWorldPos = screenSpaceToWorldSpace(neighborUvDiffuse, neighborDepth, cameraMatrixWorld);
+    vec3 neighborWorldPos = screenSpaceToWorldSpace(neighborUvNearest, neighborDepth, cameraMatrixWorld);
     float depthDiff = (1. - distToPlane(worldPos, neighborWorldPos, normal));
     float depthSimilarity = max(depthDiff / depthPhi, 0.);
 
@@ -72,7 +86,7 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec2 offset, 
 
 // the normal texel saves the normal in the RGB channels and the roughness in the A channel
 #if defined(useNormal) || defined(useRoughness)
-    vec4 neighborNormalTexel = textureLod(normalTexture, neighborUvDiffuse, 0.);
+    vec4 neighborNormalTexel = textureLod(normalTexture, neighborUvNearest, 0.);
 #endif
 
 // normal similarity
@@ -92,6 +106,7 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec2 offset, 
     float neighborRoughness = neighborNormalTexel.a;
     float roughnessDiff = abs(roughness - neighborRoughness);
     float roughnessSimilarity = exp(-roughnessDiff * roughnessPhi);
+
     if (roughnessSimilarity < EPSILON) return;
 
     basicWeight *= roughnessSimilarity;
@@ -106,7 +121,7 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec2 offset, 
 #pragma unroll_loop_start
     for (int i = 0; i < textureCount; i++) {
         //! todo: also use neighborUvSpecular
-        neighborInputTexel[i] = textureLod(texture[i], neighborUvDiffuse, 0.);
+        neighborInputTexel[i] = getTexel(texture[i], roughnessDependentKernel[i] ? neighborUvRoughness : neighborUv);
         neighborColor = neighborInputTexel[i].rgb;
 
         neighborLuma = luminance(neighborColor);
@@ -121,14 +136,13 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec2 offset, 
 #pragma unroll_loop_end
 
     if (isFirstIteration) {
-        vec4 neighborMoment = textureLod(momentTexture, neighborUvDiffuse, 0.);
+        vec4 neighborMoment = textureLod(momentTexture, neighborUvNearest, 0.);
 
         float neighborVariance = max(0.0, neighborMoment.g - neighborMoment.r * neighborMoment.r);
-        float neighborVariance2 = max(0.0, neighborMoment.a - neighborMoment.b * neighborMoment.b);
-
         sumVariance[0] += weight[0] * weight[0] * neighborVariance;
 
 #if momentTextureCount > 1
+        float neighborVariance2 = max(0.0, neighborMoment.a - neighborMoment.b * neighborMoment.b);
         sumVariance[1] += weight[1] * weight[1] * neighborVariance2;
 #endif
     }
@@ -194,15 +208,13 @@ void main() {
 #endif
     }
 
-    float variance;
 #pragma unroll_loop_start
     for (int i = 0; i < momentTextureCount; i++) {
         if (!isFirstIteration) {
-            variance = texel[i].a;
-            sumVariance[i] = variance;
+            sumVariance[i] = texel[i].a;
         }
 
-        colorPhi[i] = denoise[i] * sqrt(0.001 + sumVariance[i]);
+        colorPhi[i] = denoise[i] * sqrt(0.00005 + sumVariance[i]);
     }
 #pragma unroll_loop_end
 

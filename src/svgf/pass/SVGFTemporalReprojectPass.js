@@ -4,9 +4,6 @@ import { TemporalReprojectPass } from "../../temporal-reproject/TemporalReprojec
 import svgf_temporal_reproject from "../shader/svgf_temporal_reproject.frag"
 
 const defaultSVGFTemporalReprojectPassOptions = {
-	diffuseOnly: false,
-	specularOnly: false,
-	renderVelocity: false,
 	fullAccumulate: false,
 	logTransform: false,
 	catmullRomSampling: true,
@@ -14,10 +11,12 @@ const defaultSVGFTemporalReprojectPassOptions = {
 }
 export class SVGFTemporalReprojectPass extends TemporalReprojectPass {
 	constructor(scene, camera, velocityPass, textureCount = 1, options = defaultSVGFTemporalReprojectPassOptions) {
+		options = { ...defaultSVGFTemporalReprojectPassOptions, ...options }
 		super(scene, camera, velocityPass, textureCount, options)
 
 		// moment
 		this.momentTexture = this.renderTarget.texture[0].clone()
+		this.momentTexture.isRenderTargetTexture = true
 		this.momentTexture.type = FloatType
 		this.momentTexture.minFilter = NearestFilter
 		this.momentTexture.magFilter = NearestFilter

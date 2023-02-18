@@ -100,24 +100,18 @@ void getDepthAndUv(out float depth, out vec2 uv, out vec4 depthTexel) {
 #endif
 }
 
-bool planeDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos, const vec3 worldNormal) {
+bool planeDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos, const vec3 worldNormal, const float worldDistFactor) {
     vec3 toCurrent = worldPos - lastWorldPos;
     float distToPlane = abs(dot(toCurrent, worldNormal));
-
-    float worldDistFactor = clamp(distance(worldPos, cameraPos) / 100., 0.1, 1.);
 
     return distToPlane > depthDistance * worldDistFactor;
 }
 
-bool normalsDisocclusionCheck(const vec3 currentNormal, const vec3 lastNormal, const vec3 worldPos) {
-    float worldDistFactor = clamp(distance(worldPos, cameraPos) / 100., 0.1, 1.);
-
+bool normalsDisocclusionCheck(const vec3 currentNormal, const vec3 lastNormal, const vec3 worldPos, const float worldDistFactor) {
     return pow(abs(dot(currentNormal, lastNormal)), 2.0) > normalDistance * worldDistFactor;
 }
 
-bool worldDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos, const float depth) {
-    float worldDistFactor = clamp(distance(worldPos, cameraPos) / 100., 0.1, 1.);
-
+bool worldDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos, const float depth, const float worldDistFactor) {
     return distance(worldPos, lastWorldPos) > worldDistance * worldDistFactor;
 }
 
@@ -138,17 +132,19 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const float depth, const ve
     lastDepth = unpackRGBAToDepth(lastDepthTexel);
 #endif
 
+    float worldDistFactor = clamp((50.0 + distance(worldPos, cameraPos)) / 100., 0.25, 1.);
+
     vec3 lastWorldPos = screenSpaceToWorldSpace(reprojectedUv, lastDepth, prevCameraMatrixWorld);
 
-    if (worldDistanceDisocclusionCheck(worldPos, lastWorldPos, depth)) return false;
+    if (worldDistanceDisocclusionCheck(worldPos, lastWorldPos, depth, worldDistFactor)) return false;
 
     vec4 lastNormalTexel = textureLod(lastNormalTexture, reprojectedUv, 0.);
     vec3 lastNormal = unpackRGBToNormal(lastNormalTexel.xyz);
     vec3 lastWorldNormal = normalize((vec4(lastNormal, 1.) * viewMatrix).xyz);
 
-    if (normalsDisocclusionCheck(worldNormal, lastWorldNormal, worldPos)) return false;
+    if (normalsDisocclusionCheck(worldNormal, lastWorldNormal, worldPos, worldDistFactor)) return false;
 
-    if (planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal)) return false;
+    if (planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal, worldDistFactor)) return false;
 
     return true;
 }
