@@ -1,5 +1,5 @@
 ﻿import { Pass } from "postprocessing"
-import { HalfFloatType, LinearFilter, Quaternion, Vector3, WebGLRenderTarget } from "three"
+import { HalfFloatType, LinearFilter, NearestFilter, Quaternion, Vector3, WebGLMultipleRenderTargets } from "three"
 import { CopyPass } from "../ssgi/pass/CopyPass"
 import { TemporalReprojectMaterial } from "./material/TemporalReprojectMaterial"
 import { generateR2 } from "./utils/QuasirandomGenerator"
@@ -15,7 +15,7 @@ export const defaultTemporalReprojectPassOptions = {
 	depthDistance: 0.5,
 	normalDistance: 10,
 	worldDistance: 1,
-	reprojectReflectionHitPoints: false,
+	reprojectSpecular: false,
 	customComposeShader: null,
 	renderTarget: null
 }
@@ -28,37 +28,26 @@ export class TemporalReprojectPass extends Pass {
 		quaternion: new Quaternion()
 	}
 
-	constructor(scene, camera, velocityPass, options = defaultTemporalReprojectPassOptions) {
+	constructor(scene, camera, velocityPass, textureCount = 1, options = defaultTemporalReprojectPassOptions) {
 		super("TemporalReprojectPass")
 
 		this._scene = scene
 		this._camera = camera
+		this.textureCount = textureCount
 		options = { ...defaultTemporalReprojectPassOptions, ...options }
 
-		this.renderTarget =
-			options.renderTarget ||
-			new WebGLRenderTarget(1, 1, {
-				minFilter: LinearFilter,
-				magFilter: LinearFilter,
-				type: HalfFloatType,
-				depthBuffer: false
-			})
+		this.renderTarget = new WebGLMultipleRenderTargets(1, 1, textureCount, {
+			minFilter: LinearFilter,
+			magFilter: LinearFilter,
+			type: HalfFloatType,
+			depthBuffer: false
+		})
 
-		this.fullscreenMaterial = new TemporalReprojectMaterial()
-		if (typeof options.customComposeShader === "string") {
-			this.fullscreenMaterial.defines.useCustomComposeShader = ""
-
-			this.fullscreenMaterial.fragmentShader = this.fullscreenMaterial.fragmentShader.replace(
-				"customComposeShader",
-				options.customComposeShader
-			)
-		}
+		this.fullscreenMaterial = new TemporalReprojectMaterial(textureCount, options.customComposeShader)
 
 		if (options.dilation) this.fullscreenMaterial.defines.dilation = ""
 		if (options.neighborhoodClamping) this.fullscreenMaterial.defines.neighborhoodClamping = ""
-		if (options.catmullRomSampling) this.fullscreenMaterial.defines.catmullRomSampling = ""
 		if (options.logTransform) this.fullscreenMaterial.defines.logTransform = ""
-		if (options.reprojectReflectionHitPoints) this.fullscreenMaterial.defines.reprojectReflectionHitPoints = ""
 
 		this.fullscreenMaterial.defines.depthDistance = options.depthDistance.toPrecision(5)
 		this.fullscreenMaterial.defines.normalDistance = options.normalDistance.toPrecision(5)
@@ -77,21 +66,44 @@ export class TemporalReprojectPass extends Pass {
 		this.fullscreenMaterial.uniforms.prevCameraMatrixWorld.value = camera.matrixWorld.clone()
 
 		// init copy pass to save the accumulated textures and the textures from the last frame
-		this.copyPass = new CopyPass(3)
+		this.copyPass = new CopyPass(2 + textureCount)
 
-		this.accumulatedTexture = this.copyPass.renderTarget.texture[0]
-		this.accumulatedTexture.type = HalfFloatType
-		this.accumulatedTexture.minFilter = LinearFilter
-		this.accumulatedTexture.magFilter = LinearFilter
-		this.accumulatedTexture.needsUpdate = true
+		for (let i = 0; i < textureCount; i++) {
+			const accumulatedTexture = this.copyPass.renderTarget.texture[2 + i]
+			accumulatedTexture.type = HalfFloatType
+			accumulatedTexture.minFilter = LinearFilter
+			accumulatedTexture.magFilter = LinearFilter
+			accumulatedTexture.needsUpdate = true
+		}
 
-		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.accumulatedTexture
-		this.fullscreenMaterial.uniforms.lastDepthTexture.value = this.copyPass.renderTarget.texture[1]
-		this.fullscreenMaterial.uniforms.lastNormalTexture.value = this.copyPass.renderTarget.texture[2]
+		const lastDepthTexture = this.copyPass.renderTarget.texture[0]
+		lastDepthTexture.minFilter = NearestFilter
+		lastDepthTexture.magFilter = NearestFilter
+		lastDepthTexture.needsUpdate = true
+		this.fullscreenMaterial.uniforms.lastDepthTexture.value = lastDepthTexture
+
+		const lastNormalTexture = this.copyPass.renderTarget.texture[1]
+		lastNormalTexture.type = HalfFloatType
+		lastNormalTexture.minFilter = NearestFilter
+		lastNormalTexture.magFilter = NearestFilter
+		lastNormalTexture.needsUpdate = true
+		this.fullscreenMaterial.uniforms.lastNormalTexture.value = lastNormalTexture
 
 		this.fullscreenMaterial.uniforms.velocityTexture.value = velocityPass.texture
 		this.fullscreenMaterial.uniforms.depthTexture.value = velocityPass.depthTexture
 		this.fullscreenMaterial.uniforms.normalTexture.value = velocityPass.normalTexture
+
+		if (typeof options.reprojectSpecular === "boolean") {
+			options.reprojectSpecular = Array(textureCount).fill(options.reprojectSpecular)
+		}
+
+		this.fullscreenMaterial.defines.reprojectSpecular = /* glsl */ `bool[](${options.reprojectSpecular.join(", ")})`
+
+		if (typeof options.catmullRomSampling === "boolean") {
+			options.catmullRomSampling = Array(textureCount).fill(options.catmullRomSampling)
+		}
+
+		this.fullscreenMaterial.defines.catmullRomSampling = /* glsl */ `bool[](${options.catmullRomSampling.join(", ")})`
 
 		this.options = options
 	}
@@ -99,7 +111,6 @@ export class TemporalReprojectPass extends Pass {
 	dispose() {
 		this.renderTarget.dispose()
 		this.copyPass.dispose()
-		this.accumulatedTexture.dispose()
 		this.fullscreenMaterial.dispose()
 	}
 
@@ -111,7 +122,7 @@ export class TemporalReprojectPass extends Pass {
 	}
 
 	get texture() {
-		return this.renderTarget.texture
+		return this.renderTarget.texture[0]
 	}
 
 	render(renderer) {
@@ -119,9 +130,13 @@ export class TemporalReprojectPass extends Pass {
 		renderer.render(this.scene, this.camera)
 
 		// save the last depth and normal buffers
-		this.copyPass.fullscreenMaterial.uniforms.inputTexture0.value = this.texture
-		this.copyPass.fullscreenMaterial.uniforms.inputTexture1.value = this.fullscreenMaterial.uniforms.depthTexture.value
-		this.copyPass.fullscreenMaterial.uniforms.inputTexture2.value = this.fullscreenMaterial.uniforms.normalTexture.value
+		this.copyPass.fullscreenMaterial.uniforms.inputTexture0.value = this.fullscreenMaterial.uniforms.depthTexture.value
+		this.copyPass.fullscreenMaterial.uniforms.inputTexture1.value = this.fullscreenMaterial.uniforms.normalTexture.value
+
+		for (let i = 0; i < this.textureCount; i++) {
+			this.copyPass.fullscreenMaterial.uniforms["inputTexture" + (2 + i)].value = this.renderTarget.texture[i]
+			this.fullscreenMaterial.uniforms["accumulatedTexture" + i].value = this.copyPass.renderTarget.texture[2 + i]
+		}
 
 		this.copyPass.render(renderer)
 

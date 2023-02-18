@@ -25,8 +25,7 @@ export class VelocityDepthNormalPass extends Pass {
 
 		this.renderTarget = new WebGLMultipleRenderTargets(1, 1, bufferCount, {
 			minFilter: NearestFilter,
-			magFilter: NearestFilter,
-			type: HalfFloatType
+			magFilter: NearestFilter
 		})
 
 		this.renderTarget.texture[0].type = FloatType

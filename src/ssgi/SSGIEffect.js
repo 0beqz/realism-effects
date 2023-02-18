@@ -52,7 +52,9 @@ export class SSGIEffect extends Effect {
 		this._scene = scene
 		this._camera = camera
 
-		this.svgf = new SVGF(scene, camera, velocityPass, denoise_compose, denoise_compose_functions, options)
+		options.reprojectSpecular = [false, true]
+		options.catmullRomSampling = [true, false]
+		this.svgf = new SVGF(scene, camera, velocityPass, 2, denoise_compose, denoise_compose_functions, options)
 
 		// ssgi pass
 		this.ssgiPass = new SSGIPass(this, options)

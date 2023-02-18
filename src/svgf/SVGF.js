@@ -2,10 +2,10 @@
 import { SVGFTemporalReprojectPass } from "./pass/SVGFTemporalReprojectPass.js"
 
 export class SVGF {
-	constructor(scene, camera, velocityPass, denoiseComposeShader = "", denoiseComposeFunctions = "") {
-		this.svgfTemporalReprojectPass = new SVGFTemporalReprojectPass(scene, camera, velocityPass)
+	constructor(scene, camera, velocityPass, textureCount = 1, denoiseComposeShader = "", denoiseComposeFunctions = "") {
+		this.svgfTemporalReprojectPass = new SVGFTemporalReprojectPass(scene, camera, velocityPass, textureCount)
 
-		const textures = this.svgfTemporalReprojectPass.renderTarget.texture.slice(1, 3)
+		const textures = this.svgfTemporalReprojectPass.renderTarget.texture.slice(0, 2)
 
 		this.denoisePass = new DenoisePass(camera, textures, denoiseComposeShader, denoiseComposeFunctions)
 
@@ -18,11 +18,11 @@ export class SVGF {
 	}
 
 	setInputTexture(texture) {
-		this.svgfTemporalReprojectPass.fullscreenMaterial.uniforms.inputTexture.value = texture
+		this.svgfTemporalReprojectPass.fullscreenMaterial.uniforms.inputTexture0.value = texture
 	}
 
 	setSpecularTexture(texture) {
-		this.svgfTemporalReprojectPass.fullscreenMaterial.uniforms.specularTexture.value = texture
+		this.svgfTemporalReprojectPass.fullscreenMaterial.uniforms.inputTexture1.value = texture
 	}
 
 	setGBuffers(depthTexture, normalTexture) {

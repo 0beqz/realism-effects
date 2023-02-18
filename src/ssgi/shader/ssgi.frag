@@ -238,7 +238,7 @@ void main() {
 #ifndef diffuseOnly
     // calculate world-space ray length used for reprojecting hit points instead of screen-space pixels in the temporal reproject pass
     float rayLength = 0.0;
-    if (!isMissedRay && roughness < 0.5) {
+    if (!isMissedRay && roughness < 0.25) {
         vec3 worldNormal = (vec4(viewNormal, 1.) * viewMatrix).xyz;
 
         float curvature = getCurvature(worldNormal);

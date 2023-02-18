@@ -54,11 +54,11 @@ void getNeighborhoodAABB(const sampler2D tex, inout vec3 minNeighborColor, inout
     }
 }
 
-void clampNeighborhood(inout vec3 color, const sampler2D tex, const vec3 inputColor) {
+void clampNeighborhood(const sampler2D texture, inout vec3 color, const sampler2D tex, const vec3 inputColor) {
     vec3 minNeighborColor = inputColor;
     vec3 maxNeighborColor = inputColor;
 
-    getNeighborhoodAABB(inputTexture, minNeighborColor, maxNeighborColor);
+    getNeighborhoodAABB(texture, minNeighborColor, maxNeighborColor);
 
     color = clamp(color, minNeighborColor, maxNeighborColor);
 }
@@ -172,16 +172,16 @@ vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength, const float de
 }
 
 vec2 getReprojectedUV(const vec2 uv, const float depth, const vec3 worldPos, const vec3 worldNormal, const float rayLength) {
-// hit point reprojection
-#ifdef reprojectReflectionHitPoints
+    // hit point reprojection
     if (rayLength != 0.0) {
         vec2 reprojectedUv = reprojectHitPoint(worldPos, rayLength, depth);
 
         if (validateReprojectedUV(reprojectedUv, depth, worldPos, worldNormal)) {
             return reprojectedUv;
         }
+
+        return vec2(-1.);
     }
-#endif
 
     // reprojection using motion vectors
     vec2 reprojectedUv = reprojectVelocity(uv);
@@ -190,10 +190,10 @@ vec2 getReprojectedUV(const vec2 uv, const float depth, const vec3 worldPos, con
         return reprojectedUv;
     }
 
+    // invalid reprojection
     return vec2(-1.);
 }
 
-#ifdef catmullRomSampling
 vec4 SampleTextureCatmullRom(const sampler2D tex, const vec2 uv, const vec2 texSize) {
     // We're going to sample a a 4x4 grid of texels surrounding the target UV coordinate. We'll do this by rounding
     // down the sample location to get the exact center of our "starting" texel. The starting texel will be at
@@ -242,12 +242,24 @@ vec4 SampleTextureCatmullRom(const sampler2D tex, const vec2 uv, const vec2 texS
 
     return result;
 }
-#endif
 
-vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv) {
-#ifdef catmullRomSampling
-    return SampleTextureCatmullRom(tex, reprojectedUv, 1.0 / invTexSize);
-#else
-    return textureLod(tex, reprojectedUv, 0.0);
-#endif
+// source: https://iquilezles.org/articles/texture/
+vec4 getTexel(const sampler2D tex, vec2 p) {
+    p = p / invTexSize + 0.5;
+
+    vec2 i = floor(p);
+    vec2 f = p - i;
+    f = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+    p = i + f;
+
+    p = (p - 0.5) * invTexSize;
+    return textureLod(tex, p, 0.0);
+}
+
+vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv, const bool useCatmullRom) {
+    if (useCatmullRom) {
+        return SampleTextureCatmullRom(tex, reprojectedUv, 1.0 / invTexSize);
+    }
+
+    return getTexel(tex, reprojectedUv);
 }

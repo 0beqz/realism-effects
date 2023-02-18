@@ -202,7 +202,7 @@ void main() {
             sumVariance[i] = variance;
         }
 
-        colorPhi[i] = denoise[i] * sqrt(0.00005 + sumVariance[i]);
+        colorPhi[i] = denoise[i] * sqrt(0.001 + sumVariance[i]);
     }
 #pragma unroll_loop_end
 

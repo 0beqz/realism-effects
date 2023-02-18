@@ -27,7 +27,7 @@ export class TRAAEffect extends Effect {
 
 		options = { ...defaultTRAAOptions, ...options }
 
-		this.temporalReprojectPass = new TemporalReprojectPass(scene, camera, velocityPass, options)
+		this.temporalReprojectPass = new TemporalReprojectPass(scene, camera, velocityPass, 1, options)
 
 		this.uniforms.get("inputTexture").value = this.temporalReprojectPass.texture
 
@@ -84,7 +84,7 @@ export class TRAAEffect extends Effect {
 			})
 		}
 
-		this.temporalReprojectPass.fullscreenMaterial.uniforms.inputTexture.value = inputBuffer.texture
+		this.temporalReprojectPass.fullscreenMaterial.uniforms.inputTexture0.value = inputBuffer.texture
 
 		this.temporalReprojectPass.render(renderer)
 

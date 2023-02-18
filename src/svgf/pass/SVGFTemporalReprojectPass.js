@@ -1,15 +1,7 @@
 ﻿/* eslint-disable camelcase */
-import {
-	FloatType,
-	GLSL3,
-	HalfFloatType,
-	LinearFilter,
-	NearestFilter,
-	Uniform,
-	WebGLMultipleRenderTargets
-} from "three"
-import svgf_temporal_reproject from "../shader/svgf_temporal_reproject.frag"
+import { FloatType, NearestFilter, Uniform } from "three"
 import { TemporalReprojectPass } from "../../temporal-reproject/TemporalReprojectPass"
+import svgf_temporal_reproject from "../shader/svgf_temporal_reproject.frag"
 
 const defaultSVGFTemporalReprojectPassOptions = {
 	diffuseOnly: false,
@@ -21,43 +13,19 @@ const defaultSVGFTemporalReprojectPassOptions = {
 	customComposeShader: svgf_temporal_reproject
 }
 export class SVGFTemporalReprojectPass extends TemporalReprojectPass {
-	constructor(scene, camera, velocityPass, options = defaultSVGFTemporalReprojectPassOptions) {
-		const bufferCount = !options.diffuseOnly && !options.specularOnly ? 3 : 2
+	constructor(scene, camera, velocityPass, textureCount = 1, options = defaultSVGFTemporalReprojectPassOptions) {
+		super(scene, camera, velocityPass, textureCount, options)
 
-		const temporalReprojectPassRenderTarget = new WebGLMultipleRenderTargets(1, 1, bufferCount, {
-			type: HalfFloatType,
-			depthBuffer: false
-		})
-
-		options = {
-			...defaultSVGFTemporalReprojectPassOptions,
-			...options,
-			...{
-				renderTarget: temporalReprojectPassRenderTarget
-			}
-		}
-
-		super(scene, camera, velocityPass, options)
-
-		let diffuseAndSpecularBuffers
-		if (bufferCount > 2) {
-			diffuseAndSpecularBuffers = /* glsl */ `
-			layout(location = 1) out vec4 gDiffuse;
-			layout(location = 2) out vec4 gSpecular;
-
-			uniform sampler2D lastSpecularTexture;
-			uniform sampler2D specularTexture;
-			`
-		} else {
-			diffuseAndSpecularBuffers = /* glsl */ `
-			layout(location = 1) out vec4 gDiffuse;
-			`
-		}
+		// moment
+		this.momentTexture = this.renderTarget.texture[0].clone()
+		this.momentTexture.type = FloatType
+		this.momentTexture.minFilter = NearestFilter
+		this.momentTexture.magFilter = NearestFilter
+		this.momentTexture.needsUpdate = true
+		this.renderTarget.texture.push(this.momentTexture)
 
 		const momentBuffers = /* glsl */ `
-		layout(location = 0) out vec4 gMoment;
-		
-		${diffuseAndSpecularBuffers}
+		layout(location = 2) out vec4 gMoment;
 
 		uniform sampler2D lastMomentTexture;
 		`
@@ -75,61 +43,15 @@ export class SVGFTemporalReprojectPass extends TemporalReprojectPass {
 			...momentUniforms
 		}
 
-		this.fullscreenMaterial.glslVersion = GLSL3
+		this.copyPass.setTextureCount(2 + 2 + 1) // depth, normal, diffuse, specular, moment
+		this.copyPass.fullscreenMaterial.uniforms.inputTexture4.value = this.momentTexture
 
-		// moment
-		this.renderTarget.texture[0].type = FloatType
-		this.renderTarget.texture[0].minFilter = NearestFilter
-		this.renderTarget.texture[0].magFilter = NearestFilter
-		this.renderTarget.texture[0].needsUpdate = true
-
-		for (const texture of this.renderTarget.texture.slice(1)) {
-			texture.type = HalfFloatType
-			texture.minFilter = LinearFilter
-			texture.magFilter = LinearFilter
-			texture.needsUpdate = true
-		}
-
-		this.copyPass.setTextureCount(5)
-		this.copyPass.fullscreenMaterial.uniforms.inputTexture3.value = this.momentTexture
-		this.copyPass.fullscreenMaterial.uniforms.inputTexture4.value = this.specularTexture
-
-		const lastMomentTexture = this.copyPass.renderTarget.texture[3]
+		const lastMomentTexture = this.copyPass.renderTarget.texture[4]
 		lastMomentTexture.type = FloatType
 		lastMomentTexture.minFilter = NearestFilter
 		lastMomentTexture.magFilter = NearestFilter
 		lastMomentTexture.needsUpdate = true
+
 		this.fullscreenMaterial.uniforms.lastMomentTexture.value = lastMomentTexture
-
-		if (bufferCount > 2) {
-			const lastSpecularTexture = this.copyPass.renderTarget.texture[4]
-			lastSpecularTexture.type = HalfFloatType
-			lastSpecularTexture.minFilter = LinearFilter
-			lastSpecularTexture.magFilter = LinearFilter
-			lastSpecularTexture.needsUpdate = true
-			this.fullscreenMaterial.uniforms.lastSpecularTexture.value = lastSpecularTexture
-		}
-
-		if (options.specularOnly) {
-			this.fullscreenMaterial.defines.specularOnly = ""
-			this.fullscreenMaterial.defines.reprojectReflectionHitPoints = ""
-		}
-
-		if (options.diffuseOnly) {
-			this.fullscreenMaterial.defines.diffuseOnly = ""
-		}
-	}
-
-	get texture() {
-		return this.renderTarget.texture[1]
-	}
-
-	get specularTexture() {
-		const index = this.options.specularOnly ? 1 : 2
-		return this.renderTarget.texture[index]
-	}
-
-	get momentTexture() {
-		return this.renderTarget.texture[0]
 	}
 }

@@ -1,18 +1,12 @@
 ﻿import { Pass } from "postprocessing"
-import { GLSL3, NearestFilter, ShaderMaterial, Uniform, WebGLMultipleRenderTargets } from "three"
+import { GLSL3, ShaderMaterial, Uniform, WebGLMultipleRenderTargets } from "three"
 import basicVertexShader from "../../utils/shader/basic.vert"
 
 export class CopyPass extends Pass {
 	constructor(textureCount = 1) {
 		super("CopyPass")
 
-		const renderTargetOptions = {
-			minFilter: NearestFilter,
-			magFilter: NearestFilter,
-			depthBuffer: false
-		}
-
-		this.renderTarget = new WebGLMultipleRenderTargets(1, 1, 1, renderTargetOptions)
+		this.renderTarget = new WebGLMultipleRenderTargets(1, 1, 1, { depthBuffer: false })
 
 		this.setTextureCount(textureCount)
 	}

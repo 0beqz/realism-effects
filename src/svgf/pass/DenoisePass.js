@@ -87,6 +87,7 @@ export class DenoisePass extends Pass {
 				horizontal: new Uniform(true),
 				blurHorizontal: new Uniform(true),
 				denoiseKernel: new Uniform(1),
+				denoiseDiffuse: new Uniform(1),
 				denoise: new Uniform([0]),
 				depthPhi: new Uniform(1),
 				normalPhi: new Uniform(1),
@@ -103,16 +104,12 @@ export class DenoisePass extends Pass {
 		})
 
 		const renderTargetOptions = {
+			type: HalfFloatType,
 			depthBuffer: false
 		}
 
 		this.renderTargetA = new WebGLMultipleRenderTargets(1, 1, this.textures.length, renderTargetOptions)
 		this.renderTargetB = new WebGLMultipleRenderTargets(1, 1, this.textures.length, renderTargetOptions)
-
-		for (const texture of [...this.renderTargetA.texture, ...this.renderTargetB.texture]) {
-			texture.type = HalfFloatType
-			texture.needsUpdate = true
-		}
 
 		// register the texture uniforms
 		for (let i = 0; i < this.textures.length; i++) {
@@ -134,7 +131,7 @@ export class DenoisePass extends Pass {
 		this.renderTargetB.dispose()
 	}
 
-	render(renderer) {
+	keepEdgeStoppingDefinesUpdated() {
 		for (const [name, phi, define] of useEdgeStoppingTypes) {
 			const useEdgeStoppingType = this.options[name] && this.fullscreenMaterial.uniforms[phi].value > 0.001
 
@@ -146,6 +143,10 @@ export class DenoisePass extends Pass {
 				this.fullscreenMaterial.needsUpdate = true
 			}
 		}
+	}
+
+	render(renderer) {
+		this.keepEdgeStoppingDefinesUpdated()
 
 		const denoiseKernel = this.fullscreenMaterial.uniforms.denoiseKernel.value
 

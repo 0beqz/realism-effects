@@ -1,8 +1,5 @@
 ﻿varying vec2 vUv;
 
-uniform sampler2D inputTexture;
-uniform sampler2D accumulatedTexture;
-
 uniform sampler2D velocityTexture;
 
 uniform sampler2D depthTexture;
@@ -24,8 +21,7 @@ uniform mat4 prevCameraMatrixWorld;
 uniform vec3 cameraPos;
 uniform vec3 prevCameraPos;
 
-#define EPSILON      0.00001
-#define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
+#define EPSILON 0.00001
 
 #include <packing>
 #include <reproject>
@@ -39,64 +35,101 @@ void main() {
 
     if (dot(depthTexel.rgb, depthTexel.rgb) == 0.0) {
 #ifdef neighborhoodClamping
-        gl_FragColor = textureLod(inputTexture, vUv, 0.0);
-        return;
+    #pragma unroll_loop_start
+        for (int i = 0; i < textureCount; i++) {
+            gOutput[i] = textureLod(inputTexture[i], vUv, 0.0);
+        }
+    #pragma unroll_loop_end
 #else
         discard;
-        return;
 #endif
+        return;
     }
 
-    vec4 inputTexel = textureLod(inputTexture, vUv, 0.0);
-    vec3 inputColor = transformColor(inputTexel.rgb);
+    vec4 inputTexel[textureCount];
+    vec4 accumulatedTexel[textureCount];
 
-    vec3 accumulatedColor;
-    float alpha = 1.0;
+#pragma unroll_loop_start
+    for (int i = 0; i < textureCount; i++) {
+        inputTexel[i] = textureLod(inputTexture[i], vUv, 0.0);
+        inputTexel[i].rgb = transformColor(inputTexel[i].rgb);
+    }
+#pragma unroll_loop_end
 
     vec4 normalTexel = textureLod(normalTexture, uv, 0.);
     vec3 worldNormal = unpackRGBToNormal(normalTexel.xyz);
     worldNormal = normalize((vec4(worldNormal, 1.) * viewMatrix).xyz);
     vec3 worldPos = screenSpaceToWorldSpace(uv, depth, cameraMatrixWorld);
 
-    vec2 reprojectedUv = getReprojectedUV(uv, depth, worldPos, worldNormal, inputTexel.a);
+    //! todo: add specular reprojection back
+    vec2 reprojectedUvDiffuse = vec2(-10.0);
+    vec2 reprojectedUvSpecular[textureCount];
 
-    if (reprojectedUv.x != -1.0) {
-        vec4 accumulatedTexel = sampleReprojectedTexture(accumulatedTexture, reprojectedUv);
+    vec2 reprojectedUv;
+    bool useSpecularUv;
 
-        accumulatedColor = transformColor(accumulatedTexel.rgb);
-        alpha = accumulatedTexel.a + 1.0;  // add one more frame
+#pragma unroll_loop_start
+    for (int i = 0; i < textureCount; i++) {
+        useSpecularUv = reprojectSpecular[i] && inputTexel[i].a != 0.0;
 
-#ifdef neighborhoodClamping
-        clampNeighborhood(accumulatedColor, inputTexture, inputColor);
-#endif
-    } else {
-        // reprojection invalid possibly due to disocclusion
-        accumulatedColor = inputColor;
-        alpha = 1.0;
-    }
-
-    vec3 outputColor = inputColor;
-
-    vec2 deltaUv = vUv - reprojectedUv;
-    bool didMove = dot(deltaUv, deltaUv) > 0.;
-    float maxValue = (!fullAccumulate || didMove) ? blend : 1.0;
-
-    float temporalReprojectMix = blend;
-    if (!constantBlend) {
-        if (dot(inputColor, inputColor) == 0.0) {
-            alpha = max(1., alpha - 1.);
-            inputColor = accumulatedColor;
+        // specular
+        if (useSpecularUv) {
+            reprojectedUvSpecular[i] = getReprojectedUV(uv, depth, worldPos, worldNormal, inputTexel[i].a);
+        } else {
+            reprojectedUvSpecular[i] = vec2(-1.0);
         }
 
-        temporalReprojectMix = min(1. - 1. / alpha, maxValue);
+        // diffuse
+        if (reprojectedUvDiffuse.x == -10.0 && reprojectedUvSpecular[i].x < 0.0) {
+            reprojectedUvDiffuse = getReprojectedUV(uv, depth, worldPos, worldNormal, 0.0);
+        }
+
+        // choose which UV coordinates to use for reprojecion
+        reprojectedUv = reprojectedUvSpecular[i].x >= 0.0 ? reprojectedUvSpecular[i] : reprojectedUvDiffuse;
+
+        // check if any reprojection was successful
+        if (reprojectedUv.x < 0.0) {  // invalid UV
+            // reprojection was not successful -> reset to the input texel
+            accumulatedTexel[i] = vec4(inputTexel[i].rgb, 1.0);
+        } else {
+            // reprojection was successful -> accumulate
+            accumulatedTexel[i] = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUv, catmullRomSampling[i]);
+            accumulatedTexel[i].rgb = transformColor(accumulatedTexel[i].rgb);
+
+            if (dot(inputTexel[i].rgb, inputTexel[i].rgb) == 0.0) {
+                inputTexel[i].rgb = accumulatedTexel[i].rgb;
+            } else {
+                accumulatedTexel[i].a++;  // add one more frame
+            }
+
+#ifdef neighborhoodClamping
+            clampNeighborhood(inputTexture[i], accumulatedTexel[i].rgb, inputTexture[i], inputTexel[i].rgb);
+#endif
+        }
     }
+#pragma unroll_loop_end
+
+    vec2 deltaUv = vUv - reprojectedUv;
+    bool didMove = dot(deltaUv, deltaUv) > 0.0;
+    float maxValue = (!fullAccumulate || didMove) ? blend : 1.0;
+
+    vec3 outputColor;
+    float temporalReprojectMix;
+
+#pragma unroll_loop_start
+    for (int i = 0; i < textureCount; i++) {
+        temporalReprojectMix = blend;
+
+        accumulatedTexel[i].a = max(accumulatedTexel[i].a, 1.0);
+        if (!constantBlend) temporalReprojectMix = min(1. - 1. / accumulatedTexel[i].a, maxValue);
+
+        outputColor = mix(inputTexel[i].rgb, accumulatedTexel[i].rgb, temporalReprojectMix);
+        gOutput[i] = vec4(undoColorTransform(outputColor), accumulatedTexel[i].a);
+    }
+#pragma unroll_loop_end
 
 // the user's shader to compose a final outputColor from the inputTexel and accumulatedTexel
 #ifdef useCustomComposeShader
     customComposeShader
-#else
-    outputColor = mix(inputColor, accumulatedColor, temporalReprojectMix);
-
-    gl_FragColor = vec4(undoColorTransform(outputColor), alpha);
 #endif
 }
