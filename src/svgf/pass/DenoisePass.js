@@ -1,5 +1,6 @@
 ﻿import { Pass } from "postprocessing"
 import { GLSL3, HalfFloatType, ShaderMaterial, Uniform, Vector2, WebGLMultipleRenderTargets } from "three"
+import { unrollLoops } from "../../ssgi/utils/Utils"
 import basicVertexShader from "../../utils/shader/basic.vert"
 import fragmentShader from "../shader/denoise.frag"
 
@@ -27,15 +28,51 @@ export class DenoisePass extends Pass {
 
 	constructor(
 		camera,
+		textures = [],
 		customComposeShader = "",
 		customComposeShaderFunctions = "",
 		options = defaultDenoisePassOptions
 	) {
 		super("DenoisePass")
+		options = { ...defaultDenoisePassOptions, ...options }
 
-		const finalFragmentShader = fragmentShader
-			.replace("#include <customComposeShaderFunctions>", customComposeShaderFunctions)
-			.replace("#include <customComposeShader>", customComposeShader)
+		let definitions = ""
+		let finalOutputShader = ""
+		let outputShader = ""
+
+		this.textures = textures
+
+		for (let i = 0; i < this.textures.length; i++) {
+			definitions += /* glsl */ `layout(location = ${i}) out vec4 gTexture${i};\n`
+			definitions += /* glsl */ `uniform sampler2D texture${i};\n`
+
+			if (i === 0) {
+				finalOutputShader += /* glsl */ `gTexture${i} = vec4(finalOutputColor, 1.0);\n`
+			} else {
+				finalOutputShader += /* glsl */ `gTexture${i} = vec4(1.0);\n`
+			}
+
+			outputShader += /* glsl */ `gTexture${i} = vec4(denoisedColor[${i}], sumVariance[${i}]);\n`
+		}
+
+		let finalFragmentShader =
+			definitions +
+			fragmentShader
+				.replace("#include <customComposeShaderFunctions>", customComposeShaderFunctions)
+				.replace("#include <customComposeShader>", customComposeShader)
+				.replace("#include <finalOutputShader>", finalOutputShader)
+				.replace("#include <outputShader>", outputShader)
+				.replaceAll("textureCount", this.textures.length)
+				.replaceAll("momentTextureCount", Math.min(this.textures.length, 2))
+
+		finalFragmentShader = unrollLoops(finalFragmentShader)
+
+		const matches = finalFragmentShader.matchAll(/texture\[\s*[0-9]+\s*]/g)
+
+		for (const [key] of matches) {
+			const number = key.replace(/[^0-9]/g, "")
+			finalFragmentShader = finalFragmentShader.replace(key, "texture" + number)
+		}
 
 		options = { ...defaultDenoisePassOptions, ...options }
 
@@ -43,8 +80,6 @@ export class DenoisePass extends Pass {
 			fragmentShader: finalFragmentShader,
 			vertexShader: basicVertexShader,
 			uniforms: {
-				diffuseLightingTexture: new Uniform(null),
-				specularLightingTexture: new Uniform(null),
 				depthTexture: new Uniform(null),
 				normalTexture: new Uniform(null),
 				momentTexture: new Uniform(null),
@@ -52,8 +87,7 @@ export class DenoisePass extends Pass {
 				horizontal: new Uniform(true),
 				blurHorizontal: new Uniform(true),
 				denoiseKernel: new Uniform(1),
-				denoiseDiffuse: new Uniform(1),
-				denoiseSpecular: new Uniform(1),
+				denoise: new Uniform([0]),
 				depthPhi: new Uniform(1),
 				normalPhi: new Uniform(1),
 				roughnessPhi: new Uniform(1),
@@ -68,33 +102,24 @@ export class DenoisePass extends Pass {
 			glslVersion: GLSL3
 		})
 
-		if (options.diffuse) this.fullscreenMaterial.defines.DENOISE_DIFFUSE = ""
-		if (options.specular) this.fullscreenMaterial.defines.DENOISE_SPECULAR = ""
-
 		const renderTargetOptions = {
-			type: HalfFloatType,
 			depthBuffer: false
 		}
 
-		const bufferCount = this.isUsingDiffuse() && this.isUsingSpecular() ? 2 : 1
-
-		this.renderTargetA = new WebGLMultipleRenderTargets(1, 1, bufferCount, renderTargetOptions)
-		this.renderTargetB = new WebGLMultipleRenderTargets(1, 1, bufferCount, renderTargetOptions)
+		this.renderTargetA = new WebGLMultipleRenderTargets(1, 1, this.textures.length, renderTargetOptions)
+		this.renderTargetB = new WebGLMultipleRenderTargets(1, 1, this.textures.length, renderTargetOptions)
 
 		for (const texture of [...this.renderTargetA.texture, ...this.renderTargetB.texture]) {
 			texture.type = HalfFloatType
 			texture.needsUpdate = true
 		}
 
+		// register the texture uniforms
+		for (let i = 0; i < this.textures.length; i++) {
+			this.fullscreenMaterial.uniforms["texture" + i] = new Uniform(textures[i])
+		}
+
 		this.options = options
-	}
-
-	isUsingDiffuse() {
-		return "DENOISE_DIFFUSE" in this.fullscreenMaterial.defines
-	}
-
-	isUsingSpecular() {
-		return "DENOISE_SPECULAR" in this.fullscreenMaterial.defines
 	}
 
 	setSize(width, height) {
@@ -122,15 +147,7 @@ export class DenoisePass extends Pass {
 			}
 		}
 
-		const diffuseLightingTexture = this.fullscreenMaterial.uniforms.diffuseLightingTexture.value
-		const specularLightingTexture = this.fullscreenMaterial.uniforms.specularLightingTexture.value
-
 		const denoiseKernel = this.fullscreenMaterial.uniforms.denoiseKernel.value
-
-		const isUsingDiffuse = this.isUsingDiffuse()
-		const isUsingSpecular = this.isUsingSpecular()
-
-		const specularOffset = isUsingDiffuse ? 1 : 0
 
 		if (this.iterations > 0) {
 			for (let i = 0; i < 2 * this.iterations; i++) {
@@ -149,22 +166,12 @@ export class DenoisePass extends Pass {
 
 				const renderTarget = horizontal ? this.renderTargetA : this.renderTargetB
 
-				// diffuse
-				if (isUsingDiffuse) {
-					this.fullscreenMaterial.uniforms.diffuseLightingTexture.value = horizontal
+				for (let j = 0; j < this.textures.length; j++) {
+					this.fullscreenMaterial.uniforms["texture" + j].value = horizontal
 						? i === 0
-							? diffuseLightingTexture
-							: this.renderTargetB.texture[0]
-						: this.renderTargetA.texture[0]
-				}
-
-				// specular
-				if (isUsingSpecular) {
-					this.fullscreenMaterial.uniforms.specularLightingTexture.value = horizontal
-						? i === 0
-							? specularLightingTexture
-							: this.renderTargetB.texture[specularOffset]
-						: this.renderTargetA.texture[specularOffset]
+							? this.textures[j]
+							: this.renderTargetB.texture[j]
+						: this.renderTargetA.texture[j]
 				}
 
 				renderer.setRenderTarget(renderTarget)
@@ -179,8 +186,9 @@ export class DenoisePass extends Pass {
 			this.fullscreenMaterial.uniforms.denoiseKernel.value = denoiseKernel
 		}
 
-		this.fullscreenMaterial.uniforms.diffuseLightingTexture.value = diffuseLightingTexture
-		this.fullscreenMaterial.uniforms.specularLightingTexture.value = specularLightingTexture
+		for (let i = 0; i < this.textures.length; i++) {
+			this.fullscreenMaterial.uniforms["texture" + i].value = this.textures[i]
+		}
 	}
 
 	// final composition will be written to buffer 0

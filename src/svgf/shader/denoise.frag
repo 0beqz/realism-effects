@@ -1,27 +1,12 @@
-﻿#ifdef DENOISE_DIFFUSE
-layout(location = 0) out vec4 gDiffuse;
-#endif
+﻿varying vec2 vUv;
 
-#if defined(DENOISE_DIFFUSE) && defined(DENOISE_SPECULAR)
-layout(location = 1) out vec4 gSpecular;
-#endif
-
-#if !defined(DENOISE_DIFFUSE) && defined(DENOISE_SPECULAR)
-layout(location = 0) out vec4 gSpecular;
-#endif
-
-varying vec2 vUv;
-
-uniform sampler2D diffuseLightingTexture;
-uniform sampler2D specularLightingTexture;
 uniform sampler2D depthTexture;
 uniform sampler2D normalTexture;
 uniform sampler2D momentTexture;
 uniform vec2 invTexSize;
 uniform bool horizontal;
 uniform bool blurHorizontal;
-uniform float denoiseDiffuse;
-uniform float denoiseSpecular;
+uniform float denoise[textureCount];
 uniform float depthPhi;
 uniform float normalPhi;
 uniform float roughnessPhi;
@@ -38,7 +23,7 @@ uniform bool isLastIteration;
 #define EPSILON      0.00001
 #define M_PI         3.1415926535897932384626433832795
 #define PI           M_PI
-#define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
+#define luminance(a) dot(a, vec3(0.2125, 0.7154, 0.0721))
 
 #include <customComposeShaderFunctions>
 
@@ -62,11 +47,10 @@ float distToPlane(const vec3 worldPos, const vec3 neighborWorldPos, const vec3 w
     return distToPlane;
 }
 
-void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec2 offset, const float depth, const vec3 normal, const float roughness, const float roughnessSqrt,
-         const vec3 worldPos, const float lumaDiffuse, const float lumaSpecular,
-         const float colorPhiDiffuse, const float colorPhiSpecular,
-         inout vec3 diffuseLightingColor, inout vec3 specularLightingColor, inout float totalWeightDiffuse, inout float sumVarianceDiffuse,
-         inout float totalWeightSpecular, inout float sumVarianceSpecular) {
+void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec2 offset, const float depth, const vec3 normal,
+         const float roughness, const float roughnessSqrt, const vec3 worldPos,
+         const float luma[textureCount], const float colorPhi[textureCount],
+         inout vec3 denoisedColor[textureCount], inout float totalWeight[textureCount], inout float sumVariance[textureCount]) {
     vec2 fullNeighborUv = neighborVec * pixelStepOffset + offset;
     vec2 neighborUvDiffuse = vUv + fullNeighborUv;
     vec2 neighborUvSpecular = vUv + fullNeighborUv * roughnessSqrt;
@@ -113,60 +97,52 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec2 offset, 
     basicWeight *= roughnessSimilarity;
 #endif
 
-// denoise diffuse
-#ifdef DENOISE_DIFFUSE
-    vec4 diffuseNeighborInputTexel = textureLod(diffuseLightingTexture, neighborUvDiffuse, 0.);
-    vec3 diffuseNeighborColor = diffuseNeighborInputTexel.rgb;
+    vec4 neighborInputTexel[textureCount];
+    vec3 neighborColor;
+    float neighborLuma, lumaDiff, lumaSimilarity;
 
-    float neighborLumaDiffuse = luminance(diffuseNeighborColor);
-    float lumaDiffDiffuse = abs(lumaDiffuse - neighborLumaDiffuse);
-    float lumaSimilarityDiffuse = max(1.0 - lumaDiffDiffuse / colorPhiDiffuse, 0.0);
+    float weight[textureCount];
 
-    float weightDiffuse = min(basicWeight * lumaSimilarityDiffuse, 1.0);
-    diffuseLightingColor += diffuseNeighborColor * weightDiffuse;
-    totalWeightDiffuse += weightDiffuse;
-#endif
+#pragma unroll_loop_start
+    for (int i = 0; i < textureCount; i++) {
+        //! todo: also use neighborUvSpecular
+        neighborInputTexel[i] = textureLod(texture[i], neighborUvDiffuse, 0.);
+        neighborColor = neighborInputTexel[i].rgb;
 
-// denoise specular
-#ifdef DENOISE_SPECULAR
-    vec4 specularNeighborInputTexel = textureLod(specularLightingTexture, neighborUvSpecular, 0.);
-    vec3 specularNeighborColor = specularNeighborInputTexel.rgb;
+        neighborLuma = luminance(neighborColor);
+        lumaDiff = abs(luma[i] - neighborLuma);
+        lumaSimilarity = max(1.0 - lumaDiff / colorPhi[i], 0.0);
 
-    float neighborLumaSpecular = luminance(specularNeighborColor);
-    float lumaDiffSpecular = abs(lumaSpecular - neighborLumaSpecular);
-    float lumaSimilaritySpecular = max(1.0 - lumaDiffSpecular / colorPhiSpecular, 0.0);
+        weight[i] = min(basicWeight * lumaSimilarity, 1.0);
+        denoisedColor[i] += neighborColor * weight[i];
+        totalWeight[i] += weight[i];
+    }
 
-    float weightSpecular = min(basicWeight * lumaSimilaritySpecular, 1.0);
-    specularLightingColor += specularNeighborColor * weightSpecular;
-    totalWeightSpecular += weightSpecular;
-#endif
+#pragma unroll_loop_end
 
-    // evaluate moment
     if (isFirstIteration) {
         vec4 neighborMoment = textureLod(momentTexture, neighborUvDiffuse, 0.);
 
-#ifdef DENOISE_DIFFUSE
-        float neighborVarianceDiffuse = max(0.0, neighborMoment.g - neighborMoment.r * neighborMoment.r);
-        sumVarianceDiffuse += weightDiffuse * weightDiffuse * neighborVarianceDiffuse;
-#endif
+        float neighborVariance = max(0.0, neighborMoment.g - neighborMoment.r * neighborMoment.r);
+        float neighborVariance2 = max(0.0, neighborMoment.a - neighborMoment.b * neighborMoment.b);
 
-#ifdef DENOISE_SPECULAR
-        float neighborVarianceSpecular = max(0.0, neighborMoment.a - neighborMoment.b * neighborMoment.b);
-        sumVarianceSpecular += weightSpecular * weightSpecular * neighborVarianceSpecular;
-#endif
-    } else {
-        // after first iteration (moment is now stored in the alpha channel)
+        sumVariance[0] += weight[0] * weight[0] * neighborVariance;
 
-#ifdef DENOISE_DIFFUSE
-        float neighborVarianceDiffuse = diffuseNeighborInputTexel.a;
-        sumVarianceDiffuse += weightDiffuse * weightDiffuse * neighborVarianceDiffuse;
-#endif
-
-#ifdef DENOISE_SPECULAR
-        float neighborVarianceSpecular = specularNeighborInputTexel.a;
-        sumVarianceSpecular += weightSpecular * weightSpecular * neighborVarianceSpecular;
+#if momentTextureCount > 1
+        sumVariance[1] += weight[1] * weight[1] * neighborVariance2;
 #endif
     }
+
+    float variance, neighborVariance;
+
+#pragma unroll_loop_start
+    for (int i = 0; i < momentTextureCount; i++) {
+        if (!isFirstIteration) {
+            neighborVariance = neighborInputTexel[i].a;
+            sumVariance[i] += weight[i] * weight[i] * neighborVariance;
+        }
+    }
+#pragma unroll_loop_end
 }
 
 void main() {
@@ -178,67 +154,57 @@ void main() {
         return;
     }
 
-    vec3 diffuseLightingColor, specularLightingColor;
-    float lumaDiffuse, lumaSpecular;
-
-#ifdef DENOISE_DIFFUSE
-    vec4 diffuseLightingTexel = textureLod(diffuseLightingTexture, vUv, 0.);
-    diffuseLightingColor = diffuseLightingTexel.rgb;
-    lumaDiffuse = luminance(diffuseLightingColor);
-#endif
-
-#ifdef DENOISE_SPECULAR
-    vec4 specularLightingTexel = textureLod(specularLightingTexture, vUv, 0.);
-    specularLightingColor = specularLightingTexel.rgb;
-    lumaSpecular = luminance(specularLightingColor);
-#endif
-
     // g-buffers
+    float depth = unpackRGBAToDepth(depthTexel);
 
     vec4 normalTexel = textureLod(normalTexture, vUv, 0.);
     vec3 viewNormal = unpackRGBToNormal(normalTexel.rgb);
     vec3 normal = normalize((vec4(viewNormal, 1.0) * viewMatrix).xyz);
 
-    float depth = unpackRGBAToDepth(depthTexel);
-
     vec3 worldPos = screenSpaceToWorldSpace(vUv, depth, cameraMatrixWorld);
 
     float roughness = normalTexel.a;
 
+    // color information
+
+    vec3 denoisedColor[textureCount];
+    vec4 texel[textureCount];
+    float luma[textureCount];
+    float sumVariance[textureCount];
+    float totalWeight[textureCount];
+    float colorPhi[textureCount];
+
+#pragma unroll_loop_start
+    for (int i = 0; i < textureCount; i++) {
+        totalWeight[i] = 1.0;
+
+        texel[i] = textureLod(texture[i], vUv, 0.);
+        denoisedColor[i] = texel[i].rgb;
+        luma[i] = luminance(texel[i].rgb);
+    }
+#pragma unroll_loop_end
+
     // moment
-
-    float sumVarianceDiffuse, sumVarianceSpecular;
-    float totalWeightDiffuse = 1., totalWeightSpecular = 1.;
-
-    float colorPhiDiffuse = denoiseDiffuse, colorPhiSpecular = denoiseSpecular;
-
     if (isFirstIteration) {
         vec4 moment = textureLod(momentTexture, vUv, 0.);
+        sumVariance[0] = max(0.0, moment.g - moment.r * moment.r);
 
-#ifdef DENOISE_DIFFUSE
-        sumVarianceDiffuse = max(0.0, moment.g - moment.r * moment.r);
-#endif
-
-#ifdef DENOISE_SPECULAR
-        sumVarianceSpecular = max(0.0, moment.a - moment.b * moment.b);
-#endif
-    } else {
-#ifdef DENOISE_DIFFUSE
-        sumVarianceDiffuse = diffuseLightingTexel.a;
-#endif
-
-#ifdef DENOISE_SPECULAR
-        sumVarianceSpecular = specularLightingTexel.a;
+#if momentTextureCount > 1
+        sumVariance[1] = max(0.0, moment.a - moment.b * moment.b);
 #endif
     }
 
-#ifdef DENOISE_DIFFUSE
-    colorPhiDiffuse = denoiseDiffuse * sqrt(0.00005 + sumVarianceDiffuse);
-#endif
+    float variance;
+#pragma unroll_loop_start
+    for (int i = 0; i < momentTextureCount; i++) {
+        if (!isFirstIteration) {
+            variance = texel[i].a;
+            sumVariance[i] = variance;
+        }
 
-#ifdef DENOISE_SPECULAR
-    colorPhiSpecular = denoiseSpecular * sqrt(0.00005 + sumVarianceSpecular);
-#endif
+        colorPhi[i] = denoise[i] * sqrt(0.00005 + sumVariance[i]);
+    }
+#pragma unroll_loop_end
 
     vec2 pixelStepOffset = invTexSize * stepSize;
     vec2 bilinearOffset = invTexSize * vec2(horizontal ? 0.5 : -0.5, blurHorizontal ? 0.5 : -0.5);
@@ -251,9 +217,8 @@ void main() {
                     vec2 neighborVec = horizontal ? vec2(i, 0.) : vec2(0., i);
                     vec2 offset = bilinearOffset;
 
-                    tap(neighborVec, pixelStepOffset, offset, depth, normal, roughness, roughnessSqrt, worldPos,
-                        lumaDiffuse, lumaSpecular, colorPhiDiffuse, colorPhiSpecular, diffuseLightingColor, specularLightingColor,
-                        totalWeightDiffuse, sumVarianceDiffuse, totalWeightSpecular, sumVarianceSpecular);
+                    tap(neighborVec, pixelStepOffset, offset, depth, normal, roughness, roughnessSqrt,
+                        worldPos, luma, colorPhi, denoisedColor, totalWeight, sumVariance);
                 }
             }
 
@@ -264,45 +229,28 @@ void main() {
                     vec2 neighborVec = horizontal ? vec2(-i, -i) : vec2(i, -i);
                     vec2 offset = bilinearOffset;
 
-                    tap(neighborVec, pixelStepOffset, offset, depth, normal, roughness, roughnessSqrt, worldPos,
-                        lumaDiffuse, lumaSpecular, colorPhiDiffuse, colorPhiSpecular, diffuseLightingColor, specularLightingColor,
-                        totalWeightDiffuse, sumVarianceDiffuse, totalWeightSpecular, sumVarianceSpecular);
+                    tap(neighborVec, pixelStepOffset, offset, depth, normal, roughness, roughnessSqrt,
+                        worldPos, luma, colorPhi, denoisedColor, totalWeight, sumVariance);
                 }
             }
         }
 
-#ifdef DENOISE_DIFFUSE
-        sumVarianceDiffuse /= totalWeightDiffuse * totalWeightDiffuse;
-        diffuseLightingColor /= totalWeightDiffuse;
-#endif
-
-#ifdef DENOISE_SPECULAR
-        sumVarianceSpecular /= totalWeightSpecular * totalWeightSpecular;
-        specularLightingColor /= totalWeightSpecular;
-#endif
+#pragma unroll_loop_start
+        for (int i = 0; i < textureCount; i++) {
+            sumVariance[i] /= totalWeight[i] * totalWeight[i];
+            denoisedColor[i] /= totalWeight[i];
+        }
+#pragma unroll_loop_end
     }
 
     if (isLastIteration) {
-        vec3 finalOutputColor;
+        vec3 finalOutputColor = denoisedColor[0];
 
-        // custom compose shader
 #include <customComposeShader>
+#include <finalOutputShader>
 
-#if !defined(DENOISE_DIFFUSE) && defined(DENOISE_SPECULAR)
-        specularLightingColor = finalOutputColor;
-#else
-        diffuseLightingColor = finalOutputColor;
-#endif
-
-        sumVarianceDiffuse = 1.;
-        sumVarianceSpecular = 1.;
+        return;
     }
 
-#ifdef DENOISE_DIFFUSE
-    gDiffuse = vec4(diffuseLightingColor, sumVarianceDiffuse);
-#endif
-
-#ifdef DENOISE_SPECULAR
-    gSpecular = vec4(specularLightingColor, sumVarianceSpecular);
-#endif
+#include <outputShader>
 }

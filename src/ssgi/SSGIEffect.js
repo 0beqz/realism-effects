@@ -79,6 +79,14 @@ export class SSGIEffect extends Effect {
 			}
 		}
 
+		if (options.diffuseOnly) {
+			this.svgf.denoisePass.fullscreenMaterial.defines.ssdgi = ""
+		} else if (options.specularOnly) {
+			this.svgf.denoisePass.fullscreenMaterial.defines.ssr = ""
+		} else {
+			this.svgf.denoisePass.fullscreenMaterial.defines.ssgi = ""
+		}
+
 		this.ssgiPass.fullscreenMaterial.defines.directLightMultiplier = options.directLightMultiplier.toPrecision(5)
 
 		this.svgf.denoisePass.fullscreenMaterial.uniforms.diffuseTexture.value = this.ssgiPass.diffuseTexture
@@ -148,9 +156,15 @@ export class SSGIEffect extends Effect {
 							this.svgf.denoisePass.iterations = value
 							break
 
-						case "denoiseKernel":
 						case "denoiseDiffuse":
+							this.svgf.denoisePass.fullscreenMaterial.uniforms.denoise.value[0] = value
+							break
+
 						case "denoiseSpecular":
+							this.svgf.denoisePass.fullscreenMaterial.uniforms.denoise.value[1] = value
+							break
+
+						case "denoiseKernel":
 						case "depthPhi":
 						case "normalPhi":
 						case "roughnessPhi":

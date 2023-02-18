@@ -1,35 +1,15 @@
 ﻿import { DenoisePass } from "./pass/DenoisePass.js"
 import { SVGFTemporalReprojectPass } from "./pass/SVGFTemporalReprojectPass.js"
 
-const requiredTexturesSvgf = ["inputTexture", "depthTexture", "normalTexture", "velocityTexture"]
-const requiredTexturesDenoiser = [
-	"diffuseLightingTexture",
-	"specularLightingTexture",
-	"diffuseTexture",
-	"depthTexture",
-	"normalTexture",
-	"momentTexture"
-]
-
 export class SVGF {
-	constructor(scene, camera, velocityPass, denoiseComposeShader, denoiseComposeFunctions, options = {}) {
-		this.svgfTemporalReprojectPass = new SVGFTemporalReprojectPass(scene, camera, velocityPass, options)
+	constructor(scene, camera, velocityPass, denoiseComposeShader = "", denoiseComposeFunctions = "") {
+		this.svgfTemporalReprojectPass = new SVGFTemporalReprojectPass(scene, camera, velocityPass)
 
-		// options for the denoise pass
-		options.diffuse = !options.specularOnly
-		options.specular = !options.diffuseOnly
+		const textures = this.svgfTemporalReprojectPass.renderTarget.texture.slice(1, 3)
 
-		this.denoisePass = new DenoisePass(camera, denoiseComposeShader, denoiseComposeFunctions, options)
+		this.denoisePass = new DenoisePass(camera, textures, denoiseComposeShader, denoiseComposeFunctions)
 
 		this.denoisePass.fullscreenMaterial.uniforms.momentTexture.value = this.svgfTemporalReprojectPass.momentTexture
-
-		this.denoisePass.fullscreenMaterial.uniforms.diffuseLightingTexture.value =
-			this.svgfTemporalReprojectPass.accumulatedTexture
-
-		this.denoisePass.fullscreenMaterial.uniforms.specularLightingTexture.value =
-			this.svgfTemporalReprojectPass.specularTexture
-
-		this.options = options
 	}
 
 	// the denoised texture
@@ -75,26 +55,7 @@ export class SVGF {
 		this.svgfTemporalReprojectPass.dispose()
 	}
 
-	ensureAllTexturesSet() {
-		for (const bufferName of requiredTexturesSvgf) {
-			if (!this.svgfTemporalReprojectPass.fullscreenMaterial.uniforms[bufferName].value?.isTexture) {
-				console.error("SVGF has no non-jittered " + bufferName)
-			}
-		}
-
-		for (const bufferName of requiredTexturesDenoiser) {
-			if (!this.options.diffuse && bufferName === "diffuseLightingTexture") continue
-			if (!this.options.specular && bufferName === "specularLightingTexture") continue
-
-			if (!this.denoisePass.fullscreenMaterial.uniforms[bufferName].value?.isTexture) {
-				console.error("SVGF has no non-jittered " + bufferName)
-			}
-		}
-	}
-
 	render(renderer) {
-		this.ensureAllTexturesSet()
-
 		this.svgfTemporalReprojectPass.render(renderer)
 		this.denoisePass.render(renderer)
 	}

@@ -188,3 +188,25 @@ export const createGlobalDisableIblIradianceUniform = () => {
 
 	return globalIblIrradianceDisabledUniform
 }
+
+// source: https://github.com/mrdoob/three.js/blob/b9bc47ab1978022ab0947a9bce1b1209769b8d91/src/renderers/webgl/WebGLProgram.js#L228
+// Unroll Loops
+
+const unrollLoopPattern =
+	/#pragma unroll_loop_start\s+for\s*\(\s*int\s+i\s*=\s*(\d+)\s*;\s*i\s*<\s*(\d+)\s*;\s*i\s*\+\+\s*\)\s*{([\s\S]+?)}\s+#pragma unroll_loop_end/g
+
+export function unrollLoops(string) {
+	return string.replace(unrollLoopPattern, loopReplacer)
+}
+
+function loopReplacer(match, start, end, snippet) {
+	let string = ""
+
+	for (let i = parseInt(start); i < parseInt(end); i++) {
+		string += snippet.replace(/\[\s*i\s*\]/g, "[ " + i + " ]").replace(/UNROLLED_LOOP_INDEX/g, i)
+	}
+
+	return string
+}
+
+//

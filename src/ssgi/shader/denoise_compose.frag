@@ -44,21 +44,23 @@ float metalness = diffuseTexel.a;
 vec3 f0 = mix(vec3(0.04), diffuse, metalness);
 vec3 F = F_Schlick(f0, VoH);
 
+vec3 diffuseLightingColor = denoisedColor[0];
+vec3 specularLightingColor = denoisedColor[1];
+
 vec3 diffuseComponent = diffuse * (1. - metalness) * (1. - F) * diffuseLightingColor;
 vec3 specularComponent = specularLightingColor * F;
 
-#if defined(DENOISE_DIFFUSE) && defined(DENOISE_SPECULAR)
-// final output of the denoiser
+#ifdef ssgi
 finalOutputColor = diffuseComponent + specularComponent;
 #endif
 
 vec3 directLight = textureLod(directLightTexture, vUv, 0.).rgb;
 
-#if defined(DENOISE_DIFFUSE) && !defined(DENOISE_SPECULAR)
+#ifdef ssdgi
 finalOutputColor = diffuseComponent;
 #endif
 
-#if !defined(DENOISE_DIFFUSE) && defined(DENOISE_SPECULAR)
+#ifdef ssr
 finalOutputColor = specularComponent;
 #endif
 
