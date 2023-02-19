@@ -1,18 +1,16 @@
 ﻿import { Effect } from "postprocessing"
 import { Uniform } from "three"
-import compose from "./shader/compose.frag"
-import { TemporalReprojectPass } from "../temporal-reproject/TemporalReprojectPass.js"
 import { getVisibleChildren } from "../ssgi/utils/Utils"
+import { TemporalReprojectPass } from "../temporal-reproject/TemporalReprojectPass.js"
+import compose from "./shader/compose.frag"
 
 export const defaultTRAAOptions = {
 	blend: 0.9,
 	constantBlend: true,
-	fullAccumulate: false,
 	dilation: true,
 	catmullRomSampling: true,
 	logTransform: true,
-	neighborhoodClamping: true,
-	renderVelocity: false
+	neighborhoodClamping: true
 }
 
 export class TRAAEffect extends Effect {

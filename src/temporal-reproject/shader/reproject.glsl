@@ -20,9 +20,14 @@ vec2 viewSpaceToScreenSpace(const vec3 position) {
     return projectedCoord.xy;
 }
 
+#define lum(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
+
 #ifdef logTransform
 // idea from: https://www.elopezr.com/temporal-aa-and-the-quest-for-the-holy-trail/
 vec3 transformColor(const vec3 color) {
+    float diff = min(1.0, lum(color) - 0.99);
+    if (diff > 0.0) return vec3(diff * 0.1);
+
     return log(max(color, vec3(EPSILON)));
 }
 
@@ -43,9 +48,7 @@ void getNeighborhoodAABB(const sampler2D tex, inout vec3 minNeighborColor, inout
 
                 vec4 neighborTexel = textureLod(tex, neighborUv, 0.0);
 
-                vec3 col = neighborTexel.rgb;
-
-                col = transformColor(col);
+                vec3 col = transformColor(neighborTexel.rgb);
 
                 minNeighborColor = min(col, minNeighborColor);
                 maxNeighborColor = max(col, maxNeighborColor);

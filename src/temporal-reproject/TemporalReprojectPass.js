@@ -44,6 +44,7 @@ export class TemporalReprojectPass extends Pass {
 		})
 
 		this.fullscreenMaterial = new TemporalReprojectMaterial(textureCount, options.customComposeShader)
+		this.fullscreenMaterial.defines.textureCount = textureCount
 
 		if (options.dilation) this.fullscreenMaterial.defines.dilation = ""
 		if (options.neighborhoodClamping) this.fullscreenMaterial.defines.neighborhoodClamping = ""

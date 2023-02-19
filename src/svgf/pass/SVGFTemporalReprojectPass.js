@@ -24,33 +24,33 @@ export class SVGFTemporalReprojectPass extends TemporalReprojectPass {
 		this.renderTarget.texture.push(this.momentTexture)
 
 		const momentBuffers = /* glsl */ `
-		layout(location = 2) out vec4 gMoment;
+		layout(location = ${textureCount}) out vec4 gMoment;
 
 		uniform sampler2D lastMomentTexture;
 		`
 
 		this.fullscreenMaterial.fragmentShader = momentBuffers + this.fullscreenMaterial.fragmentShader
 
-		const momentUniforms = {
-			lastSpecularTexture: new Uniform(null),
-			specularTexture: new Uniform(null),
-			lastMomentTexture: new Uniform(null)
-		}
-
 		this.fullscreenMaterial.uniforms = {
 			...this.fullscreenMaterial.uniforms,
-			...momentUniforms
+			...{
+				lastMomentTexture: new Uniform(null)
+			}
 		}
 
-		this.copyPass.setTextureCount(2 + 2 + 1) // depth, normal, diffuse, specular, moment
-		this.copyPass.fullscreenMaterial.uniforms.inputTexture4.value = this.momentTexture
+		const copyPassTextureCount = 2 + textureCount + 1
 
-		const lastMomentTexture = this.copyPass.renderTarget.texture[4]
+		this.copyPass.setTextureCount(copyPassTextureCount)
+		this.copyPass.fullscreenMaterial.uniforms["inputTexture" + (copyPassTextureCount - 1)].value = this.momentTexture
+
+		const lastMomentTexture = this.copyPass.renderTarget.texture[copyPassTextureCount - 1]
 		lastMomentTexture.type = FloatType
 		lastMomentTexture.minFilter = NearestFilter
 		lastMomentTexture.magFilter = NearestFilter
 		lastMomentTexture.needsUpdate = true
 
 		this.fullscreenMaterial.uniforms.lastMomentTexture.value = lastMomentTexture
+
+		this.fullscreenMaterial.defines.momentTextureCount = Math.min(2, textureCount)
 	}
 }

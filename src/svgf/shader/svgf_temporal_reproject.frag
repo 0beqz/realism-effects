@@ -1,52 +1,9 @@
-﻿
-// gDiffuse = vec4(mix(inputColor, accumulatedColor, reprojectedUv.x != -1. ? temporalReprojectMix : 0.0), alpha);
-
-// #if !defined(diffuseOnly) && !defined(specularOnly)
-// // specular
-// vec4 specularTexel = dot(inputTexel.rgb, inputTexel.rgb) == 0.0 ? textureLod(specularTexture, uv, 0.) : vec4(0.);
-// vec3 specularColor = transformColor(specularTexel.rgb);
-// float rayLength = specularTexel.a;
-
-// // specular UV
-// vec2 specularUv = reprojectedUv;
-// if (rayLength != 0.0) {
-//     vec2 hitPointUv = reprojectHitPoint(worldPos, rayLength, depth);
-
-//     if (validateReprojectedUV(hitPointUv, depth, worldPos, worldNormal)) {
-//         specularUv = hitPointUv;
-//         historyMoment.ba = textureLod(lastMomentTexture, specularUv, 0.).ba;
-//     }
-// }
-
-// vec3 lastSpecular;
-// float specularAlpha = 1.0;
-
-// if (specularUv.x != -1.) {
-//     vec4 lastSpecularTexel = sampleReprojectedTexture(lastSpecularTexture, specularUv);
-
-//     lastSpecular = transformColor(lastSpecularTexel.rgb);
-//     specularAlpha = max(1., lastSpecularTexel.a);
-
-//     // check if specular was sampled for this texel this frame
-//     if (dot(specularColor, specularColor) != 0.0) {
-//         specularAlpha++;
-//     } else {
-//         specularColor = lastSpecular;
-//     }
-
-//     temporalReprojectMix = min(1. - 1. / specularAlpha, maxValue);
-
-// }
-
-// gSpecular = vec4(mix(specularColor, lastSpecular, specularUv.x != -1. ? temporalReprojectMix : 0.), specularAlpha);
-// gSpecular.rgb = undoColorTransform(gSpecular.rgb);
-
-#define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
+﻿#define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
 
 vec4 moment, historyMoment;
 bool lastReprojectedUvSpecular, isReprojectedUvSpecular;
 
-for (int i = 0; i < 2; i++) {
+for (int i = 0; i < momentTextureCount; i++) {
     isReprojectedUvSpecular = reprojectSpecular[i] && inputTexel[i].a != 0.0 && reprojectedUvSpecular[i].x >= 0.0;
 
     reprojectedUv = isReprojectedUvSpecular ? reprojectedUvSpecular[i] : reprojectedUvDiffuse;
@@ -64,8 +21,10 @@ if (reprojectedUvDiffuse.x >= 0.0 || reprojectedUvSpecular[0].x >= 0.0) {
     moment.r = luminance(gOutput[0].rgb);
     moment.g = moment.r * moment.r;
 
+#if textureCount > 1
     moment.b = luminance(gOutput[1].rgb);
-    moment.a = 0.;
+    moment.a = moment.b * moment.b;
+#endif
 } else {
     moment.rg = vec2(0., 10.);
     moment.ba = vec2(0., 10.);

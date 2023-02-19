@@ -52,29 +52,60 @@ export class SSGIEffect extends Effect {
 		this._scene = scene
 		this._camera = camera
 
-		options.reprojectSpecular = [false, true]
-		options.catmullRomSampling = [false, true]
-		options.roughnessDependentKernel = [false, true]
-		this.svgf = new SVGF(scene, camera, velocityPass, 2, denoise_compose, denoise_compose_functions, options)
+		let definesName
+		let specularIndex = -1
 
-		this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.fragmentShader =
-			this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.fragmentShader.replace(
-				"outputColor = mix(inputTexel[ 1 ].rgb, accumulatedTexel[ 1 ].rgb, temporalReprojectMix);",
-				/* glsl */ `
-			float roughness = inputTexel[0].a;
-			float glossines = max(0., 0.025 - roughness) / 0.025;
-			temporalReprojectMix *= 1. - glossines * glossines;
-			
-			outputColor = mix(inputTexel[ 1 ].rgb, accumulatedTexel[ 1 ].rgb, temporalReprojectMix);
-			`
-			)
+		if (options.diffuseOnly) {
+			definesName = "ssdgi"
+			options.reprojectSpecular = false
+			options.catmullRomSampling = false
+			options.roughnessDependentKernel = false
+		} else if (options.specularOnly) {
+			definesName = "ssr"
+			options.reprojectSpecular = true
+			options.catmullRomSampling = true
+			options.roughnessDependentKernel = true
+		} else {
+			definesName = "ssgi"
+			options.reprojectSpecular = [false, true]
+			options.catmullRomSampling = [false, true]
+			options.roughnessDependentKernel = [false, true]
+			specularIndex = 1
+		}
+
+		const textureCount = options.diffuseOnly || options.specularOnly ? 1 : 2
+
+		this.svgf = new SVGF(scene, camera, velocityPass, textureCount, denoise_compose, denoise_compose_functions, options)
+
+		if (specularIndex !== -1) {
+			this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.fragmentShader =
+				this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.fragmentShader.replace(
+					`outputColor = mix(inputTexel[ ${specularIndex} ].rgb, accumulatedTexel[ ${specularIndex} ].rgb, temporalReprojectMix);`,
+					/* glsl */ `
+					float roughness = inputTexel[0].a;
+					float glossines = max(0., 0.025 - roughness) / 0.025;
+					temporalReprojectMix *= 1. - glossines * glossines;
+					
+					outputColor = mix(inputTexel[ ${specularIndex} ].rgb, accumulatedTexel[ ${specularIndex} ].rgb, temporalReprojectMix);
+					`
+				)
+		}
 
 		this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.needsUpdate = true
 
 		// ssgi pass
 		this.ssgiPass = new SSGIPass(this, options)
-		this.svgf.setInputTexture(this.ssgiPass.texture)
-		this.svgf.setSpecularTexture(this.ssgiPass.specularTexture)
+
+		if (options.diffuseOnly) {
+			this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.uniforms.inputTexture0.value = this.ssgiPass.texture
+		} else if (options.specularOnly) {
+			this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.uniforms.inputTexture0.value =
+				this.ssgiPass.specularTexture
+		} else {
+			this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.uniforms.inputTexture0.value = this.ssgiPass.texture
+			this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.uniforms.inputTexture1.value =
+				this.ssgiPass.specularTexture
+		}
 
 		// the denoiser always uses the same G-buffers as the SSGI pass
 		const denoisePassUniforms = this.svgf.denoisePass.fullscreenMaterial.uniforms
@@ -92,13 +123,7 @@ export class SSGIEffect extends Effect {
 			}
 		}
 
-		if (options.diffuseOnly) {
-			this.svgf.denoisePass.fullscreenMaterial.defines.ssdgi = ""
-		} else if (options.specularOnly) {
-			this.svgf.denoisePass.fullscreenMaterial.defines.ssr = ""
-		} else {
-			this.svgf.denoisePass.fullscreenMaterial.defines.ssgi = ""
-		}
+		this.svgf.denoisePass.fullscreenMaterial.defines[definesName] = ""
 
 		this.ssgiPass.fullscreenMaterial.defines.directLightMultiplier = options.directLightMultiplier.toPrecision(5)
 
