@@ -352,7 +352,7 @@ const initScene = () => {
 			jitter: 1
 		})
 
-		composer.addPass(renderPass)
+		// composer.addPass(renderPass)
 		composer.addPass(ssgiPass)
 		composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect, bloomEffect, vignetteEffect, lutEffect))
 
