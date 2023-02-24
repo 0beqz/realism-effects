@@ -57,6 +57,7 @@ const vec3 harmoniousNumbers321 = vec3(
 float nearMinusFar;
 float nearMulFar;
 float farMinusNear;
+vec2 invTexSize;
 
 #include <packing>
 
@@ -88,6 +89,8 @@ void main() {
         discard;
         return;
     }
+
+    invTexSize = 1. / texSize;
 
     roughness = clamp(roughness * roughness, 0.0001, 1.0);
 
@@ -315,7 +318,7 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
 
         float mip = envBlur * maxEnvMapMipLevel;
 
-        if (!isDiffuseSample) mip *= roughness;
+        if (!isDiffuseSample) mip *= sqrt(roughness);
 
         vec3 sampleDir = reflectedWS.xyz;
         envMapSample = sampleEquirectEnvMapColor(sampleDir, envMap, mip);
@@ -347,7 +350,7 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
         vec4 emissiveTexel = textureLod(emissiveTexture, coords.xy, 0.);
         vec3 emissiveColor = emissiveTexel.rgb * 10.;
 
-        vec3 reprojectedGI = textureLod(accumulatedTexture, reprojectedUv, 0.).rgb;
+        vec3 reprojectedGI = getTexel(accumulatedTexture, reprojectedUv, 0.).rgb;
 
         SSGI = reprojectedGI + emissiveColor;
 

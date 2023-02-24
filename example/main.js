@@ -20,7 +20,7 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader"
 import { GroundProjectedEnv } from "three/examples/jsm/objects/GroundProjectedEnv"
 import { MotionBlurEffect } from "../src/motion-blur/MotionBlurEffect"
-import { SSGIEffect, SSREffect } from "../src/SSGI/index"
+import { SSGIEffect } from "../src/SSGI/index"
 import { VelocityDepthNormalPass } from "../src/temporal-reproject/pass/VelocityDepthNormalPass"
 import { TRAAEffect } from "../src/traa/TRAAEffect"
 import { SSGIDebugGUI } from "./SSGIDebugGUI"
@@ -126,7 +126,6 @@ window.controls = controls
 
 const composer = new POSTPROCESSING.EffectComposer(renderer)
 window.composer = composer
-const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
 
 const lightParams = {
 	yaw: 55,
@@ -352,7 +351,9 @@ const initScene = () => {
 			jitter: 1
 		})
 
-		// composer.addPass(renderPass)
+		const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
+		composer.addPass(renderPass)
+
 		composer.addPass(ssgiPass)
 		composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect, bloomEffect, vignetteEffect, lutEffect))
 

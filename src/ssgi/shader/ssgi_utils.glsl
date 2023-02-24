@@ -7,6 +7,19 @@ float r1(float n) {
     return fract(1.1127756842787055 + a1 * n);
 }
 
+// source: https://iquilezles.org/articles/texture/
+vec4 getTexel(const sampler2D tex, vec2 p, const float mip) {
+    p = p / invTexSize + 0.5;
+
+    vec2 i = floor(p);
+    vec2 f = p - i;
+    f = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+    p = i + f;
+
+    p = (p - 0.5) * invTexSize;
+    return textureLod(tex, p, mip);
+}
+
 // source: https://github.com/mrdoob/three.js/blob/dev/examples/js/shaders/SSAOShader.js
 vec3 getViewPosition(const float depth) {
     float clipW = projectionMatrix[2][3] * depth + projectionMatrix[3][3];
@@ -82,7 +95,7 @@ vec2 equirectDirectionToUv(const vec3 direction) {
 
 // source: https://github.com/gkjohnson/three-gpu-pathtracer/blob/3340cc19c796a01abe0ec121930154ec3301e4f2/src/shader/shaderEnvMapSampling.js#L3
 vec3 sampleEquirectEnvMapColor(const vec3 direction, const sampler2D map, const float lod) {
-    return textureLod(map, equirectDirectionToUv(direction), lod).rgb;
+    return getTexel(map, equirectDirectionToUv(direction), lod).rgb;
 }
 
 // source of the following functions: https://www.shadertoy.com/view/cll3R4
