@@ -43,8 +43,10 @@ uniform float frames;
 uniform vec2 texSize;
 uniform vec2 blueNoiseRepeat;
 
+#if numBins > 0
 uniform vec4 bins[numBins];
 uniform vec2 envSize;
+#endif
 
 #define INVALID_RAY_COORDS vec2(-1.0);
 #define EARLY_OUT_COLOR    vec4(0.0, 0.0, 0.0, 0.0)
@@ -208,6 +210,7 @@ void main() {
         vec3 sample_dir;
         float bin_pdf;
 
+#if numBins > 0
         if (int(frames) % 2 == 0) {
             // code from: http://karim.naaji.fr/environment_map_importance_sampling.html
             int binsIndex = int(floor(float(numBins) * blueNoise.z));
@@ -238,6 +241,7 @@ void main() {
 
             sample_dir = (vec4(sample_dir, 1.) * cameraMatrixWorld).xyz;
         }
+#endif
 
         if (isDiffuseSample) {
             if (bin_pdf == 0.0 || dot(sample_dir, viewNormal) < 0.0) {

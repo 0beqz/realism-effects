@@ -275,7 +275,7 @@ const initScene = () => {
 		denoiseSpecular: 8.700000000000001,
 		depthPhi: 3.5870000000000015,
 		normalPhi: 35.326000000000015,
-		roughnessPhi: 100,
+		roughnessPhi: 18.75,
 		envBlur: 0.53,
 		directLightMultiplier: 1,
 		maxEnvLuminance: 5,

@@ -3,6 +3,7 @@ import babel from "@rollup/plugin-babel"
 import resolve from "@rollup/plugin-node-resolve"
 import glslify from "rollup-plugin-glslify"
 import image from "@rollup/plugin-image"
+import wasm from "@rollup/plugin-wasm"
 
 // eslint-disable-next-line no-undef
 const root = process.platform === "win32" ? path.resolve("/") : "/"
@@ -45,12 +46,12 @@ export default [
 		input: "./src/index.js",
 		output: { file: "dist/index.js", format: "esm" },
 		external,
-		plugins: [glslify(), image(), babel(getBabelOptions({ useESModules: true })), resolve({ extensions })]
+		plugins: [wasm(), glslify(), image(), babel(getBabelOptions({ useESModules: true })), resolve({ extensions })]
 	},
 	{
 		input: "./src/index.js",
 		output: { file: "dist/index.cjs", format: "cjs" },
 		external,
-		plugins: [glslify(), image(), babel(getBabelOptions({ useESModules: false })), resolve({ extensions })]
+		plugins: [wasm(), glslify(), image(), babel(getBabelOptions({ useESModules: false })), resolve({ extensions })]
 	}
 ]

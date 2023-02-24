@@ -2,6 +2,51 @@
 # yarn lockfile v1
 
 
+"@jridgewell/gen-mapping@^0.3.0":
+  "integrity" "sha512-mh65xKQAzI6iBcFzwv28KVWSmCkdRBWoOh+bYQGW3+6OZvbbN3TqMGo5hqYxQniRcH9F2VZIoJCm4pa3BPDK/A=="
+  "resolved" "https://registry.npmjs.org/@jridgewell/gen-mapping/-/gen-mapping-0.3.2.tgz"
+  "version" "0.3.2"
+  dependencies:
+    "@jridgewell/set-array" "^1.0.1"
+    "@jridgewell/sourcemap-codec" "^1.4.10"
+    "@jridgewell/trace-mapping" "^0.3.9"
+
+"@jridgewell/resolve-uri@3.1.0":
+  "integrity" "sha512-F2msla3tad+Mfht5cJq7LSXcdudKTWCVYUgw6pLFOOHSTtZlj6SWNYAp+AhuqLmWdBO2X5hPrLcu8cVP8fy28w=="
+  "resolved" "https://registry.npmjs.org/@jridgewell/resolve-uri/-/resolve-uri-3.1.0.tgz"
+  "version" "3.1.0"
+
+"@jridgewell/set-array@^1.0.1":
+  "integrity" "sha512-xnkseuNADM0gt2bs+BvhO0p78Mk762YnZdsuzFV018NoG1Sj1SCQvpSqa7XUaTam5vAGasABV9qXASMKnFMwMw=="
+  "resolved" "https://registry.npmjs.org/@jridgewell/set-array/-/set-array-1.1.2.tgz"
+  "version" "1.1.2"
+
+"@jridgewell/source-map@^0.3.2":
+  "integrity" "sha512-m7O9o2uR8k2ObDysZYzdfhb08VuEml5oWGiosa1VdaPZ/A6QyPkAJuwN0Q1lhULOf6B7MtQmHENS743hWtCrgw=="
+  "resolved" "https://registry.npmjs.org/@jridgewell/source-map/-/source-map-0.3.2.tgz"
+  "version" "0.3.2"
+  dependencies:
+    "@jridgewell/gen-mapping" "^0.3.0"
+    "@jridgewell/trace-mapping" "^0.3.9"
+
+"@jridgewell/sourcemap-codec@^1.4.10", "@jridgewell/sourcemap-codec@1.4.14":
+  "integrity" "sha512-XPSJHWmi394fuUuzDnGz1wiKqWfo1yXecHQMRf2l6hztTO+nPru658AyDngaBe7isIxEkRsPR3FZh+s7iVa4Uw=="
+  "resolved" "https://registry.npmjs.org/@jridgewell/sourcemap-codec/-/sourcemap-codec-1.4.14.tgz"
+  "version" "1.4.14"
+
+"@jridgewell/trace-mapping@^0.3.9":
+  "integrity" "sha512-MCNzAp77qzKca9+W/+I0+sEpaUnZoeasnghNeVc41VZCEKaCH73Vq3BZZ/SzWIgrqE4H4ceI+p+b6C0mHf9T4g=="
+  "resolved" "https://registry.npmjs.org/@jridgewell/trace-mapping/-/trace-mapping-0.3.17.tgz"
+  "version" "0.3.17"
+  dependencies:
+    "@jridgewell/resolve-uri" "3.1.0"
+    "@jridgewell/sourcemap-codec" "1.4.14"
+
+"@rollup/plugin-wasm@^6.1.2":
+  "integrity" "sha512-YdrQ7zfnZ54Y+6raCev3tR1PrhQGxYKSTajGylhyP0oBacouuNo6KcNCk+pYKw9M98jxRWLFFca/udi76IDXzg=="
+  "resolved" "https://registry.npmjs.org/@rollup/plugin-wasm/-/plugin-wasm-6.1.2.tgz"
+  "version" "6.1.2"
+
 "@rollup/pluginutils@^4.2.1":
   "integrity" "sha512-iKnFXr7NkdZAIHiIWE+BX5ULi/ucVFYWD6TbAV+rZctiRTY2PL6tsIKhoIOaoskiWAkgu+VsbXgUVDNLHf+InQ=="
   "resolved" "https://registry.npmjs.org/@rollup/pluginutils/-/pluginutils-4.2.1.tgz"
@@ -10,10 +55,46 @@
     "estree-walker" "^2.0.1"
     "picomatch" "^2.2.2"
 
+"@swc/core-win32-x64-msvc@1.3.36":
+  "integrity" "sha512-2bIjr9DhAckGiXZEvj6z2z7ECPcTimG+wD0VuQTvr+wkx46uAJKl5Kq+Zk+dd15ErL7JGUtCet1T7bf1k4FwvQ=="
+  "resolved" "https://registry.npmjs.org/@swc/core-win32-x64-msvc/-/core-win32-x64-msvc-1.3.36.tgz"
+  "version" "1.3.36"
+
+"@swc/core@^1.3.10":
+  "integrity" "sha512-Ogrd9uRNIj7nHjXxG66UlKBIcXESUenJ7OD6K2a8p82qlg6ne7Ne5Goiipm/heHYhSfVmjcnRWL9ZJ4gv+YCPA=="
+  "resolved" "https://registry.npmjs.org/@swc/core/-/core-1.3.36.tgz"
+  "version" "1.3.36"
+  optionalDependencies:
+    "@swc/core-darwin-arm64" "1.3.36"
+    "@swc/core-darwin-x64" "1.3.36"
+    "@swc/core-linux-arm-gnueabihf" "1.3.36"
+    "@swc/core-linux-arm64-gnu" "1.3.36"
+    "@swc/core-linux-arm64-musl" "1.3.36"
+    "@swc/core-linux-x64-gnu" "1.3.36"
+    "@swc/core-linux-x64-musl" "1.3.36"
+    "@swc/core-win32-arm64-msvc" "1.3.36"
+    "@swc/core-win32-ia32-msvc" "1.3.36"
+    "@swc/core-win32-x64-msvc" "1.3.36"
+
+"acorn@^8.5.0":
+  "integrity" "sha512-xjIYgE8HBrkpd/sJqOGNspf8uHG+NOHGOw6a/Urj8taM2EXfdNAH2oFcPeIFfsv3+kz/mJrS5VuMqbNLjCa2vw=="
+  "resolved" "https://registry.npmjs.org/acorn/-/acorn-8.8.2.tgz"
+  "version" "8.8.2"
+
 "blob-to-buffer@^1.2.9":
   "integrity" "sha512-BF033y5fN6OCofD3vgHmNtwZWRcq9NLyyxyILx9hfMy1sXYy4ojFl765hJ2lP0YaN2fuxPaLO2Vzzoxy0FLFFA=="
   "resolved" "https://registry.npmjs.org/blob-to-buffer/-/blob-to-buffer-1.2.9.tgz"
   "version" "1.2.9"
+
+"buffer-from@^1.0.0":
+  "integrity" "sha512-E+XQCRwSbaaiChtv6k6Dwgc+bx+Bs6vuKJHHl5kox/BaKbhiXzqQOwK4cO22yElGp2OCmjwVhT3HmxgyPGnJfQ=="
+  "resolved" "https://registry.npmjs.org/buffer-from/-/buffer-from-1.1.2.tgz"
+  "version" "1.1.2"
+
+"commander@^2.20.0":
+  "integrity" "sha512-GpVkmM8vF2vQUkj2LvZmD35JxeJOLCwJ9cUkugyk2nuhbv3+mJvpLYYt+0+USMxE+oj+ey/lJEnhZw75x/OMcQ=="
+  "resolved" "https://registry.npmjs.org/commander/-/commander-2.20.3.tgz"
+  "version" "2.20.3"
 
 "commander@7":
   "integrity" "sha512-QrWXB+ZQSVPmIWIhtEO9H+gwHaMGYiF5ChvoJ+K9ZGHG/sVsa6yiesAD1GC/x46sET00Xlwo1u49RVVVzvcSkw=="
@@ -448,10 +529,17 @@
   "resolved" "https://registry.npmjs.org/robust-predicates/-/robust-predicates-3.0.1.tgz"
   "version" "3.0.1"
 
+"rollup@^1.20.0||^2.0.0||^3.0.0":
+  "integrity" "sha512-qMNZdlQPCkWodrAZ3qnJtvCAl4vpQ8q77uEujVCCbC/6CLB7Lcmvjq7HyiOSnf4fxTT9XgsE36oLHJBH49xjqA=="
+  "resolved" "https://registry.npmjs.org/rollup/-/rollup-3.17.2.tgz"
+  "version" "3.17.2"
+  optionalDependencies:
+    "fsevents" "~2.3.2"
+
 "rollup@^2.75.6":
-  "integrity" "sha512-VSE1iy0eaAYNCxEXaleThdFXqZJ42qDBatAwrfnPlENEZ8erQ+0LYX4JXOLPceWfZpV1VtZwZ3dFCuOZiSyFtQ=="
-  "resolved" "https://registry.npmjs.org/rollup/-/rollup-2.75.7.tgz"
-  "version" "2.75.7"
+  "integrity" "sha512-uKxbd0IhMZOhjAiD5oAFp7BqvkA4Dv47qpOCtaNvng4HBwdbWtdOh8f5nZNuk2rp51PMGk3bzfWu5oayNEuYnw=="
+  "resolved" "https://registry.npmjs.org/rollup/-/rollup-2.79.1.tgz"
+  "version" "2.79.1"
   optionalDependencies:
     "fsevents" "~2.3.2"
 
@@ -477,6 +565,19 @@
   "resolved" "https://registry.npmjs.org/source-map-js/-/source-map-js-1.0.2.tgz"
   "version" "1.0.2"
 
+"source-map-support@~0.5.20":
+  "integrity" "sha512-uBHU3L3czsIyYXKX88fdrGovxdSCoTGDRZ6SYXtSRxLZUzHg5P/66Ht6uoUlHu9EZod+inXhKo3qQgwXUT/y1w=="
+  "resolved" "https://registry.npmjs.org/source-map-support/-/source-map-support-0.5.21.tgz"
+  "version" "0.5.21"
+  dependencies:
+    "buffer-from" "^1.0.0"
+    "source-map" "^0.6.0"
+
+"source-map@^0.6.0":
+  "integrity" "sha512-UjgapumWlbMhkBgzT7Ykc5YXUT46F0iKu8SGXq0bcwP5dz/h0Plj6enJqjz1Zbq2l5WaqYnrVbwWOWMyF3F47g=="
+  "resolved" "https://registry.npmjs.org/source-map/-/source-map-0.6.1.tgz"
+  "version" "0.6.1"
+
 "stats.js@^0.17.0":
   "integrity" "sha512-hNKz8phvYLPEcRkeG1rsGmV5ChMjKDAWU7/OJJdDErPBNChQXxCo3WZurGpnWc6gZhAzEPFad1aVgyOANH1sMw=="
   "resolved" "https://registry.npmjs.org/stats.js/-/stats.js-0.17.0.tgz"
@@ -486,6 +587,16 @@
   "integrity" "sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w=="
   "resolved" "https://registry.npmjs.org/supports-preserve-symlinks-flag/-/supports-preserve-symlinks-flag-1.0.0.tgz"
   "version" "1.0.0"
+
+"terser@^5.4.0":
+  "integrity" "sha512-qcwfg4+RZa3YvlFh0qjifnzBHjKGNbtDo9yivMqMFDy9Q6FSaQWSB/j1xKhsoUFJIqDOM3TsN6D5xbrMrFcHbg=="
+  "resolved" "https://registry.npmjs.org/terser/-/terser-5.16.5.tgz"
+  "version" "5.16.5"
+  dependencies:
+    "@jridgewell/source-map" "^0.3.2"
+    "acorn" "^8.5.0"
+    "commander" "^2.20.0"
+    "source-map-support" "~0.5.20"
 
 "three@^0.148.0", "three@>= 0.125.0 < 0.149.0":
   "integrity" "sha512-8uzVV+qhTPi0bOFs/3te3RW6hb3urL8jYEl6irjCWo/l6sr8MPNMcClFev/MMYeIxr0gmDcoXTy/8LXh/LXkfw=="
@@ -507,6 +618,11 @@
   "resolved" "https://registry.npmjs.org/tweakpane/-/tweakpane-3.1.0.tgz"
   "version" "3.1.0"
 
+"uuid@^9.0.0":
+  "integrity" "sha512-MXcSTerfPa4uqyzStbRoTgt5XIe3x5+42+q1sDuy3R5MDk66URdLMOZe5aPX/SQd+kuYAh0FdP/pO28IkQyTeg=="
+  "resolved" "https://registry.npmjs.org/uuid/-/uuid-9.0.0.tgz"
+  "version" "9.0.0"
+
 "vite-plugin-glsl@^0.2.0":
   "integrity" "sha512-Sn8ceQHdL3zy8y3MrAKYc28/+R02H/DE/IOqoP7h/DfGypCvOXaU7Cm4pVPU+JMc0LYrK4SCaGrLa/gnCrqwIg=="
   "resolved" "https://registry.npmjs.org/vite-plugin-glsl/-/vite-plugin-glsl-0.2.0.tgz"
@@ -515,7 +631,22 @@
     "@rollup/pluginutils" "^4.2.1"
     "tslib" "^2.4.0"
 
-"vite@^3.0.0":
+"vite-plugin-top-level-await@^1.2.4":
+  "integrity" "sha512-ABHJipy/R31F/3bWnPBYIFUKVXr+Ox6EVax5jos67QhuzZ4aQyp/F3qZhF2Qi/9pgi9vpIftTZ++wfkRn0c4gA=="
+  "resolved" "https://registry.npmjs.org/vite-plugin-top-level-await/-/vite-plugin-top-level-await-1.2.4.tgz"
+  "version" "1.2.4"
+  dependencies:
+    "@swc/core" "^1.3.10"
+    "uuid" "^9.0.0"
+
+"vite-plugin-wasm@^3.2.1":
+  "integrity" "sha512-38TPuRUHC+s62JFhZxWtNStujhsav/qFEspDa/+huGCUvn0SbXdXexnxQ+UgIs2pmBnd/xd70fm1R9jW/0qALA=="
+  "resolved" "https://registry.npmjs.org/vite-plugin-wasm/-/vite-plugin-wasm-3.2.1.tgz"
+  "version" "3.2.1"
+  dependencies:
+    "vite" "^3"
+
+"vite@^3", "vite@^3.0.0", "vite@>=2.8":
   "integrity" "sha512-M7phQhY3+fRZa0H+1WzI6N+/onruwPTBTMvaj7TzgZ0v2TE+N2sdLKxJOfOv9CckDWt5C4HmyQP81xB4dwRKzA=="
   "resolved" "https://registry.npmjs.org/vite/-/vite-3.0.0.tgz"
   "version" "3.0.0"

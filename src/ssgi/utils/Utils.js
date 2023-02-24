@@ -1,4 +1,4 @@
-﻿import { UniformsUtils } from "three"
+﻿import { UniformsUtils, Vector4 } from "three"
 import { DataTexture, FloatType, RGBAFormat, ShaderChunk, ShaderLib } from "three"
 
 export const getVisibleChildren = object => {
@@ -210,3 +210,11 @@ function loopReplacer(match, start, end, snippet) {
 }
 
 //
+
+export const splitIntoGroupsOfVector4 = arr => {
+	const result = []
+	for (let i = 0; i < arr.length; i += 4) {
+		result.push(new Vector4(...arr.slice(i, i + 4)))
+	}
+	return result
+}

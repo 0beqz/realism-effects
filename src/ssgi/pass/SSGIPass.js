@@ -160,11 +160,7 @@ export class SSGIPass extends Pass {
 					"flipSided"
 				]
 
-				for (const key of keys) {
-					console.log(key, typeof originalMaterial[key])
-
-					mrtMaterial[key] = originalMaterial[key]
-				}
+				for (const key of keys) mrtMaterial[key] = originalMaterial[key]
 
 				mrtMaterial.uniforms.normalScale.value = originalMaterial.normalScale
 

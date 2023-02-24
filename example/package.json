@@ -8,12 +8,15 @@
 		"preview": "vite preview"
 	},
 	"devDependencies": {
+		"@rollup/plugin-wasm": "^6.1.2",
 		"d3": "^7.8.2",
 		"d3-quant": "^0.5.1",
 		"lodash": "^4.17.21",
 		"poisson-disk-sampling": "^2.3.1",
 		"vite": "^3.0.0",
-		"vite-plugin-glsl": "^0.2.0"
+		"vite-plugin-glsl": "^0.2.0",
+		"vite-plugin-top-level-await": "^1.2.4",
+		"vite-plugin-wasm": "^3.2.1"
 	},
 	"dependencies": {
 		"copy-to-clipboard": "^3.3.2",
