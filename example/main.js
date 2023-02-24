@@ -5,7 +5,6 @@ import * as THREE from "three"
 import {
 	BackSide,
 	Box3,
-	Color,
 	DirectionalLight,
 	DoubleSide,
 	Mesh,
@@ -24,8 +23,8 @@ import { SSGIEffect } from "../src/SSGI/index"
 import { VelocityDepthNormalPass } from "../src/temporal-reproject/pass/VelocityDepthNormalPass"
 import { TRAAEffect } from "../src/traa/TRAAEffect"
 import { SSGIDebugGUI } from "./SSGIDebugGUI"
-import "./style.css"
 import { TRAADebugGUI } from "./TRAADebugGUI"
+import "./style.css"
 
 let traaEffect
 let traaPass
@@ -213,10 +212,7 @@ new RGBELoader().load("monbachtal_riverbank_2k.hdr", envMap => {
 	)
 
 	scene.add(sphere)
-
-	window.envMesh = envMesh
-
-	scene.background = new Color(0x4c7fe5)
+	// scene.background = new Color(0x4c7fe5)
 })
 
 const gltflLoader = new GLTFLoader()
@@ -353,6 +349,8 @@ const initScene = () => {
 
 		const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
 		composer.addPass(renderPass)
+
+		setTimeout(() => composer.removePass(renderPass))
 
 		composer.addPass(ssgiPass)
 		composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect, bloomEffect, vignetteEffect, lutEffect))

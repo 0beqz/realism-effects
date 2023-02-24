@@ -7,6 +7,7 @@ import {
 	NearestFilter,
 	RepeatWrapping,
 	sRGBEncoding,
+	Texture,
 	TextureLoader,
 	WebGLMultipleRenderTargets
 } from "three"
@@ -143,6 +144,28 @@ export class SSGIPass extends Pass {
 
 				mrtMaterial = new MRTMaterial()
 
+				const keys = [
+					"vertexTangent",
+					"vertexColors",
+					"vertexAlphas",
+					"vertexUvs",
+					"uvsVertexOnly",
+					"supportsVertexTextures",
+					"instancing",
+					"instancingColor",
+					"side",
+					"flatShading",
+					"skinning",
+					"doubleSided",
+					"flipSided"
+				]
+
+				for (const key of keys) {
+					console.log(key, typeof originalMaterial[key])
+
+					mrtMaterial[key] = originalMaterial[key]
+				}
+
 				mrtMaterial.uniforms.normalScale.value = originalMaterial.normalScale
 
 				if (c.skeleton?.boneTexture) {
@@ -157,15 +180,12 @@ export class SSGIPass extends Pass {
 				this.cachedMaterials.set(c, [originalMaterial, mrtMaterial])
 			}
 
-			const map =
-				originalMaterial.map ||
-				originalMaterial.normalMap ||
-				originalMaterial.roughnessMap ||
-				originalMaterial.metalnessMap
+			const textureKey = Object.keys(originalMaterial).find(key => {
+				const value = originalMaterial[key]
+				return value instanceof Texture && value.matrix
+			})
 
-			if (map) mrtMaterial.uniforms.uvTransform.value = map.matrix
-			mrtMaterial.side = originalMaterial.side
-
+			if (textureKey) mrtMaterial.uniforms.uvTransform.value = originalMaterial[textureKey].matrix
 			if (originalMaterial.emissive) mrtMaterial.uniforms.emissive.value = originalMaterial.emissive
 			if (originalMaterial.color) mrtMaterial.uniforms.color.value = originalMaterial.color
 

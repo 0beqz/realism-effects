@@ -44,6 +44,7 @@ export class MRTMaterial extends ShaderMaterial {
                 #include <logdepthbuf_pars_vertex>
                 #include <clipping_planes_pars_vertex>
                 #include <skinning_pars_vertex>
+                #include <color_pars_vertex>
 
                 void main() {
                     #include <uv_vertex>
@@ -64,6 +65,8 @@ export class MRTMaterial extends ShaderMaterial {
                     #include <project_vertex>
                     #include <logdepthbuf_vertex>
                     #include <clipping_planes_vertex>
+
+                    #include <color_vertex>
                     
                     #if defined( FLAT_SHADED ) || defined( USE_BUMPMAP ) || defined( TANGENTSPACE_NORMALMAP )
                         vViewPosition = - mvPosition.xyz;
@@ -85,6 +88,7 @@ export class MRTMaterial extends ShaderMaterial {
                 #include <normalmap_pars_fragment>
                 #include <logdepthbuf_pars_fragment>
                 #include <clipping_planes_pars_fragment>
+                #include <color_pars_fragment>
                 
                 layout(location = 0) out vec4 gDepth;
                 layout(location = 1) out vec4 gNormal;
@@ -148,6 +152,7 @@ export class MRTMaterial extends ShaderMaterial {
                     vec4 diffuseColor = vec4(color, metalnessFactor);
 
                     #include <map_fragment>
+                    #include <color_fragment>
 
                     gDiffuse = diffuseColor;
 

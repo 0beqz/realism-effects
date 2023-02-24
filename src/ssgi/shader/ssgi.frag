@@ -43,6 +43,9 @@ uniform float frames;
 uniform vec2 texSize;
 uniform vec2 blueNoiseRepeat;
 
+uniform vec4 bins[numBins];
+uniform vec2 envSize;
+
 #define INVALID_RAY_COORDS vec2(-1.0);
 #define EARLY_OUT_COLOR    vec4(0.0, 0.0, 0.0, 0.0)
 #define EPSILON            0.00001
@@ -202,8 +205,48 @@ void main() {
     #endif
 #endif
 
+        vec3 sample_dir;
+        float bin_pdf;
+
+        if (int(frames) % 2 == 0) {
+            // code from: http://karim.naaji.fr/environment_map_importance_sampling.html
+            int binsIndex = int(floor(float(numBins) * blueNoise.z));
+            vec4 bin = vec4(bins[binsIndex]);
+
+            float bin_width = bin.z - bin.x;
+            float bin_height = bin.w - bin.y;
+
+            // Generate a random sample from within the bin
+            vec2 uv = vec2(
+                bin_width * blueNoise.x + bin.x,
+                bin_height * blueNoise.y + bin.y);
+
+            uv /= envSize;
+
+            float phi = uv.x * 2.0 * PI;
+            float theta = uv.y * PI;
+
+            float sin_theta = sin(theta);
+
+            // Convert to cartesian coordinates
+            sample_dir = vec3(cos(phi) * sin_theta, sin(phi) * sin_theta, cos(theta));
+            sample_dir = sample_dir.xzy;
+            sample_dir.y *= -1.;
+
+            float bin_area = bin_width * bin_height;
+            float bin_pdf = (envSize.x * envSize.y) / (float(numBins) * bin_area);
+
+            sample_dir = (vec4(sample_dir, 1.) * cameraMatrixWorld).xyz;
+        }
+
         if (isDiffuseSample) {
-            l = cosineSampleHemisphere(viewNormal, blueNoise.xy);
+            if (bin_pdf == 0.0 || dot(sample_dir, viewNormal) < 0.0) {
+                l = cosineSampleHemisphere(viewNormal, blueNoise.xy);
+                bin_pdf = 1.;
+            } else {
+                l = sample_dir;
+            }
+
             h = normalize(v + l);  // half vector
 
             NoL = clamp(dot(n, l), EPSILON, ONE_MINUS_EPSILON);
@@ -216,22 +259,47 @@ void main() {
                 l, hitPos, isMissedRay, brdf);
 
             gi *= brdf;
+            gi /= bin_pdf;
 
             diffuseSamples++;
 
             diffuseGI = mix(diffuseGI, gi, 1. / diffuseSamples);
 
         } else {
+            if (bin_pdf == 0.0 || dot(sample_dir, viewNormal) < 1. - roughness) {
+                bin_pdf = 1.;
+            } else {
+                l = sample_dir;
+            }
+
+            h = normalize(v + l);  // half vector
+
+            NoL = clamp(dot(n, l), EPSILON, ONE_MINUS_EPSILON);
+            NoH = clamp(dot(n, h), EPSILON, ONE_MINUS_EPSILON);
+            LoH = clamp(dot(l, h), EPSILON, ONE_MINUS_EPSILON);
+            VoH = clamp(dot(v, h), EPSILON, ONE_MINUS_EPSILON);
+
             vec3 gi = doSample(
                 viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, NoV, NoL, NoH, LoH, VoH, blueNoise.xy,
                 l, hitPos, isMissedRay, brdf);
 
             gi *= brdf;
+            gi /= bin_pdf;
 
             specularSamples++;
 
             specularGI = mix(specularGI, gi, 1. / specularSamples);
         }
+    }
+
+    float lum = luminance(diffuseGI);
+    if (lum > maxEnvLuminance) {
+        diffuseGI *= maxEnvLuminance / lum;
+    }
+
+    lum = luminance(specularGI);
+    if (lum > maxEnvLuminance) {
+        specularGI *= maxEnvLuminance / lum;
     }
 
 #ifndef specularOnly

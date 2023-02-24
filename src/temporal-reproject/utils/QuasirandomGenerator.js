@@ -6,6 +6,7 @@ const a1 = 1.0 / g
 const a2 = 1.0 / (g * g)
 const base = 1.1127756842787055 // harmoniousNumber(7), yields better coverage compared to using 0.5
 
+// eslint-disable-next-line no-unused-vars
 const harmoniousNumber = (n = 2, value = 0, depth = 100) => {
 	if (depth === 0) return value
 
