@@ -1,4 +1,6 @@
-﻿const float g = 1.6180339887498948482;
+﻿#define PI M_PI
+
+const float g = 1.6180339887498948482;
 const float a1 = 1.0 / g;
 
 // reference: https://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/
@@ -93,6 +95,17 @@ vec2 equirectDirectionToUv(const vec3 direction) {
     return uv;
 }
 
+vec3 equirectUvToDirection(vec2 uv) {
+    // undo above adjustments
+    uv.x -= 0.5;
+    uv.y = 1.0 - uv.y;
+    // from Vector3.setFromSphericalCoords
+    float theta = uv.x * 2.0 * PI;
+    float phi = uv.y * PI;
+    float sinPhi = sin(phi);
+    return vec3(sinPhi * cos(theta), cos(phi), sinPhi * sin(theta));
+}
+
 // source: https://github.com/gkjohnson/three-gpu-pathtracer/blob/3340cc19c796a01abe0ec121930154ec3301e4f2/src/shader/shaderEnvMapSampling.js#L3
 vec3 sampleEquirectEnvMapColor(const vec3 direction, const sampler2D map, const float lod) {
     return getTexel(map, equirectDirectionToUv(direction), lod).rgb;
@@ -111,8 +124,6 @@ mat3 getBasisFromNormal(const vec3 normal) {
     vec3 ortho2 = normalize(cross(normal, ortho));
     return mat3(ortho2, ortho, normal);
 }
-
-#define PI M_PI
 
 vec3 F_Schlick(const vec3 f0, const float theta) {
     return f0 + (1. - f0) * pow(1.0 - theta, 5.);

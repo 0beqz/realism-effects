@@ -7,6 +7,7 @@ import {
 	Box3,
 	DirectionalLight,
 	DoubleSide,
+	FloatType,
 	Mesh,
 	MeshNormalMaterial,
 	ShaderMaterial,
@@ -23,8 +24,8 @@ import { SSGIEffect } from "../src/SSGI/index"
 import { VelocityDepthNormalPass } from "../src/temporal-reproject/pass/VelocityDepthNormalPass"
 import { TRAAEffect } from "../src/traa/TRAAEffect"
 import { SSGIDebugGUI } from "./SSGIDebugGUI"
-import { TRAADebugGUI } from "./TRAADebugGUI"
 import "./style.css"
+import { TRAADebugGUI } from "./TRAADebugGUI"
 
 let traaEffect
 let traaPass
@@ -164,11 +165,11 @@ pmremGenerator.compileEquirectangularShader()
 
 let sphere
 
-new RGBELoader().load("monbachtal_riverbank_2k.hdr", envMap => {
+new RGBELoader().setDataType(FloatType).load("modern_buildings_2_4k.hdr", envMap => {
 	envMap.mapping = THREE.EquirectangularReflectionMapping
 
 	scene.environment = envMap
-	// scene.background = envMap
+	scene.background = envMap
 
 	envMesh = new GroundProjectedEnv(envMap)
 	envMesh.radius = 440
@@ -211,7 +212,7 @@ new RGBELoader().load("monbachtal_riverbank_2k.hdr", envMap => {
 		})
 	)
 
-	scene.add(sphere)
+	// scene.add(sphere)
 	// scene.background = new Color(0x4c7fe5)
 })
 
@@ -276,9 +277,9 @@ const initScene = () => {
 		depthPhi: 3.5870000000000015,
 		normalPhi: 35.326000000000015,
 		roughnessPhi: 18.75,
-		envBlur: 0.53,
+		envBlur: 0.55,
 		directLightMultiplier: 1,
-		maxEnvLuminance: 5,
+		maxEnvLuminance: 50,
 		steps: 20,
 		refineSteps: 4,
 		spp: 1,

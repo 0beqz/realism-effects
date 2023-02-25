@@ -8,12 +8,12 @@ import {
 	Uniform,
 	WebGLRenderTarget
 } from "three"
+import { SVGF } from "../svgf/SVGF.js"
 import { SSGIPass } from "./pass/SSGIPass.js"
 import compose from "./shader/compose.frag"
 import denoise_compose from "./shader/denoise_compose.frag"
 import denoise_compose_functions from "./shader/denoise_compose_functions.glsl"
 import { defaultSSGIOptions } from "./SSGIOptions"
-import { SVGF } from "../svgf/SVGF.js"
 import {
 	createGlobalDisableIblIradianceUniform,
 	createGlobalDisableIblRadianceUniform,
@@ -335,20 +335,21 @@ export class SSGIEffect extends Effect {
 					let index = 0
 					let avgLum = 0
 					for (let i = 0; i < data.length; i += 4) {
-						dataArr[index++] = data[i] / 0x4000
-						dataArr[index++] = data[i + 1] / 0x4000
-						dataArr[index++] = data[i + 2] / 0x4000
-
-						avgLum += luminanceSq(...data.slice(i, i + 3))
+						avgLum += luminanceSq(
+							(dataArr[index++] = data[i]),
+							(dataArr[index++] = data[i + 1]),
+							(dataArr[index++] = data[i + 2])
+						)
 					}
 
 					avgLum /= width * height
 
-					const pow = Math.max(0, (Math.log(avgLum) - 16) / 2)
+					console.log(avgLum)
 
 					const now = performance.now()
 					dataArr = new Float32Array(dataArr)
-					let bins = calculate_bins(dataArr, width, height, 10000 * 10 ** pow, 1 * 1)
+					let bins = calculate_bins(dataArr, width, height, 10000 * avgLum, 64 ** 2)
+
 					const time = performance.now() - now
 
 					bins = splitIntoGroupsOfVector4(Array.from(bins))
@@ -356,7 +357,7 @@ export class SSGIEffect extends Effect {
 					ssgiMaterial.uniforms.bins.value = bins
 					ssgiMaterial.defines.numBins = bins.length
 
-					console.log("bins", bins.length, "time", time.toFixed(2) + " ms")
+					console.log("bins", bins, "time", time.toFixed(2) + " ms")
 
 					ssgiMaterial.needsUpdate = true
 				}

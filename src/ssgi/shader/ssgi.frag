@@ -74,8 +74,8 @@ vec2 BinarySearch(inout vec3 dir, inout vec3 hitPos);
 float fastGetViewZ(const float depth);
 float getCurvature(const vec3 worldNormal);
 vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, const vec3 worldPosition, const float metalness,
-              const float roughness, const bool isDiffuseSample, const float NoV, const float NoL, const float NoH, const float LoH,
-              const float VoH, const vec2 random, inout vec3 l, inout vec3 hitPos, out bool isMissedRay, out vec3 brdf);
+              const float roughness, const bool isDiffuseSample, const float NoV, const float NoL, const float NoH, const float LoH, const float VoH, const vec2 random, inout vec3 l,
+              inout vec3 hitPos, out bool isMissedRay, out vec3 brdf, out float pdf);
 
 void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.0);
@@ -211,42 +211,41 @@ void main() {
         float bin_pdf;
 
 #if numBins > 0
-        if (int(frames) % 2 == 0) {
-            // code from: http://karim.naaji.fr/environment_map_importance_sampling.html
-            int binsIndex = int(floor(float(numBins) * blueNoise.z));
-            vec4 bin = vec4(bins[binsIndex]);
+        // code from: http://karim.naaji.fr/environment_map_importance_sampling.html
+        int binsIndex = int(floor(float(numBins) * blueNoise.z));
+        vec4 bin = vec4(bins[binsIndex]);
 
-            float bin_width = bin.z - bin.x;
-            float bin_height = bin.w - bin.y;
+        float bin_width = bin.z - bin.x;
+        float bin_height = bin.w - bin.y;
 
-            // Generate a random sample from within the bin
-            vec2 uv = vec2(
-                bin_width * blueNoise.x + bin.x,
-                bin_height * blueNoise.y + bin.y);
+        // Generate a random sample from within the bin
+        vec2 uv = vec2(
+            bin_width * blueNoise.x + bin.x,
+            bin_height * blueNoise.y + bin.y);
 
-            uv /= envSize;
+        uv /= envSize;
 
-            float phi = uv.x * 2.0 * PI;
-            float theta = uv.y * PI;
+        float phi = uv.x * 2.0 * PI;
+        float theta = uv.y * PI;
 
-            float sin_theta = sin(theta);
+        float sin_theta = sin(theta);
 
-            // Convert to cartesian coordinates
-            sample_dir = vec3(cos(phi) * sin_theta, sin(phi) * sin_theta, cos(theta));
-            sample_dir = sample_dir.xzy;
-            sample_dir.y *= -1.;
+        sample_dir = equirectUvToDirection(uv);
+        sample_dir.xyz = sample_dir.xzy;
+        // sample_dir.z *= -1.;
+        sample_dir.x *= -1.;
+        sample_dir = normalize((vec4(sample_dir, 1.) * cameraMatrixWorld).xyz);
 
-            float bin_area = bin_width * bin_height;
-            float bin_pdf = (envSize.x * envSize.y) / (float(numBins) * bin_area);
-
-            sample_dir = (vec4(sample_dir, 1.) * cameraMatrixWorld).xyz;
-        }
+        float bin_area = bin_width * bin_height;
+        bin_pdf = (envSize.x * envSize.y) / (float(numBins) * bin_area);
 #endif
+
+        float pdf;
 
         if (isDiffuseSample) {
             if (bin_pdf == 0.0 || dot(sample_dir, viewNormal) < 0.0) {
                 l = cosineSampleHemisphere(viewNormal, blueNoise.xy);
-                bin_pdf = 1.;
+                bin_pdf = 0.;
             } else {
                 l = sample_dir;
             }
@@ -260,10 +259,10 @@ void main() {
 
             vec3 gi = doSample(
                 viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, NoV, NoL, NoH, LoH, VoH, blueNoise.xy,
-                l, hitPos, isMissedRay, brdf);
+                l, hitPos, isMissedRay, brdf, pdf);
 
             gi *= brdf;
-            gi /= bin_pdf;
+            gi /= pdf;
 
             diffuseSamples++;
 
@@ -271,7 +270,7 @@ void main() {
 
         } else {
             if (bin_pdf == 0.0 || dot(sample_dir, viewNormal) < 1. - roughness) {
-                bin_pdf = 1.;
+                bin_pdf = 0.;
             } else {
                 l = sample_dir;
             }
@@ -285,25 +284,15 @@ void main() {
 
             vec3 gi = doSample(
                 viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, NoV, NoL, NoH, LoH, VoH, blueNoise.xy,
-                l, hitPos, isMissedRay, brdf);
+                l, hitPos, isMissedRay, brdf, pdf);
 
             gi *= brdf;
-            gi /= bin_pdf;
+            gi /= pdf;
 
             specularSamples++;
 
             specularGI = mix(specularGI, gi, 1. / specularSamples);
         }
-    }
-
-    float lum = luminance(diffuseGI);
-    if (lum > maxEnvLuminance) {
-        diffuseGI *= maxEnvLuminance / lum;
-    }
-
-    lum = luminance(specularGI);
-    if (lum > maxEnvLuminance) {
-        specularGI *= maxEnvLuminance / lum;
     }
 
 #ifndef specularOnly
@@ -330,25 +319,25 @@ void main() {
 
 vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, const vec3 worldPosition, const float metalness,
               const float roughness, const bool isDiffuseSample, const float NoV, const float NoL, const float NoH, const float LoH, const float VoH, const vec2 random, inout vec3 l,
-              inout vec3 hitPos, out bool isMissedRay, out vec3 brdf) {
+              inout vec3 hitPos, out bool isMissedRay, out vec3 brdf, out float pdf) {
     float cosTheta = max(0.0, dot(viewNormal, l));
 
     if (isDiffuseSample) {
         vec3 diffuseBrdf = vec3(evalDisneyDiffuse(NoL, NoV, LoH, roughness, metalness));
-        float pdf = NoL / M_PI;
+        pdf = NoL / M_PI;
         pdf = max(EPSILON, pdf);
 
-        brdf = diffuseBrdf / pdf;
+        brdf = diffuseBrdf;
 
         brdf *= cosTheta;
 
         brdf = clamp(brdf, 0., 1000.);
     } else {
         vec3 specularBrdf = evalDisneySpecular(roughness, NoH, NoV, NoL);
-        float pdf = GGXVNDFPdf(NoH, NoV, roughness);
+        pdf = GGXVNDFPdf(NoH, NoV, roughness);
         pdf = max(EPSILON, pdf);
 
-        brdf = specularBrdf / pdf;
+        brdf = specularBrdf;
 
         brdf *= cosTheta;
 
