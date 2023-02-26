@@ -16,7 +16,7 @@ import { SSGIMaterial } from "../material/SSGIMaterial.js"
 import { BackSideDepthPass } from "./BackSideDepthPass"
 import { getVisibleChildren, keepMaterialMapUpdated } from "../utils/Utils"
 
-import blueNoiseImage from "./../../utils/blue_noise_64.png"
+import blueNoiseImage from "./../../utils/blue_noise_64_rgba.png"
 
 const backgroundColor = new Color(0)
 
@@ -117,7 +117,7 @@ export class SSGIPass extends Pass {
 		this.gBuffersRenderTarget.setSize(width, height)
 		this.backSideDepthPass.setSize(width, height)
 
-		this.fullscreenMaterial.uniforms.texSize.value.set(width, height)
+		this.fullscreenMaterial.uniforms.texSize.value.set(this.renderTarget.width, this.renderTarget.height)
 	}
 
 	dispose() {

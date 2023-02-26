@@ -219,3 +219,38 @@ vec3 cosineSampleHemisphere(const vec3 n, const vec2 u) {
 }
 
 // end: functions
+
+float equirectDirectionPdf(vec3 direction) {
+    vec2 uv = equirectDirectionToUv(direction);
+    float theta = uv.y * PI;
+    float sinTheta = sin(theta);
+    if (sinTheta == 0.0) {
+        return 0.0;
+    }
+
+    return 1.0 / (2.0 * PI * PI * sinTheta);
+}
+
+float sampleEquirectProbability(EquirectHdrInfo info, vec2 r, out vec3 direction) {
+    // sample env map cdf
+    float v = texture2D(info.marginalWeights, vec2(r.x, 0.0)).x;
+    float u = texture2D(info.conditionalWeights, vec2(r.y, v)).x;
+    vec2 uv = vec2(u, v);
+
+    vec3 derivedDirection = equirectUvToDirection(uv);
+    direction = derivedDirection;
+    vec3 color = texture2D(info.map, uv).rgb;
+
+    float totalSum = info.totalSumWhole + info.totalSumDecimal;
+    float lum = luminance(color);
+    ivec2 resolution = textureSize(info.map, 0);
+    float pdf = lum / totalSum;
+
+    return float(resolution.x * resolution.y) * pdf;
+}
+
+float misHeuristic(float a, float b) {
+    float aa = a * a;
+    float bb = b * b;
+    return aa / (aa + bb);
+}

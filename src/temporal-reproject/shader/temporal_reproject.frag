@@ -65,23 +65,32 @@ void main() {
     vec2 reprojectedUvSpecular[textureCount];
 
     vec2 reprojectedUv;
+    bool reprojectHitPoint, wasSpecularSampled;
 
 #pragma unroll_loop_start
     for (int i = 0; i < textureCount; i++) {
-        // specular
-        if (reprojectSpecular[i] && inputTexel[i].a != 0.0) {
+        reprojectHitPoint = reprojectSpecular[i] && inputTexel[i].a > 0.0;
+        wasSpecularSampled = inputTexel[i].a != -1.0;
+
+        // specular (hit point reprojection)
+        if (reprojectHitPoint) {
             reprojectedUvSpecular[i] = getReprojectedUV(uv, depth, worldPos, worldNormal, inputTexel[i].a);
         } else {
+            // init to -1 to signify that reprojection failed
             reprojectedUvSpecular[i] = vec2(-1.0);
         }
 
-        // diffuse
+        // diffuse (reprojection using velocity)
         if (reprojectedUvDiffuse.x == -10.0 && reprojectedUvSpecular[i].x < 0.0) {
             reprojectedUvDiffuse = getReprojectedUV(uv, depth, worldPos, worldNormal, 0.0);
         }
 
         // choose which UV coordinates to use for reprojecion
         reprojectedUv = reprojectedUvSpecular[i].x >= 0.0 ? reprojectedUvSpecular[i] : reprojectedUvDiffuse;
+
+        // if (wasSpecularSampled && reprojectHitPoint && reprojectedUvSpecular[i].x >= 0.0) {
+        //     reprojectedUv.x = -1.;
+        // }
 
         // check if any reprojection was successful
         if (reprojectedUv.x < 0.0) {  // invalid UV
@@ -106,7 +115,7 @@ void main() {
 #pragma unroll_loop_end
 
     vec2 deltaUv = vUv - reprojectedUv;
-    bool didMove = dot(deltaUv, deltaUv) > 0.0;
+    bool didMove = dot(deltaUv, deltaUv) >= 0.0000000001;
     float maxValue = (!fullAccumulate || didMove) ? blend : 1.0;
 
     vec3 outputColor;

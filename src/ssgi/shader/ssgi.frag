@@ -43,10 +43,15 @@ uniform float frames;
 uniform vec2 texSize;
 uniform vec2 blueNoiseRepeat;
 
-#if numBins > 0
-uniform vec4 bins[numBins];
-uniform vec2 envSize;
-#endif
+struct EquirectHdrInfo {
+    sampler2D marginalWeights;
+    sampler2D conditionalWeights;
+    sampler2D map;
+    float totalSumWhole;
+    float totalSumDecimal;
+};
+
+uniform EquirectHdrInfo envMapInfo;
 
 #define INVALID_RAY_COORDS vec2(-1.0);
 #define EARLY_OUT_COLOR    vec4(0.0, 0.0, 0.0, 0.0)
@@ -54,7 +59,8 @@ uniform vec2 envSize;
 #define ONE_MINUS_EPSILON  1.0 - EPSILON
 #define luminance(a)       dot(vec3(0.2125, 0.7154, 0.0721), a)
 
-const vec3 harmoniousNumbers321 = vec3(
+const vec4 harmoniousNumbers4321 = vec4(
+    1.1673039782614187,
     1.2207440846057596,
     1.3247179572447458,
     1.618033988749895);
@@ -65,6 +71,7 @@ float farMinusNear;
 vec2 invTexSize;
 
 #include <packing>
+#include <tonemapping_pars_fragment>
 
 // helper functions
 #include <utils>
@@ -74,8 +81,19 @@ vec2 BinarySearch(inout vec3 dir, inout vec3 hitPos);
 float fastGetViewZ(const float depth);
 float getCurvature(const vec3 worldNormal);
 vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, const vec3 worldPosition, const float metalness,
-              const float roughness, const bool isDiffuseSample, const float NoV, const float NoL, const float NoH, const float LoH, const float VoH, const vec2 random, inout vec3 l,
+              const float roughness, const bool isDiffuseSample, const bool isMisSample,
+              const float NoV, const float NoL, const float NoH, const float LoH, const float VoH, const vec2 random, inout vec3 l,
               inout vec3 hitPos, out bool isMissedRay, out vec3 brdf, out float pdf);
+
+vec3 getR3Index(float n) {
+    float base = 1.1127756842787055;
+    float g = 1.2207440846057596;
+    float a1 = 1.0 / g;
+    float a2 = 1.0 / (g * g);
+    float a3 = 1.0 / (g * g * g);
+
+    return vec3(fract(base + a1 * n), fract(base + a2 * n), fract(base + a3 * n));
+}
 
 void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.0);
@@ -151,19 +169,22 @@ void main() {
     // get the offset of this pixel's blue noise tile
     float blueNoiseTileOffset = r1(blueNoiseIndex + 1.0) * 65536.;
 
+    vec4 velocity = textureLod(velocityTexture, vUv, 0.0);
+    vec4 col = textureLod(accumulatedTexture, vUv - velocity.xy, 0.);
+
     // start taking samples
     for (int s = 0; s < spp; s++) {
         vec2 blueNoiseUv = vUv * blueNoiseRepeat;
 
         // fetch blue noise for this pixel
-        vec3 blueNoise = textureLod(blueNoiseTexture, blueNoiseUv, 0.).rgb;
+        vec4 blueNoise = textureLod(blueNoiseTexture, blueNoiseUv, 0.);
 
         // animate the blue noise depending on the frame and samples taken this frame
-        blueNoise = fract(blueNoise + harmoniousNumbers321 * (frames + float(s) + blueNoiseTileOffset));
+        blueNoise = fract(blueNoise + harmoniousNumbers4321 * (frames + float(s) + blueNoiseTileOffset));
 
         // Disney BRDF and sampling source: https://www.shadertoy.com/view/cll3R4
         // calculate GGX reflection ray
-        vec3 H = SampleGGXVNDF(V, roughness, roughness, blueNoise.x, blueNoise.y);
+        vec3 H = SampleGGXVNDF(V, roughness, roughness, blueNoise.r, blueNoise.g);
         if (H.z < 0.0) H = -H;
 
         vec3 l = normalize(reflect(-V, H));
@@ -198,7 +219,7 @@ void main() {
         specW *= invW;
 
         // if diffuse lighting should be sampled
-        bool isDiffuseSample = blueNoise.z < diffW;
+        bool isDiffuseSample = blueNoise.b < diffW;
 #else
     #ifdef diffuseOnly
         const bool isDiffuseSample = true;
@@ -207,47 +228,28 @@ void main() {
     #endif
 #endif
 
-        vec3 sample_dir;
-        float bin_pdf;
+        vec3 envMisDir = vec3(0.0);
+        float envPdf = 0.0;
 
-#if numBins > 0
-        // code from: http://karim.naaji.fr/environment_map_importance_sampling.html
-        int binsIndex = int(floor(float(numBins) * blueNoise.z));
-        vec4 bin = vec4(bins[binsIndex]);
-
-        float bin_width = bin.z - bin.x;
-        float bin_height = bin.w - bin.y;
-
-        // Generate a random sample from within the bin
-        vec2 uv = vec2(
-            bin_width * blueNoise.x + bin.x,
-            bin_height * blueNoise.y + bin.y);
-
-        uv /= envSize;
-
-        float phi = uv.x * 2.0 * PI;
-        float theta = uv.y * PI;
-
-        float sin_theta = sin(theta);
-
-        sample_dir = equirectUvToDirection(uv);
-        sample_dir.xyz = sample_dir.xzy;
-        // sample_dir.z *= -1.;
-        sample_dir.x *= -1.;
-        sample_dir = normalize((vec4(sample_dir, 1.) * cameraMatrixWorld).xyz);
-
-        float bin_area = bin_width * bin_height;
-        bin_pdf = (envSize.x * envSize.y) / (float(numBins) * bin_area);
+#ifdef importanceSampling
+        envPdf = sampleEquirectProbability(envMapInfo, blueNoise.rg, envMisDir);
+        envMisDir = normalize((vec4(envMisDir, 1.) * cameraMatrixWorld).xyz);
 #endif
 
+        bool isMisSample;
         float pdf;
 
+        float lumProbability = (1. - luminance(col.rgb)) * 2.;
+        float minDirAngle = blueNoise.a * lumProbability;
+        float dirAngle = dot(envMisDir, viewNormal);
+
         if (isDiffuseSample) {
-            if (bin_pdf == 0.0 || dot(sample_dir, viewNormal) < 0.0) {
-                l = cosineSampleHemisphere(viewNormal, blueNoise.xy);
-                bin_pdf = 0.;
+            if (envPdf == 0.0 || dirAngle < minDirAngle) {
+                l = cosineSampleHemisphere(viewNormal, blueNoise.rg);
+                envPdf = 0.;
             } else {
-                l = sample_dir;
+                l = envMisDir;
+                isMisSample = true;
             }
 
             h = normalize(v + l);  // half vector
@@ -258,21 +260,28 @@ void main() {
             VoH = clamp(dot(v, h), EPSILON, ONE_MINUS_EPSILON);
 
             vec3 gi = doSample(
-                viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, NoV, NoL, NoH, LoH, VoH, blueNoise.xy,
+                viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, isMisSample, NoV, NoL, NoH, LoH, VoH, blueNoise.rg,
                 l, hitPos, isMissedRay, brdf, pdf);
 
             gi *= brdf;
-            gi /= pdf;
+
+            if (envPdf != 0.0) gi *= misHeuristic(envPdf, pdf);
+
+            if (envPdf == 0.0)
+                gi /= pdf;
+            else
+                gi /= envPdf;
 
             diffuseSamples++;
 
             diffuseGI = mix(diffuseGI, gi, 1. / diffuseSamples);
 
         } else {
-            if (bin_pdf == 0.0 || dot(sample_dir, viewNormal) < 1. - roughness) {
-                bin_pdf = 0.;
+            if (envPdf == 0.0 || roughness < 0.025 || dirAngle < minDirAngle) {
+                envPdf = 0.;
             } else {
-                l = sample_dir;
+                l = envMisDir;
+                isMisSample = true;
             }
 
             h = normalize(v + l);  // half vector
@@ -283,11 +292,16 @@ void main() {
             VoH = clamp(dot(v, h), EPSILON, ONE_MINUS_EPSILON);
 
             vec3 gi = doSample(
-                viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, NoV, NoL, NoH, LoH, VoH, blueNoise.xy,
+                viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, isMisSample, NoV, NoL, NoH, LoH, VoH, blueNoise.rg,
                 l, hitPos, isMissedRay, brdf, pdf);
 
             gi *= brdf;
-            gi /= pdf;
+            if (envPdf != 0.0) gi *= misHeuristic(envPdf, pdf);
+
+            if (envPdf == 0.0)
+                gi /= pdf;
+            else
+                gi /= envPdf;
 
             specularSamples++;
 
@@ -301,8 +315,8 @@ void main() {
 
 #ifndef diffuseOnly
     // calculate world-space ray length used for reprojecting hit points instead of screen-space pixels in the temporal reproject pass
-    float rayLength = 0.0;
-    if (!isMissedRay && roughness < 0.25) {
+    float rayLength = specularSamples > 0.0 ? 0.0 : -1.0;
+    if (!isMissedRay && roughness < 0.5) {
         vec3 worldNormal = (vec4(viewNormal, 1.) * viewMatrix).xyz;
 
         float curvature = getCurvature(worldNormal);
@@ -318,7 +332,8 @@ void main() {
 }
 
 vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, const vec3 worldPosition, const float metalness,
-              const float roughness, const bool isDiffuseSample, const float NoV, const float NoL, const float NoH, const float LoH, const float VoH, const vec2 random, inout vec3 l,
+              const float roughness, const bool isDiffuseSample, const bool isMisSample,
+              const float NoV, const float NoL, const float NoH, const float LoH, const float VoH, const vec2 random, inout vec3 l,
               inout vec3 hitPos, out bool isMissedRay, out vec3 brdf, out float pdf) {
     float cosTheta = max(0.0, dot(viewNormal, l));
 
@@ -328,22 +343,15 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
         pdf = max(EPSILON, pdf);
 
         brdf = diffuseBrdf;
-
-        brdf *= cosTheta;
-
-        brdf = clamp(brdf, 0., 1000.);
     } else {
         vec3 specularBrdf = evalDisneySpecular(roughness, NoH, NoV, NoL);
         pdf = GGXVNDFPdf(NoH, NoV, roughness);
         pdf = max(EPSILON, pdf);
 
         brdf = specularBrdf;
-
-        brdf *= cosTheta;
-
-        // clamping it reduces most fireflies
-        brdf = clamp(brdf, 0., 50.);
     }
+
+    brdf *= cosTheta;
 
     hitPos = viewPos;
 
@@ -384,11 +392,15 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
         vec3 sampleDir = reflectedWS.xyz;
         envMapSample = sampleEquirectEnvMapColor(sampleDir, envMap, mip);
 
-        // we won't deal with calculating direct sun light from the env map as it is too noisy
-        float envLum = luminance(envMapSample);
+        float maxEnvLum = isMisSample ? maxEnvLuminance : 5.0;
 
-        if (envLum > maxEnvLuminance) {
-            envMapSample *= maxEnvLuminance / envLum;
+        if (maxEnvLum != 0.0) {
+            // we won't deal with calculating direct sun light from the env map as it is too noisy
+            float envLum = luminance(envMapSample);
+
+            if (envLum > maxEnvLum) {
+                envMapSample *= maxEnvLum / envLum;
+            }
         }
 
         return envMapSample;

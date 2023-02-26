@@ -3,6 +3,7 @@ import vertexShader from "../../utils/shader/basic.vert"
 import fragmentShader from "../shader/ssgi.frag"
 // eslint-disable-next-line camelcase
 import ssgi_utils from "../shader/ssgi_utils.glsl"
+import { EquirectHdrInfoUniform } from "../utils/EquirectHdrInfoUniform"
 
 export class SSGIMaterial extends ShaderMaterial {
 	constructor() {
@@ -20,7 +21,7 @@ export class SSGIMaterial extends ShaderMaterial {
 				blueNoiseTexture: new Uniform(null),
 				backSideDepthTexture: new Uniform(null),
 				envMap: new Uniform(null),
-				bins: new Uniform([]),
+				envMapInfo: { value: new EquirectHdrInfoUniform() },
 				envSize: new Uniform(new Vector2()),
 				projectionMatrix: new Uniform(new Matrix4()),
 				inverseProjectionMatrix: new Uniform(new Matrix4()),
@@ -50,7 +51,6 @@ export class SSGIMaterial extends ShaderMaterial {
 				refineSteps: 5,
 				spp: 1,
 				directLightMultiplier: 1,
-				numBins: 0,
 				CUBEUV_TEXEL_WIDTH: 0,
 				CUBEUV_TEXEL_HEIGHT: 0,
 				CUBEUV_MAX_MIP: 0,

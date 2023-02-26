@@ -165,18 +165,18 @@ pmremGenerator.compileEquirectangularShader()
 
 let sphere
 
-new RGBELoader().setDataType(FloatType).load("modern_buildings_2_4k.hdr", envMap => {
+new RGBELoader().setDataType(FloatType).load("chinese_garden_2k.hdr", envMap => {
 	envMap.mapping = THREE.EquirectangularReflectionMapping
 
 	scene.environment = envMap
-	scene.background = envMap
+	// scene.background = envMap
 
 	envMesh = new GroundProjectedEnv(envMap)
-	envMesh.radius = 440
+	envMesh.radius = 100
 	envMesh.height = 20
 	envMesh.scale.setScalar(100)
 	envMesh.updateMatrixWorld()
-	// scene.add(envMesh)
+	scene.add(envMesh)
 
 	sphere = new Mesh(
 		new SphereGeometry(1, 64, 64),
@@ -351,7 +351,7 @@ const initScene = () => {
 		const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
 		composer.addPass(renderPass)
 
-		setTimeout(() => composer.removePass(renderPass))
+		// setTimeout(() => composer.removePass(renderPass))
 
 		composer.addPass(ssgiPass)
 		composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect, bloomEffect, vignetteEffect, lutEffect))
