@@ -267,6 +267,8 @@ void main() {
                 NoH = clamp(dot(n, h), EPSILON, ONE_MINUS_EPSILON);
                 LoH = clamp(dot(l, h), EPSILON, ONE_MINUS_EPSILON);
                 VoH = clamp(dot(v, h), EPSILON, ONE_MINUS_EPSILON);
+            } else {
+                envPdf = 0.0;
             }
 
             vec3 gi = doSample(

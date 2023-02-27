@@ -135,26 +135,26 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec2 offset, 
 
 #pragma unroll_loop_end
 
+#ifdef useMoment
+    // moment
     if (isFirstIteration) {
         vec4 neighborMoment = textureLod(momentTexture, neighborUvNearest, 0.);
 
-        float neighborVariance = max(0.0, neighborMoment.g - neighborMoment.r * neighborMoment.r);
-        sumVariance[0] += weight[0] * weight[0] * neighborVariance;
+        neighborInputTexel[0].a = max(0.0, neighborMoment.g - neighborMoment.r * neighborMoment.r);
+        sumVariance[0] += weight[0] * weight[0] * neighborInputTexel[0].a;
 
-#if momentTextureCount > 1
-        float neighborVariance2 = max(0.0, neighborMoment.a - neighborMoment.b * neighborMoment.b);
-        sumVariance[1] += weight[1] * weight[1] * neighborVariance2;
-#endif
-    } else {
-        float neighborVariance;
-
-#pragma unroll_loop_start
-        for (int i = 0; i < momentTextureCount; i++) {
-            neighborVariance = neighborInputTexel[i].a;
-            sumVariance[i] += weight[i] * weight[i] * neighborVariance;
-        }
-#pragma unroll_loop_end
+    #if momentTextureCount > 1
+        neighborInputTexel[1].a = max(0.0, neighborMoment.a - neighborMoment.b * neighborMoment.b);
+        sumVariance[1] += weight[1] * weight[1] * neighborInputTexel[1].a;
+    #endif
     }
+
+    #pragma unroll_loop_start
+    for (int i = 0; i < momentTextureCount; i++) {
+        sumVariance[i] += weight[i] * weight[i] * neighborInputTexel[i].a;
+    }
+    #pragma unroll_loop_end
+#endif
 }
 
 void main() {
@@ -197,22 +197,23 @@ void main() {
 #pragma unroll_loop_end
 
     // moment
+#ifdef useMoment
     if (isFirstIteration) {
         vec4 moment = textureLod(momentTexture, vUv, 0.);
-        sumVariance[0] = max(0.0, moment.g - moment.r * moment.r);
+        texel[0].a = max(0.0, moment.g - moment.r * moment.r);
 
-#if momentTextureCount > 1
-        sumVariance[1] = max(0.0, moment.a - moment.b * moment.b);
-#endif
-    } else {
-#pragma unroll_loop_start
-        for (int i = 0; i < momentTextureCount; i++) {
-            sumVariance[i] = texel[i].a;
-
-            colorPhi[i] = denoise[i] * sqrt(0.00005 + sumVariance[i]);
-        }
-#pragma unroll_loop_end
+    #if momentTextureCount > 1
+        texel[1].a = max(0.0, moment.a - moment.b * moment.b);
+    #endif
     }
+
+    #pragma unroll_loop_start
+    for (int i = 0; i < momentTextureCount; i++) {
+        sumVariance[i] = texel[i].a;
+        colorPhi[i] = denoise[i] * sqrt(0.00005 + sumVariance[i]);
+    }
+    #pragma unroll_loop_end
+#endif
 
     vec2 pixelStepOffset = invTexSize * stepSize;
     vec2 bilinearOffset = invTexSize * vec2(horizontal ? 0.5 : -0.5, blurHorizontal ? 0.5 : -0.5);

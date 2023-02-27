@@ -245,13 +245,10 @@ const workerOnMessage = ({ data: { width, height, isFloatType, flipY, data } }) 
 	}
 
 	if (!isFloatType) {
-		const newData = new Float32Array(data.length)
 		// eslint-disable-next-line guard-for-in
 		for (const i in data) {
-			newData[i] = fromHalfFloat(data[i])
+			data[i] = fromHalfFloat(data[i])
 		}
-
-		data = newData
 	}
 
 	const marginalDataArray = new Float32Array(height)

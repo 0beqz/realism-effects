@@ -18,6 +18,7 @@ const defaultDenoisePassOptions = {
 }
 
 const useEdgeStoppingTypes = [
+	["moment", "", "useMoment"],
 	["depth", "depthPhi", "useDepth"],
 	["normal", "normalPhi", "useNormal"],
 	["roughness", "roughnessPhi", "useRoughness"]
@@ -141,7 +142,8 @@ export class DenoisePass extends Pass {
 
 	keepEdgeStoppingDefinesUpdated() {
 		for (const [name, phi, define] of useEdgeStoppingTypes) {
-			const useEdgeStoppingType = this.options[name] && this.fullscreenMaterial.uniforms[phi].value > 0.001
+			const useEdgeStoppingType =
+				this.options[name] && (phi === "" || this.fullscreenMaterial.uniforms[phi]?.value > 0.001)
 
 			if (useEdgeStoppingType !== define in this.fullscreenMaterial.defines) {
 				useEdgeStoppingType
