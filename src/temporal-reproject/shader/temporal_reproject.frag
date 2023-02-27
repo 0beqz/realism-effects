@@ -21,6 +21,8 @@ uniform mat4 prevCameraMatrixWorld;
 uniform vec3 cameraPos;
 uniform vec3 prevCameraPos;
 
+uniform bool reset;
+
 #define EPSILON 0.00001
 
 #include <packing>
@@ -125,8 +127,9 @@ void main() {
     for (int i = 0; i < textureCount; i++) {
         temporalReprojectMix = blend;
 
-        accumulatedTexel[i].a = max(accumulatedTexel[i].a, 1.0);
-        if (!constantBlend) temporalReprojectMix = min(1. - 1. / accumulatedTexel[i].a, maxValue);
+        if (reset) accumulatedTexel[i].a = 0.0;
+
+        if (!constantBlend) temporalReprojectMix = min(1. - 1. / (accumulatedTexel[i].a + 1.0), maxValue);
 
         outputColor = mix(inputTexel[i].rgb, accumulatedTexel[i].rgb, temporalReprojectMix);
 

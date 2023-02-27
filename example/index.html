@@ -1,18 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<link rel="icon" type="image/svg+xml" href="favicon.svg" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>TRAA - three.js</title>
-	</head>
-	<body>
-		<canvas class="webgl"></canvas>
-		<div id="loading"></div>
-		<div
-			id="orbitControlsDomElem"
-			style="position: absolute; width: 100vw; height: 100vh; opacity: 0; cursor: grab"
-		></div>
-		<script type="module" src="/main.js"></script>
-	</body>
+
+<head>
+	<meta charset="UTF-8" />
+	<link rel="icon" type="image/svg+xml" href="favicon.svg" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>TRAA - three.js</title>
+</head>
+
+<body background="black">
+	<canvas class="webgl"></canvas>
+	<div id="loading"></div>
+	<div id="orbitControlsDomElem" style="position: absolute; width: 100vw; height: 100vh; opacity: 0; cursor: grab">
+	</div>
+	<div id="info" style="display: none;">
+		SSGI by <a href="https://twitter.com/0beqz" target="_blank" rel="noopener">0beqz</a>. Open the menu with TAB.
+		Toggle default three.js view with
+		Q. Drag and drop GLTF models to load
+		them.
+	</div>
+	<script type="module" src="/main.js"></script>
+</body>
+
 </html>

@@ -10,11 +10,7 @@ uniform float jitter;
 uniform float deltaTime;
 uniform float frames;
 
-const float gr = 1.618033988749895;
-
-const vec2 blueNoiseSeed = vec2(
-    1. / gr,
-    1. / pow(gr, 1. / 2.));
+const vec2 blueNoiseSeed = vec2(1.618033988749895, 1.3247179572447458);
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
     vec4 velocity = textureLod(velocityTexture, vUv, 0.0);

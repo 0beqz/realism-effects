@@ -38,7 +38,7 @@ export class DenoisePass extends Pass {
 		options = { ...defaultDenoisePassOptions, ...options }
 
 		let definitions = ""
-		let finalOutputShader = ""
+		const finalOutputShader = ""
 		let outputShader = ""
 
 		this.textures = textures
@@ -46,12 +46,6 @@ export class DenoisePass extends Pass {
 		for (let i = 0; i < this.textures.length; i++) {
 			definitions += /* glsl */ `layout(location = ${i}) out vec4 gTexture${i};\n`
 			definitions += /* glsl */ `uniform sampler2D texture${i};\n`
-
-			if (i === 0) {
-				finalOutputShader += /* glsl */ `gTexture${i} = vec4(finalOutputColor, 1.0);\n`
-			} else {
-				finalOutputShader += /* glsl */ `gTexture${i} = vec4(1.0);\n`
-			}
 
 			outputShader += /* glsl */ `gTexture${i} = vec4(denoisedColor[${i}], sumVariance[${i}]);\n`
 		}
@@ -136,6 +130,8 @@ export class DenoisePass extends Pass {
 	}
 
 	dispose() {
+		super.dispose()
+
 		this.renderTargetA.dispose()
 		this.renderTargetB.dispose()
 	}

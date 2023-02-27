@@ -20,9 +20,6 @@ export class SSGIMaterial extends ShaderMaterial {
 				velocityTexture: new Uniform(null),
 				blueNoiseTexture: new Uniform(null),
 				backSideDepthTexture: new Uniform(null),
-				envMap: new Uniform(null),
-				envMapInfo: { value: new EquirectHdrInfoUniform() },
-				envSize: new Uniform(new Vector2()),
 				projectionMatrix: new Uniform(new Matrix4()),
 				inverseProjectionMatrix: new Uniform(new Matrix4()),
 				cameraMatrixWorld: new Uniform(new Matrix4()),
@@ -37,12 +34,12 @@ export class SSGIMaterial extends ShaderMaterial {
 				maxRoughness: new Uniform(0),
 				maxEnvMapMipLevel: new Uniform(0),
 				maxEnvLuminance: new Uniform(0),
+				envMapInfo: { value: new EquirectHdrInfoUniform() },
 				envMapPosition: new Uniform(new Vector3()),
 				envMapSize: new Uniform(new Vector3()),
 				viewMatrix: new Uniform(new Matrix4()),
 				texSize: new Uniform(new Vector2()),
 				blueNoiseRepeat: new Uniform(new Vector2()),
-				envMapSize: new Uniform(new Vector3()),
 				cameraPos: new Uniform(new Vector3())
 			},
 

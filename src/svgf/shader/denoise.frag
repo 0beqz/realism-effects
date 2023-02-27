@@ -148,13 +148,17 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec2 offset, 
         sumVariance[1] += weight[1] * weight[1] * neighborInputTexel[1].a;
     #endif
     }
+#endif
 
-    #pragma unroll_loop_start
+#pragma unroll_loop_start
     for (int i = 0; i < momentTextureCount; i++) {
+#ifndef useMoment
+        if (isFirstIteration) neighborInputTexel[i].a = 1.0;
+#endif
+
         sumVariance[i] += weight[i] * weight[i] * neighborInputTexel[i].a;
     }
-    #pragma unroll_loop_end
-#endif
+#pragma unroll_loop_end
 }
 
 void main() {
@@ -206,14 +210,18 @@ void main() {
         texel[1].a = max(0.0, moment.a - moment.b * moment.b);
     #endif
     }
-
-    #pragma unroll_loop_start
-    for (int i = 0; i < momentTextureCount; i++) {
-        sumVariance[i] = texel[i].a;
-        colorPhi[i] = denoise[i] * sqrt(0.00005 + sumVariance[i]);
-    }
-    #pragma unroll_loop_end
 #endif
+
+#pragma unroll_loop_start
+    for (int i = 0; i < momentTextureCount; i++) {
+#ifndef useMoment
+        if (isFirstIteration) texel[i].a = 1.0;
+#endif
+
+        sumVariance[i] = texel[i].a;
+        colorPhi[i] = denoise[i] * sqrt(0.0001 + sumVariance[i]);
+    }
+#pragma unroll_loop_end
 
     vec2 pixelStepOffset = invTexSize * stepSize;
     vec2 bilinearOffset = invTexSize * vec2(horizontal ? 0.5 : -0.5, blurHorizontal ? 0.5 : -0.5);
@@ -253,12 +261,7 @@ void main() {
     }
 
     if (isLastIteration) {
-        vec3 finalOutputColor = denoisedColor[0];
-
 #include <customComposeShader>
-#include <finalOutputShader>
-
-        return;
     }
 
 #include <outputShader>

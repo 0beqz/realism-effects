@@ -172,6 +172,7 @@ export class SSGIEffect extends Effect {
 
 		const ssgiPassFullscreenMaterialUniforms = this.ssgiPass.fullscreenMaterial.uniforms
 		const ssgiPassFullscreenMaterialUniformsKeys = Object.keys(ssgiPassFullscreenMaterialUniforms)
+		const temporalReprojectPass = this.svgf.svgfTemporalReprojectPass
 
 		for (const key of Object.keys(options)) {
 			Object.defineProperty(this, key, {
@@ -184,10 +185,7 @@ export class SSGIEffect extends Effect {
 					options[key] = value
 
 					switch (key) {
-						case "resolutionScale":
-							this.setSize(this.lastSize.width, this.lastSize.height)
-							break
-
+						// denoiser
 						case "denoiseIterations":
 							this.svgf.denoisePass.iterations = value
 							break
@@ -207,12 +205,21 @@ export class SSGIEffect extends Effect {
 							this.svgf.denoisePass.fullscreenMaterial.uniforms[key].value = value
 							break
 
+							// SSGI
+
+						case "resolutionScale":
+							this.setSize(this.lastSize.width, this.lastSize.height)
+							temporalReprojectPass.reset()
+							break
+
 						// defines
 						case "steps":
 						case "refineSteps":
 						case "spp":
 							this.ssgiPass.fullscreenMaterial.defines[key] = parseInt(value)
 							this.ssgiPass.fullscreenMaterial.needsUpdate = needsUpdate
+							temporalReprojectPass.reset()
+
 							break
 
 						case "importanceSampling":
@@ -225,27 +232,26 @@ export class SSGIEffect extends Effect {
 							}
 
 							this.ssgiPass.fullscreenMaterial.needsUpdate = needsUpdate
-							break
+							temporalReprojectPass.reset()
 
-						case "correctionRadius":
-							this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.defines[key] = Math.round(value)
-
-							this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.needsUpdate = needsUpdate
 							break
 
 						case "blend":
-						case "correction":
 							this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.uniforms[key].value = value
+							temporalReprojectPass.reset()
 							break
 
 						case "distance":
 							ssgiPassFullscreenMaterialUniforms.rayDistance.value = value
+							temporalReprojectPass.reset()
+
 							break
 
 						// must be a uniform
 						default:
 							if (ssgiPassFullscreenMaterialUniformsKeys.includes(key)) {
 								ssgiPassFullscreenMaterialUniforms[key].value = value
+								temporalReprojectPass.reset()
 							}
 					}
 				}
@@ -303,10 +309,8 @@ export class SSGIEffect extends Effect {
 	keepEnvMapUpdated() {
 		const ssgiMaterial = this.ssgiPass.fullscreenMaterial
 
-		if (ssgiMaterial.uniforms.envMap.value !== this._scene.environment) {
+		if (ssgiMaterial.uniforms.envMapInfo.value.mapUuid !== this._scene.environment.uuid) {
 			if (this._scene.environment?.mapping === EquirectangularReflectionMapping) {
-				ssgiMaterial.uniforms.envMap.value = this._scene.environment
-
 				if (!this._scene.environment.generateMipmaps) {
 					this._scene.environment.generateMipmaps = true
 					this._scene.environment.minFilter = LinearMipMapLinearFilter
@@ -317,20 +321,23 @@ export class SSGIEffect extends Effect {
 				const maxEnvMapMipLevel = getMaxMipLevel(this._scene.environment)
 				ssgiMaterial.uniforms.maxEnvMapMipLevel.value = maxEnvMapMipLevel
 
-				const { width, height } = this._scene.environment.image
-				ssgiMaterial.uniforms.envSize.value.set(width, height)
-
 				ssgiMaterial.defines.USE_ENVMAP = ""
+				delete ssgiMaterial.defines.importanceSampling
 
-				ssgiMaterial.uniforms.envMapInfo.value.updateFrom(this._scene.environment).then(() => {
-					ssgiMaterial.defines.importanceSampling = ""
-					ssgiMaterial.needsUpdate = true
-				})
+				if (this.importanceSampling) {
+					ssgiMaterial.uniforms.envMapInfo.value.updateFrom(this._scene.environment).then(() => {
+						ssgiMaterial.defines.importanceSampling = ""
+						ssgiMaterial.needsUpdate = true
+					})
+				} else {
+					ssgiMaterial.uniforms.envMapInfo.value.map = this._scene.environment
+				}
 			} else {
-				ssgiMaterial.uniforms.envMap.value = null
 				delete ssgiMaterial.defines.USE_ENVMAP
 				delete ssgiMaterial.defines.importanceSampling
 			}
+
+			this.svgf.svgfTemporalReprojectPass.reset()
 
 			ssgiMaterial.needsUpdate = true
 		}

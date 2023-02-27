@@ -1,6 +1,6 @@
 // source: https://github.com/gkjohnson/three-gpu-pathtracer/blob/main/src/uniforms/EquirectHdrInfoUniform.js
 
-import { DataTexture, FloatType, LinearFilter, RedFormat, RepeatWrapping, RGBAFormat } from "three"
+import { DataTexture, FloatType, LinearFilter, RedFormat, RepeatWrapping, RGBAFormat, Vector2 } from "three"
 
 const workerOnMessage = ({ data: { width, height, isFloatType, flipY, data } }) => {
 	// from: https://github.com/mrdoob/three.js/blob/dev/src/extras/DataUtils.js
@@ -308,6 +308,8 @@ export class EquirectHdrInfoUniform {
 		// storage of floating values in structs
 		this.totalSumWhole = 1
 		this.totalSumDecimal = 0
+
+		this.size = new Vector2()
 	}
 
 	dispose() {
@@ -317,11 +319,16 @@ export class EquirectHdrInfoUniform {
 	}
 
 	updateFrom(map) {
+		this.mapUuid = map.uuid
+
+		map = map.clone()
+		const { width, height, data } = map.image
+		const { type } = map
+
+		this.size.set(width, height)
+
 		return new Promise(resolve => {
 			this.worker?.terminate()
-
-			const { width, height, data } = map.image
-			const { type } = map
 
 			this.worker = new Worker(workerUrl)
 
@@ -347,6 +354,7 @@ export class EquirectHdrInfoUniform {
 				}
 
 				this.map = map
+
 				this.worker = null
 
 				resolve()

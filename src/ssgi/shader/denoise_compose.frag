@@ -53,23 +53,23 @@ vec3 diffuseComponent = diffuse * (1. - metalness) * (1. - F) * diffuseLightingC
 vec3 specularLightingColor = denoisedColor[1];
 vec3 specularComponent = specularLightingColor * F;
 
-finalOutputColor = diffuseComponent + specularComponent;
+denoisedColor[0] = diffuseComponent + specularComponent;
 #endif
 
 #ifdef ssdgi
 vec3 diffuseLightingColor = denoisedColor[0];
 vec3 diffuseComponent = diffuse * (1. - metalness) * (1. - F) * diffuseLightingColor;
 
-finalOutputColor = diffuseComponent;
+denoisedColor[0] = diffuseComponent;
 #endif
 
 #ifdef ssr
 vec3 specularLightingColor = denoisedColor[0];
 vec3 specularComponent = specularLightingColor * F;
 
-finalOutputColor = specularComponent;
+denoisedColor[0] = specularComponent;
 #endif
 
 #ifdef useDirectLight
-finalOutputColor += directLight;
+denoisedColor[0] += directLight;
 #endif

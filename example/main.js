@@ -2,7 +2,7 @@ import dragDrop from "drag-drop"
 import * as POSTPROCESSING from "postprocessing"
 import Stats from "stats.js"
 import * as THREE from "three"
-import { Box3, DirectionalLight, DoubleSide, FloatType, MeshNormalMaterial, Vector3 } from "three"
+import { Box3, Clock, DirectionalLight, DoubleSide, FloatType, MeshNormalMaterial, Vector3 } from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
@@ -145,12 +145,14 @@ light.shadow.camera.top = s
 
 const stats = new Stats()
 stats.showPanel(0)
+stats.dom.style.top = "initial"
+stats.dom.style.bottom = "0"
 document.body.appendChild(stats.dom)
+
+const infoEl = document.querySelector("#info")
 
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
 pmremGenerator.compileEquirectangularShader()
-
-let sphere
 
 const rgbeLoader = new RGBELoader().setDataType(FloatType)
 
@@ -160,7 +162,7 @@ const initEnvMap = envMap => {
 	envMap.mapping = THREE.EquirectangularReflectionMapping
 
 	scene.environment = envMap
-	// scene.background = envMap
+	scene.background = envMap
 
 	envMesh?.removeFromParent()
 	envMesh?.material.dispose()
@@ -174,42 +176,18 @@ const initEnvMap = envMap => {
 	scene.add(envMesh)
 }
 
-rgbeLoader.load("chinese_garden_2k.hdr", initEnvMap)
+const environments = [
+	"cave_wall",
+	"chinese_garden",
+	"crystal_falls",
+	"future_parking",
+	"quarry_02",
+	"snowy_field",
+	"spruit_sunrise",
+	"vintage_measuring_lab"
+]
 
-// const sphere = new Mesh(
-// 	new SphereGeometry(1, 64, 64),
-// 	new ShaderMaterial({
-// 		vertexShader: /* glsl */ `
-// 		varying vec3 pos;
-
-// 		void main() {
-// 			vec4 modelViewPosition = modelViewMatrix * vec4(position, 1.0);
-// 			gl_Position = projectionMatrix * modelViewPosition;
-
-// 			vec4 p = inverse(modelViewMatrix) * modelViewPosition;
-
-// 			pos = (p.xyz + 0.5) / 1.;
-// 		}
-// 		`,
-// 		fragmentShader: /* glsl */ `
-// 		varying vec3 pos;
-
-// 		void main() {
-// 			vec3 a = vec3(230., 156., 87.) / 255.;
-// 			vec3 b = vec3(53., 100., 230.) / 255.;
-
-// 			vec3 col = mix(a, b, pos.y);
-
-// 			gl_FragColor = vec4(col, 1.0);
-// 		}
-// 		`,
-// 		side: BackSide,
-// 		depthTest: false,
-// 		depthWrite: false,
-// 		fog: false
-// 	})
-// )
-// scene.add(sphere)
+rgbeLoader.load("hdr/chinese_garden_1k.hdr", initEnvMap)
 
 const gltflLoader = new GLTFLoader()
 
@@ -272,7 +250,7 @@ const initScene = () => {
 		depthPhi: 3.5870000000000015,
 		normalPhi: 35.326000000000015,
 		roughnessPhi: 18.75,
-		envBlur: 0.55,
+		envBlur: 0.42,
 		directLightMultiplier: 1,
 		maxEnvLuminance: 30,
 		steps: 20,
@@ -318,18 +296,7 @@ const initScene = () => {
 
 	sceneFolder.addInput(light, "intensity", { min: 0, max: 10, step: 0.1 }).on("change", refreshLighting)
 
-	const envParams = { Environment: "chinese_garden_2k" }
-
-	const environments = [
-		"chinese_garden_2k",
-		"colosseum_2k",
-		"garden_nook_2k",
-		"piazza_martin_lutero_2k",
-		"pretville_street_2k",
-		"quarry_02_4k",
-		"studio_garden_2k",
-		"tears_of_steel_bridge_2k"
-	]
+	const envParams = { Environment: "chinese_garden" }
 
 	const environmentsObject = {}
 
@@ -341,7 +308,7 @@ const initScene = () => {
 			options: environmentsObject
 		})
 		.on("change", ev => {
-			rgbeLoader.load(ev.value + ".hdr", initEnvMap)
+			rgbeLoader.load("hdr/" + ev.value + "_1k.hdr", initEnvMap)
 		})
 
 	const bloomEffect = new POSTPROCESSING.BloomEffect({
@@ -395,35 +362,26 @@ const initScene = () => {
 
 		pane.element.style.display = display
 		gui2.pane.element.style.display = display
-		// stats.dom.style.display = display
+		stats.dom.style.display = display
+		infoEl.style.display = "block"
 	})
 }
 
-let mX = 0
-
-document.body.addEventListener("mousemove", ev => {
-	mX = (window.innerHeight - ev.clientY) / window.innerHeight
-})
+const clock = new Clock()
 
 const loop = () => {
-	if (stats) stats.begin()
+	if (stats?.dom.style.display !== "none") stats.begin()
+
+	const dt = clock.getDelta()
 
 	if (mixer) {
-		for (const ac of mixer._actions) {
-			ac.time = maxAnimDuration * mX
-		}
-		mixer.update(0)
+		mixer.update(dt)
 		lastScene.updateMatrixWorld()
 		refreshLighting()
 	}
 
 	controls.update()
 	camera.updateMatrixWorld()
-
-	if (sphere) {
-		sphere.position.copy(camera.position)
-		sphere.updateMatrixWorld()
-	}
 
 	if (guiParams.Method === "three.js AA") {
 		renderer.render(scene, camera)
@@ -432,11 +390,9 @@ const loop = () => {
 		composer.render()
 	}
 
-	if (stats) stats.end()
+	if (stats?.dom.style.display !== "none") stats.end()
 	window.requestAnimationFrame(loop)
 }
-
-// controls.autoRotate = true
 
 // event handlers
 window.addEventListener("resize", () => {
@@ -444,8 +400,7 @@ window.addEventListener("resize", () => {
 	camera.updateProjectionMatrix()
 
 	renderer.setSize(window.innerWidth, window.innerHeight)
-	traaEffect?.setSize(window.innerWidth, window.innerHeight)
-	ssgiEffect?.setSize(window.innerWidth, window.innerHeight)
+	composer.setSize(window.innerWidth, window.innerHeight)
 })
 
 // source: https://stackoverflow.com/a/2117523/7626841
@@ -491,6 +446,7 @@ document.addEventListener("keydown", ev => {
 		pane.element.style.display = display
 		gui2.pane.element.style.display = display
 		stats.dom.style.display = display
+		infoEl.style.display = display
 	}
 
 	if (ev.code === "ArrowLeft") {
@@ -549,8 +505,6 @@ dragDrop("body", files => {
 
 	reader.readAsArrayBuffer(file)
 })
-
-let maxAnimDuration = 0
 
 const setupAsset = asset => {
 	scene.add(asset.scene)
@@ -653,7 +607,6 @@ const setupAsset = asset => {
 		mixer = new THREE.AnimationMixer(asset.scene)
 
 		for (const clip of clips) {
-			maxAnimDuration = Math.max(clip.duration)
 			const action = mixer.clipAction(clip)
 
 			if (action) action.play()
@@ -666,7 +619,7 @@ const setupAsset = asset => {
 	const height = bb.max.y - bb.min.y
 	const width = Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z)
 	const targetHeight = 15
-	const targetWidth = 45 * 2
+	const targetWidth = 45
 
 	const scaleWidth = targetWidth / width
 	const scaleHeight = targetHeight / height

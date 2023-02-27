@@ -59,6 +59,7 @@ export class TemporalReprojectMaterial extends ShaderMaterial {
 				blend: new Uniform(0.9),
 				constantBlend: new Uniform(false),
 				fullAccumulate: new Uniform(false),
+				reset: new Uniform(false),
 				invTexSize: new Uniform(new Vector2()),
 				projectionMatrix: new Uniform(new Matrix4()),
 				projectionMatrixInverse: new Uniform(new Matrix4()),

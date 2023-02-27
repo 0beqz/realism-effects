@@ -9,6 +9,7 @@ body,
 html {
 	overflow: hidden;
 	background: black;
+	font-family: "Poppins", sans-serif;
 }
 
 .webgl {
@@ -35,7 +36,24 @@ html {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	font-family: "Poppins", sans-serif;
 	/* background: url("preview.webp"); */
 	text-shadow: 0px 0px 32px rgba(0, 0, 0, 0.5);
+}
+
+#info {
+	font-family: monospace;
+	text-shadow: 0px 0px 6px rgba(0, 0, 0, 0.15);
+	position: absolute;
+	left: 50%;
+	top: 24px;
+	transform: translateX(-50%);
+	color: white;
+	pointer-events: none;
+	user-select: none;
+}
+
+a {
+	color: #1da1f2;
+	pointer-events: all;
+	text-decoration: none;
 }

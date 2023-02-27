@@ -25,6 +25,8 @@ export class BackSideDepthPass extends Pass {
 	}
 
 	dispose() {
+		super.dispose()
+
 		this.renderTarget.dispose()
 	}
 

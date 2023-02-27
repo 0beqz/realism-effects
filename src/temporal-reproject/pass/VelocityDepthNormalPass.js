@@ -102,6 +102,8 @@ export class VelocityDepthNormalPass extends Pass {
 	}
 
 	dispose() {
+		super.dispose()
+
 		this.renderTarget.dispose()
 	}
 

@@ -110,6 +110,8 @@ export class TemporalReprojectPass extends Pass {
 	}
 
 	dispose() {
+		super.dispose()
+
 		this.renderTarget.dispose()
 		this.copyPass.dispose()
 		this.fullscreenMaterial.dispose()
@@ -126,9 +128,14 @@ export class TemporalReprojectPass extends Pass {
 		return this.renderTarget.texture[0]
 	}
 
+	reset() {
+		this.fullscreenMaterial.uniforms.reset.value = true
+	}
+
 	render(renderer) {
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)
+		this.fullscreenMaterial.uniforms.reset.value = false
 
 		// save the last depth and normal buffers
 		this.copyPass.fullscreenMaterial.uniforms.inputTexture0.value = this.fullscreenMaterial.uniforms.depthTexture.value

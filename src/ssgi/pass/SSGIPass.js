@@ -121,9 +121,13 @@ export class SSGIPass extends Pass {
 	}
 
 	dispose() {
+		super.dispose()
+
 		this.renderTarget.dispose()
 		this.gBuffersRenderTarget.dispose()
 		this.backSideDepthPass.dispose()
+
+		this.fullscreenMaterial.dispose()
 
 		this.normalTexture = null
 		this.depthTexture = null

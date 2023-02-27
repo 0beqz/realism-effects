@@ -4,13 +4,13 @@
 
 const float g = 1.6180339887498948482;
 const float a1 = 1.0 / g;
+const float a2 = 1.0 / (g * g);
 
 // reference: https://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/
 float r1(float n) {
     // 7th harmonious number
     return fract(1.1127756842787055 + a1 * n);
 }
-
 // source: https://iquilezles.org/articles/texture/
 vec4 getTexel(const sampler2D tex, vec2 p, const float mip) {
     p = p / invTexSize + 0.5;
@@ -245,14 +245,69 @@ float sampleEquirectProbability(EquirectHdrInfo info, vec2 r, out vec3 direction
 
     float totalSum = info.totalSumWhole + info.totalSumDecimal;
     float lum = luminance(color);
-    ivec2 resolution = textureSize(info.map, 0);
     float pdf = lum / totalSum;
 
-    return float(resolution.x * resolution.y) * pdf;
+    return info.size.x * info.size.y * pdf;
 }
 
 float misHeuristic(float a, float b) {
     float aa = a * a;
     float bb = b * b;
     return aa / (aa + bb);
+}
+
+// source: https://www.shadertoy.com/view/wltcRS
+
+// internal RNG state
+uvec4 s0, s1;
+ivec2 pixel;
+
+void rng_initialize(vec2 p, int frame) {
+    pixel = ivec2(p);
+
+    // white noise seed
+    s0 = uvec4(p, uint(frame), uint(p.x) + uint(p.y));
+
+    // blue noise seed
+    s1 = uvec4(frame, frame * 15843, frame * 31 + 4566, frame * 2345 + 58585);
+}
+
+// https://www.pcg-random.org/
+void pcg4d(inout uvec4 v) {
+    v = v * 1664525u + 1013904223u;
+    v.x += v.y * v.w;
+    v.y += v.z * v.x;
+    v.z += v.x * v.y;
+    v.w += v.y * v.z;
+    v = v ^ (v >> 16u);
+    v.x += v.y * v.w;
+    v.y += v.z * v.x;
+    v.z += v.x * v.y;
+    v.w += v.y * v.z;
+}
+
+float rand() {
+    pcg4d(s0);
+    return float(s0.x) / float(0xffffffffu);
+}
+
+vec2 rand2() {
+    pcg4d(s0);
+    return vec2(s0.xy) / float(0xffffffffu);
+}
+
+vec3 rand3() {
+    pcg4d(s0);
+    return vec3(s0.xyz) / float(0xffffffffu);
+}
+
+vec4 rand4() {
+    pcg4d(s0);
+    return vec4(s0) / float(0xffffffffu);
+}
+
+// random blue noise sampling pos
+ivec2 shift2() {
+    pcg4d(s1);
+    return (pixel + ivec2(s1.xy % 0x0fffffffu)) % 1024;
 }

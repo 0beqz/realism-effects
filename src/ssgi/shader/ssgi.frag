@@ -19,7 +19,6 @@ uniform sampler2D diffuseTexture;
 uniform sampler2D emissiveTexture;
 uniform sampler2D blueNoiseTexture;
 uniform sampler2D velocityTexture;
-uniform sampler2D envMap;
 
 #ifdef autoThickness
 uniform sampler2D backSideDepthTexture;
@@ -47,6 +46,7 @@ struct EquirectHdrInfo {
     sampler2D marginalWeights;
     sampler2D conditionalWeights;
     sampler2D map;
+    vec2 size;
     float totalSumWhole;
     float totalSumDecimal;
 };
@@ -57,13 +57,7 @@ uniform EquirectHdrInfo envMapInfo;
 #define EPSILON            0.00001
 #define ONE_MINUS_EPSILON  1.0 - EPSILON
 
-const float gr = 1.618033988749895;
-
-const vec4 blueNoiseSeed = vec4(
-    1. / gr,
-    1. / pow(gr, 1. / 2.),
-    1. / pow(gr, 1. / 3.),
-    1. / pow(gr, 1. / 4.));
+const vec4 blueNoiseSeed = vec4(1.618033988749895, 1.3247179572447458, 1.2207440846057596, 1.1673039782614187);
 
 float nearMinusFar;
 float nearMulFar;
@@ -84,6 +78,11 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
               const float NoV, const float NoL, const float NoH, const float LoH, const float VoH, const vec2 random, inout vec3 l,
               inout vec3 hitPos, out bool isMissedRay, out vec3 brdf, out float pdf);
 
+vec2 hash(vec2 p) {
+    p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
+    return fract(sin(p) * 43758.5453);
+}
+
 void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.0);
 
@@ -101,6 +100,8 @@ void main() {
         discard;
         return;
     }
+
+    rng_initialize(vUv * texSize, int(frames));
 
     invTexSize = 1. / texSize;
 
@@ -149,7 +150,9 @@ void main() {
     // fresnel f0
     vec3 f0 = mix(vec3(0.04), diffuse, metalness);
 
-    // set up blue noise
+    vec4 velocity = textureLod(velocityTexture, vUv, 0.0);
+
+    // init blue noise
     vec2 size = vUv * texSize;
     vec2 blueNoiseSize = texSize / blueNoiseRepeat;
     float blueNoiseIndex = floor(floor(size.y / blueNoiseSize.y) * blueNoiseRepeat.x) + floor(size.x / blueNoiseSize.x);
@@ -157,11 +160,9 @@ void main() {
     // get the offset of this pixel's blue noise tile
     float blueNoiseTileOffset = r1(blueNoiseIndex + 1.0) * 65536.;
 
-    vec4 velocity = textureLod(velocityTexture, vUv, 0.0);
-
     // start taking samples
     for (int s = 0; s < spp; s++) {
-        vec2 blueNoiseUv = vUv * blueNoiseRepeat;
+        vec2 blueNoiseUv = vec2(shift2()) * blueNoiseRepeat * invTexSize;
 
         // fetch blue noise for this pixel
         vec4 blueNoise = textureLod(blueNoiseTexture, blueNoiseUv, 0.);
@@ -371,7 +372,7 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
         if (!isDiffuseSample) mip *= sqrt(roughness);
 
         vec3 sampleDir = reflectedWS.xyz;
-        envMapSample = sampleEquirectEnvMapColor(sampleDir, envMap, mip);
+        envMapSample = sampleEquirectEnvMapColor(sampleDir, envMapInfo.map, mip);
 
         float maxEnvLum = isMisSample ? maxEnvLuminance : 5.0;
 
