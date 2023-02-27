@@ -215,6 +215,7 @@ export class SSGIEffect extends Effect {
 							this.ssgiPass.fullscreenMaterial.needsUpdate = needsUpdate
 							break
 
+						case "importanceSampling":
 						case "missedRays":
 						case "autoThickness":
 							if (value) {

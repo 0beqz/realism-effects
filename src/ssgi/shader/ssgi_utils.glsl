@@ -1,4 +1,6 @@
-﻿#define PI M_PI
+﻿#define PI           M_PI
+
+#define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
 
 const float g = 1.6180339887498948482;
 const float a1 = 1.0 / g;
@@ -233,8 +235,8 @@ float equirectDirectionPdf(vec3 direction) {
 
 float sampleEquirectProbability(EquirectHdrInfo info, vec2 r, out vec3 direction) {
     // sample env map cdf
-    float v = texture2D(info.marginalWeights, vec2(r.x, 0.0)).x;
-    float u = texture2D(info.conditionalWeights, vec2(r.y, v)).x;
+    float v = textureLod(info.marginalWeights, vec2(r.x, 0.0), 0.).x;
+    float u = textureLod(info.conditionalWeights, vec2(r.y, v), 0.).x;
     vec2 uv = vec2(u, v);
 
     vec3 derivedDirection = equirectUvToDirection(uv);

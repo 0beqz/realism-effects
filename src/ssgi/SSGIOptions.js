@@ -15,6 +15,7 @@
  * @property {Number} [roughnessPhi] roughness factor of the denoiser setting how much the denoiser should only apply the blur to rougher surfaces, a value of 0 means the denoiser will blur mirror-like surfaces the same as rough surfaces
  * @property {Number} [directLightMultiplier] how much to boost direct lighting
  * @property {Number} [envBlur] higher values will result in lower mipmaps being sampled which will cause less noise but also less detail regarding environment lighting
+ * @property {Number} [importanceSampling] whether to use importance sampling for the environment map
  * @property {Number} [maxEnvLuminance] the maximum luminance by which the environment lighting will be clamped; used to reduce noise from sharp light sources such as the sun
  * @property {Number} [steps] number of steps a SSGI ray can maximally do to find an object it intersected (and thus reflects)
  * @property {Number} [refineSteps] once we had our ray intersect something, we need to find the exact point in space it intersected and thus it reflects; this can be done through binary search with the given number of maximum steps
@@ -41,6 +42,7 @@ export const defaultSSGIOptions = {
 	normalPhi: 50,
 	roughnessPhi: 1,
 	envBlur: 0.5,
+	importanceSampling: true,
 	directLightMultiplier: 1,
 	maxEnvLuminance: 5,
 	steps: 20,

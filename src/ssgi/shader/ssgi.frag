@@ -54,16 +54,16 @@ struct EquirectHdrInfo {
 uniform EquirectHdrInfo envMapInfo;
 
 #define INVALID_RAY_COORDS vec2(-1.0);
-#define EARLY_OUT_COLOR    vec4(0.0, 0.0, 0.0, 0.0)
 #define EPSILON            0.00001
 #define ONE_MINUS_EPSILON  1.0 - EPSILON
-#define luminance(a)       dot(vec3(0.2125, 0.7154, 0.0721), a)
 
-const vec4 harmoniousNumbers4321 = vec4(
-    1.1673039782614187,
-    1.2207440846057596,
-    1.3247179572447458,
-    1.618033988749895);
+const float gr = 1.618033988749895;
+
+const vec4 blueNoiseSeed = vec4(
+    1. / gr,
+    1. / pow(gr, 1. / 2.),
+    1. / pow(gr, 1. / 3.),
+    1. / pow(gr, 1. / 4.));
 
 float nearMinusFar;
 float nearMulFar;
@@ -71,7 +71,6 @@ float farMinusNear;
 vec2 invTexSize;
 
 #include <packing>
-#include <tonemapping_pars_fragment>
 
 // helper functions
 #include <utils>
@@ -84,16 +83,6 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
               const float roughness, const bool isDiffuseSample, const bool isMisSample,
               const float NoV, const float NoL, const float NoH, const float LoH, const float VoH, const vec2 random, inout vec3 l,
               inout vec3 hitPos, out bool isMissedRay, out vec3 brdf, out float pdf);
-
-vec3 getR3Index(float n) {
-    float base = 1.1127756842787055;
-    float g = 1.2207440846057596;
-    float a1 = 1.0 / g;
-    float a2 = 1.0 / (g * g);
-    float a3 = 1.0 / (g * g * g);
-
-    return vec3(fract(base + a1 * n), fract(base + a2 * n), fract(base + a3 * n));
-}
 
 void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.0);
@@ -150,6 +139,7 @@ void main() {
 
     bool isMissedRay;
     vec3 SSGI, diffuseGI, specularGI, brdf, hitPos, T, B;
+    float pdf;
 
     Onb(N, T, B);
 
@@ -161,8 +151,6 @@ void main() {
 
     // set up blue noise
     vec2 size = vUv * texSize;
-    float absPos = size.y * texSize.x + size.x;
-
     vec2 blueNoiseSize = texSize / blueNoiseRepeat;
     float blueNoiseIndex = floor(floor(size.y / blueNoiseSize.y) * blueNoiseRepeat.x) + floor(size.x / blueNoiseSize.x);
 
@@ -170,7 +158,6 @@ void main() {
     float blueNoiseTileOffset = r1(blueNoiseIndex + 1.0) * 65536.;
 
     vec4 velocity = textureLod(velocityTexture, vUv, 0.0);
-    vec4 col = textureLod(accumulatedTexture, vUv - velocity.xy, 0.);
 
     // start taking samples
     for (int s = 0; s < spp; s++) {
@@ -180,7 +167,7 @@ void main() {
         vec4 blueNoise = textureLod(blueNoiseTexture, blueNoiseUv, 0.);
 
         // animate the blue noise depending on the frame and samples taken this frame
-        blueNoise = fract(blueNoise + harmoniousNumbers4321 * (frames + float(s) + blueNoiseTileOffset));
+        blueNoise = fract(blueNoise + blueNoiseSeed * (frames + float(s) + blueNoiseTileOffset));
 
         // Disney BRDF and sampling source: https://www.shadertoy.com/view/cll3R4
         // calculate GGX reflection ray
@@ -236,20 +223,14 @@ void main() {
         envMisDir = normalize((vec4(envMisDir, 1.) * cameraMatrixWorld).xyz);
 #endif
 
-        bool isMisSample;
-        float pdf;
-
-        float lumProbability = (1. - luminance(col.rgb)) * 2.;
-        float minDirAngle = blueNoise.a * lumProbability;
-        float dirAngle = dot(envMisDir, viewNormal);
+        bool valid = blueNoise.a < 0.25 + dot(envMisDir, viewNormal) * 0.5;
+        if (!valid) envPdf = 0.0;
 
         if (isDiffuseSample) {
-            if (envPdf == 0.0 || dirAngle < minDirAngle) {
+            if (envPdf == 0.0) {
                 l = cosineSampleHemisphere(viewNormal, blueNoise.rg);
-                envPdf = 0.;
             } else {
                 l = envMisDir;
-                isMisSample = true;
             }
 
             h = normalize(v + l);  // half vector
@@ -260,48 +241,46 @@ void main() {
             VoH = clamp(dot(v, h), EPSILON, ONE_MINUS_EPSILON);
 
             vec3 gi = doSample(
-                viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, isMisSample, NoV, NoL, NoH, LoH, VoH, blueNoise.rg,
+                viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, envPdf != 0.0, NoV, NoL, NoH, LoH, VoH, blueNoise.rg,
                 l, hitPos, isMissedRay, brdf, pdf);
 
             gi *= brdf;
 
-            if (envPdf != 0.0) gi *= misHeuristic(envPdf, pdf);
-
-            if (envPdf == 0.0)
+            if (envPdf == 0.0) {
                 gi /= pdf;
-            else
+            } else {
+                gi *= misHeuristic(envPdf, pdf);
                 gi /= envPdf;
+            }
 
             diffuseSamples++;
 
             diffuseGI = mix(diffuseGI, gi, 1. / diffuseSamples);
 
         } else {
-            if (envPdf == 0.0 || roughness < 0.025 || dirAngle < minDirAngle) {
-                envPdf = 0.;
-            } else {
+            if (envPdf != 0.0 && roughness >= 0.025) {
                 l = envMisDir;
-                isMisSample = true;
+
+                h = normalize(v + l);  // half vector
+
+                NoL = clamp(dot(n, l), EPSILON, ONE_MINUS_EPSILON);
+                NoH = clamp(dot(n, h), EPSILON, ONE_MINUS_EPSILON);
+                LoH = clamp(dot(l, h), EPSILON, ONE_MINUS_EPSILON);
+                VoH = clamp(dot(v, h), EPSILON, ONE_MINUS_EPSILON);
             }
 
-            h = normalize(v + l);  // half vector
-
-            NoL = clamp(dot(n, l), EPSILON, ONE_MINUS_EPSILON);
-            NoH = clamp(dot(n, h), EPSILON, ONE_MINUS_EPSILON);
-            LoH = clamp(dot(l, h), EPSILON, ONE_MINUS_EPSILON);
-            VoH = clamp(dot(v, h), EPSILON, ONE_MINUS_EPSILON);
-
             vec3 gi = doSample(
-                viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, isMisSample, NoV, NoL, NoH, LoH, VoH, blueNoise.rg,
+                viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, envPdf != 0.0, NoV, NoL, NoH, LoH, VoH, blueNoise.rg,
                 l, hitPos, isMissedRay, brdf, pdf);
 
             gi *= brdf;
-            if (envPdf != 0.0) gi *= misHeuristic(envPdf, pdf);
 
-            if (envPdf == 0.0)
+            if (envPdf == 0.0) {
                 gi /= pdf;
-            else
+            } else {
+                gi *= misHeuristic(envPdf, pdf);
                 gi /= envPdf;
+            }
 
             specularSamples++;
 

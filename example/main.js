@@ -2,30 +2,19 @@ import dragDrop from "drag-drop"
 import * as POSTPROCESSING from "postprocessing"
 import Stats from "stats.js"
 import * as THREE from "three"
-import {
-	BackSide,
-	Box3,
-	DirectionalLight,
-	DoubleSide,
-	FloatType,
-	Mesh,
-	MeshNormalMaterial,
-	ShaderMaterial,
-	SphereGeometry,
-	Vector3
-} from "three"
+import { Box3, DirectionalLight, DoubleSide, FloatType, MeshNormalMaterial, Vector3 } from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader"
 import { GroundProjectedEnv } from "three/examples/jsm/objects/GroundProjectedEnv"
+import { Pane } from "tweakpane"
 import { MotionBlurEffect } from "../src/motion-blur/MotionBlurEffect"
 import { SSGIEffect } from "../src/SSGI/index"
 import { VelocityDepthNormalPass } from "../src/temporal-reproject/pass/VelocityDepthNormalPass"
 import { TRAAEffect } from "../src/traa/TRAAEffect"
 import { SSGIDebugGUI } from "./SSGIDebugGUI"
 import "./style.css"
-import { TRAADebugGUI } from "./TRAADebugGUI"
 
 let traaEffect
 let traaPass
@@ -33,7 +22,7 @@ let smaaPass
 let fxaaPass
 let ssgiEffect
 let ssgiPass
-let gui
+let pane
 let gui2
 let envMesh
 const guiParams = {
@@ -42,13 +31,11 @@ const guiParams = {
 }
 
 const scene = new THREE.Scene()
+scene.matrixWorldAutoUpdate = false
 window.scene = scene
 
 const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.01, 250)
-
 scene.add(camera)
-scene.matrixWorldAutoUpdate = false
-window.camera = camera
 
 const canvas = document.querySelector(".webgl")
 
@@ -110,7 +97,7 @@ const setAA = value => {
 	}
 
 	guiParams.Method = value
-	gui.pane.refresh()
+	pane.refresh()
 }
 
 // since using "rendererCanvas" doesn't work when using an offscreen canvas
@@ -165,11 +152,19 @@ pmremGenerator.compileEquirectangularShader()
 
 let sphere
 
-new RGBELoader().setDataType(FloatType).load("chinese_garden_2k.hdr", envMap => {
+const rgbeLoader = new RGBELoader().setDataType(FloatType)
+
+const initEnvMap = envMap => {
+	scene.environment?.dispose()
+
 	envMap.mapping = THREE.EquirectangularReflectionMapping
 
 	scene.environment = envMap
 	// scene.background = envMap
+
+	envMesh?.removeFromParent()
+	envMesh?.material.dispose()
+	envMesh?.geometry.dispose()
 
 	envMesh = new GroundProjectedEnv(envMap)
 	envMesh.radius = 100
@@ -177,44 +172,44 @@ new RGBELoader().setDataType(FloatType).load("chinese_garden_2k.hdr", envMap => 
 	envMesh.scale.setScalar(100)
 	envMesh.updateMatrixWorld()
 	scene.add(envMesh)
+}
 
-	sphere = new Mesh(
-		new SphereGeometry(1, 64, 64),
-		new ShaderMaterial({
-			vertexShader: /* glsl */ `
-			varying vec3 pos; 
-		
-			void main() {
-				vec4 modelViewPosition = modelViewMatrix * vec4(position, 1.0);
-				gl_Position = projectionMatrix * modelViewPosition;
+rgbeLoader.load("chinese_garden_2k.hdr", initEnvMap)
 
-				vec4 p = inverse(modelViewMatrix) * modelViewPosition;
+// const sphere = new Mesh(
+// 	new SphereGeometry(1, 64, 64),
+// 	new ShaderMaterial({
+// 		vertexShader: /* glsl */ `
+// 		varying vec3 pos;
 
-				pos = (p.xyz + 0.5) / 1.;
-			}
-			`,
-			fragmentShader: /* glsl */ `
-			varying vec3 pos;
+// 		void main() {
+// 			vec4 modelViewPosition = modelViewMatrix * vec4(position, 1.0);
+// 			gl_Position = projectionMatrix * modelViewPosition;
 
-			void main() {
-				vec3 a = vec3(230., 156., 87.) / 255.;
-				vec3 b = vec3(53., 100., 230.) / 255.;
+// 			vec4 p = inverse(modelViewMatrix) * modelViewPosition;
 
-				vec3 col = mix(a, b, pos.y);
+// 			pos = (p.xyz + 0.5) / 1.;
+// 		}
+// 		`,
+// 		fragmentShader: /* glsl */ `
+// 		varying vec3 pos;
 
-				gl_FragColor = vec4(col, 1.0);
-			}
-			`,
-			side: BackSide,
-			depthTest: false,
-			depthWrite: false,
-			fog: false
-		})
-	)
+// 		void main() {
+// 			vec3 a = vec3(230., 156., 87.) / 255.;
+// 			vec3 b = vec3(53., 100., 230.) / 255.;
 
-	// scene.add(sphere)
-	// scene.background = new Color(0x4c7fe5)
-})
+// 			vec3 col = mix(a, b, pos.y);
+
+// 			gl_FragColor = vec4(col, 1.0);
+// 		}
+// 		`,
+// 		side: BackSide,
+// 		depthTest: false,
+// 		depthWrite: false,
+// 		fog: false
+// 	})
+// )
+// scene.add(sphere)
 
 const gltflLoader = new GLTFLoader()
 
@@ -279,7 +274,7 @@ const initScene = () => {
 		roughnessPhi: 18.75,
 		envBlur: 0.55,
 		directLightMultiplier: 1,
-		maxEnvLuminance: 50,
+		maxEnvLuminance: 30,
 		steps: 20,
 		refineSteps: 4,
 		spp: 1,
@@ -294,9 +289,11 @@ const initScene = () => {
 
 	traaEffect = new TRAAEffect(scene, camera, velocityDepthNormalPass, params)
 
-	gui = new TRAADebugGUI(traaEffect, params)
+	pane = new Pane()
+	pane.containerElem_.style.userSelect = "none"
+	pane.containerElem_.style.width = "380px"
 
-	const aaFolder = gui.pane.addFolder({ title: "Anti-aliasing", expanded: false })
+	const aaFolder = pane.addFolder({ title: "Anti-aliasing", expanded: false })
 
 	aaFolder
 		.addInput(guiParams, "Method", {
@@ -313,13 +310,39 @@ const initScene = () => {
 			setAA(ev.value)
 		})
 
-	const sceneFolder = gui.pane.addFolder({ title: "Scene" })
+	const sceneFolder = pane.addFolder({ title: "Scene", expanded: false })
 
 	sceneFolder.addInput(lightParams, "yaw", { min: 0, max: 360, step: 1 }).on("change", refreshLighting)
 
 	sceneFolder.addInput(lightParams, "pitch", { min: -90, max: 90, step: 1 }).on("change", refreshLighting)
 
 	sceneFolder.addInput(light, "intensity", { min: 0, max: 10, step: 0.1 }).on("change", refreshLighting)
+
+	const envParams = { Environment: "chinese_garden_2k" }
+
+	const environments = [
+		"chinese_garden_2k",
+		"colosseum_2k",
+		"garden_nook_2k",
+		"piazza_martin_lutero_2k",
+		"pretville_street_2k",
+		"quarry_02_4k",
+		"studio_garden_2k",
+		"tears_of_steel_bridge_2k"
+	]
+
+	const environmentsObject = {}
+
+	environments.forEach(value => (environmentsObject[value] = value))
+
+	const envFolder = pane.addFolder({ title: "Environment" })
+	envFolder
+		.addInput(envParams, "Environment", {
+			options: environmentsObject
+		})
+		.on("change", ev => {
+			rgbeLoader.load(ev.value + ".hdr", initEnvMap)
+		})
 
 	const bloomEffect = new POSTPROCESSING.BloomEffect({
 		intensity: 1,
@@ -335,7 +358,6 @@ const initScene = () => {
 	})
 
 	ssgiEffect = new SSGIEffect(scene, camera, velocityDepthNormalPass, options)
-	window.ssgiEffect = ssgiEffect
 
 	gui2 = new SSGIDebugGUI(ssgiEffect, options)
 	gui2.pane.containerElem_.style.left = "8px"
@@ -371,7 +393,7 @@ const initScene = () => {
 
 		const display = gui2.pane.element.style.display === "none" ? "block" : "none"
 
-		gui.pane.element.style.display = display
+		pane.element.style.display = display
 		gui2.pane.element.style.display = display
 		// stats.dom.style.display = display
 	})
@@ -466,7 +488,7 @@ document.addEventListener("keydown", ev => {
 
 		const display = gui2.pane.element.style.display === "none" ? "block" : "none"
 
-		gui.pane.element.style.display = display
+		pane.element.style.display = display
 		gui2.pane.element.style.display = display
 		stats.dom.style.display = display
 	}

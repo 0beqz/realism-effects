@@ -10,9 +10,11 @@ uniform float jitter;
 uniform float deltaTime;
 uniform float frames;
 
-const vec2 harmoniousNumbers21 = vec2(
-    1.3247179572447458,
-    1.618033988749895);
+const float gr = 1.618033988749895;
+
+const vec2 blueNoiseSeed = vec2(
+    1. / gr,
+    1. / pow(gr, 1. / 2.));
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
     vec4 velocity = textureLod(velocityTexture, vUv, 0.0);
@@ -26,7 +28,7 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 
     vec2 blueNoise = textureLod(blueNoiseTexture, vUv * blueNoiseRepeat, 0.).rg;
 
-    blueNoise = fract(blueNoise + harmoniousNumbers21 * frames);
+    blueNoise = fract(blueNoise + blueNoiseSeed * frames);
 
     vec2 jitterOffset = jitter * velocity.xy * blueNoise;
 
