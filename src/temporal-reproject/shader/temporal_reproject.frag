@@ -67,7 +67,7 @@ void main() {
     vec2 reprojectedUvSpecular[textureCount];
 
     vec2 reprojectedUv;
-    bool reprojectHitPoint, wasSpecularSampled;
+    bool reprojectHitPoint;
 
 #define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
 
@@ -76,7 +76,6 @@ void main() {
 #pragma unroll_loop_start
     for (int i = 0; i < textureCount; i++) {
         reprojectHitPoint = reprojectSpecular[i] && inputTexel[i].a > 0.0;
-        wasSpecularSampled = inputTexel[i].a != -1.0;
 
         // specular (hit point reprojection)
         if (reprojectHitPoint) {
@@ -93,10 +92,6 @@ void main() {
 
         // choose which UV coordinates to use for reprojecion
         reprojectedUv = reprojectedUvSpecular[i].x >= 0.0 ? reprojectedUvSpecular[i] : reprojectedUvDiffuse;
-
-        // if (wasSpecularSampled && reprojectHitPoint && reprojectedUvSpecular[i].x >= 0.0) {
-        //     reprojectedUv.x = -1.;
-        // }
 
         // check if any reprojection was successful
         if (reprojectedUv.x < 0.0) {  // invalid UV

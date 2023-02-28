@@ -291,3 +291,16 @@ ivec2 shift2() {
     pcg4d(s1);
     return (pixel + ivec2(s1.xy % 0x0fffffffu)) % 1024;
 }
+
+// source: https://madebyevan.com/shaders/curvature/
+float getCurvature(const vec3 n, const float depth) {
+    vec3 dx = dFdx(n);
+    vec3 dy = dFdy(n);
+    vec3 xneg = n - dx;
+    vec3 xpos = n + dx;
+    vec3 yneg = n - dy;
+    vec3 ypos = n + dy;
+    float curvature = (cross(xneg, xpos).y - cross(yneg, ypos).x) * 4.0 / depth;
+
+    return curvature;
+}

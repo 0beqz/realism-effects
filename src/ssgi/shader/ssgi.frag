@@ -57,7 +57,7 @@ uniform EquirectHdrInfo envMapInfo;
 #define EPSILON            0.00001
 #define ONE_MINUS_EPSILON  1.0 - EPSILON
 
-const float gr = 1.618033988749895;
+const vec4 harmoniousNumbers1234 = vec4(1.618033988749895, 1.3247179572447458, 1.2207440846057596, 1.1673039782614187);
 
 float nearMinusFar;
 float nearMulFar;
@@ -72,7 +72,6 @@ vec2 invTexSize;
 vec2 RayMarch(inout vec3 dir, inout vec3 hitPos);
 vec2 BinarySearch(inout vec3 dir, inout vec3 hitPos);
 float fastGetViewZ(const float depth);
-float getCurvature(const vec3 worldNormal);
 vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, const vec3 worldPosition, const float metalness,
               const float roughness, const bool isDiffuseSample, const bool isMisSample,
               const float NoV, const float NoL, const float NoH, const float LoH, const float VoH, const vec2 random, inout vec3 l,
@@ -155,7 +154,7 @@ void main() {
         vec4 blueNoise = textureLod(blueNoiseTexture, blueNoiseUv, 0.);
 
         // animate the blue noise depending on the frame and samples taken this frame
-        blueNoise = fract(blueNoise + (float(frame) + float(s)) * gr);
+        blueNoise = fract(blueNoise + (float(frame) + float(s)) * harmoniousNumbers1234);
 
         // Disney BRDF and sampling source: https://www.shadertoy.com/view/cll3R4
         // calculate GGX reflection ray
@@ -278,22 +277,20 @@ void main() {
         }
     }
 
+    roughness = sqrt(roughness);
+
 #ifndef specularOnly
-    gDiffuse = vec4(diffuseGI, sqrt(roughness));
+    gDiffuse = vec4(diffuseGI, roughness);
 #endif
 
 #ifndef diffuseOnly
     // calculate world-space ray length used for reprojecting hit points instead of screen-space pixels in the temporal reproject pass
-    float rayLength = specularSamples > 0.0 ? 0.0 : -1.0;
-    if (!isMissedRay && roughness < 0.5) {
-        vec3 worldNormal = (vec4(viewNormal, 1.) * viewMatrix).xyz;
+    float rayLength = 0.0;
 
-        float curvature = getCurvature(worldNormal);
-
-        if (curvature < 0.001) {
-            vec3 hitPosWS = (vec4(hitPos, 1.) * viewMatrix).xyz;
-            rayLength = distance(worldPos, hitPosWS);
-        }
+    float curvature = getCurvature(viewNormal, depth);
+    if (!isMissedRay && roughness < 0.375 && curvature < 0.001) {
+        vec3 hitPosWS = (vec4(hitPos, 1.) * viewMatrix).xyz;
+        rayLength = distance(worldPos, hitPosWS);
     }
 
     gSpecular = vec4(specularGI, rayLength);
@@ -492,14 +489,4 @@ float fastGetViewZ(const float depth) {
 #else
     return depth * nearMinusFar - cameraNear;
 #endif
-}
-
-float getCurvature(const vec3 worldNormal) {
-    vec3 dx = dFdx(worldNormal);
-    vec3 dy = dFdy(worldNormal);
-
-    float x = dot(dx, dx);
-    float y = dot(dy, dy);
-
-    return sqrt(x * x + y * y);
 }

@@ -62,9 +62,6 @@ const renderer = new THREE.WebGLRenderer({
 window.renderer = renderer
 
 renderer.autoClear = false
-// renderer.autoClearColor = false
-// renderer.autoClearDepth = false
-// renderer.autoClearStencil = false
 
 renderer.outputEncoding = THREE.sRGBEncoding
 const dpr = window.devicePixelRatio || 1
@@ -156,7 +153,12 @@ pmremGenerator.compileEquirectangularShader()
 
 const rgbeLoader = new RGBELoader().setDataType(FloatType)
 
-const initEnvMap = envMap => {
+// const blurredEnvMapGenerator = new BlurredEnvMapGenerator(renderer)
+
+const initEnvMap = async envMap => {
+	// await blurredEnvMapGenerator.init()
+	// envMap = blurredEnvMapGenerator.generate(envMap, 0.1)
+
 	scene.environment?.dispose()
 
 	envMap.mapping = THREE.EquirectangularReflectionMapping
@@ -173,10 +175,11 @@ const initEnvMap = envMap => {
 	envMesh.height = 20
 	envMesh.scale.setScalar(100)
 	envMesh.updateMatrixWorld()
-	// scene.add(envMesh)
+	scene.add(envMesh)
 }
 
 const environments = [
+	"blue_grotto",
 	"cave_wall",
 	"chinese_garden",
 	"crystal_falls",
@@ -338,7 +341,7 @@ const initScene = () => {
 		})
 
 		const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
-		// composer.addPass(renderPass)
+		composer.addPass(renderPass)
 
 		// setTimeout(() => composer.removePass(renderPass))
 
@@ -362,7 +365,7 @@ const initScene = () => {
 
 		pane.element.style.display = display
 		gui2.pane.element.style.display = display
-		// stats.dom.style.display = display
+		stats.dom.style.display = display
 		infoEl.style.display = "block"
 	})
 }
