@@ -54,7 +54,11 @@ export class TRAAEffect extends Effect {
 		for (const mesh of visibleMeshes) {
 			if (mesh.constructor.name !== "GroundProjectedEnv") continue
 
-			const uniforms = Array.from(renderer.properties.get(mesh.material).programs.values())[0].getUniforms()
+			const renderData = renderer.properties.get(mesh.material)
+
+			if (!renderData?.programs) continue
+
+			const uniforms = Array.from(renderData.programs.values())[0].getUniforms()
 
 			if (!uniforms._patchedProjectionMatrix) {
 				const oldSetValue = uniforms.setValue.bind(uniforms)

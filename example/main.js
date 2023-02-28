@@ -173,7 +173,7 @@ const initEnvMap = envMap => {
 	envMesh.height = 20
 	envMesh.scale.setScalar(100)
 	envMesh.updateMatrixWorld()
-	scene.add(envMesh)
+	// scene.add(envMesh)
 }
 
 const environments = [
@@ -338,7 +338,7 @@ const initScene = () => {
 		})
 
 		const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
-		composer.addPass(renderPass)
+		// composer.addPass(renderPass)
 
 		// setTimeout(() => composer.removePass(renderPass))
 
@@ -362,7 +362,7 @@ const initScene = () => {
 
 		pane.element.style.display = display
 		gui2.pane.element.style.display = display
-		stats.dom.style.display = display
+		// stats.dom.style.display = display
 		infoEl.style.display = "block"
 	})
 }

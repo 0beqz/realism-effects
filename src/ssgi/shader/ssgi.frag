@@ -38,7 +38,7 @@ uniform float thickness;
 uniform float envBlur;
 uniform float maxEnvLuminance;
 
-uniform float frame;
+uniform int frame;
 uniform vec2 texSize;
 uniform vec2 blueNoiseRepeat;
 
@@ -155,7 +155,7 @@ void main() {
         vec4 blueNoise = textureLod(blueNoiseTexture, blueNoiseUv, 0.);
 
         // animate the blue noise depending on the frame and samples taken this frame
-        blueNoise = fract(blueNoise + (frame + float(s)) * gr);
+        blueNoise = fract(blueNoise + (float(frame) + float(s)) * gr);
 
         // Disney BRDF and sampling source: https://www.shadertoy.com/view/cll3R4
         // calculate GGX reflection ray
