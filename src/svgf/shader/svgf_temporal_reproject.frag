@@ -1,4 +1,4 @@
-﻿#define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
+﻿
 
 vec4 moment, historyMoment;
 

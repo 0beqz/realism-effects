@@ -21,7 +21,7 @@ import blueNoiseImage from "./../../utils/blue_noise_64_rgba.png"
 const backgroundColor = new Color(0)
 
 export class SSGIPass extends Pass {
-	frames = 0
+	frame = 0
 	cachedMaterials = new WeakMap()
 	visibleMeshes = []
 
@@ -238,10 +238,10 @@ export class SSGIPass extends Pass {
 
 		if (this.ssgiEffect.autoThickness) this.backSideDepthPass.render(renderer)
 
-		this.frames = (this.frames + this.ssgiEffect.spp) % 65536
+		this.frame = (this.frame + this.ssgiEffect.spp) % 65536
 
 		// update uniforms
-		this.fullscreenMaterial.uniforms.frames.value = this.frames
+		this.fullscreenMaterial.uniforms.frame.value = this.frame
 		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
 		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far
 		this.fullscreenMaterial.uniforms.viewMatrix.value.copy(this._camera.matrixWorldInverse)

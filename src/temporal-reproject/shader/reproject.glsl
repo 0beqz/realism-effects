@@ -57,11 +57,11 @@ void getNeighborhoodAABB(const sampler2D tex, inout vec3 minNeighborColor, inout
     }
 }
 
-void clampNeighborhood(const sampler2D texture, inout vec3 color, const sampler2D tex, const vec3 inputColor) {
+void clampNeighborhood(const sampler2D tex, inout vec3 color, const vec3 inputColor) {
     vec3 minNeighborColor = inputColor;
     vec3 maxNeighborColor = inputColor;
 
-    getNeighborhoodAABB(texture, minNeighborColor, maxNeighborColor);
+    getNeighborhoodAABB(tex, minNeighborColor, maxNeighborColor);
 
     color = clamp(color, minNeighborColor, maxNeighborColor);
 }
@@ -120,10 +120,6 @@ bool worldDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos
 
 bool validateReprojectedUV(const vec2 reprojectedUv, const float depth, const vec3 worldPos, const vec3 worldNormal) {
     if (any(lessThan(reprojectedUv, vec2(0.))) || any(greaterThan(reprojectedUv, vec2(1.)))) return false;
-
-#ifdef neighborhoodClamping
-    return true;
-#endif
 
     float lastDepth;
     vec4 lastDepthTexel;

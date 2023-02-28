@@ -59,16 +59,19 @@ export class SSGIEffect extends Effect {
 			definesName = "ssdgi"
 			options.reprojectSpecular = false
 			options.catmullRomSampling = false
+			options.neighborhoodClamping = false
 			options.roughnessDependentKernel = false
 		} else if (options.specularOnly) {
 			definesName = "ssr"
 			options.reprojectSpecular = true
 			options.catmullRomSampling = true
+			options.neighborhoodClamping = true
 			options.roughnessDependentKernel = true
 		} else {
 			definesName = "ssgi"
 			options.reprojectSpecular = [false, true]
 			options.catmullRomSampling = [false, true]
+			options.neighborhoodClamping = [false, true]
 			options.roughnessDependentKernel = [false, true]
 			specularIndex = 1
 		}
@@ -79,16 +82,24 @@ export class SSGIEffect extends Effect {
 
 		if (specularIndex !== -1) {
 			this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.fragmentShader =
-				this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.fragmentShader.replace(
-					`outputColor = mix(inputTexel[ ${specularIndex} ].rgb, accumulatedTexel[ ${specularIndex} ].rgb, temporalReprojectMix);`,
-					/* glsl */ `
+				this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.fragmentShader
+					.replace(
+						`outputColor = mix(inputTexel[ ${specularIndex} ].rgb, accumulatedTexel[ ${specularIndex} ].rgb, temporalReprojectMix);`,
+						/* glsl */ `
 					float roughness = inputTexel[0].a;
 					float glossines = max(0., 0.025 - roughness) / 0.025;
 					temporalReprojectMix *= 1. - glossines * glossines;
 					
 					outputColor = mix(inputTexel[ ${specularIndex} ].rgb, accumulatedTexel[ ${specularIndex} ].rgb, temporalReprojectMix);
 					`
-				)
+					)
+					.replace(
+						"accumulatedTexel[ 1 ].rgb = clampedColor;",
+						`
+						float roughness = inputTexel[ 0 ].a;
+						accumulatedTexel[ 1 ].rgb = mix(accumulatedTexel[1].rgb, clampedColor, 1. - roughness);
+						`
+					)
 		}
 
 		this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.needsUpdate = true

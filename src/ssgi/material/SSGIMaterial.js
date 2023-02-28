@@ -29,7 +29,7 @@ export class SSGIMaterial extends ShaderMaterial {
 				rayDistance: new Uniform(0),
 				thickness: new Uniform(0),
 				r3Offset: new Uniform(new Vector3()),
-				frames: new Uniform(0),
+				frame: new Uniform(0),
 				envBlur: new Uniform(0),
 				maxRoughness: new Uniform(0),
 				maxEnvMapMipLevel: new Uniform(0),

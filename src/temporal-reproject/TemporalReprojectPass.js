@@ -106,6 +106,14 @@ export class TemporalReprojectPass extends Pass {
 
 		this.fullscreenMaterial.defines.catmullRomSampling = /* glsl */ `bool[](${options.catmullRomSampling.join(", ")})`
 
+		if (typeof options.neighborhoodClamping === "boolean") {
+			options.neighborhoodClamping = Array(textureCount).fill(options.neighborhoodClamping)
+		}
+
+		this.fullscreenMaterial.defines.neighborhoodClamping = /* glsl */ `bool[](${options.neighborhoodClamping.join(
+			", "
+		)})`
+
 		this.options = options
 	}
 

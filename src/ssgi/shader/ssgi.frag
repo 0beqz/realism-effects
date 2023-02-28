@@ -38,7 +38,7 @@ uniform float thickness;
 uniform float envBlur;
 uniform float maxEnvLuminance;
 
-uniform float frames;
+uniform float frame;
 uniform vec2 texSize;
 uniform vec2 blueNoiseRepeat;
 
@@ -57,7 +57,7 @@ uniform EquirectHdrInfo envMapInfo;
 #define EPSILON            0.00001
 #define ONE_MINUS_EPSILON  1.0 - EPSILON
 
-const vec4 blueNoiseSeed = vec4(1.618033988749895, 1.3247179572447458, 1.2207440846057596, 1.1673039782614187);
+const float gr = 1.618033988749895;
 
 float nearMinusFar;
 float nearMulFar;
@@ -78,11 +78,6 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
               const float NoV, const float NoL, const float NoH, const float LoH, const float VoH, const vec2 random, inout vec3 l,
               inout vec3 hitPos, out bool isMissedRay, out vec3 brdf, out float pdf);
 
-vec2 hash(vec2 p) {
-    p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
-    return fract(sin(p) * 43758.5453);
-}
-
 void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.0);
 
@@ -101,7 +96,7 @@ void main() {
         return;
     }
 
-    rng_initialize(vUv * texSize, int(frames));
+    rng_initialize(vUv * texSize, int(frame));
 
     invTexSize = 1. / texSize;
 
@@ -152,14 +147,6 @@ void main() {
 
     vec4 velocity = textureLod(velocityTexture, vUv, 0.0);
 
-    // init blue noise
-    vec2 size = vUv * texSize;
-    vec2 blueNoiseSize = texSize / blueNoiseRepeat;
-    float blueNoiseIndex = floor(floor(size.y / blueNoiseSize.y) * blueNoiseRepeat.x) + floor(size.x / blueNoiseSize.x);
-
-    // get the offset of this pixel's blue noise tile
-    float blueNoiseTileOffset = r1(blueNoiseIndex + 1.0) * 65536.;
-
     // start taking samples
     for (int s = 0; s < spp; s++) {
         vec2 blueNoiseUv = vec2(shift2()) * blueNoiseRepeat * invTexSize;
@@ -168,7 +155,7 @@ void main() {
         vec4 blueNoise = textureLod(blueNoiseTexture, blueNoiseUv, 0.);
 
         // animate the blue noise depending on the frame and samples taken this frame
-        blueNoise = fract(blueNoise + blueNoiseSeed * (frames + float(s) + blueNoiseTileOffset));
+        blueNoise = fract(blueNoise + (frame + float(s)) * gr);
 
         // Disney BRDF and sampling source: https://www.shadertoy.com/view/cll3R4
         // calculate GGX reflection ray

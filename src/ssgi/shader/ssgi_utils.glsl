@@ -286,26 +286,6 @@ void pcg4d(inout uvec4 v) {
     v.w += v.y * v.z;
 }
 
-float rand() {
-    pcg4d(s0);
-    return float(s0.x) / float(0xffffffffu);
-}
-
-vec2 rand2() {
-    pcg4d(s0);
-    return vec2(s0.xy) / float(0xffffffffu);
-}
-
-vec3 rand3() {
-    pcg4d(s0);
-    return vec3(s0.xyz) / float(0xffffffffu);
-}
-
-vec4 rand4() {
-    pcg4d(s0);
-    return vec4(s0) / float(0xffffffffu);
-}
-
 // random blue noise sampling pos
 ivec2 shift2() {
     pcg4d(s1);

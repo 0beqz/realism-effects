@@ -69,6 +69,10 @@ void main() {
     vec2 reprojectedUv;
     bool reprojectHitPoint, wasSpecularSampled;
 
+#define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
+
+    vec3 clampedColor;
+
 #pragma unroll_loop_start
     for (int i = 0; i < textureCount; i++) {
         reprojectHitPoint = reprojectSpecular[i] && inputTexel[i].a > 0.0;
@@ -109,9 +113,11 @@ void main() {
                 accumulatedTexel[i].a++;  // add one more frame
             }
 
-#ifdef neighborhoodClamping
-            clampNeighborhood(inputTexture[i], accumulatedTexel[i].rgb, inputTexture[i], inputTexel[i].rgb);
-#endif
+            if (neighborhoodClamping[i]) {
+                clampedColor = accumulatedTexel[i].rgb;
+                clampNeighborhood(inputTexture[i], clampedColor, inputTexel[i].rgb);
+                accumulatedTexel[i].rgb = clampedColor;
+            }
         }
     }
 #pragma unroll_loop_end
