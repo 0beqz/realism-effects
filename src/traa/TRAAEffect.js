@@ -88,8 +88,8 @@ export class TRAAEffect extends Effect {
 
 		this.temporalReprojectPass.fullscreenMaterial.uniforms.inputTexture0.value = inputBuffer.texture
 
-		this.temporalReprojectPass.render(renderer)
-
 		this.temporalReprojectPass.jitter()
+
+		this.temporalReprojectPass.render(renderer)
 	}
 }

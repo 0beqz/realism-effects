@@ -24,15 +24,18 @@ vec2 viewSpaceToScreenSpace(const vec3 position) {
 
 #ifdef logTransform
 // idea from: https://www.elopezr.com/temporal-aa-and-the-quest-for-the-holy-trail/
-vec3 transformColor(const vec3 color) {
+void transformColor(inout vec3 color) {
     float diff = min(1.0, lum(color) - 0.99);
-    if (diff > 0.0) return vec3(diff * 0.1);
+    if (diff > 0.0) {
+        color = vec3(diff * 0.1);
+        return;
+    }
 
-    return log(max(color, vec3(EPSILON)));
+    color = log(max(color, vec3(EPSILON)));
 }
 
-vec3 undoColorTransform(const vec3 color) {
-    return exp(color);
+void undoColorTransform(inout vec3 color) {
+    color = exp(color);
 }
 #else
     #define transformColor
@@ -47,11 +50,10 @@ void getNeighborhoodAABB(const sampler2D tex, inout vec3 minNeighborColor, inout
                 vec2 neighborUv = vUv + offset;
 
                 vec4 neighborTexel = textureLod(tex, neighborUv, 0.0);
+                transformColor(neighborTexel.rgb);
 
-                vec3 col = transformColor(neighborTexel.rgb);
-
-                minNeighborColor = min(col, minNeighborColor);
-                maxNeighborColor = max(col, maxNeighborColor);
+                minNeighborColor = min(neighborTexel.rgb, minNeighborColor);
+                maxNeighborColor = max(neighborTexel.rgb, maxNeighborColor);
             }
         }
     }

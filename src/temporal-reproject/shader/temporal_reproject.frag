@@ -54,7 +54,7 @@ void main() {
 #pragma unroll_loop_start
     for (int i = 0; i < textureCount; i++) {
         inputTexel[i] = textureLod(inputTexture[i], vUv, 0.0);
-        inputTexel[i].rgb = transformColor(inputTexel[i].rgb);
+        transformColor(inputTexel[i].rgb);
     }
 #pragma unroll_loop_end
 
@@ -100,7 +100,7 @@ void main() {
         } else {
             // reprojection was successful -> accumulate
             accumulatedTexel[i] = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUv, catmullRomSampling[i]);
-            accumulatedTexel[i].rgb = transformColor(accumulatedTexel[i].rgb);
+            transformColor(accumulatedTexel[i].rgb);
 
             if (dot(inputTexel[i].rgb, inputTexel[i].rgb) == 0.0) {
                 inputTexel[i].rgb = accumulatedTexel[i].rgb;
@@ -133,8 +133,9 @@ void main() {
         if (!constantBlend) temporalReprojectMix = min(1. - 1. / (accumulatedTexel[i].a + 1.0), maxValue);
 
         outputColor = mix(inputTexel[i].rgb, accumulatedTexel[i].rgb, temporalReprojectMix);
+        undoColorTransform(outputColor);
 
-        gOutput[i] = vec4(undoColorTransform(outputColor), accumulatedTexel[i].a);
+        gOutput[i] = vec4(outputColor, accumulatedTexel[i].a);
     }
 #pragma unroll_loop_end
 

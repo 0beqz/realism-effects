@@ -182,7 +182,6 @@ const environments = [
 	"blue_grotto",
 	"cave_wall",
 	"chinese_garden",
-	"crystal_falls",
 	"future_parking",
 	"quarry_02",
 	"snowy_field",
