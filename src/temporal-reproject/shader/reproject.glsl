@@ -1,3 +1,5 @@
+#define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
+
 vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth, mat4 curMatrixWorld) {
     vec4 ndc = vec4(
         (uv.x - 0.5) * 2.0,
@@ -20,12 +22,10 @@ vec2 viewSpaceToScreenSpace(const vec3 position) {
     return projectedCoord.xy;
 }
 
-#define lum(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
-
 #ifdef logTransform
 // idea from: https://www.elopezr.com/temporal-aa-and-the-quest-for-the-holy-trail/
 void transformColor(inout vec3 color) {
-    float diff = min(1.0, lum(color) - 0.99);
+    float diff = min(1.0, luminance(color) - 0.99);
     if (diff > 0.0) {
         color = vec3(diff * 0.1);
         return;

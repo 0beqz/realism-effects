@@ -57,8 +57,6 @@ uniform EquirectHdrInfo envMapInfo;
 #define EPSILON            0.00001
 #define ONE_MINUS_EPSILON  1.0 - EPSILON
 
-const vec4 harmoniousNumbers1234 = vec4(1.618033988749895, 1.3247179572447458, 1.2207440846057596, 1.1673039782614187);
-
 float nearMinusFar;
 float nearMulFar;
 float farMinusNear;
@@ -94,8 +92,6 @@ void main() {
         discard;
         return;
     }
-
-    rng_initialize(vUv * texSize, int(frame));
 
     invTexSize = 1. / texSize;
 
@@ -148,13 +144,11 @@ void main() {
 
     // start taking samples
     for (int s = 0; s < spp; s++) {
+        rng_initialize(vUv * texSize, int(frame) + s);
         vec2 blueNoiseUv = vec2(shift2()) * blueNoiseRepeat * invTexSize;
 
         // fetch blue noise for this pixel
         vec4 blueNoise = textureLod(blueNoiseTexture, blueNoiseUv, 0.);
-
-        // animate the blue noise depending on the frame and samples taken this frame
-        blueNoise = fract(blueNoise + (float(frame) + float(s)) * harmoniousNumbers1234);
 
         // Disney BRDF and sampling source: https://www.shadertoy.com/view/cll3R4
         // calculate GGX reflection ray

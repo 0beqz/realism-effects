@@ -10,8 +10,6 @@ uniform float jitter;
 uniform float deltaTime;
 uniform float frame;
 
-const vec2 harmoniousNumbers12 = vec2(1.618033988749895, 1.3247179572447458);
-
 // source: https://www.shadertoy.com/view/wltcRS
 
 // internal RNG state
@@ -61,9 +59,7 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
     rng_initialize(vUv * texSize, int(frame));
 
     vec2 blueNoiseUv = vec2(shift2()) * blueNoiseRepeat / texSize;
-
     vec2 blueNoise = textureLod(blueNoiseTexture, blueNoiseUv, 0.).rg;
-    blueNoise = fract(blueNoise + frame * harmoniousNumbers12);
 
     vec2 jitterOffset = jitter * velocity.xy * blueNoise;
 

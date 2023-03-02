@@ -1,6 +1,4 @@
-﻿
-
-vec4 moment, historyMoment;
+﻿vec4 moment, historyMoment;
 
 bool lastReprojectedUvSpecular, isReprojectedUvSpecular;
 
@@ -27,8 +25,11 @@ if (reprojectedUvDiffuse.x >= 0.0 || reprojectedUvSpecular[0].x >= 0.0) {
     moment.a = moment.b * moment.b;
 #endif
 } else {
-    moment.rg = vec2(0., 10.);
-    moment.ba = vec2(0., 10.);
+    moment.rg = vec2(0., 100.);
+    moment.ba = vec2(0., 100.);
+
+    gMoment = moment;
+    return;
 }
 
 float momentTemporalReprojectMix = max(blend, 0.8);

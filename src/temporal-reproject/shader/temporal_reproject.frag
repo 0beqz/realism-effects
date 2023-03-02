@@ -69,8 +69,6 @@ void main() {
     vec2 reprojectedUv;
     bool reprojectHitPoint;
 
-#define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
-
     vec3 clampedColor;
 
 #pragma unroll_loop_start
