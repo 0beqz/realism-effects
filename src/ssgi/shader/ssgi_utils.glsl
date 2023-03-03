@@ -2,15 +2,6 @@
 
 #define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
 
-const float g = 1.6180339887498948482;
-const float a1 = 1.0 / g;
-const float a2 = 1.0 / (g * g);
-
-// reference: https://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/
-float r1(float n) {
-    // 7th harmonious number
-    return fract(1.1127756842787055 + a1 * n);
-}
 // source: https://iquilezles.org/articles/texture/
 vec4 getTexel(const sampler2D tex, vec2 p, const float mip) {
     p = p / invTexSize + 0.5;
@@ -256,37 +247,23 @@ float misHeuristic(float a, float b) {
     return aa / (aa + bb);
 }
 
-// source: https://www.shadertoy.com/view/wltcRS
+const vec4 harmoniousSeq = vec4(0.618033988749895, 0.3247179572447458, 0.2207440846057596, 0.1673039782614187);
 
-// internal RNG state
-uvec4 s1;
-ivec2 pixel;
+vec4 sampleBlueNoise(int seed) {
+    vec2 blueNoiseUv = vUv * blueNoiseRepeat;
 
-void rng_initialize(vec2 p, int frame) {
-    pixel = ivec2(p);
+    // fetch blue noise for this pixel
+    vec4 blueNoise = textureLod(blueNoiseTexture, blueNoiseUv, 0.);
 
-    // blue noise seed
-    s1 = uvec4(frame, frame * 15843, frame * 31 + 4566, frame * 2345 + 58585);
-}
+    // animate blue noise
+    blueNoise = fract(blueNoise + harmoniousSeq * float(seed));
 
-// https://www.pcg-random.org/
-void pcg4d(inout uvec4 v) {
-    v = v * 1664525u + 1013904223u;
-    v.x += v.y * v.w;
-    v.y += v.z * v.x;
-    v.z += v.x * v.y;
-    v.w += v.y * v.z;
-    v = v ^ (v >> 16u);
-    v.x += v.y * v.w;
-    v.y += v.z * v.x;
-    v.z += v.x * v.y;
-    v.w += v.y * v.z;
-}
+    blueNoise.r = (blueNoise.r > 0.5 ? 1.0 - blueNoise.r : blueNoise.r) * 2.0;
+    blueNoise.g = (blueNoise.g > 0.5 ? 1.0 - blueNoise.g : blueNoise.g) * 2.0;
+    blueNoise.b = (blueNoise.b > 0.5 ? 1.0 - blueNoise.b : blueNoise.b) * 2.0;
+    blueNoise.a = (blueNoise.a > 0.5 ? 1.0 - blueNoise.a : blueNoise.a) * 2.0;
 
-// random blue noise sampling pos
-ivec2 shift2(ivec2 size) {
-    pcg4d(s1);
-    return (pixel + ivec2(s1.xy % 0x0fffffffu)) % size;
+    return blueNoise;
 }
 
 // source: https://madebyevan.com/shaders/curvature/

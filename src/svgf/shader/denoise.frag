@@ -219,7 +219,7 @@ void main() {
 #endif
 
         sumVariance[i] = texel[i].a;
-        colorPhi[i] = denoise[i] * sqrt(0.0001 + sumVariance[i]);
+        colorPhi[i] = denoise[i] * sqrt(0.0005 + sumVariance[i]);
     }
 #pragma unroll_loop_end
 

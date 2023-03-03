@@ -3,6 +3,7 @@ import {
 	Clock,
 	HalfFloatType,
 	LinearFilter,
+	Matrix4,
 	NearestFilter,
 	Quaternion,
 	Vector3,
@@ -27,6 +28,9 @@ export const defaultTemporalReprojectPassOptions = {
 	customComposeShader: null,
 	renderTarget: null
 }
+
+const tmpProjectionMatrix = new Matrix4()
+const tmpProjectionMatrixInverse = new Matrix4()
 
 export class TemporalReprojectPass extends Pass {
 	clock = new Clock()
@@ -155,6 +159,9 @@ export class TemporalReprojectPass extends Pass {
 		const delta = Math.min(1 / 10, this.clock.getDelta())
 		this.fullscreenMaterial.uniforms.delta.value = delta
 
+		tmpProjectionMatrix.copy(this._camera.projectionMatrix)
+		tmpProjectionMatrixInverse.copy(this._camera.projectionMatrixInverse)
+
 		if (this._camera.view) this._camera.view.enabled = false
 		this._camera.updateProjectionMatrix()
 
@@ -162,7 +169,8 @@ export class TemporalReprojectPass extends Pass {
 		this.fullscreenMaterial.uniforms.projectionMatrixInverse.value.copy(this._camera.projectionMatrixInverse)
 
 		if (this._camera.view) this._camera.view.enabled = true
-		this._camera.updateProjectionMatrix()
+		this._camera.projectionMatrix.copy(tmpProjectionMatrix)
+		this._camera.projectionMatrixInverse.copy(tmpProjectionMatrixInverse)
 
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)

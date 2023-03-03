@@ -81,9 +81,9 @@ export class SSGIEffect extends Effect {
 					.replace(
 						"accumulatedTexel[ 1 ].rgb = clampedColor;",
 						`
-					float roughness = inputTexel[ 0 ].a;
-					accumulatedTexel[ 1 ].rgb = mix(accumulatedTexel[1].rgb, clampedColor, 1. - sqrt(roughness));
-					`
+						float roughness = inputTexel[ 0 ].a;
+						accumulatedTexel[ 1 ].rgb = mix(accumulatedTexel[1].rgb, clampedColor, 1. - sqrt(roughness));
+						`
 					)
 					.replace(
 						"outputColor = mix(inputTexel[ 1 ].rgb, accumulatedTexel[ 1 ].rgb, temporalReprojectMix);",
