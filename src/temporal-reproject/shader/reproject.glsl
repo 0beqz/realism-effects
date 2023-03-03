@@ -123,10 +123,10 @@ bool worldDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos
 bool validateReprojectedUV(const vec2 reprojectedUv, const bool neighborhoodClamp, const float depth, const vec3 worldPos, const vec3 worldNormal) {
     if (any(lessThan(reprojectedUv, vec2(0.))) || any(greaterThan(reprojectedUv, vec2(1.)))) return false;
 
+    // if (neighborhoodClamp) return true;
+
     float lastDepth;
     vec4 lastDepthTexel;
-
-    if (neighborhoodClamp) return true;
 
 #ifdef dilation
     getDilatedDepthUV(lastDepthTexture, reprojectedUv, lastDepth, lastDepthTexel);
@@ -147,9 +147,7 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const bool neighborhoodClam
 
     if (normalsDisocclusionCheck(worldNormal, lastWorldNormal, worldPos, worldDistFactor)) return false;
 
-    if (planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal, worldDistFactor)) return false;
-
-    return true;
+    return !planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal, worldDistFactor);
 }
 
 vec2 reprojectVelocity(const vec2 sampleUv) {

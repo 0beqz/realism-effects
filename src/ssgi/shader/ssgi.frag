@@ -141,15 +141,27 @@ void main() {
     vec3 f0 = mix(vec3(0.04), diffuse, metalness);
 
     vec4 velocity = textureLod(velocityTexture, vUv, 0.0);
-    ivec2 blueNoiseSize = textureSize(blueNoiseTexture, 0);
+
+    vec2 size = vUv * texSize;
+    vec2 blueNoiseSize = vec2(textureSize(blueNoiseTexture, 0));
+    int blueNoiseIndex = int(floor(floor(size.y / blueNoiseSize.y) * blueNoiseRepeat.x) + floor(size.x / blueNoiseSize.x));
+
+    // get the offset of this pixel's blue noise tile
+    int blueNoiseTileOffset = int(r1(float(blueNoiseIndex) + 1.0) * 65536.);
 
     // start taking samples
     for (int s = 0; s < spp; s++) {
-        rng_initialize(vUv * texSize, int(frame) + s);
-        // vec2 blueNoiseUv = vec2(shift2(blueNoiseSize)) * blueNoiseRepeat * invTexSize;
+        vec2 blueNoiseUv = vUv * blueNoiseRepeat;
 
         // fetch blue noise for this pixel
-        vec4 blueNoise = texelFetch(blueNoiseTexture, shift2(blueNoiseSize), 0);
+        vec4 blueNoise = textureLod(blueNoiseTexture, blueNoiseUv, 0.);
+
+        const vec4 hn = vec4(1.618033988749895, 1.3247179572447458, 1.2207440846057596, 1.1673039782614187);
+        blueNoise = fract(blueNoise + hn * float(frame + s));
+        blueNoise.r = (blueNoise.r > 0.5 ? 1.0 - blueNoise.r : blueNoise.r) * 2.0;
+        blueNoise.g = (blueNoise.g > 0.5 ? 1.0 - blueNoise.g : blueNoise.g) * 2.0;
+        blueNoise.b = (blueNoise.b > 0.5 ? 1.0 - blueNoise.b : blueNoise.b) * 2.0;
+        blueNoise.a = (blueNoise.a > 0.5 ? 1.0 - blueNoise.a : blueNoise.a) * 2.0;
 
         // Disney BRDF and sampling source: https://www.shadertoy.com/view/cll3R4
         // calculate GGX reflection ray
@@ -283,7 +295,7 @@ void main() {
     float rayLength = 0.0;
 
     float curvature = getCurvature(viewNormal, depth);
-    if (!isMissedRay && roughness < 0.375 && curvature < 0.001) {
+    if (!isMissedRay && roughness < 0.5 && curvature < 0.001) {
         vec3 hitPosWS = (vec4(hitPos, 1.) * viewMatrix).xyz;
         rayLength = distance(worldPos, hitPosWS);
     }
