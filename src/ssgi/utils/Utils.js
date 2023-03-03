@@ -218,3 +218,13 @@ export const splitIntoGroupsOfVector4 = arr => {
 	}
 	return result
 }
+
+export const isChildMaterialRenderable = (c, material) => {
+	return (
+		material.visible &&
+		material.depthWrite &&
+		material.depthTest &&
+		(!material.transparent || material.opacity > 0) &&
+		c.constructor.name !== "GroundProjectedEnv"
+	)
+}

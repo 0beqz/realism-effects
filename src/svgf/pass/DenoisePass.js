@@ -14,7 +14,8 @@ const defaultDenoisePassOptions = {
 	normal: true,
 	roughness: true,
 	diffuse: true,
-	roughnessDependentKernel: false
+	roughnessDependent: false,
+	basicVariance: 0.0005
 }
 
 const useEdgeStoppingTypes = [
@@ -111,13 +112,19 @@ export class DenoisePass extends Pass {
 			this.fullscreenMaterial.uniforms["texture" + i] = new Uniform(textures[i])
 		}
 
-		if (typeof options.roughnessDependentKernel === "boolean") {
-			options.roughnessDependentKernel = Array(textures.length).fill(options.roughnessDependentKernel)
+		if (typeof options.roughnessDependent === "boolean") {
+			options.roughnessDependent = Array(textures.length).fill(options.roughnessDependent)
 		}
 
-		this.fullscreenMaterial.defines.roughnessDependentKernel = /* glsl */ `bool[](${options.roughnessDependentKernel.join(
-			", "
-		)})`
+		this.fullscreenMaterial.defines.roughnessDependent = /* glsl */ `bool[](${options.roughnessDependent.join(", ")})`
+
+		if (typeof options.basicVariance === "number") {
+			options.basicVariance = Array(textures.length).fill(options.basicVariance)
+		}
+
+		this.fullscreenMaterial.defines.basicVariance = /* glsl */ `float[](${options.basicVariance
+			.map(n => n.toPrecision(5))
+			.join(", ")})`
 
 		this.options = options
 	}

@@ -13,8 +13,8 @@ import {
 } from "three"
 import { MRTMaterial } from "../material/MRTMaterial.js"
 import { SSGIMaterial } from "../material/SSGIMaterial.js"
+import { getVisibleChildren, isChildMaterialRenderable, keepMaterialMapUpdated } from "../utils/Utils"
 import { BackSideDepthPass } from "./BackSideDepthPass"
-import { getVisibleChildren, keepMaterialMapUpdated } from "../utils/Utils"
 
 import blueNoiseImage from "./../../utils/blue_noise_64_rgba.png"
 
@@ -196,15 +196,11 @@ export class SSGIPass extends Pass {
 			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "map", "USE_MAP", true)
 			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "emissiveMap", "USE_EMISSIVEMAP", true)
 
-			c.visible =
-				originalMaterial.visible &&
-				originalMaterial.depthWrite &&
-				originalMaterial.depthTest &&
-				c.constructor.name !== "GroundProjectedEnv"
+			c.visible = isChildMaterialRenderable(c, originalMaterial)
 
 			mrtMaterial.uniforms.roughness.value =
 				this.ssgiEffect.selection.size === 0 || this.ssgiEffect.selection.has(c)
-					? originalMaterial.roughness || 0
+					? originalMaterial.roughness || 1
 					: 10e10
 
 			mrtMaterial.uniforms.metalness.value = c.material.metalness || 0

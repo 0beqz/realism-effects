@@ -104,6 +104,8 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec2 offset, 
 // roughness similarity
 #ifdef useRoughness
     float neighborRoughness = neighborNormalTexel.a;
+    neighborRoughness *= neighborRoughness;
+
     float roughnessDiff = abs(roughness - neighborRoughness);
     float roughnessSimilarity = exp(-roughnessDiff * roughnessPhi);
 
@@ -121,7 +123,7 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec2 offset, 
 #pragma unroll_loop_start
     for (int i = 0; i < textureCount; i++) {
         //! todo: also use neighborUvSpecular
-        neighborInputTexel[i] = textureLod(texture[i], roughnessDependentKernel[i] ? neighborUvRoughness : neighborUv, 0.);
+        neighborInputTexel[i] = textureLod(texture[i], roughnessDependent[i] ? neighborUvRoughness : neighborUv, 0.);
         neighborColor = neighborInputTexel[i].rgb;
 
         neighborLuma = luminance(neighborColor);
@@ -180,6 +182,7 @@ void main() {
     vec3 worldPos = screenSpaceToWorldSpace(vUv, depth, cameraMatrixWorld);
 
     float roughness = normalTexel.a;
+    roughness *= roughness;
 
     // color information
 
@@ -219,7 +222,11 @@ void main() {
 #endif
 
         sumVariance[i] = texel[i].a;
-        colorPhi[i] = denoise[i] * sqrt(0.0005 + sumVariance[i]);
+        if (roughnessDependent[i]) {
+            colorPhi[i] = denoise[i] * sqrt(basicVariance[i] * roughness + sumVariance[i]);
+        } else {
+            colorPhi[i] = denoise[i] * sqrt(basicVariance[i] + sumVariance[i]);
+        }
     }
 #pragma unroll_loop_end
 

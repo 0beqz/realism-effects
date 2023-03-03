@@ -247,7 +247,7 @@ float misHeuristic(float a, float b) {
     return aa / (aa + bb);
 }
 
-const vec4 harmoniousSeq = vec4(0.618033988749895, 0.3247179572447458, 0.2207440846057596, 0.1673039782614187);
+const vec4 hn = vec4(0.618033988749895, 0.3247179572447458, 0.2207440846057596, 0.1673039782614187);
 
 vec4 sampleBlueNoise(int seed) {
     vec2 blueNoiseUv = vUv * blueNoiseRepeat;
@@ -256,7 +256,7 @@ vec4 sampleBlueNoise(int seed) {
     vec4 blueNoise = textureLod(blueNoiseTexture, blueNoiseUv, 0.);
 
     // animate blue noise
-    blueNoise = fract(blueNoise + harmoniousSeq * float(seed));
+    blueNoise = fract(blueNoise + hn * float(seed));
 
     blueNoise.r = (blueNoise.r > 0.5 ? 1.0 - blueNoise.r : blueNoise.r) * 2.0;
     blueNoise.g = (blueNoise.g > 0.5 ? 1.0 - blueNoise.g : blueNoise.g) * 2.0;

@@ -58,17 +58,20 @@ export class SSGIEffect extends Effect {
 			definesName = "ssdgi"
 			options.reprojectSpecular = false
 			options.neighborhoodClamping = false
-			options.roughnessDependentKernel = false
+			options.roughnessDependent = false
+			options.basicVariance = 0.00025
 		} else if (options.specularOnly) {
 			definesName = "ssr"
 			options.reprojectSpecular = true
 			options.neighborhoodClamping = true
-			options.roughnessDependentKernel = true
+			options.roughnessDependent = true
+			options.basicVariance = 0.0025
 		} else {
 			definesName = "ssgi"
 			options.reprojectSpecular = [false, true]
 			options.neighborhoodClamping = [false, true]
-			options.roughnessDependentKernel = [false, true]
+			options.roughnessDependent = [false, true]
+			options.basicVariance = [0.00025, 0.0025]
 		}
 
 		const textureCount = options.diffuseOnly || options.specularOnly ? 1 : 2

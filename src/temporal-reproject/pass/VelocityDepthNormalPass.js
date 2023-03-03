@@ -2,6 +2,7 @@
 import { Color, FloatType, HalfFloatType, NearestFilter, UnsignedByteType, WebGLMultipleRenderTargets } from "three"
 import {
 	getVisibleChildren,
+	isChildMaterialRenderable,
 	keepMaterialMapUpdated,
 	saveBoneTexture,
 	updateVelocityDepthNormalMaterialAfterRender,
@@ -64,11 +65,7 @@ export class VelocityDepthNormalPass extends Pass {
 
 			c.material = velocityDepthNormalMaterial
 
-			c.visible =
-				originalMaterial.visible &&
-				originalMaterial.depthWrite &&
-				originalMaterial.depthTest &&
-				c.constructor.name !== "GroundProjectedEnv"
+			c.visible = isChildMaterialRenderable(c, originalMaterial)
 
 			if (this.renderDepthNormal) velocityDepthNormalMaterial.defines.renderDepthNormal = ""
 
