@@ -5,7 +5,7 @@ import { TemporalReprojectPass } from "../temporal-reproject/TemporalReprojectPa
 import compose from "./shader/compose.frag"
 
 export const defaultTRAAOptions = {
-	blend: 0.9,
+	blend: 0.7,
 	constantBlend: true,
 	dilation: true,
 	catmullRomSampling: true,

@@ -1,20 +1,20 @@
 #define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
 
-vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth, mat4 curMatrixWorld) {
+vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth, mat4 curMatrixWorld, const mat4 projMatrixInverse) {
     vec4 ndc = vec4(
         (uv.x - 0.5) * 2.0,
         (uv.y - 0.5) * 2.0,
         (depth - 0.5) * 2.0,
         1.0);
 
-    vec4 clip = projectionMatrixInverse * ndc;
+    vec4 clip = projMatrixInverse * ndc;
     vec4 view = curMatrixWorld * (clip / clip.w);
 
     return view.xyz;
 }
 
-vec2 viewSpaceToScreenSpace(const vec3 position) {
-    vec4 projectedCoord = projectionMatrix * vec4(position, 1.0);
+vec2 viewSpaceToScreenSpace(const vec3 position, const mat4 projMatrix) {
+    vec4 projectedCoord = projMatrix * vec4(position, 1.0);
     projectedCoord.xy /= projectedCoord.w;
     // [-1, 1] --> [0, 1] (NDC to screen position)
     projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;
@@ -120,11 +120,13 @@ bool worldDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos
     return distance(worldPos, lastWorldPos) > worldDistance * worldDistFactor;
 }
 
-bool validateReprojectedUV(const vec2 reprojectedUv, const float depth, const vec3 worldPos, const vec3 worldNormal) {
+bool validateReprojectedUV(const vec2 reprojectedUv, const bool neighborhoodClamp, const float depth, const vec3 worldPos, const vec3 worldNormal) {
     if (any(lessThan(reprojectedUv, vec2(0.))) || any(greaterThan(reprojectedUv, vec2(1.)))) return false;
 
     float lastDepth;
     vec4 lastDepthTexel;
+
+    if (neighborhoodClamp) return true;
 
 #ifdef dilation
     getDilatedDepthUV(lastDepthTexture, reprojectedUv, lastDepth, lastDepthTexel);
@@ -135,7 +137,7 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const float depth, const ve
 
     float worldDistFactor = clamp((50.0 + distance(worldPos, cameraPos)) / 100., 0.25, 1.);
 
-    vec3 lastWorldPos = screenSpaceToWorldSpace(reprojectedUv, lastDepth, prevCameraMatrixWorld);
+    vec3 lastWorldPos = screenSpaceToWorldSpace(reprojectedUv, lastDepth, prevCameraMatrixWorld, prevProjectionMatrixInverse);
 
     if (worldDistanceDisocclusionCheck(worldPos, lastWorldPos, depth, worldDistFactor)) return false;
 
@@ -163,17 +165,17 @@ vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength, const float de
     vec3 parallaxHitPoint = cameraPos + cameraRay * (cameraRayLength + rayLength);
 
     vec4 reprojectedParallaxHitPoint = prevViewMatrix * vec4(parallaxHitPoint, 1.0);
-    vec2 hitPointUv = viewSpaceToScreenSpace(reprojectedParallaxHitPoint.xyz);
+    vec2 hitPointUv = viewSpaceToScreenSpace(reprojectedParallaxHitPoint.xyz, prevProjectionMatrix);
 
     return hitPointUv;
 }
 
-vec2 getReprojectedUV(const vec2 uv, const float depth, const vec3 worldPos, const vec3 worldNormal, const float rayLength) {
+vec2 getReprojectedUV(const vec2 uv, const bool neighborhoodClamp, const float depth, const vec3 worldPos, const vec3 worldNormal, const float rayLength) {
     // hit point reprojection
     if (rayLength != 0.0) {
         vec2 reprojectedUv = reprojectHitPoint(worldPos, rayLength, depth);
 
-        if (validateReprojectedUV(reprojectedUv, depth, worldPos, worldNormal)) {
+        if (validateReprojectedUV(reprojectedUv, neighborhoodClamp, depth, worldPos, worldNormal)) {
             return reprojectedUv;
         }
 
@@ -183,7 +185,7 @@ vec2 getReprojectedUV(const vec2 uv, const float depth, const vec3 worldPos, con
     // reprojection using motion vectors
     vec2 reprojectedUv = reprojectVelocity(uv);
 
-    if (validateReprojectedUV(reprojectedUv, depth, worldPos, worldNormal)) {
+    if (validateReprojectedUV(reprojectedUv, neighborhoodClamp, depth, worldPos, worldNormal)) {
         return reprojectedUv;
     }
 
@@ -258,5 +260,5 @@ vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv, con
         return SampleTextureCatmullRom(tex, reprojectedUv, 1.0 / invTexSize);
     }
 
-    return getTexel(tex, reprojectedUv);
+    return textureLod(tex, reprojectedUv, 0.);
 }

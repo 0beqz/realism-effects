@@ -259,14 +259,11 @@ float misHeuristic(float a, float b) {
 // source: https://www.shadertoy.com/view/wltcRS
 
 // internal RNG state
-uvec4 s0, s1;
+uvec4 s1;
 ivec2 pixel;
 
 void rng_initialize(vec2 p, int frame) {
     pixel = ivec2(p);
-
-    // white noise seed
-    s0 = uvec4(p, uint(frame), uint(p.x) + uint(p.y));
 
     // blue noise seed
     s1 = uvec4(frame, frame * 15843, frame * 31 + 4566, frame * 2345 + 58585);
@@ -287,9 +284,9 @@ void pcg4d(inout uvec4 v) {
 }
 
 // random blue noise sampling pos
-ivec2 shift2() {
+ivec2 shift2(ivec2 size) {
     pcg4d(s1);
-    return (pixel + ivec2(s1.xy % 0x0fffffffu)) % 1024;
+    return (pixel + ivec2(s1.xy % 0x0fffffffu)) % size;
 }
 
 // source: https://madebyevan.com/shaders/curvature/

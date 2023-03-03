@@ -2,7 +2,7 @@ import dragDrop from "drag-drop"
 import * as POSTPROCESSING from "postprocessing"
 import Stats from "stats.js"
 import * as THREE from "three"
-import { Box3, Clock, DirectionalLight, DoubleSide, FloatType, MeshNormalMaterial, Vector3 } from "three"
+import { Box3, Clock, Color, DirectionalLight, DoubleSide, FloatType, MeshNormalMaterial, Vector3 } from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
@@ -29,6 +29,9 @@ const guiParams = {
 	Method: "TRAA",
 	Background: false
 }
+
+// extract if the paramaterer "traa_test" is set to true in the URL
+const traaTest = new URLSearchParams(window.location.search).get("traa_test") === "true"
 
 const scene = new THREE.Scene()
 scene.matrixWorldAutoUpdate = false
@@ -100,16 +103,16 @@ const setAA = value => {
 // since using "rendererCanvas" doesn't work when using an offscreen canvas
 const controls = new OrbitControls(camera, document.querySelector("#orbitControlsDomElem"))
 controls.enableDamping = true
-controls.dampingFactor = 0.075
 
-camera.position.fromArray([0, 8.75, 25.4251889687681])
-controls.target.set(0, 8.75, 0)
+const cameraY = traaTest ? 7 : 8.75
+camera.position.fromArray([0, cameraY, 25])
+controls.target.set(0, cameraY, 0)
 controls.maxPolarAngle = Math.PI / 2
 controls.minDistance = 7.5
 window.controls = controls
 
 const composer = new POSTPROCESSING.EffectComposer(renderer)
-window.composer = composer
+const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
 
 const lightParams = {
 	yaw: 55,
@@ -158,24 +161,25 @@ const rgbeLoader = new RGBELoader().setDataType(FloatType)
 const initEnvMap = async envMap => {
 	// await blurredEnvMapGenerator.init()
 	// envMap = blurredEnvMapGenerator.generate(envMap, 0.1)
+	envMap.mapping = THREE.EquirectangularReflectionMapping
 
 	scene.environment?.dispose()
 
-	envMap.mapping = THREE.EquirectangularReflectionMapping
-
 	scene.environment = envMap
-	scene.background = envMap
+	scene.background = traaTest ? new Color(0x4c7fe5) : envMap
 
-	envMesh?.removeFromParent()
-	envMesh?.material.dispose()
-	envMesh?.geometry.dispose()
+	if (!traaTest) {
+		envMesh?.removeFromParent()
+		envMesh?.material.dispose()
+		envMesh?.geometry.dispose()
 
-	envMesh = new GroundProjectedEnv(envMap)
-	envMesh.radius = 100
-	envMesh.height = 20
-	envMesh.scale.setScalar(100)
-	envMesh.updateMatrixWorld()
-	scene.add(envMesh)
+		envMesh = new GroundProjectedEnv(envMap)
+		envMesh.radius = 100
+		envMesh.height = 20
+		envMesh.scale.setScalar(100)
+		envMesh.updateMatrixWorld()
+		// scene.add(envMesh)
+	}
 }
 
 const environments = [
@@ -196,9 +200,10 @@ const gltflLoader = new GLTFLoader()
 const draco = new DRACOLoader()
 draco.setDecoderConfig({ type: "js" })
 draco.setDecoderPath("https://www.gstatic.com/draco/v1/decoders/")
+gltflLoader.setPath("gltf/")
 gltflLoader.setDRACOLoader(draco)
 
-const url = "squid_game__pinksoldier.glb"
+const url = traaTest ? "traa_demo_scene.optimized.glb" : "squid_game.optimized.glb"
 
 let lastScene
 
@@ -247,14 +252,14 @@ const initScene = () => {
 		blend: 0.95,
 		denoiseIterations: 2,
 		denoiseKernel: 3,
-		denoiseDiffuse: 33.15,
-		denoiseSpecular: 8.700000000000001,
+		denoiseDiffuse: 40,
+		denoiseSpecular: 40,
 		depthPhi: 3.5870000000000015,
 		normalPhi: 35.326000000000015,
 		roughnessPhi: 18.75,
 		envBlur: 0.42,
 		directLightMultiplier: 1,
-		maxEnvLuminance: 30,
+		maxEnvLuminance: 50,
 		steps: 20,
 		refineSteps: 4,
 		spp: 1,
@@ -290,27 +295,43 @@ const initScene = () => {
 			setAA(ev.value)
 		})
 
-	const sceneFolder = pane.addFolder({ title: "Scene", expanded: false })
+	const modelNames = [
+		"amg",
+		"chevrolet",
+		"clay_bust_study",
+		"cyberpunk_bike",
+		"cyber_samurai",
+		"darth_vader",
+		"flashbang_grenade",
+		"motorbike",
+		"statue",
+		"squid_game",
+		"swordsman"
+	]
 
-	sceneFolder.addInput(lightParams, "yaw", { min: 0, max: 360, step: 1 }).on("change", refreshLighting)
+	const sceneParams = { Environment: "chinese_garden", Model: "squid_game" }
 
-	sceneFolder.addInput(lightParams, "pitch", { min: -90, max: 90, step: 1 }).on("change", refreshLighting)
+	const envObject = {}
+	const modelObject = {}
 
-	sceneFolder.addInput(light, "intensity", { min: 0, max: 10, step: 0.1 }).on("change", refreshLighting)
+	environments.forEach(value => (envObject[value] = value))
+	modelNames.forEach(value => (modelObject[value] = value))
 
-	const envParams = { Environment: "chinese_garden" }
-
-	const environmentsObject = {}
-
-	environments.forEach(value => (environmentsObject[value] = value))
-
-	const envFolder = pane.addFolder({ title: "Environment" })
-	envFolder
-		.addInput(envParams, "Environment", {
-			options: environmentsObject
+	const assetsFolder = pane.addFolder({ title: "Assets" })
+	assetsFolder
+		.addInput(sceneParams, "Environment", {
+			options: envObject
 		})
 		.on("change", ev => {
 			rgbeLoader.load("hdr/" + ev.value + "_1k.hdr", initEnvMap)
+		})
+
+	assetsFolder
+		.addInput(sceneParams, "Model", {
+			options: modelObject
+		})
+		.on("change", ev => {
+			gltflLoader.load(ev.value + ".optimized.glb", setupAsset)
 		})
 
 	const bloomEffect = new POSTPROCESSING.BloomEffect({
@@ -339,13 +360,12 @@ const initScene = () => {
 			jitter: 1
 		})
 
-		const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
-		composer.addPass(renderPass)
-
-		// setTimeout(() => composer.removePass(renderPass))
-
-		composer.addPass(ssgiPass)
-		composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect, bloomEffect, vignetteEffect, lutEffect))
+		if (traaTest) {
+			composer.addPass(renderPass)
+		} else {
+			composer.addPass(ssgiPass)
+			composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect, bloomEffect, vignetteEffect, lutEffect))
+		}
 
 		traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
 		composer.addPass(traaPass)
@@ -381,6 +401,8 @@ const loop = () => {
 		lastScene.updateMatrixWorld()
 		refreshLighting()
 	}
+
+	controls.dampingFactor = 0.075 * 120 * Math.max(1 / 1000, dt)
 
 	controls.update()
 	camera.updateMatrixWorld()
@@ -435,7 +457,15 @@ document.addEventListener("keydown", ev => {
 	}
 
 	if (ev.code === "KeyQ") {
+		if (traaTest) return
+
 		ssgiPass.enabled = !ssgiPass.enabled
+
+		if (ssgiPass.enabled) {
+			composer.removePass(renderPass)
+		} else {
+			composer.passes.splice(1, 0, renderPass)
+		}
 
 		refreshLighting()
 	}
@@ -488,27 +518,25 @@ dragDrop("body", files => {
 		const arr = new Uint8Array(e.target.result)
 		const { buffer } = arr
 
-		gltflLoader.parse(buffer, "", asset => {
-			if (lastScene) {
-				lastScene.removeFromParent()
-				lastScene.traverse(c => {
-					if (c.isMesh) {
-						c.geometry.dispose()
-						c.material.dispose()
-					}
-				})
-
-				mixer = null
-			}
-
-			setupAsset(asset)
-		})
+		gltflLoader.parse(buffer, "", setupAsset)
 	})
 
 	reader.readAsArrayBuffer(file)
 })
 
 const setupAsset = asset => {
+	if (lastScene) {
+		lastScene.removeFromParent()
+		lastScene.traverse(c => {
+			if (c.isMesh) {
+				c.geometry.dispose()
+				c.material.dispose()
+			}
+		})
+
+		mixer = null
+	}
+
 	scene.add(asset.scene)
 	asset.scene.scale.setScalar(1)
 
@@ -543,12 +571,12 @@ const setupAsset = asset => {
 			c.castShadow = c.receiveShadow = true
 			c.material.depthWrite = true
 
-			if (c.name === "shader") c.material = material
+			if (traaTest && c.name === "shader") c.material = material
 
-			if (c.name === "Cube") c.material = new MeshNormalMaterial()
+			if (traaTest && c.name === "Cube") c.material = new MeshNormalMaterial()
 		}
 
-		if (c.name === "subpixel") {
+		if (traaTest && c.name === "subpixel") {
 			const material = new THREE.LineBasicMaterial({
 				color: 0x0000ff
 			})

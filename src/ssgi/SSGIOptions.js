@@ -44,7 +44,7 @@ export const defaultSSGIOptions = {
 	envBlur: 0.5,
 	importanceSampling: true,
 	directLightMultiplier: 1,
-	maxEnvLuminance: 5,
+	maxEnvLuminance: 50,
 	steps: 20,
 	refineSteps: 5,
 	spp: 1,

@@ -1,17 +1,17 @@
 ﻿// from: https://news.ycombinator.com/item?id=17876741
 // reference: http://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/
 
-const g = 1.32471795724474602596090885447809 // Plastic number
-const a1 = 1.0 / g
-const a2 = 1.0 / (g * g)
-const base = 1.1127756842787055 // harmoniousNumber(7), yields better coverage compared to using 0.5
-
 // eslint-disable-next-line no-unused-vars
 const harmoniousNumber = (n = 2, value = 0, depth = 100) => {
 	if (depth === 0) return value
 
 	return (1 + harmoniousNumber(n, value, depth - 1)) ** (1 / n)
 }
+
+const g = 1.32471795724474602596090885447809 // Plastic number
+const a1 = 1.0 / g
+const a2 = 1.0 / (g * g)
+const base = 1.1127756842787055 // harmoniousNumber(7), yields better coverage compared to using 0.5
 
 export const generateR2 = count => {
 	const points = []

@@ -7,7 +7,8 @@ const defaultSVGFTemporalReprojectPassOptions = {
 	fullAccumulate: true,
 	logTransform: false,
 	catmullRomSampling: true,
-	customComposeShader: svgf_temporal_reproject
+	customComposeShader: svgf_temporal_reproject,
+	accountForJitter: true
 }
 export class SVGFTemporalReprojectPass extends TemporalReprojectPass {
 	constructor(scene, camera, velocityPass, textureCount = 1, options = defaultSVGFTemporalReprojectPassOptions) {

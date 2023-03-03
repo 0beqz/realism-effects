@@ -32,8 +32,8 @@ if (reprojectedUvDiffuse.x >= 0.0 || reprojectedUvSpecular[0].x >= 0.0) {
     return;
 }
 
-float momentTemporalReprojectMix = max(blend, 0.8);
-gMoment = mix(moment, historyMoment, momentTemporalReprojectMix);
+float momentTemporalReprojectMix = max(fpsAdjustedBlend, 0.8);
+gMoment = mix(moment, historyMoment, 0.8);
 
 // if (reprojectedUvDiffuse.x < 0. && dot(inputTexel[0].rgb, inputTexel[0].rgb) != 0.0) {
 //     gOutput0.rgb = vec3(0., 1., 0.);

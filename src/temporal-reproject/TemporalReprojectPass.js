@@ -1,5 +1,13 @@
 ﻿import { Pass } from "postprocessing"
-import { HalfFloatType, LinearFilter, NearestFilter, Quaternion, Vector3, WebGLMultipleRenderTargets } from "three"
+import {
+	Clock,
+	HalfFloatType,
+	LinearFilter,
+	NearestFilter,
+	Quaternion,
+	Vector3,
+	WebGLMultipleRenderTargets
+} from "three"
 import { CopyPass } from "../ssgi/pass/CopyPass"
 import { TemporalReprojectMaterial } from "./material/TemporalReprojectMaterial"
 import { generateR2 } from "./utils/QuasirandomGenerator"
@@ -21,6 +29,7 @@ export const defaultTemporalReprojectPassOptions = {
 }
 
 export class TemporalReprojectPass extends Pass {
+	clock = new Clock()
 	r2Sequence = []
 	pointsIndex = 0
 	lastCameraTransform = {
@@ -58,13 +67,15 @@ export class TemporalReprojectPass extends Pass {
 		this.fullscreenMaterial.uniforms.constantBlend.value = options.constantBlend
 		this.fullscreenMaterial.uniforms.fullAccumulate.value = options.fullAccumulate
 
-		this.fullscreenMaterial.uniforms.projectionMatrix.value = camera.projectionMatrix
-		this.fullscreenMaterial.uniforms.projectionMatrixInverse.value = camera.projectionMatrixInverse
+		this.fullscreenMaterial.uniforms.projectionMatrix.value = camera.projectionMatrix.clone()
+		this.fullscreenMaterial.uniforms.projectionMatrixInverse.value = camera.projectionMatrixInverse.clone()
 		this.fullscreenMaterial.uniforms.cameraMatrixWorld.value = camera.matrixWorld
 		this.fullscreenMaterial.uniforms.viewMatrix.value = camera.matrixWorldInverse
 		this.fullscreenMaterial.uniforms.cameraPos.value = camera.position
 		this.fullscreenMaterial.uniforms.prevViewMatrix.value = camera.matrixWorldInverse.clone()
 		this.fullscreenMaterial.uniforms.prevCameraMatrixWorld.value = camera.matrixWorld.clone()
+		this.fullscreenMaterial.uniforms.prevProjectionMatrix.value = camera.projectionMatrix.clone()
+		this.fullscreenMaterial.uniforms.prevProjectionMatrixInverse.value = camera.projectionMatrixInverse.clone()
 
 		// init copy pass to save the accumulated textures and the textures from the last frame
 		this.copyPass = new CopyPass(2 + textureCount)
@@ -141,6 +152,18 @@ export class TemporalReprojectPass extends Pass {
 	}
 
 	render(renderer) {
+		const delta = Math.min(1 / 10, this.clock.getDelta())
+		this.fullscreenMaterial.uniforms.delta.value = delta
+
+		if (this._camera.view) this._camera.view.enabled = false
+		this._camera.updateProjectionMatrix()
+
+		this.fullscreenMaterial.uniforms.projectionMatrix.value.copy(this._camera.projectionMatrix)
+		this.fullscreenMaterial.uniforms.projectionMatrixInverse.value.copy(this._camera.projectionMatrixInverse)
+
+		if (this._camera.view) this._camera.view.enabled = true
+		this._camera.updateProjectionMatrix()
+
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)
 		this.fullscreenMaterial.uniforms.reset.value = false
@@ -159,6 +182,13 @@ export class TemporalReprojectPass extends Pass {
 		// save last transformations
 		this.fullscreenMaterial.uniforms.prevCameraMatrixWorld.value.copy(this._camera.matrixWorld)
 		this.fullscreenMaterial.uniforms.prevViewMatrix.value.copy(this._camera.matrixWorldInverse)
+
+		this.fullscreenMaterial.uniforms.prevProjectionMatrix.value.copy(
+			this.fullscreenMaterial.uniforms.projectionMatrix.value
+		)
+		this.fullscreenMaterial.uniforms.prevProjectionMatrixInverse.value.copy(
+			this.fullscreenMaterial.uniforms.projectionMatrixInverse.value
+		)
 	}
 
 	jitter(jitterScale = 1) {

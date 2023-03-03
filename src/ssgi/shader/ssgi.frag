@@ -141,14 +141,15 @@ void main() {
     vec3 f0 = mix(vec3(0.04), diffuse, metalness);
 
     vec4 velocity = textureLod(velocityTexture, vUv, 0.0);
+    ivec2 blueNoiseSize = textureSize(blueNoiseTexture, 0);
 
     // start taking samples
     for (int s = 0; s < spp; s++) {
         rng_initialize(vUv * texSize, int(frame) + s);
-        vec2 blueNoiseUv = vec2(shift2()) * blueNoiseRepeat * invTexSize;
+        // vec2 blueNoiseUv = vec2(shift2(blueNoiseSize)) * blueNoiseRepeat * invTexSize;
 
         // fetch blue noise for this pixel
-        vec4 blueNoise = textureLod(blueNoiseTexture, blueNoiseUv, 0.);
+        vec4 blueNoise = texelFetch(blueNoiseTexture, shift2(blueNoiseSize), 0);
 
         // Disney BRDF and sampling source: https://www.shadertoy.com/view/cll3R4
         // calculate GGX reflection ray

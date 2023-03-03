@@ -90,7 +90,7 @@ export class MotionBlurEffect extends Effect {
 		if (noiseTexture) {
 			const { width, height } = noiseTexture.source.data
 
-			this.uniforms.get("blueNoiseRepeat").value.set(inputBuffer.width / width, inputBuffer.height / height)
+			this.uniforms.get("blueNoiseRepeat").value.set(width, height)
 		}
 	}
 }
