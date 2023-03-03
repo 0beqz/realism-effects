@@ -105,4 +105,4 @@ dist
 # TernJS port file
 .tern-port
 
-example/public/hdr/*
+example/public/hdr/8k
