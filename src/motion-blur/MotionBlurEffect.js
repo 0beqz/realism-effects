@@ -10,7 +10,7 @@ import blueNoiseImage from "./../utils/blue_noise_64_rgba.png"
 // http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html
 // reference code: https://github.com/gkjohnson/threejs-sandbox/blob/master/motionBlurPass/src/CompositeShader.js
 
-const defaultOptions = { intensity: 1, jitter: 5, samples: 16 }
+const defaultOptions = { intensity: 1, jitter: 1, samples: 16 }
 
 export class MotionBlurEffect extends Effect {
 	pointsIndex = 0
@@ -24,8 +24,7 @@ export class MotionBlurEffect extends Effect {
 				["inputTexture", new Uniform(null)],
 				["velocityTexture", new Uniform(velocityPass.texture)],
 				["blueNoiseTexture", new Uniform(null)],
-				["blueNoiseRepeat", new Uniform(new Vector2())],
-				["blueNoiseOffset", new Uniform(new Vector2())],
+				["blueNoiseSize", new Uniform(new Vector2())],
 				["texSize", new Uniform(new Vector2())],
 				["intensity", new Uniform(1)],
 				["jitter", new Uniform(1)],
@@ -90,7 +89,7 @@ export class MotionBlurEffect extends Effect {
 		if (noiseTexture) {
 			const { width, height } = noiseTexture.source.data
 
-			this.uniforms.get("blueNoiseRepeat").value.set(width, height)
+			this.uniforms.get("blueNoiseSize").value.set(width, height)
 		}
 	}
 }

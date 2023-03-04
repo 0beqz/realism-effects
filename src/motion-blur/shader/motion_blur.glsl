@@ -2,13 +2,13 @@
 uniform sampler2D inputTexture;
 uniform sampler2D velocityTexture;
 uniform sampler2D blueNoiseTexture;
-uniform vec2 blueNoiseRepeat;
+uniform ivec2 blueNoiseSize;
 uniform vec2 texSize;
 uniform float intensity;
 uniform float jitter;
 
 uniform float deltaTime;
-uniform float frame;
+uniform int frame;
 
 // source: https://www.shadertoy.com/view/wltcRS
 
@@ -43,7 +43,7 @@ void pcg4d(inout uvec4 v) {
 // random blue noise sampling pos
 ivec2 shift2() {
     pcg4d(s1);
-    return (pixel + ivec2(s1.xy % 0x0fffffffu)) % 1024;
+    return (pixel + ivec2(s1.xy % 0x0fffffffu)) % blueNoiseSize;
 }
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
@@ -56,10 +56,9 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 
     velocity.xy *= intensity;
 
-    rng_initialize(vUv * texSize, int(frame));
+    rng_initialize(vUv * texSize, frame);
 
-    vec2 blueNoiseUv = vec2(shift2()) * blueNoiseRepeat / texSize;
-    vec2 blueNoise = textureLod(blueNoiseTexture, blueNoiseUv, 0.).rg;
+    vec2 blueNoise = texelFetch(blueNoiseTexture, shift2(), 0).rg - 0.5;
 
     vec2 jitterOffset = jitter * velocity.xy * blueNoise;
 
@@ -70,11 +69,9 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
     startUv = max(vec2(0.), startUv);
     endUv = min(vec2(1.), endUv);
 
-    float samplesMinus1Float = samplesFloat - 1.0;
-
     vec3 motionBlurredColor;
-    for (int i = 1; i < samples; i++) {
-        vec2 reprojectedUv = mix(startUv, endUv, float(i) / samplesMinus1Float);
+    for (float i = 0.0; i <= samplesFloat; i++) {
+        vec2 reprojectedUv = mix(startUv, endUv, i / samplesFloat);
         vec3 neighborColor = textureLod(inputTexture, reprojectedUv, 0.0).rgb;
 
         motionBlurredColor += neighborColor;

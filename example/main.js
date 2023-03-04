@@ -66,7 +66,7 @@ window.renderer = renderer
 
 renderer.autoClear = false
 
-renderer.outputEncoding = THREE.sRGBEncoding
+if (!traaTest) renderer.outputEncoding = THREE.sRGBEncoding
 const dpr = window.devicePixelRatio || 1
 renderer.setPixelRatio(dpr)
 renderer.setSize(window.innerWidth * dpr, window.innerHeight * dpr)
@@ -323,7 +323,7 @@ const initScene = () => {
 			options: envObject
 		})
 		.on("change", ev => {
-			rgbeLoader.load("hdr/" + ev.value + "_1k.hdr", initEnvMap)
+			rgbeLoader.load("hdr/8k/" + ev.value + "_8k.hdr", initEnvMap)
 		})
 
 	assetsFolder

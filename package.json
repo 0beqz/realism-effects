@@ -1,5 +1,5 @@
 {
-	"name": "traa",
+	"name": "realism-effects",
 	"description": "",
 	"main": "dist/index.cjs",
 	"module": "dist/index.js",
