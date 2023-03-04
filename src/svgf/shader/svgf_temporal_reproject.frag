@@ -2,6 +2,7 @@
 
 bool lastReprojectedUvSpecular, isReprojectedUvSpecular;
 
+#pragma unroll_loop_start
 for (int i = 0; i < momentTextureCount; i++) {
     isReprojectedUvSpecular = reprojectSpecular[i] && inputTexel[i].a != 0.0 && reprojectedUvSpecular[i].x >= 0.0;
 
@@ -15,6 +16,7 @@ for (int i = 0; i < momentTextureCount; i++) {
 
     lastReprojectedUvSpecular = isReprojectedUvSpecular;
 }
+#pragma unroll_loop_end
 
 if (reprojectedUvDiffuse.x >= 0.0 || reprojectedUvSpecular[0].x >= 0.0) {
     moment.r = luminance(gOutput[0].rgb);

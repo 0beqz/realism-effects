@@ -43,7 +43,7 @@ export class SVGFTemporalReprojectPass extends TemporalReprojectPass {
 
 		const lastMomentTexture = this.copyPass.renderTarget.texture[copyPassTextureCount - 1]
 		lastMomentTexture.type = FloatType
-		lastMomentTexture.minFilter = LinearFilter // need to use linear filter with catmull rom sampling over nearest filter
+		lastMomentTexture.minFilter = LinearFilter // need to use linear filter over nearest filter
 		lastMomentTexture.magFilter = LinearFilter
 		lastMomentTexture.needsUpdate = true
 

@@ -228,3 +228,23 @@ export const isChildMaterialRenderable = (c, material) => {
 		c.constructor.name !== "GroundProjectedEnv"
 	)
 }
+
+export const copyNecessaryProps = (originalMaterial, newMaterial) => {
+	const keys = [
+		"vertexTangent",
+		"vertexColors",
+		"vertexAlphas",
+		"vertexUvs",
+		"uvsVertexOnly",
+		"supportsVertexTextures",
+		"instancing",
+		"instancingColor",
+		"side",
+		"flatShading",
+		"skinning",
+		"doubleSided",
+		"flipSided"
+	]
+
+	for (const key of keys) newMaterial[key] = originalMaterial[key]
+}

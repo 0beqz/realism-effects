@@ -166,7 +166,7 @@ const initEnvMap = async envMap => {
 	scene.environment?.dispose()
 
 	scene.environment = envMap
-	scene.background = traaTest ? new Color(0x4c7fe5) : envMap
+	scene.background = traaTest ? new Color(0x4c7fe5) : null
 
 	if (!traaTest) {
 		envMesh?.removeFromParent()
@@ -178,7 +178,7 @@ const initEnvMap = async envMap => {
 		envMesh.height = 20
 		envMesh.scale.setScalar(100)
 		envMesh.updateMatrixWorld()
-		// scene.add(envMesh)
+		scene.add(envMesh)
 	}
 }
 

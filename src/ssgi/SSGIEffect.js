@@ -156,14 +156,20 @@ export class SSGIEffect extends Effect {
 			encoding: sRGBEncoding
 		})
 
+		this.renderPass = new RenderPass(this._scene, this._camera)
+		this.renderPass.renderToScreen = false
+
 		this.setSize(options.width, options.height)
 
 		const th = this
+		const ssgiRenderPass = this.renderPass
 		RenderPass.prototype.render = function(...args) {
-			const wasUsingRenderPass = th.isUsingRenderPass
-			th.isUsingRenderPass = true
+			if (this !== ssgiRenderPass) {
+				const wasUsingRenderPass = th.isUsingRenderPass
+				th.isUsingRenderPass = true
 
-			if (wasUsingRenderPass != th.isUsingRenderPass) th.updateUsingRenderPass()
+				if (wasUsingRenderPass != th.isUsingRenderPass) th.updateUsingRenderPass()
+			}
 
 			render.call(this, ...args)
 		}
@@ -372,8 +378,6 @@ export class SSGIEffect extends Effect {
 		const hideMeshes = []
 
 		if (!this.isUsingRenderPass) {
-			renderer.setRenderTarget(this.sceneRenderTarget)
-
 			const children = []
 
 			for (const c of getVisibleChildren(this._scene)) {
@@ -391,7 +395,7 @@ export class SSGIEffect extends Effect {
 				c.visible ? hideMeshes.push(c) : children.push(c)
 			}
 
-			renderer.render(this._scene, this._camera)
+			this.renderPass.render(renderer, this.sceneRenderTarget)
 
 			for (const c of children) c.visible = true
 			for (const c of hideMeshes) c.visible = false

@@ -1,6 +1,7 @@
 ﻿import { Pass } from "postprocessing"
 import { Color, FloatType, HalfFloatType, NearestFilter, UnsignedByteType, WebGLMultipleRenderTargets } from "three"
 import {
+	copyNecessaryProps,
 	getVisibleChildren,
 	isChildMaterialRenderable,
 	saveBoneTexture,
@@ -53,6 +54,8 @@ export class VelocityDepthNormalPass extends Pass {
 			if (originalMaterial !== cachedOriginalMaterial) {
 				velocityDepthNormalMaterial = new VelocityDepthNormalMaterial()
 
+				copyNecessaryProps(originalMaterial, velocityDepthNormalMaterial)
+
 				c.material = velocityDepthNormalMaterial
 
 				if (c.skeleton?.boneTexture) saveBoneTexture(c)
@@ -73,7 +76,6 @@ export class VelocityDepthNormalPass extends Pass {
 				originalMaterial.metalnessMap
 
 			if (map) velocityDepthNormalMaterial.uniforms.uvTransform.value = map.matrix
-			velocityDepthNormalMaterial.side = originalMaterial.side
 
 			updateVelocityDepthNormalMaterialBeforeRender(c, this._camera)
 		}

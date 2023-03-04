@@ -13,7 +13,12 @@ import {
 } from "three"
 import { MRTMaterial } from "../material/MRTMaterial.js"
 import { SSGIMaterial } from "../material/SSGIMaterial.js"
-import { getVisibleChildren, isChildMaterialRenderable, keepMaterialMapUpdated } from "../utils/Utils"
+import {
+	copyNecessaryProps,
+	getVisibleChildren,
+	isChildMaterialRenderable,
+	keepMaterialMapUpdated
+} from "../utils/Utils"
 import { BackSideDepthPass } from "./BackSideDepthPass"
 
 import blueNoiseImage from "./../../utils/blue_noise_64_rgba.png"
@@ -148,23 +153,7 @@ export class SSGIPass extends Pass {
 
 				mrtMaterial = new MRTMaterial()
 
-				const keys = [
-					"vertexTangent",
-					"vertexColors",
-					"vertexAlphas",
-					"vertexUvs",
-					"uvsVertexOnly",
-					"supportsVertexTextures",
-					"instancing",
-					"instancingColor",
-					"side",
-					"flatShading",
-					"skinning",
-					"doubleSided",
-					"flipSided"
-				]
-
-				for (const key of keys) mrtMaterial[key] = originalMaterial[key]
+				copyNecessaryProps(originalMaterial, mrtMaterial)
 
 				mrtMaterial.uniforms.normalScale.value = originalMaterial.normalScale
 
