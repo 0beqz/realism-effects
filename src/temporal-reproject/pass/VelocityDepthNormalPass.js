@@ -1,5 +1,13 @@
 ﻿import { Pass } from "postprocessing"
-import { Color, FloatType, HalfFloatType, NearestFilter, UnsignedByteType, WebGLMultipleRenderTargets } from "three"
+import {
+	Color,
+	DepthTexture,
+	FloatType,
+	HalfFloatType,
+	NearestFilter,
+	UnsignedByteType,
+	WebGLMultipleRenderTargets
+} from "three"
 import {
 	copyNecessaryProps,
 	getVisibleChildren,
@@ -28,6 +36,9 @@ export class VelocityDepthNormalPass extends Pass {
 			minFilter: NearestFilter,
 			magFilter: NearestFilter
 		})
+
+		this.renderTarget.depthTexture = new DepthTexture(1, 1)
+		this.renderTarget.depthTexture.type = FloatType
 
 		this.renderTarget.texture[0].type = FloatType
 		this.renderTarget.texture[0].needsUpdate = true
