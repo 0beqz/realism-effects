@@ -230,7 +230,6 @@ export class SSGIEffect extends Effect {
 							break
 
 						// SSGI
-
 						case "resolutionScale":
 							this.setSize(this.lastSize.width, this.lastSize.height)
 							temporalReprojectPass.reset()

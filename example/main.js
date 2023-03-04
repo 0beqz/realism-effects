@@ -209,7 +209,7 @@ gltflLoader.load(url, asset => {
 const loadingEl = document.querySelector("#loading")
 
 let loadedCount = 0
-const loadFiles = traaTest ? 15 : 9
+const loadFiles = traaTest ? 15 : 10
 THREE.DefaultLoadingManager.onProgress = () => {
 	loadedCount++
 
@@ -358,7 +358,7 @@ const initScene = () => {
 			composer.addPass(renderPass)
 		} else {
 			composer.addPass(ssgiPass)
-			composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, vignetteEffect, lutEffect))
+			composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect, bloomEffect, vignetteEffect, lutEffect))
 		}
 
 		traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)

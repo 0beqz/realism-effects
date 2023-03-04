@@ -61,9 +61,11 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 
     vec2 jitterOffset = jitter * velocity.xy * blueNoise;
 
+    float frameSpeed = (1. / 100.) / deltaTime;
+
     // UVs will be centered around the target pixel (see http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html)
-    vec2 startUv = vUv + jitterOffset - velocity.xy * 0.5;
-    vec2 endUv = vUv + jitterOffset + velocity.xy * 0.5;
+    vec2 startUv = vUv + (jitterOffset - velocity.xy * 0.5) * frameSpeed;
+    vec2 endUv = vUv + (jitterOffset + velocity.xy * 0.5) * frameSpeed;
 
     startUv = max(vec2(0.), startUv);
     endUv = min(vec2(1.), endUv);
