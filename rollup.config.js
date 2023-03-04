@@ -1,9 +1,9 @@
-import path from "path"
-import babel from "@rollup/plugin-babel"
-import resolve from "@rollup/plugin-node-resolve"
-import glslify from "rollup-plugin-glslify"
+import compiler from "@ampproject/rollup-plugin-closure-compiler"
+import { babel } from "@rollup/plugin-babel"
 import image from "@rollup/plugin-image"
-import wasm from "@rollup/plugin-wasm"
+import resolve from "@rollup/plugin-node-resolve"
+import path from "path"
+import glslify from "rollup-plugin-glslify"
 
 // eslint-disable-next-line no-undef
 const root = process.platform === "win32" ? path.resolve("/") : "/"
@@ -46,12 +46,20 @@ export default [
 		input: "./src/index.js",
 		output: { file: "dist/index.js", format: "esm" },
 		external,
-		plugins: [wasm(), glslify(), image(), babel(getBabelOptions({ useESModules: true })), resolve({ extensions })]
+		plugins: [
+			glslify(),
+			image(),
+			babel(getBabelOptions({ useESModules: true })),
+			compiler({
+				rewrite_polyfills: false
+			}),
+			resolve({ extensions })
+		]
 	},
 	{
 		input: "./src/index.js",
 		output: { file: "dist/index.cjs", format: "cjs" },
 		external,
-		plugins: [wasm(), glslify(), image(), babel(getBabelOptions({ useESModules: false })), resolve({ extensions })]
+		plugins: [glslify(), image(), babel(getBabelOptions({ useESModules: false })), compiler(), resolve({ extensions })]
 	}
 ]

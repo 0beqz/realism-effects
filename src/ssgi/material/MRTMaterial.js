@@ -124,7 +124,7 @@ export class MRTMaterial extends ShaderMaterial {
                         gNormal = vec4(0.);
                     }else{
                         #ifdef USE_ROUGHNESSMAP
-                            vec4 texelRoughness = texture2D( roughnessMap, vUv );
+                            vec4 texelRoughness = textureLod( roughnessMap, vUv, 0. );
                             // reads channel G, compatible with a combined OcclusionRoughnessMetallic (RGB) texture
                             roughnessFactor *= texelRoughness.g;
                         #endif

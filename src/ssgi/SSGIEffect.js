@@ -12,7 +12,7 @@ import { SVGF } from "../svgf/SVGF.js"
 import { SSGIPass } from "./pass/SSGIPass.js"
 import compose from "./shader/compose.frag"
 import denoise_compose from "./shader/denoise_compose.frag"
-import denoise_compose_functions from "./shader/denoise_compose_functions.glsl"
+import denoise_compose_functions from "./shader/denoise_compose_functions.frag"
 import { defaultSSGIOptions } from "./SSGIOptions"
 import {
 	createGlobalDisableIblIradianceUniform,
@@ -164,7 +164,7 @@ export class SSGIEffect extends Effect {
 
 		const th = this
 		const ssgiRenderPass = this.renderPass
-		RenderPass.prototype.render = function(...args) {
+		RenderPass.prototype.render = function (...args) {
 			if (this !== ssgiRenderPass) {
 				const wasUsingRenderPass = th.isUsingRenderPass
 				th.isUsingRenderPass = true
@@ -229,7 +229,7 @@ export class SSGIEffect extends Effect {
 							this.svgf.denoisePass.fullscreenMaterial.uniforms[key].value = value
 							break
 
-							// SSGI
+						// SSGI
 
 						case "resolutionScale":
 							this.setSize(this.lastSize.width, this.lastSize.height)

@@ -3,7 +3,7 @@ import { Vector3 } from "three"
 import { ShaderMaterial, Uniform, Vector2 } from "three"
 import vertexShader from "../../utils/shader/basic.vert"
 import fragmentShader from "../shader/temporal_reproject.frag"
-import reproject from "../shader/reproject.glsl"
+import reproject from "../shader/reproject.frag"
 import { unrollLoops } from "../../ssgi/utils/Utils"
 
 export class TemporalReprojectMaterial extends ShaderMaterial {

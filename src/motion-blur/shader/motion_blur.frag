@@ -1,5 +1,4 @@
-﻿
-uniform sampler2D inputTexture;
+﻿uniform sampler2D inputTexture;
 uniform sampler2D velocityTexture;
 uniform sampler2D blueNoiseTexture;
 uniform ivec2 blueNoiseSize;

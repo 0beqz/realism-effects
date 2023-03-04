@@ -232,7 +232,7 @@ float sampleEquirectProbability(EquirectHdrInfo info, vec2 r, out vec3 direction
 
     vec3 derivedDirection = equirectUvToDirection(uv);
     direction = derivedDirection;
-    vec3 color = texture2D(info.map, uv).rgb;
+    vec3 color = texture(info.map, uv).rgb;
 
     float totalSum = info.totalSumWhole + info.totalSumDecimal;
     float lum = luminance(color);

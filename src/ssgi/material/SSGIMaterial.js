@@ -2,7 +2,7 @@
 import vertexShader from "../../utils/shader/basic.vert"
 import fragmentShader from "../shader/ssgi.frag"
 // eslint-disable-next-line camelcase
-import ssgi_utils from "../shader/ssgi_utils.glsl"
+import ssgi_utils from "../shader/ssgi_utils.frag"
 import { EquirectHdrInfoUniform } from "../utils/EquirectHdrInfoUniform"
 
 export class SSGIMaterial extends ShaderMaterial {

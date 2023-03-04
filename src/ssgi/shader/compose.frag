@@ -1,10 +1,11 @@
-﻿
-uniform sampler2D inputTexture;
+﻿uniform sampler2D inputTexture;
 uniform sampler2D sceneTexture;
 uniform sampler2D depthTexture;
 uniform int toneMapping;
 
 #include <tonemapping_pars_fragment>
+
+#pragma tonemapping_pars_fragment
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
     vec4 ssgiTexel = textureLod(inputTexture, uv, 0.);

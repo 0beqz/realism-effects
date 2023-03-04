@@ -1,8 +1,9 @@
 {
 	"name": "realism-effects",
-	"description": "",
+	"description": "Effects to enhance your three.js scene's realism",
 	"main": "dist/index.cjs",
 	"module": "dist/index.js",
+	"type": "module",
 	"sideEffects": false,
 	"scripts": {
 		"build": "rollup -c",
@@ -12,9 +13,11 @@
 	"keywords": [
 		"three",
 		"threejs",
-		"antialias",
 		"postprocessing",
-		"traa",
+		"ssgi",
+		"realism",
+		"raytracing",
+		"antialias",
 		"3d"
 	],
 	"files": [
@@ -24,6 +27,7 @@
 	"author": "0beqz",
 	"license": "MIT",
 	"devDependencies": {
+		"@ampproject/rollup-plugin-closure-compiler": "^0.27.0",
 		"@babel/core": "^7.18.6",
 		"@babel/plugin-proposal-class-properties": "^7.18.6",
 		"@babel/plugin-transform-runtime": "^7.18.6",
