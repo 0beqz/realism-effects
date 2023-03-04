@@ -272,10 +272,10 @@
   "resolved" "https://registry.npmjs.org/queue-microtask/-/queue-microtask-1.2.3.tgz"
   "version" "1.2.3"
 
-"realism-effects@^1.0.0":
-  "integrity" "sha512-76VmcQIDurQ1j678NHwBzB2R/zaVpL1OO8BAnEAbf5VXIF9M8ucPZBaFuxAZ0v3adaR+Kt83EpzzPUvfPwgnBw=="
-  "resolved" "https://registry.npmjs.org/realism-effects/-/realism-effects-1.0.0.tgz"
-  "version" "1.0.0"
+"realism-effects@^1.0.1":
+  "integrity" "sha512-q1abmkXCPN3HegxSZ4gTsIPeLZxKqn7WzVrAZWuzuJD/rWnFY7+9wkmuOIz/kUoF62ODHaqfOrPxUOszueC18g=="
+  "resolved" "https://registry.npmjs.org/realism-effects/-/realism-effects-1.0.1.tgz"
+  "version" "1.0.1"
 
 "resolve@^1.22.1":
   "integrity" "sha512-nBpuuYuY5jFsli/JIs1oldw6fOQCBioohqWZg/2hiaOybXOft4lonv85uDOKXdf8rhyK159cxU5cDcK/NKk8zw=="
