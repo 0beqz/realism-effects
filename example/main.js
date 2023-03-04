@@ -384,7 +384,7 @@ const initScene = () => {
 
 		pane.element.style.display = display
 		gui2.pane.element.style.display = display
-		stats.dom.style.display = display
+		// stats.dom.style.display = display
 		infoEl.style.display = "block"
 	})
 }

@@ -8,9 +8,9 @@ for (int i = 0; i < momentTextureCount; i++) {
     reprojectedUv = isReprojectedUvSpecular ? reprojectedUvSpecular[i] : reprojectedUvDiffuse;
 
     if (i == 0) {
-        historyMoment = textureLod(lastMomentTexture, reprojectedUv, 0.);
+        historyMoment = SampleTextureCatmullRom(lastMomentTexture, reprojectedUv, 1.0 / invTexSize);
     } else if (lastReprojectedUvSpecular != isReprojectedUvSpecular) {
-        historyMoment.ba = textureLod(lastMomentTexture, reprojectedUv, 0.).ba;
+        historyMoment.ba = SampleTextureCatmullRom(lastMomentTexture, reprojectedUv, 1.0 / invTexSize).ba;
     }
 
     lastReprojectedUvSpecular = isReprojectedUvSpecular;

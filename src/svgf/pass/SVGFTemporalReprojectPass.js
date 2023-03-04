@@ -1,5 +1,5 @@
 ﻿/* eslint-disable camelcase */
-import { FloatType, NearestFilter, Uniform } from "three"
+import { FloatType, LinearFilter, NearestFilter, Uniform } from "three"
 import { TemporalReprojectPass } from "../../temporal-reproject/TemporalReprojectPass"
 import svgf_temporal_reproject from "../shader/svgf_temporal_reproject.frag"
 
@@ -43,8 +43,8 @@ export class SVGFTemporalReprojectPass extends TemporalReprojectPass {
 
 		const lastMomentTexture = this.copyPass.renderTarget.texture[copyPassTextureCount - 1]
 		lastMomentTexture.type = FloatType
-		lastMomentTexture.minFilter = NearestFilter
-		lastMomentTexture.magFilter = NearestFilter
+		lastMomentTexture.minFilter = LinearFilter // need to use linear filter with catmull rom sampling over nearest filter
+		lastMomentTexture.magFilter = LinearFilter
 		lastMomentTexture.needsUpdate = true
 
 		this.fullscreenMaterial.uniforms.lastMomentTexture.value = lastMomentTexture

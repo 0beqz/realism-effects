@@ -47,27 +47,14 @@ float distToPlane(const vec3 worldPos, const vec3 neighborWorldPos, const vec3 w
     return distToPlane;
 }
 
-// source: https://iquilezles.org/articles/texture/
-vec4 getTexel(const sampler2D tex, vec2 p) {
-    p = p / invTexSize + 0.5;
-
-    vec2 i = floor(p);
-    vec2 f = p - i;
-    f = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
-    p = i + f;
-
-    p = (p - 0.5) * invTexSize;
-    return textureLod(tex, p, 0.0);
-}
-
-void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec2 offset, const float depth, const vec3 normal,
+void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const float depth, const vec3 normal,
          const float roughness, const float roughnessSqrt, const vec3 worldPos,
          const float luma[textureCount], const float colorPhi[textureCount],
          inout vec3 denoisedColor[textureCount], inout float totalWeight[textureCount], inout float sumVariance[textureCount]) {
     vec2 fullNeighborUv = neighborVec * pixelStepOffset;
     vec2 neighborUvNearest = vUv + fullNeighborUv;
-    vec2 neighborUv = vUv + fullNeighborUv + offset;
-    vec2 neighborUvRoughness = vUv + (fullNeighborUv + offset) * roughnessSqrt;
+    vec2 neighborUv = vUv + fullNeighborUv;
+    vec2 neighborUvRoughness = vUv + fullNeighborUv * roughnessSqrt;
 
     float basicWeight = 1.0;
 
@@ -122,8 +109,7 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec2 offset, 
 
 #pragma unroll_loop_start
     for (int i = 0; i < textureCount; i++) {
-        //! todo: also use neighborUvSpecular
-        neighborInputTexel[i] = getTexel(texture[i], roughnessDependent[i] ? neighborUvRoughness : neighborUv);
+        neighborInputTexel[i] = textureLod(texture[i], roughnessDependent[i] ? neighborUvRoughness : neighborUv, 0.);
         neighborColor = neighborInputTexel[i].rgb;
 
         neighborLuma = luminance(neighborColor);
@@ -231,7 +217,6 @@ void main() {
 #pragma unroll_loop_end
 
     vec2 pixelStepOffset = invTexSize * stepSize;
-    vec2 bilinearOffset = invTexSize * vec2(horizontal ? 0.5 : -0.5, blurHorizontal ? 0.5 : -0.5);
     float roughnessSqrt = max(0.05, sqrt(roughness));
 
     if (denoiseKernel > EPSILON) {
@@ -239,9 +224,8 @@ void main() {
             for (float i = -denoiseKernel; i <= denoiseKernel; i++) {
                 if (i != 0.) {
                     vec2 neighborVec = horizontal ? vec2(i, 0.) : vec2(0., i);
-                    vec2 offset = bilinearOffset;
 
-                    tap(neighborVec, pixelStepOffset, offset, depth, normal, roughness, roughnessSqrt,
+                    tap(neighborVec, pixelStepOffset, depth, normal, roughness, roughnessSqrt,
                         worldPos, luma, colorPhi, denoisedColor, totalWeight, sumVariance);
                 }
             }
@@ -251,9 +235,8 @@ void main() {
             for (float i = -denoiseKernel; i <= denoiseKernel; i++) {
                 if (i != 0.) {
                     vec2 neighborVec = horizontal ? vec2(-i, -i) : vec2(i, -i);
-                    vec2 offset = bilinearOffset;
 
-                    tap(neighborVec, pixelStepOffset, offset, depth, normal, roughness, roughnessSqrt,
+                    tap(neighborVec, pixelStepOffset, depth, normal, roughness, roughnessSqrt,
                         worldPos, luma, colorPhi, denoisedColor, totalWeight, sumVariance);
                 }
             }
