@@ -16,7 +16,6 @@ export class SSGIDebugGUI {
 		})
 
 		params = { ...SSGIEffect.DefaultOptions, ...params }
-		console.log(SSGIEffect.DefaultOptions)
 
 		const generalFolder = pane.addFolder({ title: "General" })
 		generalFolder.addInput(params, "distance", { min: 0.001, max: 10, step: 0.01 })
