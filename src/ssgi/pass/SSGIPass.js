@@ -11,7 +11,6 @@ import {
 	TextureLoader,
 	WebGLMultipleRenderTargets
 } from "three"
-import * as THREE from "three"
 import { MRTMaterial } from "../material/MRTMaterial.js"
 import { SSGIMaterial } from "../material/SSGIMaterial.js"
 import {
@@ -88,11 +87,8 @@ export class SSGIPass extends Pass {
 	initMRTRenderTarget() {
 		this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(1, 1, 4, {
 			minFilter: NearestFilter,
-			magFilter: NearestFilter,
+			magFilter: NearestFilter
 		})
-
-		this.gBuffersRenderTarget.depthTexture = new THREE.DepthTexture( 1, 1 );
-		this.gBuffersRenderTarget.depthTexture.type = THREE.FloatType;
 
 		this.backSideDepthPass = new BackSideDepthPass(this._scene, this._camera)
 
@@ -112,8 +108,6 @@ export class SSGIPass extends Pass {
 		this.emissiveTexture.needsUpdate = true
 
 		this.normalTexture.type = HalfFloatType
-		this.normalTexture.minFilter = NearestFilter
-		this.normalTexture.magFilter = NearestFilter
 		this.normalTexture.needsUpdate = true
 
 		this.fullscreenMaterial.uniforms.normalTexture.value = this.normalTexture
