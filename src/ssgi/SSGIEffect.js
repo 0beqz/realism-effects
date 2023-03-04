@@ -66,13 +66,13 @@ export class SSGIEffect extends Effect {
 			options.reprojectSpecular = true
 			options.neighborhoodClamping = true
 			options.roughnessDependent = true
-			options.basicVariance = 0.0025
+			options.basicVariance = 0.00025
 		} else {
 			definesName = "ssgi"
 			options.reprojectSpecular = [false, true]
 			options.neighborhoodClamping = [false, true]
 			options.roughnessDependent = [false, true]
-			options.basicVariance = [0.00025, 0.0025]
+			options.basicVariance = [0.00025, 0.00025]
 		}
 
 		const textureCount = options.diffuseOnly || options.specularOnly ? 1 : 2
