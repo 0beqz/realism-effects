@@ -123,7 +123,7 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec2 offset, 
 #pragma unroll_loop_start
     for (int i = 0; i < textureCount; i++) {
         //! todo: also use neighborUvSpecular
-        neighborInputTexel[i] = textureLod(texture[i], roughnessDependent[i] ? neighborUvRoughness : neighborUv, 0.);
+        neighborInputTexel[i] = getTexel(texture[i], roughnessDependent[i] ? neighborUvRoughness : neighborUv);
         neighborColor = neighborInputTexel[i].rgb;
 
         neighborLuma = luminance(neighborColor);

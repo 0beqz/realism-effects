@@ -21,9 +21,8 @@ export const defaultTemporalReprojectPassOptions = {
 	catmullRomSampling: true,
 	neighborhoodClamping: false,
 	logTransform: false,
-	depthDistance: 0.1,
-	normalDistance: 5,
-	worldDistance: 0.25,
+	depthDistance: 0.25,
+	worldDistance: 0.375,
 	reprojectSpecular: false,
 	customComposeShader: null,
 	renderTarget: null
@@ -64,7 +63,6 @@ export class TemporalReprojectPass extends Pass {
 		if (options.logTransform) this.fullscreenMaterial.defines.logTransform = ""
 
 		this.fullscreenMaterial.defines.depthDistance = options.depthDistance.toPrecision(5)
-		this.fullscreenMaterial.defines.normalDistance = options.normalDistance.toPrecision(5)
 		this.fullscreenMaterial.defines.worldDistance = options.worldDistance.toPrecision(5)
 
 		this.fullscreenMaterial.uniforms.blend.value = options.blend
@@ -76,6 +74,7 @@ export class TemporalReprojectPass extends Pass {
 		this.fullscreenMaterial.uniforms.cameraMatrixWorld.value = camera.matrixWorld
 		this.fullscreenMaterial.uniforms.viewMatrix.value = camera.matrixWorldInverse
 		this.fullscreenMaterial.uniforms.cameraPos.value = camera.position
+
 		this.fullscreenMaterial.uniforms.prevViewMatrix.value = camera.matrixWorldInverse.clone()
 		this.fullscreenMaterial.uniforms.prevCameraMatrixWorld.value = camera.matrixWorld.clone()
 		this.fullscreenMaterial.uniforms.prevProjectionMatrix.value = camera.projectionMatrix.clone()

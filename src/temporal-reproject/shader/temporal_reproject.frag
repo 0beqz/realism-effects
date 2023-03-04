@@ -16,12 +16,11 @@ uniform vec2 invTexSize;
 uniform mat4 projectionMatrix;
 uniform mat4 projectionMatrixInverse;
 uniform mat4 cameraMatrixWorld;
+uniform vec3 cameraPos;
 uniform mat4 prevViewMatrix;
 uniform mat4 prevCameraMatrixWorld;
 uniform mat4 prevProjectionMatrix;
 uniform mat4 prevProjectionMatrixInverse;
-uniform vec3 cameraPos;
-uniform vec3 prevCameraPos;
 
 uniform bool reset;
 uniform float delta;
@@ -34,9 +33,9 @@ uniform float delta;
 void main() {
     vec4 depthTexel;
     float depth;
-    vec2 uv;
 
-    getDepthAndUv(depth, uv, depthTexel);
+    getDepthAndDilatedUVOffset(depthTexture, vUv, depth, dilatedDepth, depthTexel);
+    vec2 dilatedUv = vUv + dilatedUvOffset;
 
     if (dot(depthTexel.rgb, depthTexel.rgb) == 0.0) {
 #ifdef neighborhoodClamping
@@ -61,10 +60,12 @@ void main() {
     }
 #pragma unroll_loop_end
 
-    vec4 normalTexel = textureLod(normalTexture, uv, 0.);
-    vec3 worldNormal = unpackRGBToNormal(normalTexel.xyz);
+    vec4 normalTexel = textureLod(normalTexture, dilatedUv, 0.);
+    vec3 worldNormal = unpackRGBToNormal(normalTexel.rgb);
     worldNormal = normalize((vec4(worldNormal, 1.) * viewMatrix).xyz);
-    vec3 worldPos = screenSpaceToWorldSpace(uv, depth, cameraMatrixWorld, projectionMatrixInverse);
+
+    // worldPos is not dilated by default
+    vec3 worldPos = screenSpaceToWorldSpace(vUv, dilatedDepth, cameraMatrixWorld, projectionMatrixInverse);
 
     vec2 reprojectedUvDiffuse = vec2(-10.0);
     vec2 reprojectedUvSpecular[textureCount];
@@ -80,7 +81,7 @@ void main() {
 
         // specular (hit point reprojection)
         if (reprojectHitPoint) {
-            reprojectedUvSpecular[i] = getReprojectedUV(uv, neighborhoodClamping[i], depth, worldPos, worldNormal, inputTexel[i].a);
+            reprojectedUvSpecular[i] = getReprojectedUV(vUv, neighborhoodClamping[i], depth, worldPos, worldNormal, inputTexel[i].a);
         } else {
             // init to -1 to signify that reprojection failed
             reprojectedUvSpecular[i] = vec2(-1.0);
@@ -88,7 +89,7 @@ void main() {
 
         // diffuse (reprojection using velocity)
         if (reprojectedUvDiffuse.x == -10.0 && reprojectedUvSpecular[i].x < 0.0) {
-            reprojectedUvDiffuse = getReprojectedUV(uv, neighborhoodClamping[i], depth, worldPos, worldNormal, 0.0);
+            reprojectedUvDiffuse = getReprojectedUV(vUv, neighborhoodClamping[i], depth, worldPos, worldNormal, 0.0);
         }
 
         // choose which UV coordinates to use for reprojecion

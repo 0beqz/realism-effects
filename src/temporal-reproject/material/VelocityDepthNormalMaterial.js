@@ -164,9 +164,7 @@ export class VelocityDepthNormalMaterial extends ShaderMaterial {
 
 					#include <uv_pars_fragment>
 					#include <normal_pars_fragment>
-					#include <bumpmap_pars_fragment>
-					#include <normalmap_pars_fragment>
-        
+
                     void main() {
 						#include <normal_fragment_begin>
                     	#include <normal_fragment_maps>

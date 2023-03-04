@@ -198,10 +198,10 @@ export class SSGIPass extends Pass {
 
 			c.visible = isChildMaterialRenderable(c, originalMaterial)
 
+			const origRoughness = typeof originalMaterial.roughness === "number" ? originalMaterial.roughness : 1
+
 			mrtMaterial.uniforms.roughness.value =
-				this.ssgiEffect.selection.size === 0 || this.ssgiEffect.selection.has(c)
-					? originalMaterial.roughness || 1
-					: 10e10
+				this.ssgiEffect.selection.size === 0 || this.ssgiEffect.selection.has(c) ? origRoughness : 10e10
 
 			mrtMaterial.uniforms.metalness.value = c.material.metalness || 0
 			mrtMaterial.uniforms.emissiveIntensity.value = c.material.emissiveIntensity || 0

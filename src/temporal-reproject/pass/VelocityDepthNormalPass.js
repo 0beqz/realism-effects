@@ -1,9 +1,8 @@
 ﻿import { Pass } from "postprocessing"
-import { Color, FloatType, HalfFloatType, NearestFilter, UnsignedByteType, WebGLMultipleRenderTargets } from "three"
+import { Color, FloatType, NearestFilter, UnsignedByteType, WebGLMultipleRenderTargets } from "three"
 import {
 	getVisibleChildren,
 	isChildMaterialRenderable,
-	keepMaterialMapUpdated,
 	saveBoneTexture,
 	updateVelocityDepthNormalMaterialAfterRender,
 	updateVelocityDepthNormalMaterialBeforeRender
@@ -36,7 +35,7 @@ export class VelocityDepthNormalPass extends Pass {
 			this.renderTarget.texture[1].type = UnsignedByteType
 			this.renderTarget.texture[1].needsUpdate = true
 
-			this.renderTarget.texture[2].type = HalfFloatType
+			this.renderTarget.texture[2].type = FloatType
 			this.renderTarget.texture[2].needsUpdate = true
 		}
 
@@ -53,8 +52,6 @@ export class VelocityDepthNormalPass extends Pass {
 
 			if (originalMaterial !== cachedOriginalMaterial) {
 				velocityDepthNormalMaterial = new VelocityDepthNormalMaterial()
-				velocityDepthNormalMaterial.normalScale = originalMaterial.normalScale
-				velocityDepthNormalMaterial.uniforms.normalScale.value = originalMaterial.normalScale
 
 				c.material = velocityDepthNormalMaterial
 
@@ -68,8 +65,6 @@ export class VelocityDepthNormalPass extends Pass {
 			c.visible = isChildMaterialRenderable(c, originalMaterial)
 
 			if (this.renderDepthNormal) velocityDepthNormalMaterial.defines.renderDepthNormal = ""
-
-			keepMaterialMapUpdated(velocityDepthNormalMaterial, originalMaterial, "normalMap", "USE_NORMALMAP", true)
 
 			const map =
 				originalMaterial.map ||
