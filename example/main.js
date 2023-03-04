@@ -323,7 +323,7 @@ const initScene = () => {
 			options: envObject
 		})
 		.on("change", ev => {
-			rgbeLoader.load("hdr/8k/" + ev.value + "_8k.hdr", initEnvMap)
+			rgbeLoader.load("hdr/" + ev.value + "_1k.hdr", initEnvMap)
 		})
 
 	assetsFolder
