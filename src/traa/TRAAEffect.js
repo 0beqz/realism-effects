@@ -91,3 +91,5 @@ export class TRAAEffect extends Effect {
 		this.temporalReprojectPass.render(renderer)
 	}
 }
+
+TRAAEffect.DefaultOptions = defaultTRAAOptions

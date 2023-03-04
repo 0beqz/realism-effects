@@ -10,6 +10,7 @@ export default {
 	plugins: [glsl.default(), viteCompression({ algorithm: "brotliCompress" })],
 	resolve: {
 		alias: [
+			{ find: "realism-effects", replacement: "../dist/index.js" },
 			{ find: "three", replacement: dirName + "/node_modules/three" },
 			{ find: "postprocessing", replacement: dirName + "/node_modules/postprocessing" }
 		]

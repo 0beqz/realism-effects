@@ -431,3 +431,5 @@ export class SSGIEffect extends Effect {
 		})
 	}
 }
+
+SSGIEffect.DefaultOptions = defaultSSGIOptions

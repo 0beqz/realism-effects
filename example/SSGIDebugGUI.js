@@ -1,9 +1,9 @@
-﻿import { defaultSSGIOptions } from "../src/SSGI/SSGIOptions"
+﻿import { SSGIEffect } from "realism-effects"
 import { Pane } from "tweakpane"
 import copy from "copy-to-clipboard"
 
 export class SSGIDebugGUI {
-	constructor(ssgiEffect, params = defaultSSGIOptions) {
+	constructor(ssgiEffect, params = SSGIEffect.DefaultOptions) {
 		const pane = new Pane()
 		this.pane = pane
 		pane.containerElem_.style.userSelect = "none"
@@ -15,7 +15,8 @@ export class SSGIDebugGUI {
 			ssgiEffect[presetKey] = ev.value
 		})
 
-		params = { ...defaultSSGIOptions, ...params }
+		params = { ...SSGIEffect.DefaultOptions, ...params }
+		console.log(SSGIEffect.DefaultOptions)
 
 		const generalFolder = pane.addFolder({ title: "General" })
 		generalFolder.addInput(params, "distance", { min: 0.001, max: 10, step: 0.01 })
@@ -80,7 +81,7 @@ export class SSGIDebugGUI {
 			.on("click", () => {
 				const json = {}
 
-				for (const prop of Object.keys(defaultSSGIOptions)) {
+				for (const prop of Object.keys(SSGIEffect.DefaultOptions)) {
 					json[prop] = ssgiEffect[prop]
 				}
 
