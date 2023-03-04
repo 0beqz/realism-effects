@@ -407,7 +407,7 @@ vec2 RayMarch(inout vec3 dir, inout vec3 hitPos) {
 
     vec2 uv;
 
-    for (int j = 1; j < steps; j++) {
+    for (int i = 1; i < steps; i++) {
         hitPos += dir;
         if (hitPos.z > 0.0) return INVALID_RAY_COORDS;
 
