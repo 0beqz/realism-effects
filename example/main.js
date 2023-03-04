@@ -209,7 +209,7 @@ gltflLoader.load(url, asset => {
 const loadingEl = document.querySelector("#loading")
 
 let loadedCount = 0
-const loadFiles = traaTest ? 14 : 6
+const loadFiles = traaTest ? 15 : 10
 THREE.DefaultLoadingManager.onProgress = () => {
 	loadedCount++
 

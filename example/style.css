@@ -30,7 +30,8 @@ html {
 	font-size: 4rem;
 	letter-spacing: 4px;
 	z-index: 99999;
-	background-color: #222222;
+	background: rgb(255, 208, 175);
+	background: linear-gradient(42deg, rgba(255, 208, 175, 1) 0%, rgba(129, 178, 228, 1) 100%);
 	width: 100vw;
 	height: 100vh;
 	display: flex;
