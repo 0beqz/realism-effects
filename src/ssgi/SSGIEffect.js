@@ -346,7 +346,6 @@ export class SSGIEffect extends Effect {
 				ssgiMaterial.uniforms.maxEnvMapMipLevel.value = maxEnvMapMipLevel
 
 				ssgiMaterial.uniforms.envMapInfo.value.map = this._scene.environment
-				ssgiMaterial.uniforms.envMap.value = this._scene.environment
 
 				ssgiMaterial.defines.USE_ENVMAP = ""
 				delete ssgiMaterial.defines.importanceSampling

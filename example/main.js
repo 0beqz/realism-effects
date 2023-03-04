@@ -260,7 +260,6 @@ const initScene = () => {
 		spp: 1,
 		resolutionScale: 1,
 		missedRays: false,
-		importanceSampling: true
 	}
 
 	const velocityDepthNormalPass = new VelocityDepthNormalPass(scene, camera)

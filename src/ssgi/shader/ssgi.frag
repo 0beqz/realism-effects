@@ -42,8 +42,6 @@ uniform int frame;
 uniform vec2 texSize;
 uniform vec2 blueNoiseRepeat;
 
-uniform sampler2D envMap;
-
 struct EquirectHdrInfo {
     sampler2D marginalWeights;
     sampler2D conditionalWeights;
@@ -80,8 +78,6 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
 void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.0);
 
-
-
     // filter out background
     if (dot(depthTexel.rgb, depthTexel.rgb) == 0.) {
         discard;
@@ -104,8 +100,6 @@ void main() {
     float unpackedDepth = unpackRGBAToDepth(depthTexel);
 
     normalTexel.xyz = unpackRGBToNormal(normalTexel.rgb);
-
-  
 
     // pre-calculated variables for the "fastGetViewZ" function
     nearMinusFar = cameraNear - cameraFar;
@@ -147,8 +141,6 @@ void main() {
     vec3 f0 = mix(vec3(0.04), diffuse, metalness);
 
     vec4 velocity = textureLod(velocityTexture, vUv, 0.0);
-
-    vec3 test;
 
     // start taking samples
     for (int s = 0; s < spp; s++) {
@@ -211,14 +203,12 @@ void main() {
         bool valid = blueNoise.a < 0.25 + dot(envMisDir, viewNormal) * 0.5;
         if (!valid) envPdf = 0.0;
 
-
         if (isDiffuseSample) {
             if (envPdf == 0.0) {
                 l = cosineSampleHemisphere(viewNormal, blueNoise.rg);
             } else {
                 l = envMisDir;
             }
-
 
             h = normalize(v + l);  // half vector
 
@@ -230,9 +220,6 @@ void main() {
             vec3 gi = doSample(
                 viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, envPdf != 0.0, NoV, NoL, NoH, LoH, VoH, blueNoise.rg,
                 l, hitPos, isMissedRay, brdf, pdf);
-
-
-            test = worldPos;
 
             gi *= brdf;
 
@@ -336,7 +323,7 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
     allowMissedRays = true;
 #endif
 
-    isMissedRay = coords.x < 0.;
+    isMissedRay = coords.x == -1.0;
 
     vec3 envMapSample = vec3(0.);
 
@@ -420,8 +407,7 @@ vec2 RayMarch(inout vec3 dir, inout vec3 hitPos) {
 
     vec2 uv;
 
-
-    for (int i = 0; i < steps; i++) {
+    for (int j = 1; j < steps; j++) {
         hitPos += dir;
         if (hitPos.z > 0.0) return INVALID_RAY_COORDS;
 
@@ -430,8 +416,6 @@ vec2 RayMarch(inout vec3 dir, inout vec3 hitPos) {
 #ifndef missedRays
         if (any(lessThan(uv, vec2(0.))) || any(greaterThan(uv, vec2(1.)))) return INVALID_RAY_COORDS;
 #endif
-
-
 
         float unpackedDepth = unpackRGBAToDepth(textureLod(depthTexture, uv, 0.0));
         float depth = fastGetViewZ(unpackedDepth);
@@ -448,8 +432,11 @@ vec2 RayMarch(inout vec3 dir, inout vec3 hitPos) {
         rayHitDepthDifference = depth - hitPos.z;
 
         if (rayHitDepthDifference >= 0.0 && rayHitDepthDifference < currentThickness) {
+#if refineSteps == 0
             return uv;
-
+#else
+            return BinarySearch(dir, hitPos);
+#endif
         }
     }
 
