@@ -9,7 +9,8 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader"
 import { GroundProjectedEnv } from "three/examples/jsm/objects/GroundProjectedEnv"
 import { Pane } from "tweakpane"
-import { SSGIEffect, MotionBlurEffect, TRAAEffect, VelocityDepthNormalPass } from "realism-effects"
+import { SSGIEffect, MotionBlurEffect, TRAAEffect } from "realism-effects"
+import { VelocityDepthNormalPass } from "../src/temporal-reproject/pass/VelocityDepthNormalPass"
 import { SSGIDebugGUI } from "./SSGIDebugGUI"
 import "./style.css"
 
@@ -100,7 +101,6 @@ const setAA = value => {
 // since using "rendererCanvas" doesn't work when using an offscreen canvas
 const controls = new OrbitControls(camera, document.querySelector("#orbitControlsDomElem"))
 controls.enableDamping = true
-//controls.autoRotate = true
 
 const cameraY = traaTest ? 7 : 8.75
 camera.position.fromArray([0, cameraY, 25])
@@ -209,7 +209,7 @@ gltflLoader.load(url, asset => {
 const loadingEl = document.querySelector("#loading")
 
 let loadedCount = 0
-const loadFiles = traaTest ? 15 : 2
+const loadFiles = traaTest ? 15 : 10
 THREE.DefaultLoadingManager.onProgress = () => {
 	loadedCount++
 
@@ -258,7 +258,7 @@ const initScene = () => {
 		refineSteps: 4,
 		spp: 1,
 		resolutionScale: 1,
-		missedRays: false,
+		missedRays: false
 	}
 
 	const velocityDepthNormalPass = new VelocityDepthNormalPass(scene, camera)
@@ -354,15 +354,15 @@ const initScene = () => {
 			jitter: 1
 		})
 
-		composer.addPass(renderPass)
 		if (traaTest) {
+			composer.addPass(renderPass)
 		} else {
 			composer.addPass(ssgiPass)
-			// composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect, bloomEffect, vignetteEffect, lutEffect))
+			composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect, bloomEffect, vignetteEffect, lutEffect))
 		}
 
 		traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
-		// composer.addPass(traaPass)
+		composer.addPass(traaPass)
 
 		const smaaEffect = new POSTPROCESSING.SMAAEffect()
 
@@ -412,16 +412,14 @@ const loop = () => {
 	window.requestAnimationFrame(loop)
 }
 
-function resize() {
+// event handlers
+window.addEventListener("resize", () => {
 	camera.aspect = window.innerWidth / window.innerHeight
 	camera.updateProjectionMatrix()
+
 	renderer.setSize(window.innerWidth, window.innerHeight)
 	composer.setSize(window.innerWidth, window.innerHeight)
-}
-
-// event handlers
-window.addEventListener("resize", resize)
-resize()
+})
 
 // source: https://stackoverflow.com/a/2117523/7626841
 function uuidv4() {

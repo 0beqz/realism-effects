@@ -3,7 +3,6 @@ import { Effect, RenderPass, Selection } from "postprocessing"
 import {
 	EquirectangularReflectionMapping,
 	LinearMipMapLinearFilter,
-	LinearFilter,
 	NoToneMapping,
 	sRGBEncoding,
 	Uniform,
@@ -238,12 +237,6 @@ export class SSGIEffect extends Effect {
 
 						// defines
 						case "steps":
-							this.ssgiPass.fullscreenMaterial.defines[key] = parseInt(value + 1)
-							this.ssgiPass.fullscreenMaterial.needsUpdate = needsUpdate
-							temporalReprojectPass.reset()
-
-							break
-
 						case "refineSteps":
 						case "spp":
 							this.ssgiPass.fullscreenMaterial.defines[key] = parseInt(value)
@@ -411,7 +404,7 @@ export class SSGIEffect extends Effect {
 		this.uniforms.get("sceneTexture").value = sceneBuffer.texture
 		this.uniforms.get("depthTexture").value = this.ssgiPass.depthTexture
 		this.uniforms.get("toneMapping").value = renderer.toneMapping
-		
+
 		for (const c of hideMeshes) c.visible = true
 
 		const fullGi = !this.diffuseOnly && !this.specularOnly
