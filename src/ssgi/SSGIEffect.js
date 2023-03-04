@@ -237,6 +237,12 @@ export class SSGIEffect extends Effect {
 
 						// defines
 						case "steps":
+							this.ssgiPass.fullscreenMaterial.defines[key] = parseInt(value + 1)
+							this.ssgiPass.fullscreenMaterial.needsUpdate = needsUpdate
+							temporalReprojectPass.reset()
+
+							break
+
 						case "refineSteps":
 						case "spp":
 							this.ssgiPass.fullscreenMaterial.defines[key] = parseInt(value)
