@@ -3,6 +3,7 @@ import { Effect, RenderPass, Selection } from "postprocessing"
 import {
 	EquirectangularReflectionMapping,
 	LinearMipMapLinearFilter,
+	LinearFilter,
 	NoToneMapping,
 	sRGBEncoding,
 	Uniform,
@@ -345,6 +346,7 @@ export class SSGIEffect extends Effect {
 				ssgiMaterial.uniforms.maxEnvMapMipLevel.value = maxEnvMapMipLevel
 
 				ssgiMaterial.uniforms.envMapInfo.value.map = this._scene.environment
+				ssgiMaterial.uniforms.envMap.value = this._scene.environment
 
 				ssgiMaterial.defines.USE_ENVMAP = ""
 				delete ssgiMaterial.defines.importanceSampling
@@ -404,7 +406,7 @@ export class SSGIEffect extends Effect {
 		this.uniforms.get("sceneTexture").value = sceneBuffer.texture
 		this.uniforms.get("depthTexture").value = this.ssgiPass.depthTexture
 		this.uniforms.get("toneMapping").value = renderer.toneMapping
-
+		
 		for (const c of hideMeshes) c.visible = true
 
 		const fullGi = !this.diffuseOnly && !this.specularOnly
