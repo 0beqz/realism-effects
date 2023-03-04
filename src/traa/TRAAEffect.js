@@ -1,6 +1,6 @@
 ﻿import { Effect } from "postprocessing"
 import { Uniform } from "three"
-import { getVisibleChildren } from "../ssgi/utils/Utils"
+import { getVisibleChildren, isChildMaterialRenderable } from "../ssgi/utils/Utils"
 import { TemporalReprojectPass } from "../temporal-reproject/TemporalReprojectPass.js"
 import compose from "./shader/compose.frag"
 
@@ -52,7 +52,7 @@ export class TRAAEffect extends Effect {
 
 		const visibleMeshes = getVisibleChildren(this._scene)
 		for (const mesh of visibleMeshes) {
-			if (mesh.constructor.name !== "GroundProjectedEnv") continue
+			if (!isChildMaterialRenderable(mesh.material)) continue
 
 			const renderData = renderer.properties.get(mesh.material)
 

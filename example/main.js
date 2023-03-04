@@ -156,11 +156,7 @@ pmremGenerator.compileEquirectangularShader()
 
 const rgbeLoader = new RGBELoader().setDataType(FloatType)
 
-// const blurredEnvMapGenerator = new BlurredEnvMapGenerator(renderer)
-
 const initEnvMap = async envMap => {
-	// await blurredEnvMapGenerator.init()
-	// envMap = blurredEnvMapGenerator.generate(envMap, 0.1)
 	envMap.mapping = THREE.EquirectangularReflectionMapping
 
 	scene.environment?.dispose()
@@ -215,7 +211,7 @@ gltflLoader.load(url, asset => {
 const loadingEl = document.querySelector("#loading")
 
 let loadedCount = 0
-const loadFiles = 6
+const loadFiles = traaTest ? 14 : 6
 THREE.DefaultLoadingManager.onProgress = () => {
 	loadedCount++
 

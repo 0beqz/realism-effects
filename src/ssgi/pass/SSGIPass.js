@@ -185,7 +185,7 @@ export class SSGIPass extends Pass {
 			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "map", "USE_MAP", true)
 			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "emissiveMap", "USE_EMISSIVEMAP", true)
 
-			c.visible = isChildMaterialRenderable(c, originalMaterial)
+			c.visible = isChildMaterialRenderable(originalMaterial)
 
 			const origRoughness = typeof originalMaterial.roughness === "number" ? originalMaterial.roughness : 1
 

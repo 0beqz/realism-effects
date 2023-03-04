@@ -18,7 +18,8 @@ import {
 	createGlobalDisableIblIradianceUniform,
 	createGlobalDisableIblRadianceUniform,
 	getMaxMipLevel,
-	getVisibleChildren
+	getVisibleChildren,
+	isChildMaterialRenderable
 } from "./utils/Utils.js"
 
 const { render } = RenderPass.prototype
@@ -383,14 +384,7 @@ export class SSGIEffect extends Effect {
 			for (const c of getVisibleChildren(this._scene)) {
 				if (c.isScene) return
 
-				const originalMaterial = c.material
-
-				c.visible = !(
-					originalMaterial.visible &&
-					originalMaterial.depthWrite &&
-					originalMaterial.depthTest &&
-					c.constructor.name !== "GroundProjectedEnv"
-				)
+				c.visible = !isChildMaterialRenderable(c.material)
 
 				c.visible ? hideMeshes.push(c) : children.push(c)
 			}

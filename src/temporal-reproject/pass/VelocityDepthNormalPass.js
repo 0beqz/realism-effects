@@ -65,7 +65,7 @@ export class VelocityDepthNormalPass extends Pass {
 
 			c.material = velocityDepthNormalMaterial
 
-			c.visible = isChildMaterialRenderable(c, originalMaterial)
+			c.visible = isChildMaterialRenderable(originalMaterial)
 
 			if (this.renderDepthNormal) velocityDepthNormalMaterial.defines.renderDepthNormal = ""
 

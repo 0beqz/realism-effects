@@ -9,10 +9,6 @@
 	},
 	"devDependencies": {
 		"@rollup/plugin-wasm": "^6.1.2",
-		"d3": "^7.8.2",
-		"d3-quant": "^0.5.1",
-		"lodash": "^4.17.21",
-		"poisson-disk-sampling": "^2.3.1",
 		"vite": "^3.0.0",
 		"vite-plugin-compression": "^0.5.1",
 		"vite-plugin-glsl": "^0.2.0",
@@ -21,7 +17,6 @@
 	},
 	"dependencies": {
 		"copy-to-clipboard": "^3.3.2",
-		"detect-gpu": "^4.0.32",
 		"drag-drop": "^7.2.0",
 		"postprocessing": "^6.30.1",
 		"stats.js": "^0.17.0",
