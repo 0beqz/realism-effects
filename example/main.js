@@ -65,10 +65,9 @@ window.renderer = renderer
 renderer.autoClear = false
 
 if (!traaTest) renderer.outputEncoding = THREE.sRGBEncoding
-const dpr = window.devicePixelRatio || 1
+const dpr = Math.min(2, window.devicePixelRatio * 0.5)
 renderer.setPixelRatio(dpr)
-renderer.setSize(window.innerWidth * dpr, window.innerHeight * dpr)
-renderer.setViewport(0, 0, window.innerWidth * dpr, window.innerHeight * dpr)
+renderer.setSize(window.innerWidth, window.innerHeight)
 
 const setAA = value => {
 	composer.multisampling = 0
