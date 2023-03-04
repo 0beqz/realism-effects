@@ -1,4 +1,3 @@
-import compiler from "@ampproject/rollup-plugin-closure-compiler"
 import { babel } from "@rollup/plugin-babel"
 import image from "@rollup/plugin-image"
 import resolve from "@rollup/plugin-node-resolve"
@@ -25,8 +24,7 @@ const getBabelOptions = ({ useESModules }) => ({
 					"@babel/plugin-proposal-numeric-separator",
 					"@babel/plugin-proposal-logical-assignment-operators",
 					"@babel/plugin-proposal-private-methods",
-					"@babel/plugin-proposal-class-properties",
-					"@babel/plugin-proposal-object-rest-spread"
+					"@babel/plugin-proposal-class-properties"
 				],
 				bugfixes: true,
 				loose: true,
@@ -46,20 +44,12 @@ export default [
 		input: "./src/index.js",
 		output: { file: "dist/index.js", format: "esm" },
 		external,
-		plugins: [
-			glslify(),
-			image(),
-			babel(getBabelOptions({ useESModules: true })),
-			compiler({
-				rewrite_polyfills: false
-			}),
-			resolve({ extensions })
-		]
+		plugins: [glslify(), image(), babel(getBabelOptions({ useESModules: true })), resolve({ extensions })]
 	},
 	{
 		input: "./src/index.js",
 		output: { file: "dist/index.cjs", format: "cjs" },
 		external,
-		plugins: [glslify(), image(), babel(getBabelOptions({ useESModules: false })), compiler(), resolve({ extensions })]
+		plugins: [glslify(), image(), babel(getBabelOptions({ useESModules: false })), resolve({ extensions })]
 	}
 ]
