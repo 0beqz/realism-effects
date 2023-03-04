@@ -3,6 +3,7 @@ import { Effect, RenderPass, Selection } from "postprocessing"
 import {
 	EquirectangularReflectionMapping,
 	LinearMipMapLinearFilter,
+	LinearFilter,
 	NoToneMapping,
 	sRGBEncoding,
 	Uniform,
@@ -404,7 +405,7 @@ export class SSGIEffect extends Effect {
 		this.uniforms.get("sceneTexture").value = sceneBuffer.texture
 		this.uniforms.get("depthTexture").value = this.ssgiPass.depthTexture
 		this.uniforms.get("toneMapping").value = renderer.toneMapping
-
+		
 		for (const c of hideMeshes) c.visible = true
 
 		const fullGi = !this.diffuseOnly && !this.specularOnly
