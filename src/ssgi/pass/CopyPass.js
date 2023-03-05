@@ -3,6 +3,8 @@ import { GLSL3, ShaderMaterial, Uniform, WebGLMultipleRenderTargets } from "thre
 import basicVertexShader from "../../utils/shader/basic.vert"
 
 export class CopyPass extends Pass {
+	needsSwap = false
+
 	constructor(textureCount = 1) {
 		super("CopyPass")
 

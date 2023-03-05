@@ -20,7 +20,7 @@ export const defaultTemporalReprojectPassOptions = {
 	fullAccumulate: false,
 	catmullRomSampling: true,
 	neighborhoodClamping: false,
-	neighborhoodClampingDisocclusionTest: true,
+	neighborhoodClampingDisocclusionTest: false,
 	logTransform: false,
 	depthDistance: 0.25,
 	worldDistance: 0.375,
@@ -33,6 +33,8 @@ const tmpProjectionMatrix = new Matrix4()
 const tmpProjectionMatrixInverse = new Matrix4()
 
 export class TemporalReprojectPass extends Pass {
+	needsSwap = false
+
 	clock = new Clock()
 	r2Sequence = []
 	pointsIndex = 0

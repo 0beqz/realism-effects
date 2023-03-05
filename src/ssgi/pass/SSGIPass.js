@@ -28,6 +28,8 @@ import blueNoiseImage from "./../../utils/blue_noise_64_rgba.png"
 const backgroundColor = new Color(0)
 
 export class SSGIPass extends Pass {
+	needsSwap = false
+
 	frame = 0
 	cachedMaterials = new WeakMap()
 	visibleMeshes = []

@@ -12,7 +12,8 @@ export const defaultTRAAOptions = {
 	logTransform: true,
 	depthDistance: 2,
 	worldDistance: 2,
-	neighborhoodClamping: true
+	neighborhoodClamping: true,
+	neighborhoodClampingDisocclusionTest: false
 }
 
 export class TRAAEffect extends Effect {

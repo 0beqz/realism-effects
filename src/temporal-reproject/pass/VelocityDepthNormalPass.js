@@ -23,6 +23,7 @@ const backgroundColor = new Color(0)
 export class VelocityDepthNormalPass extends Pass {
 	cachedMaterials = new WeakMap()
 	visibleMeshes = []
+	needsSwap = false
 
 	constructor(scene, camera, renderDepthNormal = true) {
 		super("velocityDepthNormalPass")

@@ -69,12 +69,10 @@ const renderer = new THREE.WebGLRenderer({
 	powerPreference: "high-performance",
 	premultipliedAlpha: false,
 	stencil: false,
-	antialias: true,
+	antialias: false,
 	alpha: false,
 	preserveDrawingBuffer: true
 })
-
-window.renderer = renderer
 
 renderer.autoClear = false
 
@@ -82,16 +80,18 @@ if (!traaTest) renderer.outputEncoding = THREE.sRGBEncoding
 
 renderer.setSize(window.innerWidth, window.innerHeight)
 
+const effectPass = new POSTPROCESSING.EffectPass(camera)
+
 const setAA = value => {
 	composer.multisampling = 0
 	composer.removePass(smaaPass)
 	composer.removePass(traaPass)
 	composer.removePass(fxaaPass)
+	composer.removePass(effectPass)
 
 	if (traaTest) {
-		infoEl.innerHTML = `Press the number buttons to change the AA method. 1 = TRAA, 2 = three.js AA, 3 = MSAA, 4 = FXAA, 5 = SMAA, 6 = Disabled.
+		infoEl.innerHTML = `Press the number buttons to change the AA method. 1 = TRAA, 2 = MSAA, 3 = FXAA, 4 = SMAA, 5 = Disabled.
 			<br>Current method: <div id="aaMethod">${value}</div>`
-		console.log("ye")
 	}
 
 	switch (value) {
@@ -100,7 +100,9 @@ const setAA = value => {
 			break
 
 		case "MSAA":
-			composer.multisampling = 8
+			const ctx = renderer.getContext()
+			composer.multisampling = Math.min(4, ctx.getParameter(ctx.MAX_SAMPLES))
+			composer.addPass(effectPass)
 			break
 
 		case "FXAA":
@@ -110,6 +112,9 @@ const setAA = value => {
 		case "SMAA":
 			composer.addPass(smaaPass)
 			break
+
+		default:
+			composer.addPass(effectPass)
 	}
 
 	guiParams.Method = value
@@ -281,6 +286,7 @@ const initScene = async () => {
 	}
 
 	const velocityDepthNormalPass = new VelocityDepthNormalPass(scene, camera)
+	composer.addPass(renderPass)
 	composer.addPass(velocityDepthNormalPass)
 
 	const params = {}
@@ -296,12 +302,12 @@ const initScene = async () => {
 	aaFolder
 		.addInput(guiParams, "Method", {
 			options: {
-				"TRAA": "TRAA",
-				"three.js AA": "three.js AA",
-				"MSAA": "MSAA",
-				"FXAA": "FXAA",
-				"SMAA": "SMAA",
-				"Disabled": "Disabled"
+				TRAA: "TRAA",
+
+				MSAA: "MSAA",
+				FXAA: "FXAA",
+				SMAA: "SMAA",
+				Disabled: "Disabled"
 			}
 		})
 		.on("change", ev => {
@@ -374,7 +380,6 @@ const initScene = async () => {
 		})
 
 		if (traaTest) {
-			composer.addPass(renderPass)
 		} else {
 			composer.addPass(ssgiPass)
 
@@ -391,7 +396,7 @@ const initScene = async () => {
 				loadFiles--
 
 				const dpr = window.devicePixelRatio
-				renderer.setPixelRatio(dpr)
+				renderer.setPixelRatio(Math.max(1, dpr * 0.5))
 				resize()
 			}
 		}
@@ -467,12 +472,7 @@ const loop = () => {
 	controls.update()
 	camera.updateMatrixWorld()
 
-	if (guiParams.Method === "three.js AA") {
-		renderer.render(scene, camera)
-	} else {
-		lastScene.updateMatrixWorld()
-		composer.render()
-	}
+	composer.render()
 
 	if (stats?.dom.style.display !== "none") stats.end()
 	window.requestAnimationFrame(loop)
@@ -498,11 +498,10 @@ function uuidv4() {
 
 const aaOptions = {
 	1: "TRAA",
-	2: "three.js AA",
-	3: "MSAA",
-	4: "FXAA",
-	5: "SMAA",
-	6: "Disabled"
+	2: "MSAA",
+	3: "FXAA",
+	4: "SMAA",
+	5: "Disabled"
 }
 
 const aaValues = Object.values(aaOptions)
@@ -520,10 +519,6 @@ document.addEventListener("keydown", ev => {
 		const value = aaOptions[ev.key]
 
 		if (value) setAA(value)
-
-		if (ev.code === "Space" || ev.code === "Enter" || ev.code === "NumpadEnter") {
-			setAA(guiParams.Method === "TRAA" ? "Disabled" : "TRAA")
-		}
 	}
 
 	if (ev.code === "KeyQ") {
@@ -605,40 +600,74 @@ const setupAsset = asset => {
 	scene.add(asset.scene)
 	asset.scene.scale.setScalar(1)
 
-	const material = new THREE.ShaderMaterial({
-		vertexShader: /* glsl */ `
-		varying vec2 vUv;
-		void main() {
-		   vUv = uv;
-			gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-		}
-		`,
+	let planeShaderMaterial
+	let cylinderShaderMaterial
 
-		fragmentShader: /* glsl */ `
-		varying vec2 vUv;
-	  	void main() {
-			
-			float dist = distance(vUv, vec2(0., 1.));
-			dist = mod(dist, 0.05);
-			dist = step(dist, 0.025);
+	if (traaTest) {
+		planeShaderMaterial = new THREE.ShaderMaterial({
+			vertexShader: /* glsl */ `
+			varying vec2 vUv;
+			void main() {
+			   vUv = uv;
+				gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+			}
+			`,
+
+			fragmentShader: /* glsl */ `
+			varying vec2 vUv;
+			  void main() {
 				
-			vec3 color = vec3(dist);
+				float dist = distance(vUv, vec2(0., 1.));
+				dist = mod(dist, 0.05);
+				dist = step(dist, 0.025);
+					
+				vec3 color = vec3(dist);
+	
+				gl_FragColor = vec4(color, 1.0);
+			  }
+			`,
+			side: DoubleSide,
+			toneMapped: false
+		})
 
-			gl_FragColor = vec4(color, 1.0);
-	  	}
-		`,
-		side: DoubleSide,
-		toneMapped: false
-	})
+		cylinderShaderMaterial = new THREE.ShaderMaterial({
+			vertexShader: /* glsl */ `
+			varying vec2 vUv;
+			void main() {
+			   vUv = uv;
+				gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+			}
+			`,
+
+			fragmentShader: /* glsl */ `
+			varying vec2 vUv;
+			
+			  void main() {
+				float angle = atan(vUv.x * 2. - 1., vUv.y * 2. - 1.);
+
+				float a = cos(16. * angle);
+				a = step(a, 0.);
+
+				vec3 color = vec3(a);
+	
+				gl_FragColor = vec4(color, 1.0);
+			  }
+			`,
+			side: DoubleSide,
+			toneMapped: false
+		})
+	}
 
 	asset.scene.traverse(c => {
 		if (c.isMesh) {
 			c.castShadow = c.receiveShadow = true
 			c.material.depthWrite = true
 
-			if (traaTest && c.name === "shader") c.material = material
+			if (traaTest && c.name === "shader") c.material = planeShaderMaterial
 
 			if (traaTest && c.name === "Cube") c.material = new MeshNormalMaterial()
+
+			if (traaTest && c.name === "Cylinder") c.material = cylinderShaderMaterial
 		}
 
 		if (traaTest && c.name === "subpixel") {
