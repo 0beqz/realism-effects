@@ -19,6 +19,7 @@ A collection of the following effects for three.js:
   <br></br>
   [<img src=" /screenshots/traa_comp.webp">](https://realism-effects.vercel.app?traa_test=true)
   <br></br>
+  AA comparison scenes: [Model Comparision](https://realism-effects.vercel.app/?traa_test=true&traa_test_model=true), [General Comparison](https://realism-effects.vercel.app/?traa_test=true)
 
 If you only want reflections or diffuse lighting from SSGI, then you can also use these effects too:
 
