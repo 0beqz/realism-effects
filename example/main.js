@@ -44,12 +44,10 @@ const traaModelBtn = document.querySelector("#traaModelBtn")
 const infoEl = document.querySelector("#info")
 infoEl.style.display = "block"
 
-if (traaTest) {
-	traaModelBtn.addEventListener("click", () => {
-		gltflLoader.load("time_machine.optimized.glb", asset => {
-			setupAsset(asset)
-		})
-	})
+const loadTRAATestModel = () => gltflLoader.load("time_machine.optimized.glb", setupAsset)
+
+if (traaTest && !window.location.search.includes("traa_test_model=true")) {
+	traaModelBtn.addEventListener("click", loadTRAATestModel)
 } else {
 	traaModelBtn.remove()
 }
@@ -218,11 +216,25 @@ draco.setDecoderPath("https://www.gstatic.com/draco/v1/decoders/")
 gltflLoader.setPath("gltf/")
 gltflLoader.setDRACOLoader(draco)
 
-const url = traaTest ? "traa_demo_scene.optimized.glb" : "squid_game.optimized.glb"
+let url
+let loadFiles
+if (traaTest) {
+	if (window.location.search.includes("traa_test_model=true")) {
+		url = "time_machine.optimized.glb"
+		loadFiles = 5
+	} else {
+		url = "traa_demo_scene.optimized.glb"
+		loadFiles = 15
+	}
+} else {
+	url = "squid_game.optimized.glb"
+	loadFiles = 10
+}
 
 let lastScene
 
 gltflLoader.load(url, asset => {
+	if (url === "time_machine.optimized.glb") asset.scene.rotation.y += Math.PI / 2
 	setupAsset(asset)
 	initScene()
 })
@@ -230,7 +242,6 @@ gltflLoader.load(url, asset => {
 const loadingEl = document.querySelector("#loading")
 
 let loadedCount = 0
-let loadFiles = traaTest ? 15 : 10
 THREE.DefaultLoadingManager.onProgress = () => {
 	loadedCount++
 
