@@ -12,6 +12,7 @@ import { Pane } from "tweakpane"
 import { SSGIEffect, MotionBlurEffect, TRAAEffect } from "realism-effects"
 import { VelocityDepthNormalPass } from "../src/temporal-reproject/pass/VelocityDepthNormalPass"
 import { SSGIDebugGUI } from "./SSGIDebugGUI"
+import { getGPUTier } from "detect-gpu"
 import "./style.css"
 
 let traaEffect
@@ -66,8 +67,6 @@ renderer.autoClear = false
 
 if (!traaTest) renderer.outputEncoding = THREE.sRGBEncoding
 
-const dpr = window.devicePixelRatio
-renderer.setPixelRatio(dpr)
 renderer.setSize(window.innerWidth, window.innerHeight)
 
 const setAA = value => {
@@ -209,7 +208,7 @@ gltflLoader.load(url, asset => {
 const loadingEl = document.querySelector("#loading")
 
 let loadedCount = 0
-const loadFiles = traaTest ? 15 : 10
+let loadFiles = traaTest ? 15 : 10
 THREE.DefaultLoadingManager.onProgress = () => {
 	loadedCount++
 
@@ -237,13 +236,16 @@ const refreshLighting = () => {
 	renderer.shadowMap.needsUpdate = true
 }
 
-const initScene = () => {
+const initScene = async () => {
+	const gpuTier = await getGPUTier()
+	const { fps } = gpuTier
+
 	const options = {
 		distance: 2.7200000000000104,
 		autoThickness: false,
 		thickness: 1.2999999999999972,
 		maxRoughness: 1,
-		blend: 0.95,
+		blend: 0.925,
 		denoiseIterations: 3,
 		denoiseKernel: 3,
 		denoiseDiffuse: 40,
@@ -358,11 +360,26 @@ const initScene = () => {
 			composer.addPass(renderPass)
 		} else {
 			composer.addPass(ssgiPass)
-			composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect, bloomEffect, vignetteEffect, lutEffect))
+
+			if (fps >= 256) {
+				composer.addPass(
+					new POSTPROCESSING.EffectPass(camera, motionBlurEffect, bloomEffect, vignetteEffect, lutEffect)
+				)
+
+				const dpr = window.devicePixelRatio
+				renderer.setPixelRatio(dpr)
+				resize()
+			} else {
+				composer.addPass(new POSTPROCESSING.EffectPass(camera, vignetteEffect, lutEffect))
+				loadFiles--
+
+				const dpr = window.devicePixelRatio
+				renderer.setPixelRatio(Math.max(1, dpr * 0.5))
+				resize()
+			}
 		}
 
 		traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
-		composer.addPass(traaPass)
 
 		const smaaEffect = new POSTPROCESSING.SMAAEffect()
 
@@ -371,6 +388,13 @@ const initScene = () => {
 		const fxaaEffect = new POSTPROCESSING.FXAAEffect()
 
 		fxaaPass = new POSTPROCESSING.EffectPass(camera, fxaaEffect)
+
+		if (fps >= 256) {
+			composer.addPass(traaPass)
+		} else {
+			composer.addPass(fxaaPass)
+			controls.enableDamping = false
+		}
 
 		loop()
 
@@ -385,6 +409,23 @@ const initScene = () => {
 
 const clock = new Clock()
 
+document.body.addEventListener("touchstart", tapHandler)
+
+let tapedTwice = false
+
+function tapHandler(event) {
+	if (!tapedTwice) {
+		tapedTwice = true
+		setTimeout(function () {
+			tapedTwice = false
+		}, 300)
+		return false
+	}
+	event.preventDefault()
+
+	toggleMenu()
+}
+
 const loop = () => {
 	if (stats?.dom.style.display !== "none") stats.begin()
 
@@ -396,7 +437,7 @@ const loop = () => {
 		refreshLighting()
 	}
 
-	controls.dampingFactor = 0.075 * 120 * Math.max(1 / 1000, dt)
+	if (controls.enableDamping) controls.dampingFactor = 0.075 * 120 * Math.max(1 / 1000, dt)
 
 	controls.update()
 	camera.updateMatrixWorld()
@@ -412,14 +453,16 @@ const loop = () => {
 	window.requestAnimationFrame(loop)
 }
 
-// event handlers
-window.addEventListener("resize", () => {
+const resize = () => {
 	camera.aspect = window.innerWidth / window.innerHeight
 	camera.updateProjectionMatrix()
 
 	renderer.setSize(window.innerWidth, window.innerHeight)
 	composer.setSize(window.innerWidth, window.innerHeight)
-})
+}
+
+// event handlers
+window.addEventListener("resize", resize)
 
 // source: https://stackoverflow.com/a/2117523/7626841
 function uuidv4() {
@@ -438,6 +481,14 @@ const aaOptions = {
 }
 
 const aaValues = Object.values(aaOptions)
+
+const toggleMenu = () => {
+	const display = gui2.pane.element.style.display === "none" ? "block" : "none"
+
+	pane.element.style.display = display
+	gui2.pane.element.style.display = display
+	infoEl.style.display = display
+}
 
 document.addEventListener("keydown", ev => {
 	if (document.activeElement.tagName !== "INPUT") {
@@ -467,12 +518,7 @@ document.addEventListener("keydown", ev => {
 	if (ev.code === "Tab") {
 		ev.preventDefault()
 
-		const display = gui2.pane.element.style.display === "none" ? "block" : "none"
-
-		pane.element.style.display = display
-		gui2.pane.element.style.display = display
-		stats.dom.style.display = display
-		infoEl.style.display = display
+		toggleMenu()
 	}
 
 	if (ev.code === "ArrowLeft") {
