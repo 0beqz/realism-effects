@@ -2,7 +2,18 @@ import dragDrop from "drag-drop"
 import * as POSTPROCESSING from "postprocessing"
 import Stats from "stats.js"
 import * as THREE from "three"
-import { Box3, Clock, Color, DirectionalLight, DoubleSide, FloatType, MeshNormalMaterial, Vector3 } from "three"
+import {
+	Box3,
+	Clock,
+	Color,
+	DirectionalLight,
+	DoubleSide,
+	FloatType,
+	MeshNormalMaterial,
+	NearestFilter,
+	Object3D,
+	Vector3
+} from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
@@ -382,6 +393,7 @@ const initScene = async () => {
 
 	gui2 = new SSGIDebugGUI(ssgiEffect, options)
 	gui2.pane.containerElem_.style.left = "8px"
+	if (traaTest) gui2.pane.element.style.visibility = "hidden"
 
 	new POSTPROCESSING.LUT3dlLoader().load("lut.3dl").then(lutTexture => {
 		ssgiPass = new POSTPROCESSING.EffectPass(camera, ssgiEffect)
@@ -623,7 +635,14 @@ dragDrop("body", files => {
 	reader.readAsArrayBuffer(file)
 })
 
+const pointsObj = new Object3D()
+scene.add(pointsObj)
+
 const setupAsset = asset => {
+	if (pointsObj.children.length > 0) {
+		pointsObj.removeFromParent()
+	}
+
 	if (lastScene) {
 		lastScene.removeFromParent()
 		lastScene.traverse(c => {
@@ -707,62 +726,67 @@ const setupAsset = asset => {
 			if (traaTest && c.name === "Cube") c.material = new MeshNormalMaterial()
 
 			if (traaTest && c.name === "Cylinder") c.material = cylinderShaderMaterial
-		}
 
-		if (traaTest && c.name === "subpixel") {
-			const material = new THREE.LineBasicMaterial({
-				color: 0x0000ff
-			})
-
-			for (let i = 0; i < 10; i++) {
-				const points = []
-				points.push(new THREE.Vector3(0, 8 - i * 0.35, 0))
-				points.push(new THREE.Vector3(8, 8 + i * 0.275, 0))
-
-				const geometry = new THREE.BufferGeometry().setFromPoints(points)
-
-				const line = new THREE.Line(geometry, material)
-				scene.add(line)
-
-				line.position.set(6, 6, 0)
+			if (traaTest && c.name === "Plane") {
+				c.material.map.minFilter = NearestFilter
+				c.material.map.magFilter = NearestFilter
 			}
-
-			const points = []
-
-			for (let i = 0; i < 100; i++) {
-				const y = Math.abs(Math.cos(i * Math.PI * 0.1)) * 2
-				points.push(new THREE.Vector3((i / 100) * 8, y, 0))
-			}
-
-			const geometry = new THREE.BufferGeometry().setFromPoints(points)
-
-			const line = new THREE.Line(geometry, material)
-			scene.add(line)
-
-			line.position.set(6, 8, 0)
-
-			// let points = []
-
-			// let geometry = new THREE.BufferGeometry().setFromPoints(points)
-			// let line = new THREE.Line(geometry, material)
-
-			// for (let i = 0; i < 1000; i++) {
-			// 	const y = Math.abs(Math.cos(i * Math.PI * 0.01)) * 2
-			// 	points.push(new THREE.Vector3((i / 1000) * 8, y, 0))
-
-			// 	if (i % 2 === 0) {
-			// 		scene.add(line)
-			// 		geometry = new THREE.BufferGeometry().setFromPoints(points)
-			// 		line = new THREE.Line(geometry, material)
-			// 		line.position.set(6, 8, 0)
-
-			// 		points = []
-			// 	}
-			// }
 		}
 
 		c.frustumCulled = false
 	})
+
+	if (traaTest && !window.location.search.includes("traa_test_model=true")) {
+		const material = new THREE.LineBasicMaterial({
+			color: 0x0000ff
+		})
+
+		for (let i = 0; i < 10; i++) {
+			const points = []
+			points.push(new THREE.Vector3(0, 8 - i * 0.35, 0))
+			points.push(new THREE.Vector3(8, 8 + i * 0.275, 0))
+
+			const geometry = new THREE.BufferGeometry().setFromPoints(points)
+
+			const line = new THREE.Line(geometry, material)
+			pointsObj.add(line)
+
+			line.position.set(6, 6, 0)
+		}
+
+		const points = []
+
+		for (let i = 0; i < 100; i++) {
+			const y = Math.abs(Math.cos(i * Math.PI * 0.1)) * 2
+			points.push(new THREE.Vector3((i / 100) * 8, y, 0))
+		}
+
+		const geometry = new THREE.BufferGeometry().setFromPoints(points)
+
+		const line = new THREE.Line(geometry, material)
+		pointsObj.add(line)
+
+		line.position.set(6, 8, 0)
+
+		let points2 = []
+
+		let geometry2 = new THREE.BufferGeometry().setFromPoints(points2)
+		let line2 = new THREE.Line(geometry2, material)
+
+		for (let i = 0; i < 1000; i++) {
+			const y = Math.abs(Math.cos(i * Math.PI * 0.01)) * 2
+			points2.push(new THREE.Vector3((i / 1000) * 8, y, 0))
+
+			if (i % 2 === 0) {
+				pointsObj.add(line2)
+				geometry2 = new THREE.BufferGeometry().setFromPoints(points2)
+				line2 = new THREE.Line(geometry2, material)
+				line2.position.set(6, 8, 0)
+
+				points2 = []
+			}
+		}
+	}
 
 	const clips = asset.animations
 

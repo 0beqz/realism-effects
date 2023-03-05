@@ -10,10 +10,10 @@ export const defaultTRAAOptions = {
 	dilation: true,
 	catmullRomSampling: true,
 	logTransform: true,
-	depthDistance: 2,
-	worldDistance: 2,
+	depthDistance: 10,
+	worldDistance: 5,
 	neighborhoodClamping: true,
-	neighborhoodClampingDisocclusionTest: false
+	neighborhoodClampingDisocclusionTest: true
 }
 
 export class TRAAEffect extends Effect {
