@@ -406,11 +406,16 @@ const initScene = async () => {
 
 		fxaaPass = new POSTPROCESSING.EffectPass(camera, fxaaEffect)
 
+		const dpr = window.devicePixelRatio
 		if (fps >= 256) {
 			setAA("TRAA")
+
+			renderer.setPixelRatio(dpr)
 		} else {
-			setAA("Disabled")
+			setAA("FXAA")
 			controls.enableDamping = false
+
+			renderer.setPixelRatio(Math.max(1, dpr * 0.5))
 		}
 
 		loop()
