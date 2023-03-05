@@ -24,6 +24,7 @@ let ssgiPass
 let pane
 let gui2
 let envMesh
+let fps
 const guiParams = {
 	Method: "TRAA",
 	Background: false
@@ -271,7 +272,7 @@ const refreshLighting = () => {
 
 const initScene = async () => {
 	const gpuTier = await getGPUTier()
-	const { fps } = gpuTier
+	fps = gpuTier.fps
 
 	const options = {
 		distance: 2.7200000000000104,
@@ -399,15 +400,11 @@ const initScene = async () => {
 					new POSTPROCESSING.EffectPass(camera, motionBlurEffect, bloomEffect, vignetteEffect, lutEffect)
 				)
 
-				const dpr = window.devicePixelRatio
-				renderer.setPixelRatio(dpr)
 				resize()
 			} else {
 				composer.addPass(new POSTPROCESSING.EffectPass(camera, vignetteEffect, lutEffect))
 				loadFiles--
 
-				const dpr = window.devicePixelRatio
-				renderer.setPixelRatio(Math.max(1, dpr * 0.5))
 				resize()
 			}
 		}
@@ -449,7 +446,8 @@ const clock = new Clock()
 let tappedTwice = false
 let tapTimeout
 
-const tapHandler = () => {
+const tapHandler = ev => {
+	if (ev.touches.length !== 1) return
 	if (!tappedTwice) {
 		tappedTwice = true
 		clearTimeout(tapTimeout)
@@ -458,14 +456,41 @@ const tapHandler = () => {
 		}, 300)
 		return false
 	}
-	event.preventDefault()
 
 	gui2.pane.element.style.visibility = "hidden"
-
 	toggleMenu()
 }
 
 document.body.addEventListener("touchstart", tapHandler)
+
+// source: https://stackoverflow.com/a/60207895
+function onLongPress(element, callback) {
+	let timer
+
+	element.addEventListener("touchstart", ev => {
+		if (ev.touches.length !== 1) {
+			cancel()
+			return
+		}
+		timer = setTimeout(() => {
+			timer = null
+			callback()
+		}, 500)
+	})
+
+	function cancel() {
+		clearTimeout(timer)
+	}
+
+	element.addEventListener("touchend", cancel)
+	element.addEventListener("touchmove", cancel)
+}
+
+onLongPress(document.body, () => {
+	document.fullscreenElement === null
+		? document.body.requestFullscreen({ navigationUI: "hide" })
+		: document.exitFullscreen()
+})
 
 const loop = () => {
 	if (stats?.dom.style.display !== "none") stats.begin()
@@ -492,6 +517,9 @@ const loop = () => {
 const resize = () => {
 	camera.aspect = window.innerWidth / window.innerHeight
 	camera.updateProjectionMatrix()
+
+	const dpr = window.devicePixelRatio
+	renderer.setPixelRatio(fps < 256 ? Math.max(1, dpr * 0.5) : dpr)
 
 	renderer.setSize(window.innerWidth, window.innerHeight)
 	composer.setSize(window.innerWidth, window.innerHeight)
