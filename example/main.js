@@ -207,7 +207,7 @@ const environments = [
 	"vintage_measuring_lab"
 ]
 
-rgbeLoader.load("hdr/cave_wall_1k.hdr", initEnvMap)
+rgbeLoader.load("hdr/chinese_garden_1k.hdr", initEnvMap)
 
 const gltflLoader = new GLTFLoader()
 
