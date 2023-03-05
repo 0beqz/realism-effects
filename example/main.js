@@ -207,7 +207,7 @@ const environments = [
 	"vintage_measuring_lab"
 ]
 
-rgbeLoader.load("hdr/chinese_garden_1k.hdr", initEnvMap)
+rgbeLoader.load("hdr/cave_wall_1k.hdr", initEnvMap)
 
 const gltflLoader = new GLTFLoader()
 
@@ -287,7 +287,7 @@ const initScene = async () => {
 		depthPhi: 5,
 		normalPhi: 28,
 		roughnessPhi: 18.75,
-		envBlur: 0.42,
+		envBlur: 0.55,
 		directLightMultiplier: 1,
 		maxEnvLuminance: 50,
 		steps: 20,
