@@ -127,8 +127,11 @@ bool worldDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos
     return distance(worldPos, lastWorldPos) > worldDistance * worldDistFactor;
 }
 
-bool validateReprojectedUV(const vec2 reprojectedUv, const bool neighborhoodClamp, const float depth, const vec3 worldPos, const vec3 worldNormal) {
+bool validateReprojectedUV(const vec2 reprojectedUv, const bool neighborhoodClamp, const bool neighborhoodClampDisocclusionTest,
+                           const float depth, const vec3 worldPos, const vec3 worldNormal) {
     if (any(lessThan(reprojectedUv, vec2(0.))) || any(greaterThan(reprojectedUv, vec2(1.)))) return false;
+
+    if (neighborhoodClamp && !neighborhoodClampDisocclusionTest) return true;
 
     vec3 dilatedWorldPos = worldPos;
     float dilatedLastDepth, lastDepth;
@@ -181,12 +184,13 @@ vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength, const float de
     return hitPointUv;
 }
 
-vec2 getReprojectedUV(const vec2 uv, const bool neighborhoodClamp, const float depth, const vec3 worldPos, const vec3 worldNormal, const float rayLength) {
+vec2 getReprojectedUV(const vec2 uv, const bool neighborhoodClamp, const bool neighborhoodClampDisocclusionTest,
+                      const float depth, const vec3 worldPos, const vec3 worldNormal, const float rayLength) {
     // hit point reprojection
     if (rayLength != 0.0) {
         vec2 reprojectedUv = reprojectHitPoint(worldPos, rayLength, depth);
 
-        if (validateReprojectedUV(reprojectedUv, neighborhoodClamp, depth, worldPos, worldNormal)) {
+        if (validateReprojectedUV(reprojectedUv, neighborhoodClamp, neighborhoodClampDisocclusionTest, depth, worldPos, worldNormal)) {
             return reprojectedUv;
         }
 
@@ -196,7 +200,7 @@ vec2 getReprojectedUV(const vec2 uv, const bool neighborhoodClamp, const float d
     // reprojection using motion vectors
     vec2 reprojectedUv = reprojectVelocity(uv);
 
-    if (validateReprojectedUV(reprojectedUv, neighborhoodClamp, depth, worldPos, worldNormal)) {
+    if (validateReprojectedUV(reprojectedUv, neighborhoodClamp, neighborhoodClampDisocclusionTest, depth, worldPos, worldNormal)) {
         return reprojectedUv;
     }
 

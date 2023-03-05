@@ -58,19 +58,21 @@ export class SSGIEffect extends Effect {
 		if (options.diffuseOnly) {
 			definesName = "ssdgi"
 			options.reprojectSpecular = false
-			options.neighborhoodClamping = false
 			options.roughnessDependent = false
 			options.basicVariance = 0.00025
+			options.neighborhoodClamping = false
 		} else if (options.specularOnly) {
 			definesName = "ssr"
 			options.reprojectSpecular = true
-			options.neighborhoodClamping = true
 			options.roughnessDependent = true
 			options.basicVariance = 0.00025
+			options.neighborhoodClamping = true
+			options.neighborhoodClampingDisocclusionTest = false
 		} else {
 			definesName = "ssgi"
 			options.reprojectSpecular = [false, true]
 			options.neighborhoodClamping = [false, true]
+			options.neighborhoodClampingDisocclusionTest = false
 			options.roughnessDependent = [false, true]
 			options.basicVariance = [0.00025, 0.00025]
 		}

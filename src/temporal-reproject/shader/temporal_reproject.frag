@@ -95,7 +95,8 @@ void main() {
 
         // specular (hit point reprojection)
         if (reprojectHitPoint) {
-            reprojectedUvSpecular[i] = getReprojectedUV(vUv, neighborhoodClamping[i], depth, worldPos, worldNormal, inputTexel[i].a);
+            reprojectedUvSpecular[i] = getReprojectedUV(
+                vUv, neighborhoodClamping[i], neighborhoodClampingDisocclusionTest[i], depth, worldPos, worldNormal, inputTexel[i].a);
         } else {
             // init to -1 to signify that reprojection failed
             reprojectedUvSpecular[i] = vec2(-1.0);
@@ -103,7 +104,8 @@ void main() {
 
         // diffuse (reprojection using velocity)
         if (reprojectedUvDiffuse.x == -10.0 && reprojectedUvSpecular[i].x < 0.0) {
-            reprojectedUvDiffuse = getReprojectedUV(vUv, neighborhoodClamping[i], depth, worldPos, worldNormal, 0.0);
+            reprojectedUvDiffuse = getReprojectedUV(
+                vUv, neighborhoodClamping[i], neighborhoodClampingDisocclusionTest[i], depth, worldPos, worldNormal, 0.0);
         }
 
         // choose which UV coordinates to use for reprojecion

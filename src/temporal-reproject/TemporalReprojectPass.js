@@ -20,6 +20,7 @@ export const defaultTemporalReprojectPassOptions = {
 	fullAccumulate: false,
 	catmullRomSampling: true,
 	neighborhoodClamping: false,
+	neighborhoodClampingDisocclusionTest: true,
 	logTransform: false,
 	depthDistance: 0.25,
 	worldDistance: 0.375,
@@ -125,6 +126,16 @@ export class TemporalReprojectPass extends Pass {
 		}
 
 		this.fullscreenMaterial.defines.neighborhoodClamping = /* glsl */ `bool[](${options.neighborhoodClamping.join(
+			", "
+		)})`
+
+		if (typeof options.neighborhoodClampingDisocclusionTest === "boolean") {
+			options.neighborhoodClampingDisocclusionTest = Array(textureCount).fill(
+				options.neighborhoodClampingDisocclusionTest
+			)
+		}
+
+		this.fullscreenMaterial.defines.neighborhoodClampingDisocclusionTest = /* glsl */ `bool[](${options.neighborhoodClampingDisocclusionTest.join(
 			", "
 		)})`
 

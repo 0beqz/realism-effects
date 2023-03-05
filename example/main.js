@@ -391,7 +391,7 @@ const initScene = async () => {
 				loadFiles--
 
 				const dpr = window.devicePixelRatio
-				renderer.setPixelRatio(Math.max(1, dpr * 0.5))
+				renderer.setPixelRatio(dpr)
 				resize()
 			}
 		}
@@ -409,13 +409,13 @@ const initScene = async () => {
 		if (fps >= 256) {
 			setAA("TRAA")
 		} else {
-			setAA("FXAA")
+			setAA("Disabled")
 			controls.enableDamping = false
 		}
 
 		loop()
 
-		const display = gui2.pane.element.style.display === "none" ? "block" : "none"
+		const display = pane.element.style.display === "none" ? "block" : "none"
 
 		pane.element.style.display = display
 		gui2.pane.element.style.display = display
@@ -438,6 +438,8 @@ const tapHandler = () => {
 		return false
 	}
 	event.preventDefault()
+
+	gui2.pane.element.style.visibility = "hidden"
 
 	toggleMenu()
 }
