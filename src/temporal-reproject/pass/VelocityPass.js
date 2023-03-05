@@ -1,4 +1,4 @@
-import { VelocityDepthNormalPass } from "./VelocityDepthNormalPass "
+import { VelocityDepthNormalPass } from "./VelocityDepthNormalPass"
 
 export class VelocityPass extends VelocityDepthNormalPass {
 	constructor(scene, camera) {

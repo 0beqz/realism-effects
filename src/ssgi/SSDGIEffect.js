@@ -2,10 +2,10 @@
 import { defaultSSGIOptions } from "./SSGIOptions"
 
 export class SSDGIEffect extends SSGIEffect {
-	constructor(scene, camera, velocityPass, options = defaultSSGIOptions) {
+	constructor(scene, camera, velocityDepthNormalPass, options = defaultSSGIOptions) {
 		options = { ...defaultSSGIOptions, ...options }
 		options.diffuseOnly = true
 
-		super(scene, camera, velocityPass, options)
+		super(scene, camera, velocityDepthNormalPass, options)
 	}
 }

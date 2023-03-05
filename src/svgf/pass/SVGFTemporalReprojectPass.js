@@ -8,9 +8,15 @@ const defaultSVGFTemporalReprojectPassOptions = {
 	customComposeShader: svgf_temporal_reproject
 }
 export class SVGFTemporalReprojectPass extends TemporalReprojectPass {
-	constructor(scene, camera, velocityPass, textureCount = 1, options = defaultSVGFTemporalReprojectPassOptions) {
+	constructor(
+		scene,
+		camera,
+		velocityDepthNormalPass,
+		textureCount = 1,
+		options = defaultSVGFTemporalReprojectPassOptions
+	) {
 		options = { ...defaultSVGFTemporalReprojectPassOptions, ...options }
-		super(scene, camera, velocityPass, textureCount, options)
+		super(scene, camera, velocityDepthNormalPass, textureCount, options)
 
 		// moment
 		this.momentTexture = this.renderTarget.texture[0].clone()

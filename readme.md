@@ -17,7 +17,7 @@ A collection of the following effects for three.js:
   <br>
   TRAA (left)&nbsp;&nbsp;&nbsp; No Anti-Aliasing (right)
   <br></br>
-  [<img src=" /screenshots/traa_comp.webp">](https://realism-effects.vercel.app)
+  [<img src=" /screenshots/traa_comp.webp">](https://realism-effects.vercel.app?traa_test=true)
   <br></br>
 
 If you only want reflections or diffuse lighting from SSGI, then you can also use these effects too:
@@ -155,6 +155,7 @@ If the project is useful for you and you'd like to sponsor my work:
 - Laocoon and His Sons Statue: [Rigsters](https://sketchfab.com/rigsters)
 - Squid Game PinkSoldier: [Jaeysart](https://sketchfab.com/jaeysart)
 - Berserk Guts Black Swordsman: [gimora](https://sketchfab.com/gimora)
+- Time Machine (from TRAA demo scene): [vertexmonster](https://sketchfab.com/vertexmonster)
 
 ## Resources
 

@@ -230,6 +230,10 @@ tmpTex.dispose()
 tmpTex = null
 tmpGroundProjectedEnv = null
 
+export const isGroundProjectedEnv = material => {
+	return material.fragmentShader?.includes(tmpGroundProjectedEnvFragmentShader)
+}
+
 export const isChildMaterialRenderable = material => {
 	return (
 		material.visible &&

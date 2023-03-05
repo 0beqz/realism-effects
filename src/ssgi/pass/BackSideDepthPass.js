@@ -9,7 +9,7 @@ const overrideMaterial = new MeshDepthMaterial({
 
 export class BackSideDepthPass extends Pass {
 	constructor(scene, camera) {
-		super("VelocityPass")
+		super("BackSideDepthPass")
 
 		this._scene = scene
 		this._camera = camera

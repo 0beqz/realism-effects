@@ -5,13 +5,19 @@ export class SVGF {
 	constructor(
 		scene,
 		camera,
-		velocityPass,
+		velocityDepthNormalPass,
 		textureCount = 1,
 		denoiseComposeShader = "",
 		denoiseComposeFunctions = "",
 		options = {}
 	) {
-		this.svgfTemporalReprojectPass = new SVGFTemporalReprojectPass(scene, camera, velocityPass, textureCount, options)
+		this.svgfTemporalReprojectPass = new SVGFTemporalReprojectPass(
+			scene,
+			camera,
+			velocityDepthNormalPass,
+			textureCount,
+			options
+		)
 
 		const textures = this.svgfTemporalReprojectPass.renderTarget.texture.slice(0, textureCount)
 
@@ -19,7 +25,7 @@ export class SVGF {
 
 		this.denoisePass.fullscreenMaterial.uniforms.momentTexture.value = this.svgfTemporalReprojectPass.momentTexture
 
-		this.setNonJitteredGBuffers(velocityPass.depthTexture, velocityPass.normalTexture)
+		this.setNonJitteredGBuffers(velocityDepthNormalPass.depthTexture, velocityDepthNormalPass.normalTexture)
 	}
 
 	// the denoised texture

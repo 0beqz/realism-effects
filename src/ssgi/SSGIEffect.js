@@ -34,10 +34,10 @@ export class SSGIEffect extends Effect {
 	/**
 	 * @param {THREE.Scene} scene The scene of the SSGI effect
 	 * @param {THREE.Camera} camera The camera with which SSGI is being rendered
-	 * @param {VelocityPass} velocityPass Required velocity pass
+	 * @param {velocityDepthNormalPass} velocityDepthNormalPass Required velocity pass
 	 * @param {SSGIOptions} [options] The optional options for the SSGI effect
 	 */
-	constructor(scene, camera, velocityPass, options = defaultSSGIOptions) {
+	constructor(scene, camera, velocityDepthNormalPass, options = defaultSSGIOptions) {
 		options = { ...defaultSSGIOptions, ...options }
 
 		super("SSGIEffect", compose, {
@@ -77,7 +77,15 @@ export class SSGIEffect extends Effect {
 
 		const textureCount = options.diffuseOnly || options.specularOnly ? 1 : 2
 
-		this.svgf = new SVGF(scene, camera, velocityPass, textureCount, denoise_compose, denoise_compose_functions, options)
+		this.svgf = new SVGF(
+			scene,
+			camera,
+			velocityDepthNormalPass,
+			textureCount,
+			denoise_compose,
+			denoise_compose_functions,
+			options
+		)
 
 		if (definesName === "ssgi") {
 			this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.fragmentShader =
@@ -313,11 +321,12 @@ export class SSGIEffect extends Effect {
 		}
 	}
 
-	setVelocityPass(velocityPass) {
-		this.ssgiPass.fullscreenMaterial.uniforms.velocityTexture.value = velocityPass.texture
-		this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.uniforms.velocityTexture.value = velocityPass.texture
+	setvelocityDepthNormalPass(velocityDepthNormalPass) {
+		this.ssgiPass.fullscreenMaterial.uniforms.velocityTexture.value = velocityDepthNormalPass.texture
+		this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.uniforms.velocityTexture.value =
+			velocityDepthNormalPass.texture
 
-		this.svgf.setNonJitteredGBuffers(velocityPass.depthTexture, velocityPass.normalTexture)
+		this.svgf.setNonJitteredGBuffers(velocityDepthNormalPass.depthTexture, velocityDepthNormalPass.normalTexture)
 	}
 
 	dispose() {

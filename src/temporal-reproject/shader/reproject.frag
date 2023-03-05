@@ -1,7 +1,9 @@
-#define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
 
 float dilatedDepth;
 vec2 dilatedUvOffset;
+int texIndex;
+
+#define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
 
 vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth, mat4 curMatrixWorld, const mat4 projMatrixInverse) {
     vec4 ndc = vec4(
@@ -25,10 +27,15 @@ vec2 viewSpaceToScreenSpace(const vec3 position, const mat4 projMatrix) {
     return projectedCoord.xy;
 }
 
+bool doColorTransform[textureCount];
+
 #ifdef logTransform
 // idea from: https://www.elopezr.com/temporal-aa-and-the-quest-for-the-holy-trail/
 void transformColor(inout vec3 color) {
-    float diff = min(1.0, luminance(color) - 0.99);
+    if (!doColorTransform[texIndex]) return;
+    float lum = luminance(color);
+
+    float diff = min(1.0, lum - 0.99);
     if (diff > 0.0) {
         color = vec3(diff * 0.1);
         return;
@@ -38,6 +45,8 @@ void transformColor(inout vec3 color) {
 }
 
 void undoColorTransform(inout vec3 color) {
+    if (!doColorTransform[texIndex]) return;
+
     color = exp(color);
 }
 #else
@@ -72,9 +81,8 @@ void clampNeighborhood(const sampler2D tex, inout vec3 color, const vec3 inputCo
 }
 
 #ifdef dilation
-vec2 getDilatedDepthUVOffset(const sampler2D tex, const vec2 centerUv, out float depth, out float dilatedDepth, out vec4 closestDepthTexel) {
+void getDilatedDepthUVOffset(const sampler2D tex, const vec2 centerUv, out float depth, out float dilatedDepth, out vec4 closestDepthTexel) {
     float closestDepth = 0.0;
-    vec2 dilatedUvOffset;
 
     for (int x = -1; x <= 1; x++) {
         for (int y = -1; y <= 1; y++) {
@@ -87,7 +95,7 @@ vec2 getDilatedDepthUVOffset(const sampler2D tex, const vec2 centerUv, out float
             if (x == 0 && y == 0) depth = neighborDepth;
 
             if (neighborDepth > closestDepth) {
-                closestDepth = depth;
+                closestDepth = neighborDepth;
                 closestDepthTexel = neighborDepthTexel;
                 dilatedUvOffset = offset;
             }
@@ -95,14 +103,12 @@ vec2 getDilatedDepthUVOffset(const sampler2D tex, const vec2 centerUv, out float
     }
 
     dilatedDepth = closestDepth;
-
-    return dilatedUvOffset;
 }
 #endif
 
 void getDepthAndDilatedUVOffset(sampler2D depthTex, vec2 uv, out float depth, out float dilatedDepth, out vec4 depthTexel) {
 #ifdef dilation
-    dilatedUvOffset = getDilatedDepthUVOffset(depthTex, uv, depth, dilatedDepth, depthTexel);
+    getDilatedDepthUVOffset(depthTex, uv, depth, dilatedDepth, depthTexel);
 #else
     depthTexel = textureLod(depthTex, uv, 0.);
     depth = unpackRGBAToDepth(depthTexel);
@@ -117,40 +123,40 @@ bool planeDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos
     return distToPlane > depthDistance * worldDistFactor;
 }
 
-bool worldDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos, const float depth, const float worldDistFactor) {
+bool worldDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos, const float worldDistFactor) {
     return distance(worldPos, lastWorldPos) > worldDistance * worldDistFactor;
 }
 
 bool validateReprojectedUV(const vec2 reprojectedUv, const bool neighborhoodClamp, const float depth, const vec3 worldPos, const vec3 worldNormal) {
     if (any(lessThan(reprojectedUv, vec2(0.))) || any(greaterThan(reprojectedUv, vec2(1.)))) return false;
 
-    if (neighborhoodClamp) return true;
-
     vec3 dilatedWorldPos = worldPos;
-
     float dilatedLastDepth, lastDepth;
     vec4 lastDepthTexel;
+    vec2 dilatedReprojectedUv;
 
 #ifdef dilation
-    getDepthAndDilatedUVOffset(lastDepthTexture, reprojectedUv, lastDepth, dilatedLastDepth, lastDepthTexel);
-
     // by default the worldPos is not dilated as it would otherwise mess up reprojecting hit points in the method "reprojectHitPoint"
     dilatedWorldPos = screenSpaceToWorldSpace(vUv + dilatedUvOffset, dilatedDepth, cameraMatrixWorld, projectionMatrixInverse);
+
+    getDepthAndDilatedUVOffset(lastDepthTexture, reprojectedUv, lastDepth, dilatedLastDepth, lastDepthTexel);
+
+    dilatedReprojectedUv = reprojectedUv + dilatedUvOffset;
 #else
     lastDepthTexel = textureLod(lastDepthTexture, reprojectedUv, 0.);
     lastDepth = unpackRGBAToDepth(lastDepthTexel);
     dilatedLastDepth = lastDepth;
-#endif
 
-    vec2 dilatedReprojectedUv = reprojectedUv + dilatedUvOffset;
+    dilatedReprojectedUv = reprojectedUv;
+#endif
 
     vec3 lastWorldPos = screenSpaceToWorldSpace(dilatedReprojectedUv, dilatedLastDepth, prevCameraMatrixWorld, prevProjectionMatrixInverse);
 
     float worldDistFactor = clamp((50.0 + distance(dilatedWorldPos, cameraPos)) / 100., 0.25, 1.);
 
-    if (worldDistanceDisocclusionCheck(dilatedWorldPos, lastWorldPos, dilatedDepth, worldDistFactor)) return false;
+    if (worldDistanceDisocclusionCheck(dilatedWorldPos, lastWorldPos, worldDistFactor)) return false;
 
-    vec4 lastNormalTexel = textureLod(lastNormalTexture, reprojectedUv + dilatedUvOffset, 0.);
+    vec4 lastNormalTexel = textureLod(lastNormalTexture, dilatedReprojectedUv, 0.);
     vec3 lastNormal = unpackRGBToNormal(lastNormalTexel.xyz);
     vec3 lastWorldNormal = normalize((vec4(lastNormal, 1.) * viewMatrix).xyz);
 

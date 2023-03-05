@@ -5,10 +5,14 @@
 	margin: 0;
 }
 
+body {
+	display: block !important;
+}
+
 body,
 html {
 	overflow: hidden;
-	background: black;
+	background: #333333;
 	font-family: "Poppins", sans-serif;
 }
 
@@ -51,10 +55,43 @@ html {
 	color: white;
 	pointer-events: none;
 	user-select: none;
+	text-align: center;
 }
 
 a {
 	color: #1da1f2;
 	pointer-events: all;
 	text-decoration: none;
+}
+
+#traaModelBtn {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji",
+		"Segoe UI Emoji", "Segoe UI Symbol";
+	position: absolute;
+	text-transform: uppercase;
+	letter-spacing: 1px;
+	bottom: 24px;
+	right: 24px;
+	color: white;
+	background: rgb(34, 124, 195);
+	background: linear-gradient(38deg, rgba(34, 124, 195, 1) 0%, rgba(51, 112, 255, 1) 100%);
+	font-size: 1.5rem;
+	pointer-events: all;
+	border: none;
+	border-radius: 4px;
+	padding: 16px 32px;
+	box-shadow: 6px 6px 20px rgba(0, 0, 0, 0.15);
+	cursor: pointer;
+	font-size: 16px;
+}
+
+#aaMethod {
+	display: inline-block;
+	color: #ffda48;
+	text-decoration: bold;
+	padding: 8px;
+	font-size: 16px;
+	background: rgba(0, 0, 0, 0.5);
+	border-radius: 2px;
+	margin-top: 4px;
 }

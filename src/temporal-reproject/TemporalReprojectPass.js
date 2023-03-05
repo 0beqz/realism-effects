@@ -40,7 +40,7 @@ export class TemporalReprojectPass extends Pass {
 		quaternion: new Quaternion()
 	}
 
-	constructor(scene, camera, velocityPass, textureCount = 1, options = defaultTemporalReprojectPassOptions) {
+	constructor(scene, camera, velocityDepthNormalPass, textureCount = 1, options = defaultTemporalReprojectPassOptions) {
 		super("TemporalReprojectPass")
 
 		this._scene = scene
@@ -104,9 +104,9 @@ export class TemporalReprojectPass extends Pass {
 		lastNormalTexture.needsUpdate = true
 		this.fullscreenMaterial.uniforms.lastNormalTexture.value = lastNormalTexture
 
-		this.fullscreenMaterial.uniforms.velocityTexture.value = velocityPass.texture
-		this.fullscreenMaterial.uniforms.depthTexture.value = velocityPass.depthTexture
-		this.fullscreenMaterial.uniforms.normalTexture.value = velocityPass.normalTexture
+		this.fullscreenMaterial.uniforms.velocityTexture.value = velocityDepthNormalPass.texture
+		this.fullscreenMaterial.uniforms.depthTexture.value = velocityDepthNormalPass.depthTexture
+		this.fullscreenMaterial.uniforms.normalTexture.value = velocityDepthNormalPass.normalTexture
 
 		if (typeof options.reprojectSpecular === "boolean") {
 			options.reprojectSpecular = Array(textureCount).fill(options.reprojectSpecular)

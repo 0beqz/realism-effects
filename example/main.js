@@ -40,6 +40,19 @@ const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerH
 scene.add(camera)
 
 const canvas = document.querySelector(".webgl")
+const traaModelBtn = document.querySelector("#traaModelBtn")
+const infoEl = document.querySelector("#info")
+infoEl.style.display = "block"
+
+if (traaTest) {
+	traaModelBtn.addEventListener("click", () => {
+		gltflLoader.load("time_machine.optimized.glb", asset => {
+			setupAsset(asset)
+		})
+	})
+} else {
+	traaModelBtn.remove()
+}
 
 let rendererCanvas = canvas
 
@@ -74,6 +87,12 @@ const setAA = value => {
 	composer.removePass(smaaPass)
 	composer.removePass(traaPass)
 	composer.removePass(fxaaPass)
+
+	if (traaTest) {
+		infoEl.innerHTML = `Press the number buttons to change the AA method. 1 = TRAA, 2 = three.js AA, 3 = MSAA, 4 = FXAA, 5 = SMAA, 6 = Disabled.
+			<br>Current method: <div id="aaMethod">${value}</div>`
+		console.log("ye")
+	}
 
 	switch (value) {
 		case "TRAA":
@@ -145,8 +164,6 @@ stats.showPanel(1)
 stats.dom.style.top = "initial"
 stats.dom.style.bottom = "0"
 document.body.appendChild(stats.dom)
-
-const infoEl = document.querySelector("#info")
 
 const pmremGenerator = new THREE.PMREMGenerator(renderer)
 pmremGenerator.compileEquirectangularShader()
@@ -390,9 +407,9 @@ const initScene = async () => {
 		fxaaPass = new POSTPROCESSING.EffectPass(camera, fxaaEffect)
 
 		if (fps >= 256) {
-			composer.addPass(traaPass)
+			setAA("TRAA")
 		} else {
-			composer.addPass(fxaaPass)
+			setAA("FXAA")
 			controls.enableDamping = false
 		}
 
@@ -402,22 +419,21 @@ const initScene = async () => {
 
 		pane.element.style.display = display
 		gui2.pane.element.style.display = display
-		// stats.dom.style.display = display
 		infoEl.style.display = "block"
 	})
 }
 
 const clock = new Clock()
 
-document.body.addEventListener("touchstart", tapHandler)
+let tappedTwice = false
+let tapTimeout
 
-let tapedTwice = false
-
-function tapHandler(event) {
-	if (!tapedTwice) {
-		tapedTwice = true
-		setTimeout(function () {
-			tapedTwice = false
+const tapHandler = () => {
+	if (!tappedTwice) {
+		tappedTwice = true
+		clearTimeout(tapTimeout)
+		tapTimeout = setTimeout(function () {
+			tappedTwice = false
 		}, 300)
 		return false
 	}
@@ -425,6 +441,8 @@ function tapHandler(event) {
 
 	toggleMenu()
 }
+
+document.body.addEventListener("touchstart", tapHandler)
 
 const loop = () => {
 	if (stats?.dom.style.display !== "none") stats.begin()

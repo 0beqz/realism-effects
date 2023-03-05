@@ -25,7 +25,7 @@ export class VelocityDepthNormalPass extends Pass {
 	visibleMeshes = []
 
 	constructor(scene, camera, renderDepthNormal = true) {
-		super("VelocityPass")
+		super("velocityDepthNormalPass")
 
 		this._scene = scene
 		this._camera = camera

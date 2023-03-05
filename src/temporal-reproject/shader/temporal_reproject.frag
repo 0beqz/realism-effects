@@ -52,20 +52,34 @@ void main() {
 
     vec4 inputTexel[textureCount];
     vec4 accumulatedTexel[textureCount];
+    bool textureSampledThisFrame[textureCount];
 
 #pragma unroll_loop_start
     for (int i = 0; i < textureCount; i++) {
         inputTexel[i] = textureLod(inputTexture[i], vUv, 0.0);
-        transformColor(inputTexel[i].rgb);
+
+        doColorTransform[i] = luminance(inputTexel[i].rgb) > 0.0;
+
+        textureSampledThisFrame[i] = any(greaterThanEqual(inputTexel[i].rgb, vec3(0.0)));
+
+        if (textureSampledThisFrame[i]) {
+            transformColor(inputTexel[i].rgb);
+        } else {
+            inputTexel[i].rgb = vec3(0.0);
+        }
+
+        texIndex++;
     }
 #pragma unroll_loop_end
+
+    texIndex = 0;
 
     vec4 normalTexel = textureLod(normalTexture, dilatedUv, 0.);
     vec3 worldNormal = unpackRGBToNormal(normalTexel.rgb);
     worldNormal = normalize((vec4(worldNormal, 1.) * viewMatrix).xyz);
 
     // worldPos is not dilated by default
-    vec3 worldPos = screenSpaceToWorldSpace(vUv, dilatedDepth, cameraMatrixWorld, projectionMatrixInverse);
+    vec3 worldPos = screenSpaceToWorldSpace(vUv, depth, cameraMatrixWorld, projectionMatrixInverse);
 
     vec2 reprojectedUvDiffuse = vec2(-10.0);
     vec2 reprojectedUvSpecular[textureCount];
@@ -104,20 +118,24 @@ void main() {
             accumulatedTexel[i] = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUv, catmullRomSampling[i]);
             transformColor(accumulatedTexel[i].rgb);
 
-            if (dot(inputTexel[i].rgb, inputTexel[i].rgb) == 0.0) {
-                inputTexel[i].rgb = accumulatedTexel[i].rgb;
-            } else {
+            if (textureSampledThisFrame[i]) {
                 accumulatedTexel[i].a++;  // add one more frame
-            }
 
-            if (neighborhoodClamping[i]) {
-                clampedColor = accumulatedTexel[i].rgb;
-                clampNeighborhood(inputTexture[i], clampedColor, inputTexel[i].rgb);
-                accumulatedTexel[i].rgb = clampedColor;
+                if (neighborhoodClamping[i]) {
+                    clampedColor = accumulatedTexel[i].rgb;
+                    clampNeighborhood(inputTexture[i], clampedColor, inputTexel[i].rgb);
+                    accumulatedTexel[i].rgb = clampedColor;
+                }
+            } else {
+                inputTexel[i].rgb = accumulatedTexel[i].rgb;
             }
         }
+
+        texIndex++;
     }
 #pragma unroll_loop_end
+
+    texIndex = 0;
 
     vec2 deltaUv = vUv - reprojectedUv;
     bool didMove = dot(deltaUv, deltaUv) >= 0.0000000001;
@@ -141,6 +159,8 @@ void main() {
         undoColorTransform(outputColor);
 
         gOutput[i] = vec4(outputColor, accumulatedTexel[i].a);
+
+        texIndex++;
     }
 #pragma unroll_loop_end
 

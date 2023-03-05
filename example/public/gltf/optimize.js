@@ -1,11 +1,12 @@
 /* eslint-disable no-undef */
 // get a list of all the gltf files in the directory
-const fs = require("fs")
+import fs from "fs"
+import { exec } from "child_process"
 
 // this function runs a command
-function exec(command) {
+function execCommand(command) {
 	return new Promise((resolve, reject) => {
-		require("child_process").exec(command, (error, stdout, stderr) => {
+		exec(command, (error, stdout, stderr) => {
 			if (error) {
 				reject(error)
 				return
@@ -42,7 +43,7 @@ gltfFiles.forEach(f => {
 	const run = async cmds => {
 		for (const cmd of cmds) {
 			try {
-				const { stdout } = await exec(cmd)
+				const { stdout } = await execCommand(cmd)
 				console.log(cmd, stdout)
 			} catch (error) {
 				console.error(error)

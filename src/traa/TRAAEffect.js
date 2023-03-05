@@ -1,6 +1,6 @@
 ﻿import { Effect } from "postprocessing"
 import { Uniform } from "three"
-import { getVisibleChildren } from "../ssgi/utils/Utils"
+import { getVisibleChildren, isGroundProjectedEnv } from "../ssgi/utils/Utils"
 import { TemporalReprojectPass } from "../temporal-reproject/TemporalReprojectPass.js"
 import compose from "./shader/compose.frag"
 
@@ -10,11 +10,13 @@ export const defaultTRAAOptions = {
 	dilation: true,
 	catmullRomSampling: true,
 	logTransform: true,
+	depthDistance: 2,
+	worldDistance: 2,
 	neighborhoodClamping: true
 }
 
 export class TRAAEffect extends Effect {
-	constructor(scene, camera, velocityPass, options = defaultTRAAOptions) {
+	constructor(scene, camera, velocityDepthNormalPass, options = defaultTRAAOptions) {
 		super("TRAAEffect", compose, {
 			type: "FinalTRAAEffectMaterial",
 			uniforms: new Map([["inputTexture", new Uniform(null)]])
@@ -25,7 +27,7 @@ export class TRAAEffect extends Effect {
 
 		options = { ...defaultTRAAOptions, ...options }
 
-		this.temporalReprojectPass = new TemporalReprojectPass(scene, camera, velocityPass, 1, options)
+		this.temporalReprojectPass = new TemporalReprojectPass(scene, camera, velocityDepthNormalPass, 1, options)
 
 		this.uniforms.get("inputTexture").value = this.temporalReprojectPass.texture
 
@@ -50,8 +52,9 @@ export class TRAAEffect extends Effect {
 
 		this._camera.projectionMatrix.copy(this.unjitteredProjectionMatrix)
 
-		const visibleMeshes = getVisibleChildren(this._scene)
-		for (const mesh of visibleMeshes) {
+		const noJitterMeshes = getVisibleChildren(this._scene).filter(c => isGroundProjectedEnv(c))
+
+		for (const mesh of noJitterMeshes) {
 			const renderData = renderer.properties.get(mesh.material)
 
 			if (!renderData?.programs) continue

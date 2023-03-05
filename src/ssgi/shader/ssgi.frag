@@ -270,6 +270,7 @@ void main() {
     roughness = sqrt(roughness);
 
 #ifndef specularOnly
+    if (diffuseSamples == 0.0) diffuseGI = vec3(-1.0);
     gDiffuse = vec4(diffuseGI, roughness);
 #endif
 
@@ -282,6 +283,7 @@ void main() {
         rayLength = distance(worldPos, hitPosWS);
     }
 
+    if (specularSamples == 0.0) specularGI = vec3(-1.0);
     gSpecular = vec4(specularGI, rayLength);
 #endif
 }
