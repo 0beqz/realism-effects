@@ -29,13 +29,13 @@ If you only want reflections or diffuse lighting from SSGI, then you can also us
 
 This effect uses postprocessing.js. If you don't have it installed, install it like so:
 
-```
+```shell
 npm i postprocessing
 ```
 
 Then install this effect by running:
 
-```
+```shell
 npm i realism-effects
 ```
 
@@ -103,7 +103,7 @@ Since the right options for an SSGI effect depend a lot on the scene, it can hap
 
 - First install the npm package of the module used for the GUI:
 
-```
+```shell
 npm i tweakpane
 ```
 
@@ -121,7 +121,7 @@ That's it, you should now have the GUI you can see in the example scene. The `op
 
 If you'd like to test this project and run it locally, run these commands:
 
-```
+```shell
 git clone https://github.com/0beqz/realism-effects
 cd realism-effects/example
 npm i --force
@@ -141,6 +141,20 @@ If the project is useful for you and you'd like to sponsor my work:
 - Edge fade for SSR: [kode80](http://kode80.com/blog/)
 
 - Velocity Shader: [three.js sandbox](https://github.com/gkjohnson/threejs-sandbox)
+
+### Demo Scene
+
+- Mercedes-Benz AMG-GT 2015: [Márcio Meireles](https://sketchfab.com/marciomeireles)
+- 2019 Chevrolet Corvette C8 Stingray: [Hari](https://sketchfab.com/Hari31)
+- Clay Bust Study: [lomepawol](https://sketchfab.com/lomepawol)
+- Cyberpunk Bike: [Roman Red](https://sketchfab.com/OFFcours1)
+- Cyber Samurai: [KhoaMinh](https://sketchfab.com/duongminhkhoa231)
+- Darth Vader: [Brad Groatman](https://sketchfab.com/groatman)
+- Flashbang Grenade: [Nikolay Kudrin](https://sketchfab.com/knik211)
+- SPY-HYPERSPORT Motorbike: [Amvall](https://sketchfab.com/Amvall.Vall)
+- Laocoon and His Sons Statue: [Rigsters](https://sketchfab.com/rigsters)
+- Squid Game PinkSoldier: [Jaeysart](https://sketchfab.com/jaeysart)
+- Berserk Guts Black Swordsman: [gimora](https://sketchfab.com/gimora)
 
 ## Resources
 
