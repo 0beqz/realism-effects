@@ -142,7 +142,7 @@ light.shadow.camera.right = s
 light.shadow.camera.top = s
 
 const stats = new Stats()
-stats.showPanel(0)
+stats.showPanel(1)
 stats.dom.style.top = "initial"
 stats.dom.style.bottom = "0"
 document.body.appendChild(stats.dom)
