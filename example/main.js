@@ -65,7 +65,8 @@ window.renderer = renderer
 renderer.autoClear = false
 
 if (!traaTest) renderer.outputEncoding = THREE.sRGBEncoding
-const dpr = Math.min(2, window.devicePixelRatio * 0.5)
+
+const dpr = window.devicePixelRatio
 renderer.setPixelRatio(dpr)
 renderer.setSize(window.innerWidth, window.innerHeight)
 
