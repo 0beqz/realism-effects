@@ -100,7 +100,7 @@ const options = {
 
 ### ❗ Highly recommended: Use a GUI to tweak the options
 
-Since the right options for an SSGI effect depend a lot on the scene, it can happen that you don't seem to have an effect at all in your scene when you use the SSGI effect for the first time in it without any configuration. This can have multiple causes such as `` being way too low for your scene for example. So to find out which SSGI options are right for your scene, you should use a GUI to find the right values easily. The [example](https://github.com/0beqz/realism-effects/tree/main/example) already comes with a simple one-file GUI [`SSGIDebugGUI.js`](https://github.com/0beqz/traa/blob/main/example/SSGIDebugGUI.js) that you can use in your project like so:
+Since the right options for an SSGI effect depend a lot on the scene, it can happen that you don't seem to have an effect at all in your scene when you use the SSGI effect for the first time in it without any configuration. This can have multiple causes such as `distance` being way too low for your scene for example. So to find out which SSGI options are right for your scene, you should use a GUI to find the right values easily. The [example](https://github.com/0beqz/realism-effects/tree/main/example) already comes with a simple one-file GUI [`SSGIDebugGUI.js`](https://github.com/0beqz/traa/blob/main/example/SSGIDebugGUI.js) that you can use in your project like so:
 
 - First install the npm package of the module used for the GUI:
 
