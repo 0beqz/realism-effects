@@ -44,7 +44,7 @@ Then add it to your code like so:
 
 ```javascript
 import * as POSTPROCESSING from "postprocessing"
-import { SSGIEffect, TRAAEffect, MotionBlurEffect, VelocityDepthNormalPass } from "realism-effect"
+import { SSGIEffect, TRAAEffect, MotionBlurEffect, VelocityDepthNormalPass } from "realism-effects"
 
 const composer = new POSTPROCESSING.EffectComposer(renderer)
 
