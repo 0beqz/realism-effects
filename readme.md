@@ -4,10 +4,10 @@ A collection of the following effects for three.js:
 
 - SSGI
   <br></br>
-  [<img src=" /screenshots/ssgi2.webp">](https://realism-effects.vercel.app)
-  <br></br>
-  <br></br>
   [<img src=" /screenshots/ssgi.webp">](https://realism-effects.vercel.app)
+  <br></br>
+  <br></br>
+  [<img src=" /screenshots/ssgi2.webp">](https://realism-effects.vercel.app)
   <br></br>
 - Motion Blur
   <br></br>
