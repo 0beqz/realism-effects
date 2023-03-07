@@ -131,8 +131,6 @@ export class VelocityDepthNormalPass extends Pass {
 	}
 
 	render(renderer) {
-		this._camera.updateMatrixWorld()
-
 		tmpProjectionMatrix.copy(this._camera.projectionMatrix)
 		tmpProjectionMatrixInverse.copy(this._camera.projectionMatrixInverse)
 

@@ -31,7 +31,7 @@ let traaPass
 let smaaPass
 let fxaaPass
 let ssgiEffect
-let ssgiPass
+let postprocessingEnabled = true
 let pane
 let gui2
 let envMesh
@@ -143,7 +143,6 @@ controls.minDistance = 7.5
 window.controls = controls
 
 const composer = new POSTPROCESSING.EffectComposer(renderer)
-const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
 
 const lightParams = {
 	yaw: 55,
@@ -240,7 +239,7 @@ if (traaTest) {
 	}
 } else {
 	url = "squid_game.optimized.glb"
-	loadFiles = 10
+	loadFiles = 8
 }
 
 let lastScene
@@ -287,18 +286,19 @@ const initScene = async () => {
 
 	const options = {
 		distance: 2.7200000000000104,
-		autoThickness: false,
 		thickness: 1.2999999999999972,
+		autoThickness: false,
 		maxRoughness: 1,
 		blend: 0.975,
-		denoiseIterations: 3,
+		denoiseIterations: 2,
 		denoiseKernel: 3,
-		denoiseDiffuse: 20,
-		denoiseSpecular: 40,
+		denoiseDiffuse: 26.09,
+		denoiseSpecular: 29.349999999999998,
 		depthPhi: 5,
 		normalPhi: 28,
 		roughnessPhi: 18.75,
 		envBlur: 0.55,
+		importanceSampling: true,
 		directLightMultiplier: 1,
 		maxEnvLuminance: 50,
 		steps: 20,
@@ -395,28 +395,18 @@ const initScene = async () => {
 	if (traaTest) gui2.pane.element.style.visibility = "hidden"
 
 	new POSTPROCESSING.LUT3dlLoader().load("lut.3dl").then(lutTexture => {
-		ssgiPass = new POSTPROCESSING.EffectPass(camera, ssgiEffect)
 		const lutEffect = new POSTPROCESSING.LUT3DEffect(lutTexture)
 
-		const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass, {
-			jitter: 1
-		})
-
-		if (traaTest) {
-		} else {
-			composer.addPass(ssgiPass)
-
+		if (!traaTest) {
 			if (fps >= 256) {
-				composer.addPass(
-					new POSTPROCESSING.EffectPass(camera, motionBlurEffect, bloomEffect, vignetteEffect, lutEffect)
-				)
+				composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, bloomEffect, vignetteEffect, lutEffect))
 
-				resize()
+				const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass)
+
+				composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect))
 			} else {
-				composer.addPass(new POSTPROCESSING.EffectPass(camera, vignetteEffect, lutEffect))
+				composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, vignetteEffect, lutEffect))
 				loadFiles--
-
-				resize()
 			}
 		}
 
@@ -430,16 +420,15 @@ const initScene = async () => {
 
 		fxaaPass = new POSTPROCESSING.EffectPass(camera, fxaaEffect)
 
-		const dpr = window.devicePixelRatio
 		if (fps >= 256) {
 			setAA("TRAA")
 
-			renderer.setPixelRatio(dpr)
+			resize()
 		} else {
 			setAA("FXAA")
 			controls.enableDamping = false
 
-			renderer.setPixelRatio(Math.max(1, dpr * 0.5))
+			resize()
 		}
 
 		loop()
@@ -462,7 +451,7 @@ const tapHandler = ev => {
 	if (!tappedTwice) {
 		tappedTwice = true
 		clearTimeout(tapTimeout)
-		tapTimeout = setTimeout(function () {
+		tapTimeout = setTimeout(() => {
 			tappedTwice = false
 		}, 300)
 		return false
@@ -516,8 +505,15 @@ const loop = () => {
 
 	if (controls.enableDamping) controls.dampingFactor = 0.075 * 120 * Math.max(1 / 1000, dt)
 
-	composer.render()
+	camera.updateMatrixWorld()
 	controls.update()
+
+	if (postprocessingEnabled) {
+		composer.render()
+	} else {
+		renderer.clear()
+		renderer.render(scene, camera)
+	}
 
 	if (stats?.dom.style.display !== "none") stats.end()
 	window.requestAnimationFrame(loop)
@@ -572,13 +568,7 @@ document.addEventListener("keydown", ev => {
 	if (ev.code === "KeyQ") {
 		if (traaTest) return
 
-		ssgiPass.enabled = !ssgiPass.enabled
-
-		if (ssgiPass.enabled) {
-			composer.removePass(renderPass)
-		} else {
-			composer.passes.splice(1, 0, renderPass)
-		}
+		postprocessingEnabled = !postprocessingEnabled
 
 		refreshLighting()
 	}
