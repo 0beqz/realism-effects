@@ -97,15 +97,12 @@ void main() {
 
     roughness = clamp(roughness * roughness, 0.0001, 1.0);
 
-    float unpackedDepth = unpackRGBAToDepth(depthTexel);
-
-    normalTexel.xyz = unpackRGBToNormal(normalTexel.rgb);
-
     // pre-calculated variables for the "fastGetViewZ" function
     nearMinusFar = cameraNear - cameraFar;
     nearMulFar = cameraNear * cameraFar;
     farMinusNear = cameraFar - cameraNear;
 
+    float unpackedDepth = unpackRGBAToDepth(depthTexel);
     // view-space depth
     float depth = fastGetViewZ(unpackedDepth);
 
@@ -113,6 +110,7 @@ void main() {
     vec3 viewPos = getViewPosition(depth);
     vec3 viewDir = normalize(viewPos);
     vec3 viewNormal = normalTexel.xyz;
+    viewNormal = normalize((vec4(viewNormal, 1.) * cameraMatrixWorld).xyz);
 
     vec3 worldPos = vec4(vec4(viewPos, 1.) * viewMatrix).xyz;
 

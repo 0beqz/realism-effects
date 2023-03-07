@@ -25,7 +25,7 @@ export class SVGF {
 
 		this.denoisePass.fullscreenMaterial.uniforms.momentTexture.value = this.svgfTemporalReprojectPass.momentTexture
 
-		this.setNonJitteredGBuffers(velocityDepthNormalPass.depthTexture, velocityDepthNormalPass.normalTexture)
+		this.setNonJitteredDepthTexture(velocityDepthNormalPass.depthTexture)
 	}
 
 	// the denoised texture
@@ -43,9 +43,8 @@ export class SVGF {
 		this.denoisePass.fullscreenMaterial.uniforms.normalTexture.value = normalTexture
 	}
 
-	setNonJitteredGBuffers(depthTexture, normalTexture) {
+	setNonJitteredDepthTexture(depthTexture) {
 		this.svgfTemporalReprojectPass.fullscreenMaterial.uniforms.depthTexture.value = depthTexture
-		this.svgfTemporalReprojectPass.fullscreenMaterial.uniforms.normalTexture.value = normalTexture
 	}
 
 	setVelocityTexture(texture) {

@@ -1,14 +1,5 @@
 ﻿import { Pass } from "postprocessing"
-import {
-	Clock,
-	HalfFloatType,
-	LinearFilter,
-	Matrix4,
-	Quaternion,
-	Vector3,
-	WebGLMultipleRenderTargets,
-	WebGLRenderTarget
-} from "three"
+import { Clock, HalfFloatType, LinearFilter, Matrix4, Quaternion, Vector3, WebGLMultipleRenderTargets } from "three"
 import { CopyPass } from "../ssgi/pass/CopyPass"
 import { TemporalReprojectMaterial } from "./material/TemporalReprojectMaterial"
 import { generateR2 } from "./utils/QuasirandomGenerator"
@@ -96,7 +87,6 @@ export class TemporalReprojectPass extends Pass {
 
 		this.fullscreenMaterial.uniforms.velocityTexture.value = velocityDepthNormalPass.texture
 		this.fullscreenMaterial.uniforms.depthTexture.value = velocityDepthNormalPass.depthTexture
-		this.fullscreenMaterial.uniforms.normalTexture.value = velocityDepthNormalPass.normalTexture
 
 		if (typeof options.reprojectSpecular === "boolean") {
 			options.reprojectSpecular = Array(textureCount).fill(options.reprojectSpecular)

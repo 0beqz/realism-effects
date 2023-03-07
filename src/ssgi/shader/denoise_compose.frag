@@ -1,4 +1,6 @@
 {
+    vec3 viewNormal = normalize((vec4(normal, 1.) * cameraMatrixWorld).xyz);
+
     roughness *= roughness;
 
     // view-space position of the current texel

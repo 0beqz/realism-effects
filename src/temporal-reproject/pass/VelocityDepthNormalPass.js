@@ -1,13 +1,14 @@
 ﻿import { Pass } from "postprocessing"
-import { RGBAFormat, Vector2 } from "three"
-import { FramebufferTexture } from "three"
 import {
 	Color,
 	DepthTexture,
 	FloatType,
-	HalfFloatType,
+	FramebufferTexture,
+	Matrix4,
 	NearestFilter,
+	RGBAFormat,
 	UnsignedByteType,
+	Vector2,
 	WebGLMultipleRenderTargets
 } from "three"
 import {
@@ -22,6 +23,8 @@ import { VelocityDepthNormalMaterial } from "../material/VelocityDepthNormalMate
 
 const backgroundColor = new Color(0)
 const zeroVec2 = new Vector2()
+const tmpProjectionMatrix = new Matrix4()
+const tmpProjectionMatrixInverse = new Matrix4()
 
 export class VelocityDepthNormalPass extends Pass {
 	cachedMaterials = new WeakMap()
@@ -34,7 +37,7 @@ export class VelocityDepthNormalPass extends Pass {
 		this._scene = scene
 		this._camera = camera
 
-		const bufferCount = renderDepthNormal ? 3 : 1
+		const bufferCount = renderDepthNormal ? 2 : 1
 
 		this.renderTarget = new WebGLMultipleRenderTargets(1, 1, bufferCount, {
 			minFilter: NearestFilter,
@@ -48,11 +51,8 @@ export class VelocityDepthNormalPass extends Pass {
 			this.renderTarget.texture[0].type = UnsignedByteType
 			this.renderTarget.texture[0].needsUpdate = true
 
-			this.renderTarget.texture[1].type = HalfFloatType
+			this.renderTarget.texture[1].type = FloatType
 			this.renderTarget.texture[1].needsUpdate = true
-
-			this.renderTarget.texture[2].type = FloatType
-			this.renderTarget.texture[2].needsUpdate = true
 		}
 
 		this.renderDepthNormal = renderDepthNormal
@@ -123,19 +123,19 @@ export class VelocityDepthNormalPass extends Pass {
 	}
 
 	get texture() {
-		return Array.isArray(this.renderTarget.texture) ? this.renderTarget.texture[2] : this.renderTarget.texture
+		return Array.isArray(this.renderTarget.texture) ? this.renderTarget.texture[1] : this.renderTarget.texture
 	}
 
 	get depthTexture() {
 		return this.renderTarget.texture[0]
 	}
 
-	get normalTexture() {
-		return this.renderTarget.texture[1]
-	}
-
 	render(renderer) {
-		this._camera.clearViewOffset()
+		tmpProjectionMatrix.copy(this._camera.projectionMatrix)
+		tmpProjectionMatrixInverse.copy(this._camera.projectionMatrixInverse)
+
+		if (this._camera.view) this._camera.view.enabled = false
+		this._camera.updateProjectionMatrix()
 
 		this.setVelocityDepthNormalMaterialInScene()
 
@@ -144,15 +144,16 @@ export class VelocityDepthNormalPass extends Pass {
 		this._scene.background = backgroundColor
 
 		renderer.setRenderTarget(this.renderTarget)
-		renderer.render(this._scene, this._camera)
-
 		renderer.copyFramebufferToTexture(zeroVec2, this.lastDepthTexture)
+
+		renderer.render(this._scene, this._camera)
 
 		this._scene.background = background
 
 		this.unsetVelocityDepthNormalMaterialInScene()
 
 		if (this._camera.view) this._camera.view.enabled = true
-		this._camera.updateProjectionMatrix()
+		this._camera.projectionMatrix.copy(tmpProjectionMatrix)
+		this._camera.projectionMatrixInverse.copy(tmpProjectionMatrixInverse)
 	}
 }

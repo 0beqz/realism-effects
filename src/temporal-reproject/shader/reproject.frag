@@ -1,4 +1,4 @@
-
+vec4 velocityTexel;
 float dilatedDepth;
 vec2 dilatedUvOffset;
 int texIndex;
@@ -159,17 +159,7 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const bool neighborhoodClam
 
     if (worldDistanceDisocclusionCheck(dilatedWorldPos, lastWorldPos, worldDistFactor)) return false;
 
-    vec4 lastNormalTexel = textureLod(lastNormalTexture, dilatedReprojectedUv, 0.);
-    vec3 lastNormal = unpackRGBToNormal(lastNormalTexel.xyz);
-    vec3 lastWorldNormal = normalize((vec4(lastNormal, 1.) * viewMatrix).xyz);
-
     return !planeDistanceDisocclusionCheck(dilatedWorldPos, lastWorldPos, worldNormal, worldDistFactor);
-}
-
-vec2 reprojectVelocity(const vec2 sampleUv) {
-    vec4 velocity = textureLod(velocityTexture, sampleUv, 0.0);
-
-    return vUv - velocity.xy;
 }
 
 vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength, const float depth) {
@@ -184,7 +174,7 @@ vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength, const float de
     return hitPointUv;
 }
 
-vec2 getReprojectedUV(const vec2 uv, const bool neighborhoodClamp, const bool neighborhoodClampDisocclusionTest,
+vec2 getReprojectedUV(const bool neighborhoodClamp, const bool neighborhoodClampDisocclusionTest,
                       const float depth, const vec3 worldPos, const vec3 worldNormal, const float rayLength) {
     // hit point reprojection
     if (rayLength != 0.0) {
@@ -198,7 +188,7 @@ vec2 getReprojectedUV(const vec2 uv, const bool neighborhoodClamp, const bool ne
     }
 
     // reprojection using motion vectors
-    vec2 reprojectedUv = reprojectVelocity(uv);
+    vec2 reprojectedUv = vUv - velocityTexel.rg;
 
     if (validateReprojectedUV(reprojectedUv, neighborhoodClamp, neighborhoodClampDisocclusionTest, depth, worldPos, worldNormal)) {
         return reprojectedUv;
@@ -276,4 +266,16 @@ vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv, con
     }
 
     return textureLod(tex, reprojectedUv, 0.);
+}
+
+// source: https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/
+vec3 Decode(vec2 f) {
+    f = f * 2.0 - 1.0;
+
+    // https://twitter.com/Stubbesaurus/status/937994790553227264
+    vec3 n = vec3(f.x, f.y, 1.0 - abs(f.x) - abs(f.y));
+    float t = max(-n.z, 0.0);
+    n.x += n.x >= 0.0 ? -t : t;
+    n.y += n.y >= 0.0 ? -t : t;
+    return normalize(n);
 }

@@ -78,8 +78,7 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const float depth, 
 
 // normal similarity
 #ifdef useNormal
-    vec3 neighborNormal = unpackRGBToNormal(neighborNormalTexel.rgb);
-    neighborNormal = normalize((vec4(neighborNormal, 1.0) * viewMatrix).xyz);
+    vec3 neighborNormal = neighborNormalTexel.rgb;
     float normalDiff = dot(neighborNormal, normal);
     float normalSimilarity = pow(max(0., normalDiff), normalPhi);
 
@@ -160,13 +159,10 @@ void main() {
 
     // g-buffers
     float depth = unpackRGBAToDepth(depthTexel);
-
-    vec4 normalTexel = textureLod(normalTexture, vUv, 0.);
-    vec3 viewNormal = unpackRGBToNormal(normalTexel.rgb);
-    vec3 normal = normalize((vec4(viewNormal, 1.0) * viewMatrix).xyz);
-
     vec3 worldPos = screenSpaceToWorldSpace(vUv, depth, cameraMatrixWorld);
 
+    vec4 normalTexel = textureLod(normalTexture, vUv, 0.);
+    vec3 normal = normalTexel.rgb;
     float roughness = normalTexel.a;
     roughness *= roughness;
 

@@ -132,8 +132,8 @@ export class MRTMaterial extends ShaderMaterial {
                         // roughness of 1.0 is reserved for deselected meshes
                         roughnessFactor = min(0.99, roughnessFactor);
 
-                        vec3 normalColor = packNormalToRGB( normal );
-                        gNormal = vec4( normalColor, roughnessFactor );
+                        vec3 worldNormal = normalize((vec4(normal, 1.) * viewMatrix).xyz);
+                        gNormal = vec4( worldNormal, roughnessFactor );
                     }
                     
 

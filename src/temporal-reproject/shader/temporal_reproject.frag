@@ -5,9 +5,6 @@ uniform sampler2D velocityTexture;
 uniform sampler2D depthTexture;
 uniform sampler2D lastDepthTexture;
 
-uniform sampler2D normalTexture;
-uniform sampler2D lastNormalTexture;
-
 uniform float blend;
 uniform bool constantBlend;
 uniform bool fullAccumulate;
@@ -74,11 +71,9 @@ void main() {
 
     texIndex = 0;
 
-    vec4 normalTexel = textureLod(normalTexture, dilatedUv, 0.);
-    vec3 worldNormal = unpackRGBToNormal(normalTexel.rgb);
-    worldNormal = normalize((vec4(worldNormal, 1.) * viewMatrix).xyz);
+    velocityTexel = textureLod(velocityTexture, vUv, 0.0);
 
-    // worldPos is not dilated by default
+    vec3 worldNormal = Decode(velocityTexel.ba);
     vec3 worldPos = screenSpaceToWorldSpace(vUv, depth, cameraMatrixWorld, projectionMatrixInverse);
 
     vec2 reprojectedUvDiffuse = vec2(-10.0);
@@ -95,8 +90,7 @@ void main() {
 
         // specular (hit point reprojection)
         if (reprojectHitPoint) {
-            reprojectedUvSpecular[i] = getReprojectedUV(
-                vUv, neighborhoodClamping[i], neighborhoodClampingDisocclusionTest[i], depth, worldPos, worldNormal, inputTexel[i].a);
+            reprojectedUvSpecular[i] = getReprojectedUV(neighborhoodClamping[i], neighborhoodClampingDisocclusionTest[i], depth, worldPos, worldNormal, inputTexel[i].a);
         } else {
             // init to -1 to signify that reprojection failed
             reprojectedUvSpecular[i] = vec2(-1.0);
@@ -104,8 +98,7 @@ void main() {
 
         // diffuse (reprojection using velocity)
         if (reprojectedUvDiffuse.x == -10.0 && reprojectedUvSpecular[i].x < 0.0) {
-            reprojectedUvDiffuse = getReprojectedUV(
-                vUv, neighborhoodClamping[i], neighborhoodClampingDisocclusionTest[i], depth, worldPos, worldNormal, 0.0);
+            reprojectedUvDiffuse = getReprojectedUV(neighborhoodClamping[i], neighborhoodClampingDisocclusionTest[i], depth, worldPos, worldNormal, 0.0);
         }
 
         // choose which UV coordinates to use for reprojecion

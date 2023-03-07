@@ -153,8 +153,7 @@ export class VelocityDepthNormalMaterial extends ShaderMaterial {
 
 					#ifdef renderDepthNormal
 					layout(location = 0) out vec4 gDepth;
-					layout(location = 1) out vec4 gNormal;
-					layout(location = 2) out vec4 gVelocity;
+					layout(location = 1) out vec4 gVelocity;
 					#else
 					#define gVelocity gl_FragColor
 					#endif
@@ -165,16 +164,31 @@ export class VelocityDepthNormalMaterial extends ShaderMaterial {
 					#include <uv_pars_fragment>
 					#include <normal_pars_fragment>
 
+					// source: https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/
+					vec2 OctWrap( vec2 v ) {
+						vec2 w = 1.0 - abs( v.yx );
+						if (v.x < 0.0) w.x = -w.x;
+						if (v.y < 0.0) w.y = -w.y;
+						return w;
+					}
+
+					vec2 Encode( vec3 n ) {
+						n /= ( abs( n.x ) + abs( n.y ) + abs( n.z ) );
+						n.xy = n.z > 0.0 ? n.xy : OctWrap( n.xy );
+						n.xy = n.xy * 0.5 + 0.5;
+						return n.xy;
+					}
+
                     void main() {
 						#include <normal_fragment_begin>
                     	#include <normal_fragment_maps>
 
 						${velocity_fragment_main.replaceAll("gl_FragColor", "gVelocity")}
+						vec3 worldNormal = normalize((vec4(normal, 1.) * viewMatrix).xyz);
+						gVelocity.ba = Encode(worldNormal);
 
 						#ifdef renderDepthNormal
 						gDepth = packDepthToRGBA(fragCoordZ);
-
-						gNormal = vec4(packNormalToRGB( normal ), 0.);
 						#endif
                     }`
 		})
