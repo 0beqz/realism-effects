@@ -1,5 +1,7 @@
+import { getGPUTier } from "detect-gpu"
 import dragDrop from "drag-drop"
 import * as POSTPROCESSING from "postprocessing"
+import { MotionBlurEffect, SSGIEffect, TRAAEffect } from "realism-effects"
 import Stats from "stats.js"
 import * as THREE from "three"
 import {
@@ -20,10 +22,8 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader"
 import { GroundProjectedEnv } from "three/examples/jsm/objects/GroundProjectedEnv"
 import { Pane } from "tweakpane"
-import { SSGIEffect, MotionBlurEffect, TRAAEffect } from "realism-effects"
 import { VelocityDepthNormalPass } from "../src/temporal-reproject/pass/VelocityDepthNormalPass"
 import { SSGIDebugGUI } from "./SSGIDebugGUI"
-import { getGPUTier } from "detect-gpu"
 import "./style.css"
 
 let traaEffect
@@ -290,10 +290,10 @@ const initScene = async () => {
 		autoThickness: false,
 		thickness: 1.2999999999999972,
 		maxRoughness: 1,
-		blend: 0.925,
+		blend: 0.975,
 		denoiseIterations: 3,
 		denoiseKernel: 3,
-		denoiseDiffuse: 40,
+		denoiseDiffuse: 20,
 		denoiseSpecular: 40,
 		depthPhi: 5,
 		normalPhi: 28,
@@ -309,7 +309,6 @@ const initScene = async () => {
 	}
 
 	const velocityDepthNormalPass = new VelocityDepthNormalPass(scene, camera)
-	composer.addPass(renderPass)
 	composer.addPass(velocityDepthNormalPass)
 
 	const params = {}
@@ -517,10 +516,8 @@ const loop = () => {
 
 	if (controls.enableDamping) controls.dampingFactor = 0.075 * 120 * Math.max(1 / 1000, dt)
 
-	controls.update()
-	camera.updateMatrixWorld()
-
 	composer.render()
+	controls.update()
 
 	if (stats?.dom.style.display !== "none") stats.end()
 	window.requestAnimationFrame(loop)
@@ -718,6 +715,7 @@ const setupAsset = asset => {
 
 	asset.scene.traverse(c => {
 		if (c.isMesh) {
+			if (c.material.transparent) c.material.alphaMap = c.material.roughnessMap
 			c.castShadow = c.receiveShadow = true
 			c.material.depthWrite = true
 

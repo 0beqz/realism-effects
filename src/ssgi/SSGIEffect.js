@@ -19,7 +19,8 @@ import {
 	createGlobalDisableIblRadianceUniform,
 	getMaxMipLevel,
 	getVisibleChildren,
-	isChildMaterialRenderable
+	isChildMaterialRenderable,
+	unrollLoops
 } from "./utils/Utils.js"
 
 const { render } = RenderPass.prototype
@@ -91,30 +92,19 @@ export class SSGIEffect extends Effect {
 
 		if (definesName === "ssgi") {
 			this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.fragmentShader =
-				this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.fragmentShader
-					.replace(
-						"accumulatedTexel[ 1 ].rgb = clampedColor;",
-						`
+				this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.fragmentShader.replace(
+					"accumulatedTexel[ 1 ].rgb = clampedColor;",
+					`
 						float roughness = inputTexel[ 0 ].a;
-						accumulatedTexel[ 1 ].rgb = mix(accumulatedTexel[1].rgb, clampedColor, 1. - sqrt(roughness));
+						accumulatedTexel[ 1 ].rgb = mix(accumulatedTexel[ 1 ].rgb, clampedColor, 1. - sqrt(roughness));
 						`
-					)
-					.replace(
-						"outputColor = mix(inputTexel[ 1 ].rgb, accumulatedTexel[ 1 ].rgb, temporalReprojectMix);",
-						/* glsl */ `
-				float roughness = inputTexel[0].a;
-				float glossines = max(0., 0.025 - roughness) / 0.025;
-				temporalReprojectMix *= 1. - glossines * glossines;
-				
-				outputColor = mix(inputTexel[ 1 ].rgb, accumulatedTexel[ 1 ].rgb, temporalReprojectMix);
-				`
-					)
+				)
 		} else if (definesName === "ssr") {
 			this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.fragmentShader =
 				this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.fragmentShader.replace(
 					"accumulatedTexel[ 0 ].rgb = clampedColor;",
 					`
-					accumulatedTexel[ 0 ].rgb = mix(accumulatedTexel[1].rgb, clampedColor, 0.75);
+					accumulatedTexel[ 0 ].rgb = mix(accumulatedTexel[ 0 ].rgb, clampedColor, 0.5);
 					`
 				)
 		}
@@ -134,11 +124,6 @@ export class SSGIEffect extends Effect {
 			this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.uniforms.inputTexture1.value =
 				this.ssgiPass.specularTexture
 		}
-
-		// the denoiser always uses the same G-buffers as the SSGI pass
-		const denoisePassUniforms = this.svgf.denoisePass.fullscreenMaterial.uniforms
-		denoisePassUniforms.depthTexture.value = this.ssgiPass.depthTexture
-		denoisePassUniforms.normalTexture.value = this.ssgiPass.normalTexture
 
 		this.svgf.setJitteredGBuffers(this.ssgiPass.depthTexture, this.ssgiPass.normalTexture)
 
@@ -246,9 +231,26 @@ export class SSGIEffect extends Effect {
 							break
 
 						// defines
+						case "spp":
+							this.ssgiPass.fullscreenMaterial.fragmentShader = this.ssgiPass.defaultFragmentShader.replaceAll(
+								"spp",
+								value
+							)
+
+							if (value !== 1) {
+								this.ssgiPass.fullscreenMaterial.fragmentShader = unrollLoops(
+									this.ssgiPass.fullscreenMaterial.fragmentShader
+										.replace("#pragma unroll_loop_start", "")
+										.replace("#pragma unroll_loop_end", "")
+								)
+							}
+
+							this.ssgiPass.fullscreenMaterial.needsUpdate = needsUpdate
+
+							temporalReprojectPass.reset()
+							break
 						case "steps":
 						case "refineSteps":
-						case "spp":
 							this.ssgiPass.fullscreenMaterial.defines[key] = parseInt(value)
 							this.ssgiPass.fullscreenMaterial.needsUpdate = needsUpdate
 							temporalReprojectPass.reset()
@@ -386,7 +388,7 @@ export class SSGIEffect extends Effect {
 			for (const c of getVisibleChildren(this._scene)) {
 				if (c.isScene) return
 
-				c.visible = !isChildMaterialRenderable(c.material)
+				c.visible = !isChildMaterialRenderable(c)
 
 				c.visible ? hideMeshes.push(c) : children.push(c)
 			}

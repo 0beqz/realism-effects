@@ -4,7 +4,7 @@ import { TemporalReprojectPass } from "../../temporal-reproject/TemporalReprojec
 import svgf_temporal_reproject from "../shader/svgf_temporal_reproject.frag"
 
 const defaultSVGFTemporalReprojectPassOptions = {
-	fullAccumulate: true,
+	fullAccumulate: false,
 	customComposeShader: svgf_temporal_reproject
 }
 export class SVGFTemporalReprojectPass extends TemporalReprojectPass {

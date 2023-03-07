@@ -1,5 +1,4 @@
-﻿import { Texture, UniformsUtils, Vector4 } from "three"
-import { DataTexture, FloatType, RGBAFormat, ShaderChunk, ShaderLib } from "three"
+﻿import { DataTexture, FloatType, RGBAFormat, ShaderChunk, ShaderLib, UniformsUtils, Vector4 } from "three"
 import { GroundProjectedEnv } from "three/examples/jsm/objects/GroundProjectedEnv"
 
 export const getVisibleChildren = object => {
@@ -220,27 +219,17 @@ export const splitIntoGroupsOfVector4 = arr => {
 	return result
 }
 
-let tmpTex = new Texture()
-let tmpGroundProjectedEnv = new GroundProjectedEnv(tmpTex)
-const tmpGroundProjectedEnvFragmentShader = tmpGroundProjectedEnv.material.fragmentShader
-tmpGroundProjectedEnv.material.dispose()
-tmpGroundProjectedEnv.geometry.dispose()
-tmpTex.dispose()
-
-tmpTex = null
-tmpGroundProjectedEnv = null
-
-export const isGroundProjectedEnv = material => {
-	return material.fragmentShader?.includes(tmpGroundProjectedEnvFragmentShader)
+export const isGroundProjectedEnv = c => {
+	return c instanceof GroundProjectedEnv
 }
 
-export const isChildMaterialRenderable = material => {
+export const isChildMaterialRenderable = (c, material = c.material) => {
 	return (
 		material.visible &&
 		material.depthWrite &&
 		material.depthTest &&
 		(!material.transparent || material.opacity > 0) &&
-		!material.fragmentShader?.includes(tmpGroundProjectedEnvFragmentShader)
+		!isGroundProjectedEnv(c)
 	)
 }
 

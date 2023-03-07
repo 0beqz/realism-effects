@@ -109,8 +109,8 @@ void main() {
     // view-space position of the current texel
     vec3 viewPos = getViewPosition(depth);
     vec3 viewDir = normalize(viewPos);
-    vec3 viewNormal = normalTexel.xyz;
-    viewNormal = normalize((vec4(viewNormal, 1.) * cameraMatrixWorld).xyz);
+    vec3 worldNormal = normalTexel.xyz;
+    vec3 viewNormal = normalize((vec4(worldNormal, 1.) * cameraMatrixWorld).xyz);
 
     vec3 worldPos = vec4(vec4(viewPos, 1.) * viewMatrix).xyz;
 
@@ -122,83 +122,87 @@ void main() {
     vec3 v = -viewDir;    // incoming vector
     float NoV = max(EPSILON, dot(n, v));
 
-    // convert view dir and view normal to world-space
+    // convert view dir to world-space
     vec3 V = (vec4(v, 1.) * viewMatrix).xyz;
-    vec3 N = (vec4(n, 1.) * viewMatrix).xyz;
+    vec3 N = worldNormal;
 
-    bool isMissedRay;
-    vec3 SSGI, diffuseGI, specularGI, brdf, hitPos, T, B;
-    float pdf;
+    vec4 blueNoise;
+    vec3 H, l, h, F, T, B, envMisDir, gi;
+    vec3 SSGI, diffuseGI, specularGI, brdf, hitPos;
 
     Onb(N, T, B);
 
     V = ToLocal(T, B, N, V);
-    float diffuseSamples, specularSamples;
 
     // fresnel f0
     vec3 f0 = mix(vec3(0.04), diffuse, metalness);
 
-    vec4 velocity = textureLod(velocityTexture, vUv, 0.0);
+    float NoL, NoH, LoH, VoH, diffW, specW, invW, pdf, envPdf, diffuseSamples, specularSamples;
+    bool isDiffuseSample, valid, isMissedRay;
+
+    int sampleCounter = 0;
 
     // start taking samples
-    for (int s = 0; s < spp; s++) {
-        vec4 blueNoise = sampleBlueNoise(frame + s);
+
+#pragma unroll_loop_start
+    for (int i = 0; i < spp; i++) {
+        blueNoise = sampleBlueNoise(frame + sampleCounter++);
 
         // Disney BRDF and sampling source: https://www.shadertoy.com/view/cll3R4
         // calculate GGX reflection ray
-        vec3 H = SampleGGXVNDF(V, roughness, roughness, blueNoise.r, blueNoise.g);
+        H = SampleGGXVNDF(V, roughness, roughness, blueNoise.r, blueNoise.g);
         if (H.z < 0.0) H = -H;
 
-        vec3 l = normalize(reflect(-V, H));
+        l = normalize(reflect(-V, H));
         l = ToWorld(T, B, N, l);
 
         // convert reflected vector back to view-space
         l = (vec4(l, 1.) * cameraMatrixWorld).xyz;
         l = normalize(l);
 
-        vec3 h = normalize(v + l);  // half vector
+        h = normalize(v + l);  // half vector
 
-        float NoL = clamp(dot(n, l), EPSILON, ONE_MINUS_EPSILON);
-        float NoH = clamp(dot(n, h), EPSILON, ONE_MINUS_EPSILON);
-        float LoH = clamp(dot(l, h), EPSILON, ONE_MINUS_EPSILON);
-        float VoH = clamp(dot(v, h), EPSILON, ONE_MINUS_EPSILON);
+        NoL = clamp(dot(n, l), EPSILON, ONE_MINUS_EPSILON);
+        NoH = clamp(dot(n, h), EPSILON, ONE_MINUS_EPSILON);
+        LoH = clamp(dot(l, h), EPSILON, ONE_MINUS_EPSILON);
+        VoH = clamp(dot(v, h), EPSILON, ONE_MINUS_EPSILON);
 
 #if !defined(diffuseOnly) && !defined(specularOnly)
         // fresnel
-        vec3 F = F_Schlick(f0, VoH);
+        F = F_Schlick(f0, VoH);
 
         // diffuse and specular weight
-        float diffW = (1. - metalness) * luminance(diffuse);
-        float specW = luminance(F);
+        diffW = (1. - metalness) * luminance(diffuse);
+        specW = luminance(F);
 
         diffW = max(diffW, EPSILON);
         specW = max(specW, EPSILON);
 
-        float invW = 1. / (diffW + specW);
+        invW = 1. / (diffW + specW);
 
         // relative weights used for choosing either a diffuse or specular ray
         diffW *= invW;
         specW *= invW;
 
         // if diffuse lighting should be sampled
-        bool isDiffuseSample = blueNoise.b < diffW;
+        isDiffuseSample = blueNoise.b < diffW;
 #else
     #ifdef diffuseOnly
-        const bool isDiffuseSample = true;
+        isDiffuseSample = true;
     #else
-        const bool isDiffuseSample = false;
+        isDiffuseSample = false;
     #endif
 #endif
 
-        vec3 envMisDir = vec3(0.0);
-        float envPdf = 0.0;
+        envMisDir = vec3(0.0);
+        envPdf = 0.0;
 
 #ifdef importanceSampling
         envPdf = sampleEquirectProbability(envMapInfo, blueNoise.rg, envMisDir);
         envMisDir = normalize((vec4(envMisDir, 1.) * cameraMatrixWorld).xyz);
 #endif
 
-        bool valid = blueNoise.a < 0.25 + dot(envMisDir, viewNormal) * 0.5;
+        valid = blueNoise.a < 0.25 + dot(envMisDir, viewNormal) * 0.5;
         if (!valid) envPdf = 0.0;
 
         if (isDiffuseSample) {
@@ -215,7 +219,7 @@ void main() {
             LoH = clamp(dot(l, h), EPSILON, ONE_MINUS_EPSILON);
             VoH = clamp(dot(v, h), EPSILON, ONE_MINUS_EPSILON);
 
-            vec3 gi = doSample(
+            gi = doSample(
                 viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, envPdf != 0.0, NoV, NoL, NoH, LoH, VoH, blueNoise.rg,
                 l, hitPos, isMissedRay, brdf, pdf);
 
@@ -246,7 +250,7 @@ void main() {
                 envPdf = 0.0;
             }
 
-            vec3 gi = doSample(
+            gi = doSample(
                 viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, envPdf != 0.0, NoV, NoL, NoH, LoH, VoH, blueNoise.rg,
                 l, hitPos, isMissedRay, brdf, pdf);
 
@@ -264,6 +268,7 @@ void main() {
             specularGI = mix(specularGI, gi, 1. / specularSamples);
         }
     }
+#pragma unroll_loop_end
 
     roughness = sqrt(roughness);
 
@@ -331,21 +336,19 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
     // invalid ray, use environment lighting as fallback
     if (isMissedRay || allowMissedRays) {
         // world-space reflected ray
-        vec4 reflectedWS = vec4(l, 1.) * viewMatrix;
-        reflectedWS.xyz = normalize(reflectedWS.xyz);
+        vec3 reflectedWS = normalize((vec4(l, 1.) * viewMatrix).xyz);
 
     #ifdef BOX_PROJECTED_ENV_MAP
         float depth = unpackRGBAToDepth(textureLod(depthTexture, vUv, 0.));
-        reflectedWS.xyz = parallaxCorrectNormal(reflectedWS.xyz, envMapSize, envMapPosition, worldPosition);
-        reflectedWS.xyz = normalize(reflectedWS.xyz);
+        reflectedWS = parallaxCorrectNormal(reflectedWS.xyz, envMapSize, envMapPosition, worldPosition);
+        reflectedWS = normalize(reflectedWS.xyz);
     #endif
 
         float mip = envBlur * maxEnvMapMipLevel;
 
         if (!isDiffuseSample) mip *= sqrt(roughness);
 
-        vec3 sampleDir = reflectedWS.xyz;
-        envMapSample = sampleEquirectEnvMapColor(sampleDir, envMapInfo.map, mip);
+        envMapSample = sampleEquirectEnvMapColor(reflectedWS, envMapInfo.map, mip);
 
         float maxEnvLum = isMisSample ? maxEnvLuminance : 5.0;
 

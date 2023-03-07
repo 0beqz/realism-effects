@@ -204,6 +204,7 @@ void main() {
 #endif
 
         sumVariance[i] = texel[i].a;
+
         if (roughnessDependent[i]) {
             colorPhi[i] = denoise[i] * sqrt(basicVariance[i] * roughness + sumVariance[i]);
         } else {

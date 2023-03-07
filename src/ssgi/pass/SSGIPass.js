@@ -29,6 +29,7 @@ const backgroundColor = new Color(0)
 
 export class SSGIPass extends Pass {
 	needsSwap = false
+	defaultFragmentShader = ""
 
 	frame = 0
 	cachedMaterials = new WeakMap()
@@ -42,6 +43,7 @@ export class SSGIPass extends Pass {
 		this._camera = ssgiEffect._camera
 
 		this.fullscreenMaterial = new SSGIMaterial()
+		this.defaultFragmentShader = this.fullscreenMaterial.fragmentShader
 
 		const bufferCount = !options.diffuseOnly && !options.specularOnly ? 2 : 1
 
@@ -191,8 +193,21 @@ export class SSGIPass extends Pass {
 			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "metalnessMap", "USE_	METALNESSMAP", true)
 			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "map", "USE_MAP", true)
 			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "emissiveMap", "USE_EMISSIVEMAP", true)
+			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "alphaMap", "USE_ALPHAMAP", true)
 
-			c.visible = isChildMaterialRenderable(originalMaterial)
+			const noiseTexture = this.fullscreenMaterial.uniforms.blueNoiseTexture.value
+			if (noiseTexture) {
+				const { width, height } = noiseTexture.source.data
+				mrtMaterial.uniforms.blueNoiseTexture.value = noiseTexture
+				mrtMaterial.uniforms.blueNoiseRepeat.value.set(
+					this.renderTarget.width / width,
+					this.renderTarget.height / height
+				)
+			}
+			mrtMaterial.uniforms.texSize.value.set(this.renderTarget.width, this.renderTarget.height)
+			mrtMaterial.uniforms.frame.value = this.frame
+
+			c.visible = isChildMaterialRenderable(c, originalMaterial)
 
 			const origRoughness = typeof originalMaterial.roughness === "number" ? originalMaterial.roughness : 1
 
@@ -217,6 +232,8 @@ export class SSGIPass extends Pass {
 	}
 
 	render(renderer) {
+		this.frame = (this.frame + this.ssgiEffect.spp) % 65536
+
 		const { background } = this._scene
 
 		this._scene.background = backgroundColor
@@ -229,8 +246,6 @@ export class SSGIPass extends Pass {
 		this.unsetMRTMaterialInScene()
 
 		if (this.ssgiEffect.autoThickness) this.backSideDepthPass.render(renderer)
-
-		this.frame = (this.frame + this.ssgiEffect.spp) % 65536
 
 		// update uniforms
 		this.fullscreenMaterial.uniforms.frame.value = this.frame

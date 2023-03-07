@@ -80,7 +80,7 @@ export class VelocityDepthNormalPass extends Pass {
 
 			c.material = velocityDepthNormalMaterial
 
-			c.visible = isChildMaterialRenderable(originalMaterial)
+			c.visible = isChildMaterialRenderable(c, originalMaterial)
 
 			if (this.renderDepthNormal) velocityDepthNormalMaterial.defines.renderDepthNormal = ""
 
@@ -131,6 +131,8 @@ export class VelocityDepthNormalPass extends Pass {
 	}
 
 	render(renderer) {
+		this._camera.updateMatrixWorld()
+
 		tmpProjectionMatrix.copy(this._camera.projectionMatrix)
 		tmpProjectionMatrixInverse.copy(this._camera.projectionMatrixInverse)
 
