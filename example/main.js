@@ -289,7 +289,7 @@ const initScene = async () => {
 		thickness: 1.2999999999999972,
 		autoThickness: false,
 		maxRoughness: 1,
-		blend: 0.975,
+		blend: 0.95,
 		denoiseIterations: 2,
 		denoiseKernel: 3,
 		denoiseDiffuse: 26.09,
