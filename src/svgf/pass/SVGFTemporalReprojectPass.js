@@ -42,7 +42,7 @@ export class SVGFTemporalReprojectPass extends TemporalReprojectPass {
 			}
 		}
 
-		const copyPassTextureCount = 2 + textureCount + 1
+		const copyPassTextureCount = textureCount + 1
 
 		this.copyPass.setTextureCount(copyPassTextureCount)
 		this.copyPass.fullscreenMaterial.uniforms["inputTexture" + (copyPassTextureCount - 1)].value = this.momentTexture

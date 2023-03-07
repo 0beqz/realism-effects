@@ -1,4 +1,6 @@
 ﻿import { Pass } from "postprocessing"
+import { RGBAFormat, Vector2 } from "three"
+import { FramebufferTexture } from "three"
 import {
 	Color,
 	DepthTexture,
@@ -19,6 +21,7 @@ import {
 import { VelocityDepthNormalMaterial } from "../material/VelocityDepthNormalMaterial.js"
 
 const backgroundColor = new Color(0)
+const zeroVec2 = new Vector2()
 
 export class VelocityDepthNormalPass extends Pass {
 	cachedMaterials = new WeakMap()
@@ -41,14 +44,14 @@ export class VelocityDepthNormalPass extends Pass {
 		this.renderTarget.depthTexture = new DepthTexture(1, 1)
 		this.renderTarget.depthTexture.type = FloatType
 
-		this.renderTarget.texture[0].type = FloatType
-		this.renderTarget.texture[0].needsUpdate = true
-
 		if (renderDepthNormal) {
-			this.renderTarget.texture[1].type = UnsignedByteType
+			this.renderTarget.texture[0].type = UnsignedByteType
+			this.renderTarget.texture[0].needsUpdate = true
+
+			this.renderTarget.texture[1].type = HalfFloatType
 			this.renderTarget.texture[1].needsUpdate = true
 
-			this.renderTarget.texture[2].type = HalfFloatType
+			this.renderTarget.texture[2].type = FloatType
 			this.renderTarget.texture[2].needsUpdate = true
 		}
 
@@ -105,6 +108,12 @@ export class VelocityDepthNormalPass extends Pass {
 
 	setSize(width, height) {
 		this.renderTarget.setSize(width, height)
+
+		this.lastDepthTexture?.dispose()
+
+		this.lastDepthTexture = new FramebufferTexture(width, height, RGBAFormat)
+		this.lastDepthTexture.minFilter = NearestFilter
+		this.lastDepthTexture.magFilter = NearestFilter
 	}
 
 	dispose() {
@@ -114,15 +123,15 @@ export class VelocityDepthNormalPass extends Pass {
 	}
 
 	get texture() {
-		return Array.isArray(this.renderTarget.texture) ? this.renderTarget.texture[0] : this.renderTarget.texture
+		return Array.isArray(this.renderTarget.texture) ? this.renderTarget.texture[2] : this.renderTarget.texture
 	}
 
 	get depthTexture() {
-		return this.renderTarget.texture[1]
+		return this.renderTarget.texture[0]
 	}
 
 	get normalTexture() {
-		return this.renderTarget.texture[2]
+		return this.renderTarget.texture[1]
 	}
 
 	render(renderer) {
@@ -136,6 +145,8 @@ export class VelocityDepthNormalPass extends Pass {
 
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this._scene, this._camera)
+
+		renderer.copyFramebufferToTexture(zeroVec2, this.lastDepthTexture)
 
 		this._scene.background = background
 

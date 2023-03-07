@@ -4,10 +4,10 @@ import {
 	HalfFloatType,
 	LinearFilter,
 	Matrix4,
-	NearestFilter,
 	Quaternion,
 	Vector3,
-	WebGLMultipleRenderTargets
+	WebGLMultipleRenderTargets,
+	WebGLRenderTarget
 } from "three"
 import { CopyPass } from "../ssgi/pass/CopyPass"
 import { TemporalReprojectMaterial } from "./material/TemporalReprojectMaterial"
@@ -84,28 +84,15 @@ export class TemporalReprojectPass extends Pass {
 		this.fullscreenMaterial.uniforms.prevProjectionMatrixInverse.value = camera.projectionMatrixInverse.clone()
 
 		// init copy pass to save the accumulated textures and the textures from the last frame
-		this.copyPass = new CopyPass(2 + textureCount)
+		this.copyPass = new CopyPass(textureCount)
 
 		for (let i = 0; i < textureCount; i++) {
-			const accumulatedTexture = this.copyPass.renderTarget.texture[2 + i]
+			const accumulatedTexture = this.copyPass.renderTarget.texture[i]
 			accumulatedTexture.type = HalfFloatType
 			accumulatedTexture.minFilter = LinearFilter
 			accumulatedTexture.magFilter = LinearFilter
 			accumulatedTexture.needsUpdate = true
 		}
-
-		const lastDepthTexture = this.copyPass.renderTarget.texture[0]
-		lastDepthTexture.minFilter = NearestFilter
-		lastDepthTexture.magFilter = NearestFilter
-		lastDepthTexture.needsUpdate = true
-		this.fullscreenMaterial.uniforms.lastDepthTexture.value = lastDepthTexture
-
-		const lastNormalTexture = this.copyPass.renderTarget.texture[1]
-		lastNormalTexture.type = HalfFloatType
-		lastNormalTexture.minFilter = NearestFilter
-		lastNormalTexture.magFilter = NearestFilter
-		lastNormalTexture.needsUpdate = true
-		this.fullscreenMaterial.uniforms.lastNormalTexture.value = lastNormalTexture
 
 		this.fullscreenMaterial.uniforms.velocityTexture.value = velocityDepthNormalPass.texture
 		this.fullscreenMaterial.uniforms.depthTexture.value = velocityDepthNormalPass.depthTexture
@@ -142,6 +129,7 @@ export class TemporalReprojectPass extends Pass {
 		)})`
 
 		this.options = options
+		this.velocityDepthNormalPass = velocityDepthNormalPass
 	}
 
 	dispose() {
@@ -179,6 +167,7 @@ export class TemporalReprojectPass extends Pass {
 
 		this.fullscreenMaterial.uniforms.projectionMatrix.value.copy(this._camera.projectionMatrix)
 		this.fullscreenMaterial.uniforms.projectionMatrixInverse.value.copy(this._camera.projectionMatrixInverse)
+		this.fullscreenMaterial.uniforms.lastDepthTexture.value = this.velocityDepthNormalPass.lastDepthTexture
 
 		if (this._camera.view) this._camera.view.enabled = true
 		this._camera.projectionMatrix.copy(tmpProjectionMatrix)
@@ -188,13 +177,9 @@ export class TemporalReprojectPass extends Pass {
 		renderer.render(this.scene, this.camera)
 		this.fullscreenMaterial.uniforms.reset.value = false
 
-		// save the last depth and normal buffers
-		this.copyPass.fullscreenMaterial.uniforms.inputTexture0.value = this.fullscreenMaterial.uniforms.depthTexture.value
-		this.copyPass.fullscreenMaterial.uniforms.inputTexture1.value = this.fullscreenMaterial.uniforms.normalTexture.value
-
 		for (let i = 0; i < this.textureCount; i++) {
-			this.copyPass.fullscreenMaterial.uniforms["inputTexture" + (2 + i)].value = this.renderTarget.texture[i]
-			this.fullscreenMaterial.uniforms["accumulatedTexture" + i].value = this.copyPass.renderTarget.texture[2 + i]
+			this.copyPass.fullscreenMaterial.uniforms["inputTexture" + i].value = this.renderTarget.texture[i]
+			this.fullscreenMaterial.uniforms["accumulatedTexture" + i].value = this.copyPass.renderTarget.texture[i]
 		}
 
 		this.copyPass.render(renderer)

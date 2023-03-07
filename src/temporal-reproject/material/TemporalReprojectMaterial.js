@@ -55,7 +55,6 @@ export class TemporalReprojectMaterial extends ShaderMaterial {
 				depthTexture: new Uniform(null),
 				lastDepthTexture: new Uniform(null),
 				normalTexture: new Uniform(null),
-				lastNormalTexture: new Uniform(null),
 				blend: new Uniform(0),
 				constantBlend: new Uniform(false),
 				fullAccumulate: new Uniform(false),

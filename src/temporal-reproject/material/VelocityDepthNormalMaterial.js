@@ -152,9 +152,9 @@ export class VelocityDepthNormalMaterial extends ShaderMaterial {
 					#endif
 
 					#ifdef renderDepthNormal
-					layout(location = 0) out vec4 gVelocity;
-					layout(location = 1) out vec4 gDepth;
-					layout(location = 2) out vec4 gNormal;
+					layout(location = 0) out vec4 gDepth;
+					layout(location = 1) out vec4 gNormal;
+					layout(location = 2) out vec4 gVelocity;
 					#else
 					#define gVelocity gl_FragColor
 					#endif
