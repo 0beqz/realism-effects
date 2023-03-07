@@ -505,8 +505,8 @@ const loop = () => {
 
 	if (controls.enableDamping) controls.dampingFactor = 0.075 * 120 * Math.max(1 / 1000, dt)
 
-	camera.updateMatrixWorld()
 	controls.update()
+	camera.updateMatrixWorld()
 
 	if (postprocessingEnabled) {
 		composer.render()
@@ -705,7 +705,6 @@ const setupAsset = asset => {
 
 	asset.scene.traverse(c => {
 		if (c.isMesh) {
-			if (c.material.transparent) c.material.alphaMap = c.material.roughnessMap
 			c.castShadow = c.receiveShadow = true
 			c.material.depthWrite = true
 
