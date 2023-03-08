@@ -133,6 +133,10 @@ npm run dev
 
 If the project is useful for you and you'd like to sponsor my work:
 
+[GitHub Sponsors](https://github.com/sponsors/0beqz)
+
+If you'd like, you could also buy me a coffee:
+
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/0beqz)
 
 ## Credits
