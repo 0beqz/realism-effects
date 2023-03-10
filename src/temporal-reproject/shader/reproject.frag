@@ -71,6 +71,22 @@ void getNeighborhoodAABB(const sampler2D tex, inout vec3 minNeighborColor, inout
     }
 }
 
+#ifdef logClamp
+void clampNeighborhood(const sampler2D tex, inout vec3 color, vec3 inputColor) {
+    transformColor(inputColor);
+
+    vec3 minNeighborColor = inputColor;
+    vec3 maxNeighborColor = inputColor;
+
+    getNeighborhoodAABB(tex, minNeighborColor, maxNeighborColor);
+
+    transformColor(color);
+
+    color = clamp(color, minNeighborColor, maxNeighborColor);
+
+    undoColorTransform(color);
+}
+#else
 void clampNeighborhood(const sampler2D tex, inout vec3 color, const vec3 inputColor) {
     vec3 minNeighborColor = inputColor;
     vec3 maxNeighborColor = inputColor;
@@ -79,6 +95,7 @@ void clampNeighborhood(const sampler2D tex, inout vec3 color, const vec3 inputCo
 
     color = clamp(color, minNeighborColor, maxNeighborColor);
 }
+#endif
 
 #ifdef dilation
 void getDilatedDepthUVOffset(const sampler2D tex, const vec2 centerUv, out float depth, out float dilatedDepth, out vec4 closestDepthTexel) {
@@ -117,6 +134,7 @@ void getDepthAndDilatedUVOffset(sampler2D depthTex, vec2 uv, out float depth, ou
 }
 
 bool planeDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos, const vec3 worldNormal, const float worldDistFactor) {
+    if (abs(dot(worldNormal, worldPos)) < EPSILON) return false;
     vec3 toCurrent = worldPos - lastWorldPos;
     float distToPlane = abs(dot(toCurrent, worldNormal));
 
@@ -134,6 +152,7 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const bool neighborhoodClam
     if (neighborhoodClamp && !neighborhoodClampDisocclusionTest) return true;
 
     vec3 dilatedWorldPos = worldPos;
+    vec3 lastWorldPos;
     float dilatedLastDepth, lastDepth;
     vec4 lastDepthTexel;
     vec2 dilatedReprojectedUv;
@@ -153,7 +172,7 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const bool neighborhoodClam
     dilatedReprojectedUv = reprojectedUv;
 #endif
 
-    vec3 lastWorldPos = screenSpaceToWorldSpace(dilatedReprojectedUv, dilatedLastDepth, prevCameraMatrixWorld, prevProjectionMatrixInverse);
+    lastWorldPos = screenSpaceToWorldSpace(dilatedReprojectedUv, dilatedLastDepth, prevCameraMatrixWorld, prevProjectionMatrixInverse);
 
     float worldDistFactor = clamp((50.0 + distance(dilatedWorldPos, cameraPos)) / 100., 0.25, 1.);
 

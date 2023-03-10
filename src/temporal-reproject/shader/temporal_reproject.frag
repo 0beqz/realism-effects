@@ -57,7 +57,7 @@ void main() {
 
         doColorTransform[i] = luminance(inputTexel[i].rgb) > 0.0;
 
-        textureSampledThisFrame[i] = any(greaterThanEqual(inputTexel[i].rgb, vec3(0.0)));
+        textureSampledThisFrame[i] = inputTexel[i].r >= 0.;
 
         if (textureSampledThisFrame[i]) {
             transformColor(inputTexel[i].rgb);
@@ -73,7 +73,13 @@ void main() {
 
     velocityTexel = textureLod(velocityTexture, vUv, 0.0);
 
-    vec3 worldNormal = Decode(velocityTexel.ba);
+#ifdef dilation
+    vec2 octahedronEncodedNormal = textureLod(velocityTexture, dilatedUv, 0.0).ba;
+#else
+    vec2 octahedronEncodedNormal = velocityTexel.ba;
+#endif
+
+    vec3 worldNormal = Decode(octahedronEncodedNormal);
     vec3 worldPos = screenSpaceToWorldSpace(vUv, depth, cameraMatrixWorld, projectionMatrixInverse);
 
     vec2 reprojectedUvDiffuse = vec2(-10.0);
@@ -107,7 +113,7 @@ void main() {
         // check if any reprojection was successful
         if (reprojectedUv.x < 0.0) {  // invalid UV
             // reprojection was not successful -> reset to the input texel
-            accumulatedTexel[i] = vec4(inputTexel[i].rgb, 1.0);
+            accumulatedTexel[i] = vec4(inputTexel[i].rgb, 0.0);
         } else {
             // reprojection was successful -> accumulate
             accumulatedTexel[i] = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUv, catmullRomSampling[i]);
@@ -116,11 +122,7 @@ void main() {
             if (textureSampledThisFrame[i]) {
                 accumulatedTexel[i].a++;  // add one more frame
 
-                if (neighborhoodClamping[i]) {
-                    clampedColor = accumulatedTexel[i].rgb;
-                    clampNeighborhood(inputTexture[i], clampedColor, inputTexel[i].rgb);
-                    accumulatedTexel[i].rgb = clampedColor;
-                }
+                if (neighborhoodClamping[i]) clampNeighborhood(inputTexture[i], accumulatedTexel[i].rgb, inputTexel[i].rgb);
             } else {
                 inputTexel[i].rgb = accumulatedTexel[i].rgb;
             }
@@ -132,23 +134,30 @@ void main() {
 
     texIndex = 0;
 
-    vec2 deltaUv = vUv - reprojectedUv;
-    bool didMove = dot(deltaUv, deltaUv) >= 0.0000000001;
-    float maxValue = (fullAccumulate && !didMove) ? 1.0 : blend;
-
-    vec3 outputColor;
-    float temporalReprojectMix;
-
     float m = 1. - delta / (1. / 60.);
     float fpsAdjustedBlend = blend + max(0., (1. - blend) * m);
 
+    vec2 deltaUv = vUv - reprojectedUv;
+    bool didMove = dot(deltaUv, deltaUv) >= 0.0000000001;
+    float maxValue = (fullAccumulate && !didMove) ? 1.0 : fpsAdjustedBlend;
+
+    vec3 outputColor;
+    float temporalReprojectMix;
+    // float moveAlpha = didMove ? fpsAdjustedBlend / (1.0 - fpsAdjustedBlend) : 0.0;
+
 #pragma unroll_loop_start
     for (int i = 0; i < textureCount; i++) {
-        temporalReprojectMix = fpsAdjustedBlend;
+        if (constantBlend) {
+            temporalReprojectMix = accumulatedTexel[i].a == 0.0 ? 0.0 : fpsAdjustedBlend;
+        } else {
+            temporalReprojectMix = fpsAdjustedBlend;
 
-        if (reset) accumulatedTexel[i].a = 0.0;
+            // if (didMove) accumulatedTexel[i].a = moveAlpha;
 
-        if (!constantBlend) temporalReprojectMix = min(1. - 1. / (accumulatedTexel[i].a + 1.0), maxValue);
+            if (reset) accumulatedTexel[i].a = 0.0;
+
+            temporalReprojectMix = min(1. - 1. / (accumulatedTexel[i].a + 1.0), maxValue);
+        }
 
         outputColor = mix(inputTexel[i].rgb, accumulatedTexel[i].rgb, temporalReprojectMix);
         undoColorTransform(outputColor);

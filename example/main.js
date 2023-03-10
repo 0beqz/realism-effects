@@ -143,6 +143,10 @@ controls.minDistance = 7.5
 window.controls = controls
 
 const composer = new POSTPROCESSING.EffectComposer(renderer)
+if (traaTest) {
+	const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
+	composer.addPass(renderPass)
+}
 
 const lightParams = {
 	yaw: 55,
@@ -311,9 +315,7 @@ const initScene = async () => {
 	const velocityDepthNormalPass = new VelocityDepthNormalPass(scene, camera)
 	composer.addPass(velocityDepthNormalPass)
 
-	const params = {}
-
-	traaEffect = new TRAAEffect(scene, camera, velocityDepthNormalPass, params)
+	traaEffect = new TRAAEffect(scene, camera, velocityDepthNormalPass)
 
 	pane = new Pane()
 	pane.containerElem_.style.userSelect = "none"

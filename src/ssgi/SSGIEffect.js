@@ -159,6 +159,7 @@ export class SSGIEffect extends Effect {
 
 		const th = this
 		const ssgiRenderPass = this.renderPass
+		// eslint-disable-next-line space-before-function-paren
 		RenderPass.prototype.render = function (...args) {
 			if (this !== ssgiRenderPass) {
 				const wasUsingRenderPass = th.isUsingRenderPass

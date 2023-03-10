@@ -4,12 +4,12 @@ import { getVisibleChildren, isGroundProjectedEnv } from "../ssgi/utils/Utils"
 import { TemporalReprojectPass } from "../temporal-reproject/TemporalReprojectPass.js"
 import compose from "./shader/compose.frag"
 
-export const defaultTRAAOptions = {
-	blend: 0.7,
+const defaultTRAAOptions = {
+	blend: 0.8,
 	constantBlend: true,
 	dilation: true,
 	catmullRomSampling: true,
-	logTransform: true,
+	logTransform: false, // ! todo: check if can use logTransform withoutt artifacts
 	depthDistance: 10,
 	worldDistance: 5,
 	neighborhoodClamping: true,
@@ -46,8 +46,6 @@ export class TRAAEffect extends Effect {
 	}
 
 	update(renderer, inputBuffer) {
-		// TODO: FIX RIGGED MESHES ISSUE
-
 		this.temporalReprojectPass.unjitter()
 		this.unjitteredProjectionMatrix = this._camera.projectionMatrix.clone()
 
