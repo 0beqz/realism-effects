@@ -4,20 +4,20 @@ A collection of the following effects for three.js:
 
 - SSGI
   <br></br>
-  [<img src=" /screenshots/ssgi.webp">](https://realism-effects.vercel.app)
+  [<img src="https://raw.githubusercontent.com/0beqz/realism-effects/main/screenshots/ssgi.webp">](https://realism-effects.vercel.app)
   <br></br>
   <br></br>
-  [<img src=" /screenshots/ssgi2.webp">](https://realism-effects.vercel.app)
+  [<img src="https://raw.githubusercontent.com/0beqz/realism-effects/main/screenshots/ssgi2.webp">](https://realism-effects.vercel.app)
   <br></br>
 - Motion Blur
   <br></br>
-  [<img src=" /screenshots/motion_blur.webp">](https://realism-effects.vercel.app)
+  [<img src="https://raw.githubusercontent.com/0beqz/realism-effects/main/screenshots/motion_blur.webp">](https://realism-effects.vercel.app)
   <br></br>
 - TRAA
   <br>
   TRAA (left)&nbsp;&nbsp;&nbsp; No Anti-Aliasing (right)
   <br></br>
-  [<img src=" /screenshots/traa_comp.webp">](https://realism-effects.vercel.app?traa_test=true)
+  [<img src="https://raw.githubusercontent.com/0beqz/realism-effects/main/screenshots/traa_comp.webp">](https://realism-effects.vercel.app?traa_test=true)
   <br></br>
   AA comparison scenes: [Model Comparision](https://realism-effects.vercel.app/?traa_test=true&traa_test_model=true), [General Comparison](https://realism-effects.vercel.app/?traa_test=true)
 
