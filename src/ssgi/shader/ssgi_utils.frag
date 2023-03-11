@@ -88,6 +88,7 @@ vec2 equirectDirectionToUv(const vec3 direction) {
     return uv;
 }
 
+// source: https://github.com/gkjohnson/three-gpu-pathtracer
 vec3 equirectUvToDirection(vec2 uv) {
     // undo above adjustments
     uv.x -= 0.5;
@@ -213,6 +214,7 @@ vec3 cosineSampleHemisphere(const vec3 n, const vec2 u) {
 
 // end: functions
 
+// source: https://github.com/gkjohnson/three-gpu-pathtracer
 float equirectDirectionPdf(vec3 direction) {
     vec2 uv = equirectDirectionToUv(direction);
     float theta = uv.y * PI;
@@ -224,6 +226,7 @@ float equirectDirectionPdf(vec3 direction) {
     return 1.0 / (2.0 * PI * PI * sinTheta);
 }
 
+// source: https://github.com/gkjohnson/three-gpu-pathtracer
 float sampleEquirectProbability(EquirectHdrInfo info, vec2 r, out vec3 direction) {
     // sample env map cdf
     float v = textureLod(info.marginalWeights, vec2(r.x, 0.0), 0.).x;
