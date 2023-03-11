@@ -72,6 +72,7 @@ void main() {
     texIndex = 0;
 
     velocityTexel = textureLod(velocityTexture, vUv, 0.0);
+    bool didMove = dot(velocityTexel.xy, velocityTexel.xy) > 0.000000001;
 
 #ifdef dilation
     vec2 octahedronEncodedNormal = textureLod(velocityTexture, dilatedUv, 0.0).ba;
@@ -84,7 +85,6 @@ void main() {
 
     vec2 reprojectedUvDiffuse = vec2(-10.0);
     vec2 reprojectedUvSpecular[textureCount];
-
     vec2 reprojectedUv;
     bool reprojectHitPoint;
 
@@ -116,7 +116,7 @@ void main() {
             accumulatedTexel[i] = vec4(inputTexel[i].rgb, 0.0);
         } else {
             // reprojection was successful -> accumulate
-            accumulatedTexel[i] = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUv, catmullRomSampling[i]);
+            accumulatedTexel[i] = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUv, didMove);
             transformColor(accumulatedTexel[i].rgb);
 
             if (textureSampledThisFrame[i]) {
@@ -137,8 +137,6 @@ void main() {
     float m = 1. - delta / (1. / 60.);
     float fpsAdjustedBlend = blend + max(0., (1. - blend) * m);
 
-    vec2 deltaUv = vUv - reprojectedUv;
-    bool didMove = dot(deltaUv, deltaUv) >= 0.0000000001;
     float maxValue = (fullAccumulate && !didMove) ? 1.0 : fpsAdjustedBlend;
 
     vec3 outputColor;

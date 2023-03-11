@@ -49,8 +49,8 @@
 		"rollup-plugin-glslify": "^1.3.0"
 	},
 	"peerDependencies": {
-		"postprocessing": ">=6.28.0",
-		"three": ">=0.141.0"
+		"postprocessing": ">=6.30.1",
+		"three": ">=0.150.1"
 	},
 	"prettier": {
 		"semi": false,
@@ -63,7 +63,9 @@
 		"overrides": [
 			{
 				"files": [
-					"*.frag"
+					"*.frag",
+					"*.vert",
+					"*.glsl"
 				],
 				"options": {
 					"parser": "glsl-parser"

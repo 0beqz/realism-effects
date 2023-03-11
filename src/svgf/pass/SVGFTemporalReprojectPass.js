@@ -5,7 +5,6 @@ import svgf_temporal_reproject from "../shader/svgf_temporal_reproject.frag"
 
 const defaultSVGFTemporalReprojectPassOptions = {
 	fullAccumulate: true,
-	dilation: true,
 	customComposeShader: svgf_temporal_reproject
 }
 export class SVGFTemporalReprojectPass extends TemporalReprojectPass {

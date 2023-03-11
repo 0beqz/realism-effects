@@ -134,7 +134,8 @@ void getDepthAndDilatedUVOffset(sampler2D depthTex, vec2 uv, out float depth, ou
 }
 
 bool planeDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos, const vec3 worldNormal, const float worldDistFactor) {
-    if (abs(dot(worldNormal, worldPos)) < EPSILON) return false;
+    if (abs(dot(worldNormal, worldPos)) == 0.0) return false;
+
     vec3 toCurrent = worldPos - lastWorldPos;
     float distToPlane = abs(dot(toCurrent, worldNormal));
 
@@ -279,12 +280,23 @@ vec4 getTexel(const sampler2D tex, vec2 p) {
     return textureLod(tex, p, 0.0);
 }
 
-vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv, const bool useCatmullRom) {
-    if (useCatmullRom) {
-        return SampleTextureCatmullRom(tex, reprojectedUv, 1.0 / invTexSize);
+// source: https://www.shadertoy.com/view/stSfW1
+vec2 sampleBlocky(vec2 p) {
+    vec2 d = vec2(dFdx(p.x), dFdy(p.y)) / invTexSize;
+    p /= invTexSize;
+    vec2 fA = p - 0.5 * d, iA = floor(fA);
+    vec2 fB = p + 0.5 * d, iB = floor(fB);
+    return (iA + (iB - iA) * (fB - iB) / d + 0.5) * invTexSize;
+}
+
+vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv, bool useBlockySampling) {
+    vec2 p = blockySampling[texIndex] && useBlockySampling ? sampleBlocky(reprojectedUv) : reprojectedUv;
+
+    if (catmullRomSampling[texIndex]) {
+        return SampleTextureCatmullRom(tex, p, 1.0 / invTexSize);
     }
 
-    return textureLod(tex, reprojectedUv, 0.);
+    return textureLod(tex, p, 0.);
 }
 
 // source: https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/

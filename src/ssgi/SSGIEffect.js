@@ -68,12 +68,10 @@ export class SSGIEffect extends Effect {
 			options.roughnessDependent = true
 			options.basicVariance = 0.00025
 			options.neighborhoodClamping = true
-			options.neighborhoodClampingDisocclusionTest = false
 		} else {
 			definesName = "ssgi"
 			options.reprojectSpecular = [false, true]
 			options.neighborhoodClamping = [false, true]
-			options.neighborhoodClampingDisocclusionTest = false
 			options.roughnessDependent = [false, true]
 			options.basicVariance = [0.00025, 0.00025]
 		}

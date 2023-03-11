@@ -8,12 +8,11 @@ const defaultTRAAOptions = {
 	blend: 0.8,
 	constantBlend: true,
 	dilation: true,
-	catmullRomSampling: true,
+	blockySampling: false,
 	logTransform: false, // ! todo: check if can use logTransform withoutt artifacts
 	depthDistance: 10,
 	worldDistance: 5,
-	neighborhoodClamping: true,
-	neighborhoodClampingDisocclusionTest: true
+	neighborhoodClamping: true
 }
 
 export class TRAAEffect extends Effect {

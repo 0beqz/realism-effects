@@ -10,8 +10,9 @@ export const defaultTemporalReprojectPassOptions = {
 	constantBlend: false,
 	fullAccumulate: false,
 	catmullRomSampling: true,
+	blockySampling: true,
 	neighborhoodClamping: false,
-	neighborhoodClampingDisocclusionTest: false,
+	neighborhoodClampingDisocclusionTest: true,
 	logTransform: false,
 	logClamp: false,
 	depthDistance: 0.25,
@@ -90,35 +91,19 @@ export class TemporalReprojectPass extends Pass {
 		this.fullscreenMaterial.uniforms.velocityTexture.value = velocityDepthNormalPass.texture
 		this.fullscreenMaterial.uniforms.depthTexture.value = velocityDepthNormalPass.depthTexture
 
-		if (typeof options.reprojectSpecular === "boolean") {
-			options.reprojectSpecular = Array(textureCount).fill(options.reprojectSpecular)
+		for (const opt of [
+			"catmullRomSampling",
+			"blockySampling",
+			"reprojectSpecular",
+			"neighborhoodClamping",
+			"neighborhoodClampingDisocclusionTest"
+		]) {
+			if (typeof options[opt] === "boolean") {
+				options[opt] = Array(textureCount).fill(options[opt])
+			}
+
+			this.fullscreenMaterial.defines[opt] = /* glsl */ `bool[](${options[opt].join(", ")})`
 		}
-
-		this.fullscreenMaterial.defines.reprojectSpecular = /* glsl */ `bool[](${options.reprojectSpecular.join(", ")})`
-
-		if (typeof options.catmullRomSampling === "boolean") {
-			options.catmullRomSampling = Array(textureCount).fill(options.catmullRomSampling)
-		}
-
-		this.fullscreenMaterial.defines.catmullRomSampling = /* glsl */ `bool[](${options.catmullRomSampling.join(", ")})`
-
-		if (typeof options.neighborhoodClamping === "boolean") {
-			options.neighborhoodClamping = Array(textureCount).fill(options.neighborhoodClamping)
-		}
-
-		this.fullscreenMaterial.defines.neighborhoodClamping = /* glsl */ `bool[](${options.neighborhoodClamping.join(
-			", "
-		)})`
-
-		if (typeof options.neighborhoodClampingDisocclusionTest === "boolean") {
-			options.neighborhoodClampingDisocclusionTest = Array(textureCount).fill(
-				options.neighborhoodClampingDisocclusionTest
-			)
-		}
-
-		this.fullscreenMaterial.defines.neighborhoodClampingDisocclusionTest = /* glsl */ `bool[](${options.neighborhoodClampingDisocclusionTest.join(
-			", "
-		)})`
 
 		this.options = options
 		this.velocityDepthNormalPass = velocityDepthNormalPass

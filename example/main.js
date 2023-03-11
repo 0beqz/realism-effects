@@ -41,6 +41,8 @@ const guiParams = {
 	Background: false
 }
 
+console.log(THREE.REVISION)
+
 // extract if the paramaterer "traa_test" is set to true in the URL
 const traaTest = new URLSearchParams(window.location.search).get("traa_test") === "true"
 
@@ -405,7 +407,7 @@ const initScene = async () => {
 
 				const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass)
 
-				composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect))
+				// composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect))
 			} else {
 				composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, vignetteEffect, lutEffect))
 				loadFiles--
@@ -427,7 +429,7 @@ const initScene = async () => {
 
 			resize()
 		} else {
-			setAA("FXAA")
+			setAA("Disabled")
 			controls.enableDamping = false
 
 			resize()
