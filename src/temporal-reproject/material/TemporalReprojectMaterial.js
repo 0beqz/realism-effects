@@ -12,6 +12,8 @@ export class TemporalReprojectMaterial extends ShaderMaterial {
 
 		if (typeof customComposeShader === "string") {
 			finalFragmentShader = finalFragmentShader.replace("customComposeShader", customComposeShader)
+		} else {
+			console.log("no")
 		}
 
 		let definitions = ""

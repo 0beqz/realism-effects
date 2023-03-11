@@ -429,7 +429,7 @@ const initScene = async () => {
 
 			resize()
 		} else {
-			setAA("Disabled")
+			setAA("FXAA")
 			controls.enableDamping = false
 
 			resize()

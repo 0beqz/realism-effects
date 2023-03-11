@@ -289,10 +289,10 @@ vec2 sampleBlocky(vec2 p) {
     return (iA + (iB - iA) * (fB - iB) / d + 0.5) * invTexSize;
 }
 
-vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv, bool useBlockySampling) {
-    vec2 p = blockySampling[texIndex] && useBlockySampling ? sampleBlocky(reprojectedUv) : reprojectedUv;
+vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv, bool useCatmullRomSampling, bool useBlockySampling) {
+    vec2 p = useBlockySampling ? sampleBlocky(reprojectedUv) : reprojectedUv;
 
-    if (catmullRomSampling[texIndex]) {
+    if (useCatmullRomSampling) {
         return SampleTextureCatmullRom(tex, p, 1.0 / invTexSize);
     }
 

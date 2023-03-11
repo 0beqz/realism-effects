@@ -88,7 +88,7 @@ void main() {
     vec2 reprojectedUv;
     bool reprojectHitPoint;
 
-    vec3 clampedColor;
+    bool useBlockySampling;
 
 #pragma unroll_loop_start
     for (int i = 0; i < textureCount; i++) {
@@ -116,7 +116,8 @@ void main() {
             accumulatedTexel[i] = vec4(inputTexel[i].rgb, 0.0);
         } else {
             // reprojection was successful -> accumulate
-            accumulatedTexel[i] = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUv, didMove);
+            useBlockySampling = blockySampling[texIndex] && didMove;
+            accumulatedTexel[i] = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUv, catmullRomSampling[i], useBlockySampling);
             transformColor(accumulatedTexel[i].rgb);
 
             if (textureSampledThisFrame[i]) {
