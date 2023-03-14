@@ -710,6 +710,8 @@ const setupAsset = asset => {
 			c.castShadow = c.receiveShadow = true
 			c.material.depthWrite = true
 
+			// if (c.material.transparent) c.material.alphaMap = c.material.roughnessMap
+
 			if (traaTest && c.name === "shader") c.material = planeShaderMaterial
 
 			if (traaTest && c.name === "Cube") c.material = new MeshNormalMaterial()

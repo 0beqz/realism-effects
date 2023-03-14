@@ -165,15 +165,16 @@ export class MRTMaterial extends ShaderMaterial {
 #endif
 
                 void main() {
-                    #ifdef USE_ALPHAMAP
-                    float alpha = textureLod( alphaMap, vUv, 0. ).g;
+                    // !todo: properly implement alpha hashing
+                    // #ifdef USE_ALPHAMAP
+                    // float alpha = textureLod( alphaMap, vUv, 0. ).g;
 
-                    float alphaThreshold = sampleBlueNoise(screenUv, frame).a;
-                    if(alpha < alphaThreshold){
-                        discard;
-                        return;
-                    }
-                    #endif
+                    // float alphaThreshold = sampleBlueNoise(screenUv, frame).a;
+                    // if(alpha < alphaThreshold){
+                    //     discard;
+                    //     return;
+                    // }
+                    // #endif
 
                     #include <clipping_planes_fragment>
                     #include <logdepthbuf_fragment>

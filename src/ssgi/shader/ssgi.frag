@@ -411,13 +411,14 @@ vec2 RayMarch(inout vec3 dir, inout vec3 hitPos) {
     vec2 uv;
 
     for (int i = 1; i < steps; i++) {
-        hitPos += dir;
+        float m = exp(pow(float(i) / 4.0, 0.05)) - 2.0;
+        hitPos += dir * min(m, 1.);
         if (hitPos.z > 0.0) return INVALID_RAY_COORDS;
 
         uv = viewSpaceToScreenSpace(hitPos);
 
 #ifndef missedRays
-        if (any(lessThan(uv, vec2(0.))) || any(greaterThan(uv, vec2(1.)))) return INVALID_RAY_COORDS;
+        if (uv.x < 0. || uv.y < 0. || uv.x > 1. || uv.y > 1.) return INVALID_RAY_COORDS;
 #endif
 
         float unpackedDepth = unpackRGBAToDepth(textureLod(depthTexture, uv, 0.0));
