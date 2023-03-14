@@ -71,22 +71,6 @@ void getNeighborhoodAABB(const sampler2D tex, inout vec3 minNeighborColor, inout
     }
 }
 
-#ifdef logClamp
-void clampNeighborhood(const sampler2D tex, inout vec3 color, vec3 inputColor) {
-    transformColor(inputColor);
-
-    vec3 minNeighborColor = inputColor;
-    vec3 maxNeighborColor = inputColor;
-
-    getNeighborhoodAABB(tex, minNeighborColor, maxNeighborColor);
-
-    transformColor(color);
-
-    color = clamp(color, minNeighborColor, maxNeighborColor);
-
-    undoColorTransform(color);
-}
-#else
 void clampNeighborhood(const sampler2D tex, inout vec3 color, const vec3 inputColor) {
     vec3 minNeighborColor = inputColor;
     vec3 maxNeighborColor = inputColor;
@@ -95,7 +79,6 @@ void clampNeighborhood(const sampler2D tex, inout vec3 color, const vec3 inputCo
 
     color = clamp(color, minNeighborColor, maxNeighborColor);
 }
-#endif
 
 #ifdef dilation
 void getDilatedDepthUVOffset(const sampler2D tex, const vec2 centerUv, out float depth, out float dilatedDepth, out vec4 closestDepthTexel) {

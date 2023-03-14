@@ -143,7 +143,7 @@ controls.minDistance = 7.5
 window.controls = controls
 
 const composer = new POSTPROCESSING.EffectComposer(renderer)
-if (traaTest) {
+if (true) {
 	const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
 	composer.addPass(renderPass)
 }

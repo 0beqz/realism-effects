@@ -75,6 +75,117 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
               const float NoV, const float NoL, const float NoH, const float LoH, const float VoH, const vec2 random, inout vec3 l,
               inout vec3 hitPos, out bool isMissedRay, out vec3 brdf, out float pdf);
 
+vec4 trace(vec3 positionFrom, vec3 pivot) {
+    float maxDistance = rayDistance;
+    float resolution = 0.5;
+
+    vec2 texCoord = vUv;
+
+    vec4 uv = vec4(0.0);
+
+    vec3 unitPositionFrom = normalize(positionFrom.xyz);
+
+    vec4 positionTo = vec4(positionFrom, 1.);
+
+    vec4 startView = vec4(positionFrom.xyz + (pivot * 0.), 1.0);
+    vec4 endView = vec4(positionFrom.xyz + (pivot * maxDistance), 1.0);
+
+    vec2 startFrag = viewSpaceToScreenSpace(startView.xyz) * texSize;
+    vec2 endFrag = viewSpaceToScreenSpace(endView.xyz) * texSize;
+
+    vec2 frag = startFrag.xy;
+    uv.xy = frag / texSize;
+
+    float deltaX = endFrag.x - startFrag.x;
+    float deltaY = endFrag.y - startFrag.y;
+    float useX = abs(deltaX) >= abs(deltaY) ? 1.0 : 0.0;
+    float delta = mix(abs(deltaY), abs(deltaX), useX) * clamp(resolution, 0.0, 1.0);
+    vec2 increment = vec2(deltaX, deltaY) / max(delta, 0.001);
+
+    float search0 = 0.;
+    float search1 = 0.;
+
+    int hit0 = 0;
+    int hit1 = 0;
+
+    float viewDistance, depth;
+
+    float i = 0.;
+
+    if (delta > 10000.0) {
+        return vec4(0.0);
+    }
+
+    vec2 t = vec2(deltaX, deltaY) / float(steps);
+
+    frag += t * 5.0;
+
+    for (i = 0.; i < float(steps); ++i) {
+        frag += t;
+        uv.xy = frag / texSize;
+
+        float unpackedDepth = unpackRGBAToDepth(textureLod(depthTexture, uv.xy, 0.0));
+        positionTo = vec4(getViewPosition(getViewZ(unpackedDepth)), 1.);
+
+        search1 =
+            mix((frag.y - startFrag.y) / deltaY, (frag.x - startFrag.x) / deltaX, useX);
+
+        search1 = clamp(search1, 0.0, 1.0);
+
+        viewDistance = (startView.z * endView.z) / mix(endView.z, startView.z, search1);
+        depth = viewDistance - positionTo.z;
+
+        if (depth > 0. && depth < thickness * 0.1) {
+            hit0 = 1;
+            break;
+        } else {
+            search0 = search1;
+        }
+    }
+
+    if (hit0 == 0) {
+        return vec4(-1.0);
+    }
+
+    // ---------
+
+    search1 = search0 + ((search1 - search0) / 2.0);
+
+    for (i = 0.; i < float(refineSteps); ++i) {
+        frag = mix(startFrag.xy, endFrag.xy, search1);
+        uv.xy = frag / texSize;
+
+        float unpackedDepth = unpackRGBAToDepth(textureLod(depthTexture, uv.xy, 0.0));
+        positionTo = vec4(getViewPosition(getViewZ(unpackedDepth)), 1.);
+
+        viewDistance = (startView.z * endView.z) / mix(endView.z, startView.z, search1);
+        depth = viewDistance - positionTo.z;
+
+        if (depth > 0. && depth < thickness * 0.1) {
+            hit1 = 1;
+            search1 = search0 + ((search1 - search0) / 2.);
+        } else {
+            float temp = search1;
+            search1 = search1 + ((search1 - search0) / 2.);
+            search0 = temp;
+        }
+    }
+
+    if (hit1 == 0) {
+        return vec4(-1.0);
+    }
+
+    float visibility = positionTo.w * (1. - max(dot(-unitPositionFrom, pivot), 0.)) * (1. - clamp(depth / thickness, 0., 1.)) * (1. - clamp(length(positionTo.xyz - positionFrom.xyz) / maxDistance, 0., 1.)) * (uv.x < 0. || uv.x > 1. ? 0. : 1.) * (uv.y < 0. || uv.y > 1. ? 0. : 1.);
+
+    visibility = clamp(visibility, 0., 1.);
+
+    if (visibility == 0.0) {
+        return vec4(-1.);
+    }
+
+    return uv;
+}
+
 void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.0);
 
@@ -111,6 +222,12 @@ void main() {
     vec3 viewDir = normalize(viewPos);
     vec3 worldNormal = normalTexel.xyz;
     vec3 viewNormal = normalize((vec4(worldNormal, 1.) * cameraMatrixWorld).xyz);
+
+    // vec4 uv = trace(viewPos, viewNormal);
+    // vec4 t = uv.x >= 0. ? texture(diffuseTexture, uv.xy) : vec4(0.);
+    // gDiffuse = uv;
+    // gSpecular = t;
+    // return;
 
     vec3 worldPos = vec4(vec4(viewPos, 1.) * viewMatrix).xyz;
 
@@ -320,7 +437,7 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
 
     vec2 coords = viewSpaceToScreenSpace(hitPos);
 #else
-    vec2 coords = RayMarch(l, hitPos);
+    vec2 coords = trace(hitPos, normalize(l)).xy;
 #endif
 
     bool allowMissedRays = false;
