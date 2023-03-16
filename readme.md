@@ -65,6 +65,18 @@ const effectPass = new POSTPROCESSING.EffectPass(camera, ssgiEffect, traaEffect,
 composer.addPass(effectPass)
 ```
 
+If you use SSGI, then you don't have to use the RenderPass anymore as SSGI does the rendering then. You can save performance by leaving it out. Keep in mind that then you need to put TRAA and Motion Blur in a separate pass like so:
+
+```javascript
+const effectPass = new POSTPROCESSING.EffectPass(camera, ssgiEffect)
+const effectPass2 = new POSTPROCESSING.EffectPass(camera, traaEffect, motionBlur)
+
+composer.addPass(effectPass)
+composer.addPass(effectPass2)
+```
+
+> **NOTE**: `OrthographicCamera` isn't supported yet. Only `PerspectiveCamera` is supported at the moment. It'll be supported in the future.
+
 ### Options
 
 <details>
@@ -142,6 +154,7 @@ If you'd like, you could also buy me a coffee:
 ## Todos
 - [ ] Use bent normals and/or calculate them at run-time? https://80.lv/articles/ssrtgi-toughest-challenge-in-real-time-3d/
 - [ ] Proper transparency support
+- [ ] Support OrthographicCameras
 
 ## Credits
 
