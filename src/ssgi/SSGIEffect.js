@@ -1,14 +1,15 @@
 ﻿/* eslint-disable camelcase */
 import { Effect, RenderPass, Selection } from "postprocessing"
 import {
-	EquirectangularReflectionMapping,
 	LinearMipMapLinearFilter,
 	NoToneMapping,
+	PerspectiveCamera,
 	sRGBEncoding,
 	Uniform,
 	WebGLRenderTarget
 } from "three"
 import { SVGF } from "../svgf/SVGF.js"
+import { CubeToEquirectEnvPass } from "./pass/CubeToEquirectEnvPass.js"
 import { SSGIPass } from "./pass/SSGIPass.js"
 import compose from "./shader/compose.frag"
 import denoise_compose from "./shader/denoise_compose.frag"
@@ -50,6 +51,15 @@ export class SSGIEffect extends Effect {
 				["toneMapping", new Uniform(NoToneMapping)]
 			])
 		})
+
+		if (!(camera instanceof PerspectiveCamera)) {
+			throw new Error(
+				this.constructor.name +
+					" doesn't support cameras of type '" +
+					camera.constructor.name +
+					"' yet. Only cameras of type 'PerspectiveCamera' are supported."
+			)
+		}
 
 		this._scene = scene
 		this._camera = camera
@@ -316,6 +326,7 @@ export class SSGIEffect extends Effect {
 		this.ssgiPass.setSize(width, height)
 		this.svgf.setSize(width, height)
 		this.sceneRenderTarget.setSize(width, height)
+		this.cubeToEquirectEnvPass?.setSize(width, height)
 
 		this.lastSize = {
 			width,
@@ -329,44 +340,59 @@ export class SSGIEffect extends Effect {
 
 		this.ssgiPass.dispose()
 		this.svgf.dispose()
+		this.cubeToEquirectEnvPass?.dispose()
 
 		RenderPass.prototype.render = render
 	}
 
-	keepEnvMapUpdated() {
+	keepEnvMapUpdated(renderer) {
 		const ssgiMaterial = this.ssgiPass.fullscreenMaterial
 
-		if (this._scene.environment && ssgiMaterial.uniforms.envMapInfo.value.mapUuid !== this._scene.environment.uuid) {
-			if (this._scene.environment?.mapping === EquirectangularReflectionMapping) {
-				if (!this._scene.environment.generateMipmaps) {
-					this._scene.environment.generateMipmaps = true
-					this._scene.environment.minFilter = LinearMipMapLinearFilter
-					this._scene.environment.magFilter = LinearMipMapLinearFilter
-					this._scene.environment.needsUpdate = true
+		let environment = this._scene.environment
+
+		if (environment) {
+			if (ssgiMaterial.uniforms.envMapInfo.value.mapUuid !== environment.uuid) {
+				// if the environment is a cube texture, convert it to an equirectangular texture so we can sample it in the SSGI pass and use MIS
+				if (environment.isCubeTexture) {
+					if (!this.cubeToEquirectEnvPass) this.cubeToEquirectEnvPass = new CubeToEquirectEnvPass()
+
+					environment = this.cubeToEquirectEnvPass.generateEquirectEnvMap(renderer, environment)
+					environment.uuid = this._scene.environment.uuid
 				}
 
-				const maxEnvMapMipLevel = getMaxMipLevel(this._scene.environment)
+				if (!environment.generateMipmaps) {
+					environment.generateMipmaps = true
+					environment.minFilter = LinearMipMapLinearFilter
+					environment.magFilter = LinearMipMapLinearFilter
+					environment.needsUpdate = true
+				}
+
+				ssgiMaterial.uniforms.envMapInfo.value.mapUuid = environment.uuid
+
+				const maxEnvMapMipLevel = getMaxMipLevel(environment)
 				ssgiMaterial.uniforms.maxEnvMapMipLevel.value = maxEnvMapMipLevel
 
-				ssgiMaterial.uniforms.envMapInfo.value.map = this._scene.environment
+				ssgiMaterial.uniforms.envMapInfo.value.map = environment
 
 				ssgiMaterial.defines.USE_ENVMAP = ""
 				delete ssgiMaterial.defines.importanceSampling
 
 				if (this.importanceSampling) {
-					ssgiMaterial.uniforms.envMapInfo.value.updateFrom(this._scene.environment).then(() => {
+					ssgiMaterial.uniforms.envMapInfo.value.updateFrom(environment).then(() => {
 						ssgiMaterial.defines.importanceSampling = ""
 						ssgiMaterial.needsUpdate = true
 					})
 				} else {
-					ssgiMaterial.uniforms.envMapInfo.value.map = this._scene.environment
+					ssgiMaterial.uniforms.envMapInfo.value.map = environment
 				}
-			} else {
-				delete ssgiMaterial.defines.USE_ENVMAP
-				delete ssgiMaterial.defines.importanceSampling
-			}
 
-			this.svgf.svgfTemporalReprojectPass.reset()
+				this.svgf.svgfTemporalReprojectPass.reset()
+
+				ssgiMaterial.needsUpdate = true
+			}
+		} else if ("USE_ENVMAP" in ssgiMaterial.defines) {
+			delete ssgiMaterial.defines.USE_ENVMAP
+			delete ssgiMaterial.defines.importanceSampling
 
 			ssgiMaterial.needsUpdate = true
 		}
@@ -375,7 +401,7 @@ export class SSGIEffect extends Effect {
 	update(renderer, inputBuffer) {
 		// ! todo: make SSGI's accumulation no longer FPS-dependent
 
-		this.keepEnvMapUpdated()
+		this.keepEnvMapUpdated(renderer)
 
 		const sceneBuffer = this.isUsingRenderPass ? inputBuffer : this.sceneRenderTarget
 

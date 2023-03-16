@@ -8,6 +8,7 @@ import {
 	Box3,
 	Clock,
 	Color,
+	CubeTextureLoader,
 	DirectionalLight,
 	DoubleSide,
 	FloatType,
@@ -183,9 +184,6 @@ stats.dom.style.top = "initial"
 stats.dom.style.bottom = "0"
 document.body.appendChild(stats.dom)
 
-const pmremGenerator = new THREE.PMREMGenerator(renderer)
-pmremGenerator.compileEquirectangularShader()
-
 const rgbeLoader = new RGBELoader().setDataType(FloatType)
 
 const initEnvMap = async envMap => {
@@ -196,6 +194,21 @@ const initEnvMap = async envMap => {
 	scene.environment = envMap
 	scene.background = traaTest ? new Color(0x4c7fe5) : null
 
+	setEnvMesh(envMap)
+}
+
+const cubeMapTest = () => {
+	new CubeTextureLoader()
+		.setPath("cubemap/yokohama_3/")
+		.load(["posx.jpg", "negx.jpg", "posy.jpg", "negy.jpg", "posz.jpg", "negz.jpg"], envMesh => {
+			scene.background = envMesh
+			scene.environment = envMesh
+
+			setEnvMesh(envMesh)
+		})
+}
+
+const setEnvMesh = envMap => {
 	if (!traaTest) {
 		envMesh?.removeFromParent()
 		envMesh?.material.dispose()
@@ -218,7 +231,8 @@ const environments = [
 	"quarry_02",
 	"snowy_field",
 	"spruit_sunrise",
-	"vintage_measuring_lab"
+	"vintage_measuring_lab",
+	"# cube map test"
 ]
 
 rgbeLoader.load("hdr/chinese_garden_1k.hdr", initEnvMap)
@@ -366,6 +380,11 @@ const initScene = async () => {
 			options: envObject
 		})
 		.on("change", ev => {
+			if (ev.value === "# cube map test") {
+				cubeMapTest()
+				return
+			}
+
 			rgbeLoader.load("hdr/" + ev.value + "_1k.hdr", initEnvMap)
 		})
 

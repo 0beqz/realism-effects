@@ -1,5 +1,5 @@
 ﻿import { DataTexture, FloatType, RGBAFormat, ShaderChunk, ShaderLib, UniformsUtils, Vector4 } from "three"
-import { GroundProjectedEnv } from "three/examples/jsm/objects/GroundProjectedEnv"
+import { GroundProjectedEnv } from "three/examples/jsm/objects/GroundProjectedEnv.js"
 
 export const getVisibleChildren = object => {
 	const queue = [object]

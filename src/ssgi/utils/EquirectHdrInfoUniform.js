@@ -319,8 +319,6 @@ export class EquirectHdrInfoUniform {
 	}
 
 	updateFrom(map) {
-		this.mapUuid = map.uuid
-
 		map = map.clone()
 		const { width, height, data } = map.image
 		const { type } = map
@@ -357,7 +355,7 @@ export class EquirectHdrInfoUniform {
 
 				this.worker = null
 
-				resolve()
+				resolve(map)
 			}
 		})
 	}

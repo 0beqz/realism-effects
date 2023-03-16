@@ -128,7 +128,7 @@ void main() {
 
     vec4 blueNoise;
     vec3 H, l, h, F, T, B, envMisDir, gi;
-    vec3 SSGI, diffuseGI, specularGI, brdf, hitPos;
+    vec3 diffuseGI, specularGI, brdf, hitPos;
 
     Onb(N, T, B);
 
@@ -372,12 +372,8 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
 
     vec3 SSGI;
 
-    bvec4 reprojectedUvInScreen = bvec4(
-        greaterThanEqual(reprojectedUv, vec2(0.)),
-        lessThanEqual(reprojectedUv, vec2(1.)));
-
     // check if the reprojected coordinates are within the screen
-    if (all(reprojectedUvInScreen)) {
+    if (reprojectedUv.x >= 0.0 && reprojectedUv.x <= 1.0 && reprojectedUv.y >= 0.0 && reprojectedUv.y <= 1.0) {
         vec4 emissiveTexel = textureLod(emissiveTexture, coords.xy, 0.);
         vec3 emissiveColor = emissiveTexel.rgb * 10.;
 
@@ -411,8 +407,10 @@ vec2 RayMarch(inout vec3 dir, inout vec3 hitPos) {
     vec2 uv;
 
     for (int i = 1; i < steps; i++) {
+        // use slower increments for the first few steps to sharpen contact shadows
         float m = exp(pow(float(i) / 4.0, 0.05)) - 2.0;
         hitPos += dir * min(m, 1.);
+
         if (hitPos.z > 0.0) return INVALID_RAY_COORDS;
 
         uv = viewSpaceToScreenSpace(hitPos);

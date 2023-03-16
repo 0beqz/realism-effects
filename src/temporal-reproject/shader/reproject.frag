@@ -148,7 +148,7 @@ bool worldDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos
 
 bool validateReprojectedUV(const vec2 reprojectedUv, const bool neighborhoodClamp, const bool neighborhoodClampDisocclusionTest,
                            const float depth, const vec3 worldPos, const vec3 worldNormal) {
-    if (any(lessThan(reprojectedUv, vec2(0.))) || any(greaterThan(reprojectedUv, vec2(1.)))) return false;
+    if (reprojectedUv.x > 1.0 || reprojectedUv.x < 0.0 || reprojectedUv.y > 1.0 || reprojectedUv.y < 0.0) return false;
 
     if (neighborhoodClamp && !neighborhoodClampDisocclusionTest) return true;
 

@@ -6,6 +6,7 @@ import {
 	FramebufferTexture,
 	Matrix4,
 	NearestFilter,
+	PerspectiveCamera,
 	RGBAFormat,
 	UnsignedByteType,
 	Vector2,
@@ -33,6 +34,15 @@ export class VelocityDepthNormalPass extends Pass {
 
 	constructor(scene, camera, renderDepthNormal = true) {
 		super("velocityDepthNormalPass")
+
+		if (!(camera instanceof PerspectiveCamera)) {
+			throw new Error(
+				this.constructor.name +
+					" doesn't support cameras of type '" +
+					camera.constructor.name +
+					"' yet. Only cameras of type 'PerspectiveCamera' are supported."
+			)
+		}
 
 		this._scene = scene
 		this._camera = camera
