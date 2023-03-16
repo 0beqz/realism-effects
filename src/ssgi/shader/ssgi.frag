@@ -30,7 +30,6 @@ uniform mat4 cameraMatrixWorld;
 uniform float cameraNear;
 uniform float cameraFar;
 uniform float maxEnvMapMipLevel;
-uniform vec3 cameraPos;
 
 uniform float rayDistance;
 uniform float maxRoughness;
@@ -332,14 +331,13 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
 
     vec3 envMapSample = vec3(0.);
 
-#ifdef USE_ENVMAP
     // invalid ray, use environment lighting as fallback
     if (isMissedRay || allowMissedRays) {
+#ifdef USE_ENVMAP
         // world-space reflected ray
         vec3 reflectedWS = normalize((vec4(l, 1.) * viewMatrix).xyz);
 
     #ifdef BOX_PROJECTED_ENV_MAP
-        float depth = unpackRGBAToDepth(textureLod(depthTexture, vUv, 0.));
         reflectedWS = parallaxCorrectNormal(reflectedWS.xyz, envMapSize, envMapPosition, worldPosition);
         reflectedWS = normalize(reflectedWS.xyz);
     #endif
@@ -362,8 +360,11 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
         }
 
         return envMapSample;
-    }
+#else
+        // if we don't have an environment map, just return black
+        return vec3(0.0);
 #endif
+    }
 
     // reproject the coords from the last frame
     vec4 velocity = textureLod(velocityTexture, coords.xy, 0.0);

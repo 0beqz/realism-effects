@@ -57,7 +57,6 @@ export class SSGIPass extends Pass {
 		this.fullscreenMaterial.uniforms.viewMatrix.value = this._camera.matrixWorldInverse
 		this.fullscreenMaterial.uniforms.projectionMatrix.value = this._camera.projectionMatrix
 		this.fullscreenMaterial.uniforms.inverseProjectionMatrix.value = this._camera.projectionMatrixInverse
-		this.fullscreenMaterial.uniforms.cameraPos.value = this._camera.position
 
 		if (ssgiEffect._camera.isPerspectiveCamera) this.fullscreenMaterial.defines.PERSPECTIVE_CAMERA = ""
 

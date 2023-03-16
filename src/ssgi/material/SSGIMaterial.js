@@ -28,7 +28,6 @@ export class SSGIMaterial extends ShaderMaterial {
 				cameraFar: new Uniform(0),
 				rayDistance: new Uniform(0),
 				thickness: new Uniform(0),
-				r3Offset: new Uniform(new Vector3()),
 				frame: new Uniform(0),
 				envBlur: new Uniform(0),
 				maxRoughness: new Uniform(0),
@@ -39,8 +38,7 @@ export class SSGIMaterial extends ShaderMaterial {
 				envMapSize: new Uniform(new Vector3()),
 				viewMatrix: new Uniform(new Matrix4()),
 				texSize: new Uniform(new Vector2()),
-				blueNoiseRepeat: new Uniform(new Vector2()),
-				cameraPos: new Uniform(new Vector3())
+				blueNoiseRepeat: new Uniform(new Vector2())
 			},
 
 			defines: {
