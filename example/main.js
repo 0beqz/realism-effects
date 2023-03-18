@@ -5,12 +5,14 @@ import { MotionBlurEffect, SSGIEffect, TRAAEffect } from "realism-effects"
 import Stats from "stats.js"
 import * as THREE from "three"
 import {
+	AmbientLight,
 	Box3,
 	Clock,
 	Color,
 	CubeTextureLoader,
 	DirectionalLight,
 	DoubleSide,
+	EquirectangularReflectionMapping,
 	FloatType,
 	MeshNormalMaterial,
 	NearestFilter,
@@ -188,6 +190,8 @@ const rgbeLoader = new RGBELoader().setDataType(FloatType)
 
 const initEnvMap = async envMap => {
 	scene.environment?.dispose()
+
+	envMap.mapping = EquirectangularReflectionMapping
 
 	scene.environment = envMap
 	scene.background = traaTest ? new Color(0x4c7fe5) : null
