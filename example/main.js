@@ -187,8 +187,6 @@ document.body.appendChild(stats.dom)
 const rgbeLoader = new RGBELoader().setDataType(FloatType)
 
 const initEnvMap = async envMap => {
-	envMap.mapping = THREE.EquirectangularReflectionMapping
-
 	scene.environment?.dispose()
 
 	scene.environment = envMap
@@ -315,10 +313,9 @@ const initScene = async () => {
 		depthPhi: 5,
 		normalPhi: 28,
 		roughnessPhi: 18.75,
-		envBlur: 0.55,
+		envBlur: 0.5,
 		importanceSampling: true,
 		directLightMultiplier: 1,
-		maxEnvLuminance: 50,
 		steps: 20,
 		refineSteps: 4,
 		spp: 1,
@@ -729,7 +726,7 @@ const setupAsset = asset => {
 			c.castShadow = c.receiveShadow = true
 			c.material.depthWrite = true
 
-			// if (c.material.transparent) c.material.alphaMap = c.material.roughnessMap
+			if (c.material.transparent) c.material.alphaMap = c.material.roughnessMap
 
 			if (traaTest && c.name === "shader") c.material = planeShaderMaterial
 

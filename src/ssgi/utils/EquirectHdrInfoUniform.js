@@ -1,5 +1,6 @@
 // source: https://github.com/gkjohnson/three-gpu-pathtracer/blob/main/src/uniforms/EquirectHdrInfoUniform.js
 
+import { Source } from "three"
 import { DataTexture, FloatType, LinearFilter, RedFormat, RepeatWrapping, RGBAFormat, Vector2 } from "three"
 
 const workerOnMessage = ({ data: { width, height, isFloatType, flipY, data } }) => {
@@ -245,10 +246,14 @@ const workerOnMessage = ({ data: { width, height, isFloatType, flipY, data } }) 
 	}
 
 	if (!isFloatType) {
+		const newData = new Float32Array(data.length)
+
 		// eslint-disable-next-line guard-for-in
 		for (const i in data) {
-			data[i] = fromHalfFloat(data[i])
+			newData[i] = fromHalfFloat(data[i])
 		}
+
+		data = newData
 	}
 
 	const marginalDataArray = new Float32Array(height)
@@ -347,7 +352,8 @@ export class EquirectHdrInfoUniform {
 				this.totalSumDecimal = totalSumDecimal
 
 				if (data) {
-					map.image.data = data
+					map.source = new Source({ ...map.image })
+					map.image = { width, height, data }
 					map.type = FloatType
 				}
 

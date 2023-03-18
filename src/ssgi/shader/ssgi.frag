@@ -35,7 +35,6 @@ uniform float rayDistance;
 uniform float maxRoughness;
 uniform float thickness;
 uniform float envBlur;
-uniform float maxEnvLuminance;
 
 uniform int frame;
 uniform vec2 texSize;
@@ -70,7 +69,7 @@ vec2 RayMarch(inout vec3 dir, inout vec3 hitPos);
 vec2 BinarySearch(inout vec3 dir, inout vec3 hitPos);
 float fastGetViewZ(const float depth);
 vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, const vec3 worldPosition, const float metalness,
-              const float roughness, const bool isDiffuseSample, const bool isMisSample,
+              const float roughness, const bool isDiffuseSample, const bool isEnvMisSample,
               const float NoV, const float NoL, const float NoH, const float LoH, const float VoH, const vec2 random, inout vec3 l,
               inout vec3 hitPos, out bool isMissedRay, out vec3 brdf, out float pdf);
 
@@ -136,8 +135,8 @@ void main() {
     // fresnel f0
     vec3 f0 = mix(vec3(0.04), diffuse, metalness);
 
-    float NoL, NoH, LoH, VoH, diffW, specW, invW, pdf, envPdf, diffuseSamples, specularSamples;
-    bool isDiffuseSample, valid, isMissedRay;
+    float NoL, NoH, LoH, VoH, diffW, specW, invW, pdf, envPdf, diffuseSamples, specularSamples, envMisProbability, envMisMultiplier;
+    bool isDiffuseSample, isEnvMisSample, isMissedRay;
 
     int sampleCounter = 0;
 
@@ -192,23 +191,32 @@ void main() {
         isDiffuseSample = false;
     #endif
 #endif
-
         envMisDir = vec3(0.0);
-        envPdf = 0.0;
 
 #ifdef importanceSampling
         envPdf = sampleEquirectProbability(envMapInfo, blueNoise.rg, envMisDir);
         envMisDir = normalize((vec4(envMisDir, 1.) * cameraMatrixWorld).xyz);
+
+        envMisProbability = 0.25 + dot(envMisDir, viewNormal) * 0.5;
+        isEnvMisSample = blueNoise.a < envMisProbability;
+
+        envMisMultiplier = 1. / (1. - envMisProbability);
+
+        if (isEnvMisSample) {
+            envPdf /= 1. - envMisProbability;
+        } else {
+            envPdf = 0.0001;
+        }
+#else
+        envPdf = 0.0;
+        envMisMultiplier = 1.;
 #endif
 
-        valid = blueNoise.a < 0.25 + dot(envMisDir, viewNormal) * 0.5;
-        if (!valid) envPdf = 0.0;
-
         if (isDiffuseSample) {
-            if (envPdf == 0.0) {
-                l = cosineSampleHemisphere(viewNormal, blueNoise.rg);
-            } else {
+            if (isEnvMisSample) {
                 l = envMisDir;
+            } else {
+                l = cosineSampleHemisphere(viewNormal, blueNoise.rg);
             }
 
             h = normalize(v + l);  // half vector
@@ -219,16 +227,17 @@ void main() {
             VoH = clamp(dot(v, h), EPSILON, ONE_MINUS_EPSILON);
 
             gi = doSample(
-                viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, envPdf != 0.0, NoV, NoL, NoH, LoH, VoH, blueNoise.rg,
+                viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, isEnvMisSample, NoV, NoL, NoH, LoH, VoH, blueNoise.rg,
                 l, hitPos, isMissedRay, brdf, pdf);
 
             gi *= brdf;
 
-            if (envPdf == 0.0) {
-                gi /= pdf;
-            } else {
+            if (isEnvMisSample) {
                 gi *= misHeuristic(envPdf, pdf);
                 gi /= envPdf;
+            } else {
+                gi /= pdf;
+                gi *= envMisMultiplier;
             }
 
             diffuseSamples++;
@@ -236,7 +245,8 @@ void main() {
             diffuseGI = mix(diffuseGI, gi, 1. / diffuseSamples);
 
         } else {
-            if (envPdf != 0.0 && roughness >= 0.025) {
+            isEnvMisSample = isEnvMisSample && roughness >= 0.025;
+            if (isEnvMisSample) {
                 l = envMisDir;
 
                 h = normalize(v + l);  // half vector
@@ -245,21 +255,20 @@ void main() {
                 NoH = clamp(dot(n, h), EPSILON, ONE_MINUS_EPSILON);
                 LoH = clamp(dot(l, h), EPSILON, ONE_MINUS_EPSILON);
                 VoH = clamp(dot(v, h), EPSILON, ONE_MINUS_EPSILON);
-            } else {
-                envPdf = 0.0;
             }
 
             gi = doSample(
-                viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, envPdf != 0.0, NoV, NoL, NoH, LoH, VoH, blueNoise.rg,
+                viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, isEnvMisSample, NoV, NoL, NoH, LoH, VoH, blueNoise.rg,
                 l, hitPos, isMissedRay, brdf, pdf);
 
             gi *= brdf;
 
-            if (envPdf == 0.0) {
-                gi /= pdf;
-            } else {
+            if (isEnvMisSample) {
                 gi *= misHeuristic(envPdf, pdf);
                 gi /= envPdf;
+            } else {
+                gi /= pdf;
+                gi *= envMisMultiplier;
             }
 
             specularSamples++;
@@ -291,7 +300,7 @@ void main() {
 }
 
 vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, const vec3 worldPosition, const float metalness,
-              const float roughness, const bool isDiffuseSample, const bool isMisSample,
+              const float roughness, const bool isDiffuseSample, const bool isEnvMisSample,
               const float NoV, const float NoL, const float NoH, const float LoH, const float VoH, const vec2 random, inout vec3 l,
               inout vec3 hitPos, out bool isMissedRay, out vec3 brdf, out float pdf) {
     float cosTheta = max(0.0, dot(viewNormal, l));
@@ -331,7 +340,7 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
 
     vec3 envMapSample = vec3(0.);
 
-    // invalid ray, use environment lighting as fallback
+    // inisEnvMisSample ray, use environment lighting as fallback
     if (isMissedRay || allowMissedRays) {
 #ifdef USE_ENVMAP
         // world-space reflected ray
@@ -348,7 +357,7 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
 
         envMapSample = sampleEquirectEnvMapColor(reflectedWS, envMapInfo.map, mip);
 
-        float maxEnvLum = isMisSample ? maxEnvLuminance : 5.0;
+        float maxEnvLum = isEnvMisSample ? 100.0 : 5.0;
 
         if (maxEnvLum != 0.0) {
             // we won't deal with calculating direct sun light from the env map as it is too noisy

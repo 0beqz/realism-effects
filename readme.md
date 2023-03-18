@@ -99,7 +99,6 @@ const options = {
 	envBlur: 0.5,
 	importanceSampling: true,
 	directLightMultiplier: 1,
-	maxEnvLuminance: 50,
 	steps: 20,
 	refineSteps: 5,
 	spp: 1,
@@ -152,6 +151,7 @@ If you'd like, you could also buy me a coffee:
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/0beqz)
 
 ## Todos
+
 - [ ] Use bent normals and/or calculate them at run-time? https://80.lv/articles/ssrtgi-toughest-challenge-in-real-time-3d/
 - [ ] Proper transparency support
 - [ ] Support OrthographicCameras

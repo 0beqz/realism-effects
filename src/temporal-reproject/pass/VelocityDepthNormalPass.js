@@ -147,6 +147,9 @@ export class VelocityDepthNormalPass extends Pass {
 		if (this._camera.view) this._camera.view.enabled = false
 		this._camera.updateProjectionMatrix()
 
+		// in case a RenderPass is not being used, so we need to update the camera's world matrix manually
+		this._camera.updateMatrixWorld()
+
 		this.setVelocityDepthNormalMaterialInScene()
 
 		const { background } = this._scene

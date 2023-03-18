@@ -32,7 +32,6 @@ export class SSGIMaterial extends ShaderMaterial {
 				envBlur: new Uniform(0),
 				maxRoughness: new Uniform(0),
 				maxEnvMapMipLevel: new Uniform(0),
-				maxEnvLuminance: new Uniform(0),
 				envMapInfo: { value: new EquirectHdrInfoUniform() },
 				envMapPosition: new Uniform(new Vector3()),
 				envMapSize: new Uniform(new Vector3()),
