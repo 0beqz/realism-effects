@@ -47,14 +47,14 @@ float distToPlane(const vec3 worldPos, const vec3 neighborWorldPos, const vec3 w
     return distToPlane;
 }
 
-void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const float depth, const vec3 normal,
-         const float roughness, const float roughnessSqrt, const vec3 worldPos,
+void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec3 normal,
+         const float roughness, const vec3 worldPos,
          const float luma[textureCount], const float colorPhi[textureCount],
          inout vec3 denoisedColor[textureCount], inout float totalWeight[textureCount], inout float sumVariance[textureCount]) {
     vec2 fullNeighborUv = neighborVec * pixelStepOffset;
     vec2 neighborUvNearest = vUv + fullNeighborUv;
     vec2 neighborUv = vUv + fullNeighborUv;
-    vec2 neighborUvRoughness = vUv + fullNeighborUv * roughnessSqrt;
+    vec2 neighborUvRoughness = vUv + fullNeighborUv * (roughness < 0.15 ? roughness / 0.15 : 1.);
 
     float basicWeight = 1.0;
 
@@ -214,7 +214,6 @@ void main() {
 #pragma unroll_loop_end
 
     vec2 pixelStepOffset = invTexSize * stepSize;
-    float roughnessSqrt = max(0.05, sqrt(roughness));
 
     if (denoiseKernel > EPSILON) {
         if (blurHorizontal) {
@@ -222,7 +221,7 @@ void main() {
                 if (i != 0.) {
                     vec2 neighborVec = horizontal ? vec2(i, 0.) : vec2(0., i);
 
-                    tap(neighborVec, pixelStepOffset, depth, normal, roughness, roughnessSqrt,
+                    tap(neighborVec, pixelStepOffset, normal, roughness,
                         worldPos, luma, colorPhi, denoisedColor, totalWeight, sumVariance);
                 }
             }
@@ -233,7 +232,7 @@ void main() {
                 if (i != 0.) {
                     vec2 neighborVec = horizontal ? vec2(-i, -i) : vec2(i, -i);
 
-                    tap(neighborVec, pixelStepOffset, depth, normal, roughness, roughnessSqrt,
+                    tap(neighborVec, pixelStepOffset, normal, roughness,
                         worldPos, luma, colorPhi, denoisedColor, totalWeight, sumVariance);
                 }
             }

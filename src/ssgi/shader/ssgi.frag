@@ -353,7 +353,7 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
 
         float mip = envBlur * maxEnvMapMipLevel;
 
-        if (!isDiffuseSample) mip *= sqrt(roughness);
+        if (!isDiffuseSample && roughness < 0.15) mip *= roughness / 0.15;
 
         envMapSample = sampleEquirectEnvMapColor(reflectedWS, envMapInfo.map, mip);
 

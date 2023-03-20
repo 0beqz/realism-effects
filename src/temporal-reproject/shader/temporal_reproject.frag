@@ -123,7 +123,12 @@ void main() {
             if (textureSampledThisFrame[i]) {
                 accumulatedTexel[i].a++;  // add one more frame
 
-                if (neighborhoodClamping[i]) clampNeighborhood(inputTexture[i], accumulatedTexel[i].rgb, inputTexel[i].rgb);
+                if (neighborhoodClamping[i]) {
+                    vec3 clampedColor = accumulatedTexel[i].rgb;
+                    clampNeighborhood(inputTexture[i], clampedColor, inputTexel[i].rgb);
+
+                    accumulatedTexel[i].rgb = clampedColor;
+                }
             } else {
                 inputTexel[i].rgb = accumulatedTexel[i].rgb;
             }

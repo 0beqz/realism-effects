@@ -5,7 +5,6 @@ import { MotionBlurEffect, SSGIEffect, TRAAEffect } from "realism-effects"
 import Stats from "stats.js"
 import * as THREE from "three"
 import {
-	AmbientLight,
 	Box3,
 	Clock,
 	Color,
