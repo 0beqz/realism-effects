@@ -1,7 +1,6 @@
 ﻿varying vec2 vUv;
 
 uniform sampler2D velocityTexture;
-
 uniform sampler2D depthTexture;
 uniform sampler2D lastDepthTexture;
 
@@ -22,7 +21,12 @@ uniform mat4 prevProjectionMatrixInverse;
 uniform bool reset;
 uniform float delta;
 
-#define EPSILON 0.00001
+#define EPSILON              0.00001
+#define SAMPLING_LINEAR      0
+#define SAMPLING_CATMULL_ROM 1
+#define SAMPLING_BLOCKY      2
+
+bool didMove;
 
 #include <packing>
 #include <reproject>
@@ -30,6 +34,9 @@ uniform float delta;
 void main() {
     vec4 depthTexel;
     float depth;
+
+    velocityTexel = textureLod(velocityTexture, vUv, 0.0);
+    didMove = dot(velocityTexel.xy, velocityTexel.xy) > 0.000000001;
 
     getDepthAndDilatedUVOffset(depthTexture, vUv, depth, dilatedDepth, depthTexel);
     vec2 dilatedUv = vUv + dilatedUvOffset;
@@ -71,9 +78,6 @@ void main() {
 
     texIndex = 0;
 
-    velocityTexel = textureLod(velocityTexture, vUv, 0.0);
-    bool didMove = dot(velocityTexel.xy, velocityTexel.xy) > 0.000000001;
-
 #ifdef dilation
     vec2 octahedronEncodedNormal = textureLod(velocityTexture, dilatedUv, 0.0).ba;
 #else
@@ -87,8 +91,7 @@ void main() {
     vec2 reprojectedUvSpecular[textureCount];
     vec2 reprojectedUv;
     bool reprojectHitPoint;
-
-    bool useBlockySampling;
+    int samplingMethod;
 
 #pragma unroll_loop_start
     for (int i = 0; i < textureCount; i++) {
@@ -116,8 +119,13 @@ void main() {
             accumulatedTexel[i] = vec4(inputTexel[i].rgb, 0.0);
         } else {
             // reprojection was successful -> accumulate
-            useBlockySampling = blockySampling[texIndex] && didMove;
-            accumulatedTexel[i] = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUv, catmullRomSampling[i], useBlockySampling);
+            if (sampling[i] == SAMPLING_BLOCKY) {
+                samplingMethod = didMove ? SAMPLING_BLOCKY : SAMPLING_CATMULL_ROM;
+            } else {
+                samplingMethod = sampling[i];
+            }
+
+            accumulatedTexel[i] = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUv, samplingMethod);
             transformColor(accumulatedTexel[i].rgb);
 
             if (textureSampledThisFrame[i]) {

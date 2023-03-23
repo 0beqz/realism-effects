@@ -5,6 +5,100 @@ int texIndex;
 
 #define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
 
+vec4 SampleTextureCatmullRom(const sampler2D tex, const vec2 uv, const vec2 texSize) {
+    // We're going to sample a a 4x4 grid of texels surrounding the target UV coordinate. We'll do this by rounding
+    // down the sample location to get the exact center of our "starting" texel. The starting texel will be at
+    // location [1, 1] in the grid, where [0, 0] is the top left corner.
+    vec2 samplePos = uv * texSize;
+    vec2 texPos1 = floor(samplePos - 0.5f) + 0.5f;
+
+    // Compute the fractional offset from our starting texel to our original sample location, which we'll
+    // feed into the Catmull-Rom spline function to get our filter weights.
+    vec2 f = samplePos - texPos1;
+
+    // Compute the Catmull-Rom weights using the fractional offset that we calculated earlier.
+    // These equations are pre-expanded based on our knowledge of where the texels will be located,
+    // which lets us avoid having to evaluate a piece-wise function.
+    vec2 w0 = f * (-0.5f + f * (1.0f - 0.5f * f));
+    vec2 w1 = 1.0f + f * f * (-2.5f + 1.5f * f);
+    vec2 w2 = f * (0.5f + f * (2.0f - 1.5f * f));
+    vec2 w3 = f * f * (-0.5f + 0.5f * f);
+
+    // Work out weighting factors and sampling offsets that will let us use bilinear filtering to
+    // simultaneously evaluate the middle 2 samples from the 4x4 grid.
+    vec2 w12 = w1 + w2;
+    vec2 offset12 = w2 / (w1 + w2);
+
+    // Compute the final UV coordinates we'll use for sampling the texture
+    vec2 texPos0 = texPos1 - 1.;
+    vec2 texPos3 = texPos1 + 2.;
+    vec2 texPos12 = texPos1 + offset12;
+
+    texPos0 /= texSize;
+    texPos3 /= texSize;
+    texPos12 /= texSize;
+
+    vec4 result = vec4(0.0);
+    result += textureLod(tex, vec2(texPos0.x, texPos0.y), 0.0f) * w0.x * w0.y;
+    result += textureLod(tex, vec2(texPos12.x, texPos0.y), 0.0f) * w12.x * w0.y;
+    result += textureLod(tex, vec2(texPos3.x, texPos0.y), 0.0f) * w3.x * w0.y;
+    result += textureLod(tex, vec2(texPos0.x, texPos12.y), 0.0f) * w0.x * w12.y;
+    result += textureLod(tex, vec2(texPos12.x, texPos12.y), 0.0f) * w12.x * w12.y;
+    result += textureLod(tex, vec2(texPos3.x, texPos12.y), 0.0f) * w3.x * w12.y;
+    result += textureLod(tex, vec2(texPos0.x, texPos3.y), 0.0f) * w0.x * w3.y;
+    result += textureLod(tex, vec2(texPos12.x, texPos3.y), 0.0f) * w12.x * w3.y;
+    result += textureLod(tex, vec2(texPos3.x, texPos3.y), 0.0f) * w3.x * w3.y;
+
+    result = max(result, vec4(0.));
+
+    return result;
+}
+
+// source: https://iquilezles.org/articles/texture/
+vec4 getTexel(const sampler2D tex, vec2 p) {
+    p = p / invTexSize + 0.5;
+
+    vec2 i = floor(p);
+    vec2 f = p - i;
+    f = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+    p = i + f;
+
+    p = (p - 0.5) * invTexSize;
+    return textureLod(tex, p, 0.0);
+}
+
+// source: https://www.shadertoy.com/view/stSfW1
+vec2 sampleBlocky(vec2 p) {
+    vec2 d = vec2(dFdx(p.x), dFdy(p.y)) / invTexSize;
+    p /= invTexSize;
+    vec2 fA = p - 0.5 * d, iA = floor(fA);
+    vec2 fB = p + 0.5 * d, iB = floor(fB);
+    return (iA + (iB - iA) * (fB - iB) / d + 0.5) * invTexSize;
+}
+
+vec4 sampleBlockyTexture(const sampler2D tex, const vec2 uv) {
+    return SampleTextureCatmullRom(tex, sampleBlocky(uv), 1.0 / invTexSize);
+}
+
+vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv, int samplingMode) {
+    if (samplingMode == SAMPLING_BLOCKY) return sampleBlockyTexture(tex, reprojectedUv);
+    if (samplingMode == SAMPLING_CATMULL_ROM) return SampleTextureCatmullRom(tex, reprojectedUv, 1.0 / invTexSize);
+
+    return getTexel(tex, reprojectedUv);
+}
+
+// source: https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/
+vec3 Decode(vec2 f) {
+    f = f * 2.0 - 1.0;
+
+    // https://twitter.com/Stubbesaurus/status/937994790553227264
+    vec3 n = vec3(f.x, f.y, 1.0 - abs(f.x) - abs(f.y));
+    float t = max(-n.z, 0.0);
+    n.x += n.x >= 0.0 ? -t : t;
+    n.y += n.y >= 0.0 ? -t : t;
+    return normalize(n);
+}
+
 vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth, mat4 curMatrixWorld, const mat4 projMatrixInverse) {
     vec4 ndc = vec4(
         (uv.x - 0.5) * 2.0,
@@ -105,7 +199,6 @@ void getDilatedDepthUVOffset(const sampler2D tex, const vec2 centerUv, out float
         for (int y = -1; y <= 1; y++) {
             vec2 offset = vec2(x, y) * invTexSize;
             vec2 neighborUv = centerUv + offset;
-
             vec4 neighborDepthTexel = textureLod(tex, neighborUv, 0.0);
             float neighborDepth = unpackRGBAToDepth(neighborDepthTexel);
 
@@ -127,7 +220,7 @@ void getDepthAndDilatedUVOffset(sampler2D depthTex, vec2 uv, out float depth, ou
 #ifdef dilation
     getDilatedDepthUVOffset(depthTex, uv, depth, dilatedDepth, depthTexel);
 #else
-    depthTexel = textureLod(depthTex, uv, 0.);
+    depthTexel = textureLod(depthTex, uv, 0.0);
     depth = unpackRGBAToDepth(depthTexel);
     dilatedDepth = depth;
 #endif
@@ -166,7 +259,7 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const bool neighborhoodClam
 
     dilatedReprojectedUv = reprojectedUv + dilatedUvOffset;
 #else
-    lastDepthTexel = textureLod(lastDepthTexture, reprojectedUv, 0.);
+    lastDepthTexel = textureLod(lastDepthTexture, reprojectedUv, 0.0);
     lastDepth = unpackRGBAToDepth(lastDepthTexel);
     dilatedLastDepth = lastDepth;
 
@@ -177,7 +270,9 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const bool neighborhoodClam
 
     float worldDistFactor = clamp((50.0 + distance(dilatedWorldPos, cameraPos)) / 100., 0.25, 1.);
 
+#ifndef dilation
     if (worldDistanceDisocclusionCheck(dilatedWorldPos, lastWorldPos, worldDistFactor)) return false;
+#endif
 
     return !planeDistanceDisocclusionCheck(dilatedWorldPos, lastWorldPos, worldNormal, worldDistFactor);
 }
@@ -216,97 +311,4 @@ vec2 getReprojectedUV(const bool neighborhoodClamp, const bool neighborhoodClamp
 
     // invalid reprojection
     return vec2(-1.);
-}
-
-vec4 SampleTextureCatmullRom(const sampler2D tex, const vec2 uv, const vec2 texSize) {
-    // We're going to sample a a 4x4 grid of texels surrounding the target UV coordinate. We'll do this by rounding
-    // down the sample location to get the exact center of our "starting" texel. The starting texel will be at
-    // location [1, 1] in the grid, where [0, 0] is the top left corner.
-    vec2 samplePos = uv * texSize;
-    vec2 texPos1 = floor(samplePos - 0.5f) + 0.5f;
-
-    // Compute the fractional offset from our starting texel to our original sample location, which we'll
-    // feed into the Catmull-Rom spline function to get our filter weights.
-    vec2 f = samplePos - texPos1;
-
-    // Compute the Catmull-Rom weights using the fractional offset that we calculated earlier.
-    // These equations are pre-expanded based on our knowledge of where the texels will be located,
-    // which lets us avoid having to evaluate a piece-wise function.
-    vec2 w0 = f * (-0.5f + f * (1.0f - 0.5f * f));
-    vec2 w1 = 1.0f + f * f * (-2.5f + 1.5f * f);
-    vec2 w2 = f * (0.5f + f * (2.0f - 1.5f * f));
-    vec2 w3 = f * f * (-0.5f + 0.5f * f);
-
-    // Work out weighting factors and sampling offsets that will let us use bilinear filtering to
-    // simultaneously evaluate the middle 2 samples from the 4x4 grid.
-    vec2 w12 = w1 + w2;
-    vec2 offset12 = w2 / (w1 + w2);
-
-    // Compute the final UV coordinates we'll use for sampling the texture
-    vec2 texPos0 = texPos1 - 1.;
-    vec2 texPos3 = texPos1 + 2.;
-    vec2 texPos12 = texPos1 + offset12;
-
-    texPos0 /= texSize;
-    texPos3 /= texSize;
-    texPos12 /= texSize;
-
-    vec4 result = vec4(0.0);
-    result += textureLod(tex, vec2(texPos0.x, texPos0.y), 0.0f) * w0.x * w0.y;
-    result += textureLod(tex, vec2(texPos12.x, texPos0.y), 0.0f) * w12.x * w0.y;
-    result += textureLod(tex, vec2(texPos3.x, texPos0.y), 0.0f) * w3.x * w0.y;
-    result += textureLod(tex, vec2(texPos0.x, texPos12.y), 0.0f) * w0.x * w12.y;
-    result += textureLod(tex, vec2(texPos12.x, texPos12.y), 0.0f) * w12.x * w12.y;
-    result += textureLod(tex, vec2(texPos3.x, texPos12.y), 0.0f) * w3.x * w12.y;
-    result += textureLod(tex, vec2(texPos0.x, texPos3.y), 0.0f) * w0.x * w3.y;
-    result += textureLod(tex, vec2(texPos12.x, texPos3.y), 0.0f) * w12.x * w3.y;
-    result += textureLod(tex, vec2(texPos3.x, texPos3.y), 0.0f) * w3.x * w3.y;
-
-    result = max(result, vec4(0.));
-
-    return result;
-}
-
-// source: https://iquilezles.org/articles/texture/
-vec4 getTexel(const sampler2D tex, vec2 p) {
-    p = p / invTexSize + 0.5;
-
-    vec2 i = floor(p);
-    vec2 f = p - i;
-    f = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
-    p = i + f;
-
-    p = (p - 0.5) * invTexSize;
-    return textureLod(tex, p, 0.0);
-}
-
-// source: https://www.shadertoy.com/view/stSfW1
-vec2 sampleBlocky(vec2 p) {
-    vec2 d = vec2(dFdx(p.x), dFdy(p.y)) / invTexSize;
-    p /= invTexSize;
-    vec2 fA = p - 0.5 * d, iA = floor(fA);
-    vec2 fB = p + 0.5 * d, iB = floor(fB);
-    return (iA + (iB - iA) * (fB - iB) / d + 0.5) * invTexSize;
-}
-
-vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv, bool useCatmullRomSampling, bool useBlockySampling) {
-    vec2 p = useBlockySampling ? sampleBlocky(reprojectedUv) : reprojectedUv;
-
-    if (useCatmullRomSampling) {
-        return SampleTextureCatmullRom(tex, p, 1.0 / invTexSize);
-    }
-
-    return textureLod(tex, p, 0.);
-}
-
-// source: https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/
-vec3 Decode(vec2 f) {
-    f = f * 2.0 - 1.0;
-
-    // https://twitter.com/Stubbesaurus/status/937994790553227264
-    vec3 n = vec3(f.x, f.y, 1.0 - abs(f.x) - abs(f.y));
-    float t = max(-n.z, 0.0);
-    n.x += n.x >= 0.0 ? -t : t;
-    n.y += n.y >= 0.0 ? -t : t;
-    return normalize(n);
 }
