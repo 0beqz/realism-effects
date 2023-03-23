@@ -9,8 +9,7 @@ export const defaultTemporalReprojectPassOptions = {
 	dilation: false,
 	constantBlend: false,
 	fullAccumulate: false,
-	catmullRomSampling: true,
-	blockySampling: true,
+	sampling: "blocky", // "catmullRom" | "blocky" | "linear"
 	neighborhoodClamping: false,
 	neighborhoodClampingDisocclusionTest: true,
 	logTransform: false,
@@ -91,18 +90,23 @@ export class TemporalReprojectPass extends Pass {
 		this.fullscreenMaterial.uniforms.velocityTexture.value = velocityDepthNormalPass.texture
 		this.fullscreenMaterial.uniforms.depthTexture.value = velocityDepthNormalPass.depthTexture
 
+		const samplingTypes = ["linear", "catmullRom", "blocky"]
+
 		for (const opt of [
-			"catmullRomSampling",
-			"blockySampling",
+			"sampling",
 			"reprojectSpecular",
 			"neighborhoodClamping",
 			"neighborhoodClampingDisocclusionTest"
 		]) {
-			if (typeof options[opt] === "boolean") {
-				options[opt] = Array(textureCount).fill(options[opt])
-			}
+			let value = opt === "sampling" ? samplingTypes.indexOf(options[opt]) : options[opt]
 
-			this.fullscreenMaterial.defines[opt] = /* glsl */ `bool[](${options[opt].join(", ")})`
+			if (value === -1) throw new Error(`Invalid value for option ${opt}: ${options[opt]}`)
+
+			const arrayType = opt === "sampling" ? "int" : "bool"
+
+			if (typeof value !== "array") value = Array(textureCount).fill(value)
+
+			this.fullscreenMaterial.defines[opt] = /* glsl */ `${arrayType}[](${value.join(", ")})`
 		}
 
 		this.options = options

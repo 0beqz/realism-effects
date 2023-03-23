@@ -146,8 +146,6 @@ export class SSGIEffect extends Effect {
 
 		this.svgf.denoisePass.fullscreenMaterial.defines[definesName] = ""
 
-		this.ssgiPass.fullscreenMaterial.defines.directLightMultiplier = options.directLightMultiplier.toPrecision(5)
-
 		this.svgf.denoisePass.fullscreenMaterial.uniforms.diffuseTexture.value = this.ssgiPass.diffuseTexture
 
 		this.lastSize = {
@@ -266,6 +264,12 @@ export class SSGIEffect extends Effect {
 
 							break
 
+						case "directLightMultiplier":
+							this.ssgiPass.fullscreenMaterial.defines[key] = value.toPrecision(5)
+							this.ssgiPass.fullscreenMaterial.needsUpdate = needsUpdate
+							temporalReprojectPass.reset()
+							break
+
 						case "importanceSampling":
 						case "missedRays":
 						case "autoThickness":
@@ -378,7 +382,7 @@ export class SSGIEffect extends Effect {
 				delete ssgiMaterial.defines.importanceSampling
 
 				if (this.importanceSampling) {
-					ssgiMaterial.uniforms.envMapInfo.value.updateFrom(environment).then(() => {
+					ssgiMaterial.uniforms.envMapInfo.value.updateFrom(environment, renderer).then(() => {
 						ssgiMaterial.defines.importanceSampling = ""
 						ssgiMaterial.needsUpdate = true
 					})
@@ -399,8 +403,6 @@ export class SSGIEffect extends Effect {
 	}
 
 	update(renderer, inputBuffer) {
-		// ! todo: make SSGI's accumulation no longer FPS-dependent
-
 		this.keepEnvMapUpdated(renderer)
 
 		const sceneBuffer = this.isUsingRenderPass ? inputBuffer : this.sceneRenderTarget

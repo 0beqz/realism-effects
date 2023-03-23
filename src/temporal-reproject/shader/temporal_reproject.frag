@@ -22,7 +22,10 @@ uniform mat4 prevProjectionMatrixInverse;
 uniform bool reset;
 uniform float delta;
 
-#define EPSILON 0.00001
+#define EPSILON              0.00001
+#define SAMPLING_LINEAR      0
+#define SAMPLING_CATMULL_ROM 1
+#define SAMPLING_BLOCKY      2
 
 #include <packing>
 #include <reproject>
@@ -88,7 +91,7 @@ void main() {
     vec2 reprojectedUv;
     bool reprojectHitPoint;
 
-    bool useBlockySampling;
+    int samplingMethod;
 
 #pragma unroll_loop_start
     for (int i = 0; i < textureCount; i++) {
@@ -116,8 +119,14 @@ void main() {
             accumulatedTexel[i] = vec4(inputTexel[i].rgb, 0.0);
         } else {
             // reprojection was successful -> accumulate
-            useBlockySampling = blockySampling[texIndex] && didMove;
-            accumulatedTexel[i] = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUv, catmullRomSampling[i], useBlockySampling);
+            if (sampling[i] == SAMPLING_BLOCKY) {
+                samplingMethod = didMove ? SAMPLING_BLOCKY : SAMPLING_CATMULL_ROM;
+            } else {
+                samplingMethod = sampling[i];
+            }
+
+            accumulatedTexel[i] = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUv, samplingMethod);
+
             transformColor(accumulatedTexel[i].rgb);
 
             if (textureSampledThisFrame[i]) {

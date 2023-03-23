@@ -1,7 +1,7 @@
 ﻿vec4 moment;
 
 if (!reset && reprojectedUvDiffuse.x >= 0.0) {
-    vec4 historyMoment = sampleReprojectedTexture(lastMomentTexture, reprojectedUvDiffuse, true, didMove);
+    vec4 historyMoment = sampleReprojectedTexture(lastMomentTexture, reprojectedUvDiffuse, didMove ? SAMPLING_BLOCKY : SAMPLING_CATMULL_ROM);
     moment.r = luminance(gOutput[0].rgb);
     moment.g = moment.r * moment.r;
 

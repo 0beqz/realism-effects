@@ -177,7 +177,9 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const bool neighborhoodClam
 
     float worldDistFactor = clamp((50.0 + distance(dilatedWorldPos, cameraPos)) / 100., 0.25, 1.);
 
+#ifndef dilation
     if (worldDistanceDisocclusionCheck(dilatedWorldPos, lastWorldPos, worldDistFactor)) return false;
+#endif
 
     return !planeDistanceDisocclusionCheck(dilatedWorldPos, lastWorldPos, worldNormal, worldDistFactor);
 }
@@ -289,10 +291,10 @@ vec2 sampleBlocky(vec2 p) {
     return (iA + (iB - iA) * (fB - iB) / d + 0.5) * invTexSize;
 }
 
-vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv, bool useCatmullRomSampling, bool useBlockySampling) {
-    vec2 p = useBlockySampling ? sampleBlocky(reprojectedUv) : reprojectedUv;
+vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv, int samplingMode) {
+    vec2 p = samplingMode == SAMPLING_BLOCKY ? sampleBlocky(reprojectedUv) : reprojectedUv;
 
-    if (useCatmullRomSampling) {
+    if (samplingMode == SAMPLING_CATMULL_ROM || samplingMode == SAMPLING_BLOCKY) {
         return SampleTextureCatmullRom(tex, p, 1.0 / invTexSize);
     }
 
