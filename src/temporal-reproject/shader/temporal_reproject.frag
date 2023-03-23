@@ -35,9 +35,6 @@ void main() {
     vec4 depthTexel;
     float depth;
 
-    velocityTexel = textureLod(velocityTexture, vUv, 0.0);
-    didMove = dot(velocityTexel.xy, velocityTexel.xy) > 0.000000001;
-
     getDepthAndDilatedUVOffset(depthTexture, vUv, depth, dilatedDepth, depthTexel);
     vec2 dilatedUv = vUv + dilatedUvOffset;
 
@@ -77,6 +74,9 @@ void main() {
 #pragma unroll_loop_end
 
     texIndex = 0;
+
+    velocityTexel = textureLod(velocityTexture, vUv, 0.0);
+    didMove = dot(velocityTexel.xy, velocityTexel.xy) > 0.000000001;
 
 #ifdef dilation
     vec2 octahedronEncodedNormal = textureLod(velocityTexture, dilatedUv, 0.0).ba;
