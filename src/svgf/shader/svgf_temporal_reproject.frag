@@ -12,8 +12,8 @@ if (!reset && reprojectedUvDiffuse.x >= 0.0) {
 
     gMoment = mix(moment, historyMoment, 0.8);
 } else {
-    moment.rg = vec2(0., 5000.);
-    moment.ba = vec2(0., 5000.);
+    moment.rg = vec2(0., 1000.);
+    moment.ba = vec2(0., 1000.);
 
     gMoment = moment;
     return;

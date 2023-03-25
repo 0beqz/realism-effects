@@ -50,11 +50,13 @@ float distToPlane(const vec3 worldPos, const vec3 neighborWorldPos, const vec3 w
 void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec3 normal,
          const float roughness, const vec3 worldPos,
          const float luma[textureCount], const float colorPhi[textureCount],
-         inout vec3 denoisedColor[textureCount], inout float totalWeight[textureCount], inout float sumVariance[textureCount]) {
+         inout vec3 denoisedColor[textureCount], inout float totalWeight[textureCount], inout float sumVariance[textureCount], inout float variance[textureCount]) {
     vec2 fullNeighborUv = neighborVec * pixelStepOffset;
     vec2 neighborUvNearest = vUv + fullNeighborUv;
-    vec2 neighborUv = vUv + fullNeighborUv;
-    vec2 neighborUvRoughness = vUv + fullNeighborUv * (roughness < 0.15 ? roughness / 0.15 : 1.);
+
+    vec2 bilinearOffset = neighborVec.y > 0. ? invTexSize : -invTexSize;
+    vec2 neighborUv = vUv + fullNeighborUv + bilinearOffset * 0.5;
+    vec2 neighborUvRoughness = vUv + fullNeighborUv * (roughness < 0.15 ? roughness / 0.15 : 1.) + bilinearOffset * 0.5;
 
     float basicWeight = 1.0;
 
@@ -96,7 +98,7 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec3 normal,
 
     vec4 neighborInputTexel[textureCount];
     vec3 neighborColor;
-    float neighborLuma, lumaDiff, lumaSimilarity;
+    float neighborLuma, lumaDiff, lumaSimilarity, disocclusionBoost;
 
     float weight[textureCount];
 
@@ -110,6 +112,10 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec3 normal,
         lumaSimilarity = max(1.0 - lumaDiff / colorPhi[i], 0.0);
 
         weight[i] = min(basicWeight * lumaSimilarity, 1.0);
+
+        disocclusionBoost = variance[i] / 1000.;
+        weight[i] = mix(weight[i], 1., disocclusionBoost);
+
         denoisedColor[i] += neighborColor * weight[i];
         totalWeight[i] += weight[i];
     }
@@ -121,11 +127,11 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec3 normal,
     if (isFirstIteration) {
         vec4 neighborMoment = textureLod(momentTexture, neighborUvNearest, 0.);
 
-        neighborInputTexel[0].a = max(0.0, neighborMoment.g - neighborMoment.r * neighborMoment.r);
+        neighborInputTexel[0].a = neighborMoment.g - neighborMoment.r * neighborMoment.r;
         sumVariance[0] += weight[0] * weight[0] * neighborInputTexel[0].a;
 
     #if momentTextureCount > 1
-        neighborInputTexel[1].a = max(0.0, neighborMoment.a - neighborMoment.b * neighborMoment.b);
+        neighborInputTexel[1].a = neighborMoment.a - neighborMoment.b * neighborMoment.b;
         sumVariance[1] += weight[1] * weight[1] * neighborInputTexel[1].a;
     #endif
     }
@@ -162,6 +168,7 @@ void main() {
 
     vec3 denoisedColor[textureCount];
     float sumVariance[textureCount];
+    float variance[textureCount];
 
 #ifdef doDenoise
 
@@ -187,9 +194,11 @@ void main() {
     if (isFirstIteration) {
         vec4 moment = textureLod(momentTexture, vUv, 0.);
         texel[0].a = max(0.0, moment.g - moment.r * moment.r);
+        variance[0] = min(1000., texel[0].a);
 
         #if momentTextureCount > 1
         texel[1].a = max(0.0, moment.a - moment.b * moment.b);
+        variance[1] = min(1000., texel[1].a);
         #endif
     }
     #endif
@@ -201,6 +210,7 @@ void main() {
     #endif
 
         sumVariance[i] = texel[i].a;
+        variance[i] = min(1000., texel[i].a);
 
         if (roughnessDependent[i]) {
             colorPhi[i] = denoise[i] * sqrt(basicVariance[i] * roughness + sumVariance[i]);
@@ -216,10 +226,9 @@ void main() {
         for (float i = -denoiseKernel; i <= denoiseKernel; i++) {
             if (i != 0.) {
                 vec2 neighborVec = horizontal ? vec2(i, 0.) : vec2(0., i);
-                // neighborVec += invTexSize * 0.5;
 
                 tap(neighborVec, pixelStepOffset, normal, roughness,
-                    worldPos, luma, colorPhi, denoisedColor, totalWeight, sumVariance);
+                    worldPos, luma, colorPhi, denoisedColor, totalWeight, sumVariance, variance);
             }
         }
 
@@ -228,10 +237,9 @@ void main() {
         for (float i = -denoiseKernel; i <= denoiseKernel; i++) {
             if (i != 0.) {
                 vec2 neighborVec = horizontal ? vec2(-i, -i) : vec2(i, -i);
-                // neighborVec += invTexSize * 0.5;
 
                 tap(neighborVec, pixelStepOffset, normal, roughness,
-                    worldPos, luma, colorPhi, denoisedColor, totalWeight, sumVariance);
+                    worldPos, luma, colorPhi, denoisedColor, totalWeight, sumVariance, variance);
             }
         }
     }
