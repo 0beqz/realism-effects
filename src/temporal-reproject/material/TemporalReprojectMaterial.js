@@ -1,4 +1,4 @@
-﻿import { GLSL3, Matrix4 } from "three"
+﻿import { GLSL3, Matrix4, NoBlending } from "three"
 import { Vector3 } from "three"
 import { ShaderMaterial, Uniform, Vector2 } from "three"
 import vertexShader from "../../utils/shader/basic.vert"
@@ -72,6 +72,9 @@ export class TemporalReprojectMaterial extends ShaderMaterial {
 			},
 			vertexShader,
 			fragmentShader: finalFragmentShader,
+			blending: NoBlending,
+			depthWrite: false,
+			depthTest: false,
 			toneMapped: false,
 			glslVersion: GLSL3
 		})

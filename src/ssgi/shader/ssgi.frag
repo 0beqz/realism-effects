@@ -289,7 +289,7 @@ void main() {
     // calculate world-space ray length used for reprojecting hit points instead of screen-space pixels in the temporal reproject pass
     float rayLength = 0.0;
 
-    if (!isMissedRay && roughness < 0.375 && getCurvature(viewNormal, depth) < 0.001) {
+    if (!isMissedRay && roughness < 0.375 && getCurvature(viewNormal, depth) < 0.0001) {
         vec3 hitPosWS = (vec4(hitPos, 1.) * viewMatrix).xyz;
         rayLength = distance(worldPos, hitPosWS);
     }

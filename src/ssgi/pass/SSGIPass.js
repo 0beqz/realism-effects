@@ -174,15 +174,16 @@ export class SSGIPass extends Pass {
 					mrtMaterial.needsUpdate = true
 				}
 
+				const textureKey = Object.keys(originalMaterial).find(key => {
+					const value = originalMaterial[key]
+					return value instanceof Texture && value.matrix
+				})
+
+				if (textureKey) mrtMaterial.uniforms.uvTransform.value = originalMaterial[textureKey].matrix
+
 				this.cachedMaterials.set(c, [originalMaterial, mrtMaterial])
 			}
 
-			const textureKey = Object.keys(originalMaterial).find(key => {
-				const value = originalMaterial[key]
-				return value instanceof Texture && value.matrix
-			})
-
-			if (textureKey) mrtMaterial.uniforms.uvTransform.value = originalMaterial[textureKey].matrix
 			if (originalMaterial.emissive) mrtMaterial.uniforms.emissive.value = originalMaterial.emissive
 			if (originalMaterial.color) mrtMaterial.uniforms.color.value = originalMaterial.color
 
@@ -208,13 +209,14 @@ export class SSGIPass extends Pass {
 
 			c.visible = isChildMaterialRenderable(c, originalMaterial)
 
-			const origRoughness = typeof originalMaterial.roughness === "number" ? originalMaterial.roughness : 1
+			const origRoughness = originalMaterial.roughness ?? 1
 
 			mrtMaterial.uniforms.roughness.value =
 				this.ssgiEffect.selection.size === 0 || this.ssgiEffect.selection.has(c) ? origRoughness : 10e10
 
-			mrtMaterial.uniforms.metalness.value = c.material.metalness || 0
-			mrtMaterial.uniforms.emissiveIntensity.value = c.material.emissiveIntensity || 0
+			mrtMaterial.uniforms.metalness.value = c.material.metalness ?? 0
+			mrtMaterial.uniforms.emissiveIntensity.value = c.material.emissiveIntensity ?? 0
+
 			c.material = mrtMaterial
 		}
 	}

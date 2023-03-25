@@ -1,5 +1,5 @@
 ﻿import { Pass } from "postprocessing"
-import { GLSL3, HalfFloatType, ShaderMaterial, Uniform, Vector2, WebGLMultipleRenderTargets } from "three"
+import { GLSL3, HalfFloatType, NoBlending, ShaderMaterial, Uniform, Vector2, WebGLMultipleRenderTargets } from "three"
 import { unrollLoops } from "../../ssgi/utils/Utils"
 import basicVertexShader from "../../utils/shader/basic.vert"
 import fragmentShader from "../shader/denoise.frag"
@@ -96,7 +96,11 @@ export class DenoisePass extends Pass {
 				cameraMatrixWorld: new Uniform(camera.matrixWorld),
 				projectionMatrixInverse: new Uniform(camera.projectionMatrixInverse)
 			},
-			glslVersion: GLSL3
+			glslVersion: GLSL3,
+			blending: NoBlending,
+			depthWrite: false,
+			depthTest: false,
+			toneMapped: false
 		})
 
 		const renderTargetOptions = {
@@ -164,6 +168,11 @@ export class DenoisePass extends Pass {
 		const denoiseKernel = this.fullscreenMaterial.uniforms.denoiseKernel.value
 
 		if (this.iterations > 0) {
+			if (!("doDenoise" in this.fullscreenMaterial.defines)) {
+				this.fullscreenMaterial.defines.doDenoise = ""
+				this.fullscreenMaterial.needsUpdate = true
+			}
+
 			for (let i = 0; i < 2 * this.iterations; i++) {
 				const horizontal = i % 2 === 0
 				const stepSize = 2 ** ~~(i / 2)
@@ -192,7 +201,10 @@ export class DenoisePass extends Pass {
 				renderer.render(this.scene, this.camera)
 			}
 		} else {
-			this.fullscreenMaterial.uniforms.denoiseKernel.value = 0
+			if ("doDenoise" in this.fullscreenMaterial.defines) {
+				delete this.fullscreenMaterial.defines.doDenoise
+				this.fullscreenMaterial.needsUpdate = true
+			}
 
 			renderer.setRenderTarget(this.renderTargetB)
 			renderer.render(this.scene, this.camera)

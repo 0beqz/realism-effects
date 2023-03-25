@@ -1,5 +1,5 @@
 ﻿import { Pass } from "postprocessing"
-import { GLSL3, ShaderMaterial, Uniform, WebGLMultipleRenderTargets } from "three"
+import { GLSL3, NoBlending, ShaderMaterial, Uniform, WebGLMultipleRenderTargets } from "three"
 import basicVertexShader from "../../utils/shader/basic.vert"
 
 export class CopyPass extends Pass {
@@ -38,7 +38,11 @@ export class CopyPass extends Pass {
             }
             `,
 			vertexShader: basicVertexShader,
-			glslVersion: GLSL3
+			glslVersion: GLSL3,
+			blending: NoBlending,
+			depthWrite: false,
+			depthTest: false,
+			toneMapped: false
 		})
 
 		for (let i = 0; i < textureCount; i++) {

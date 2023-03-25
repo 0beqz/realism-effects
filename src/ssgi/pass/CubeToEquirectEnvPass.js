@@ -5,6 +5,7 @@ import {
 	EquirectangularReflectionMapping,
 	FloatType,
 	LinearMipMapLinearFilter,
+	NoBlending,
 	RGBAFormat,
 	ShaderMaterial,
 	WebGLRenderTarget
@@ -43,7 +44,11 @@ export class CubeToEquirectEnvPass extends Pass {
 			vertexShader: basicVertexShader,
 			uniforms: {
 				cubeMap: { value: null }
-			}
+			},
+			blending: NoBlending,
+			depthWrite: false,
+			depthTest: false,
+			toneMapped: false
 		})
 	}
 

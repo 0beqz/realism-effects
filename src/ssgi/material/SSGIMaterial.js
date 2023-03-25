@@ -1,4 +1,4 @@
-﻿import { GLSL3, Matrix4, ShaderMaterial, Uniform, Vector2, Vector3 } from "three"
+﻿import { GLSL3, Matrix4, NoBlending, ShaderMaterial, Uniform, Vector2, Vector3 } from "three"
 import vertexShader from "../../utils/shader/basic.vert"
 import fragmentShader from "../shader/ssgi.frag"
 // eslint-disable-next-line camelcase
@@ -54,9 +54,10 @@ export class SSGIMaterial extends ShaderMaterial {
 			fragmentShader: fragmentShader.replace("#include <utils>", ssgi_utils),
 			vertexShader,
 
-			toneMapped: false,
+			blending: NoBlending,
 			depthWrite: false,
 			depthTest: false,
+			toneMapped: false,
 
 			glslVersion: GLSL3
 		})

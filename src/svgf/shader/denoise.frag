@@ -66,8 +66,6 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec3 normal,
     float depthDiff = (1. - distToPlane(worldPos, neighborWorldPos, normal));
     float depthSimilarity = max(depthDiff / depthPhi, 0.);
 
-    if (depthSimilarity < EPSILON) return;
-
     basicWeight *= depthSimilarity;
 #endif
 
@@ -82,8 +80,6 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec3 normal,
     float normalDiff = dot(neighborNormal, normal);
     float normalSimilarity = pow(max(0., normalDiff), normalPhi);
 
-    if (normalSimilarity < EPSILON) return;
-
     basicWeight *= normalSimilarity;
 #endif
 
@@ -94,8 +90,6 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec3 normal,
 
     float roughnessDiff = abs(roughness - neighborRoughness);
     float roughnessSimilarity = exp(-roughnessDiff * roughnessPhi);
-
-    if (roughnessSimilarity < EPSILON) return;
 
     basicWeight *= roughnessSimilarity;
 #endif
@@ -166,16 +160,19 @@ void main() {
     float roughness = normalTexel.a;
     roughness *= roughness;
 
+    vec3 denoisedColor[textureCount];
+    float sumVariance[textureCount];
+
+#ifdef doDenoise
+
     // color information
 
-    vec3 denoisedColor[textureCount];
     vec4 texel[textureCount];
     float luma[textureCount];
-    float sumVariance[textureCount];
     float totalWeight[textureCount];
     float colorPhi[textureCount];
 
-#pragma unroll_loop_start
+    #pragma unroll_loop_start
     for (int i = 0; i < textureCount; i++) {
         totalWeight[i] = 1.0;
 
@@ -183,25 +180,25 @@ void main() {
         denoisedColor[i] = texel[i].rgb;
         luma[i] = luminance(texel[i].rgb);
     }
-#pragma unroll_loop_end
+    #pragma unroll_loop_end
 
     // moment
-#ifdef useMoment
+    #ifdef useMoment
     if (isFirstIteration) {
         vec4 moment = textureLod(momentTexture, vUv, 0.);
         texel[0].a = max(0.0, moment.g - moment.r * moment.r);
 
-    #if momentTextureCount > 1
+        #if momentTextureCount > 1
         texel[1].a = max(0.0, moment.a - moment.b * moment.b);
-    #endif
+        #endif
     }
-#endif
+    #endif
 
-#pragma unroll_loop_start
+    #pragma unroll_loop_start
     for (int i = 0; i < momentTextureCount; i++) {
-#ifndef useMoment
+    #ifndef useMoment
         if (isFirstIteration) texel[i].a = 1.0;
-#endif
+    #endif
 
         sumVariance[i] = texel[i].a;
 
@@ -211,40 +208,49 @@ void main() {
             colorPhi[i] = denoise[i] * sqrt(basicVariance[i] + sumVariance[i]);
         }
     }
-#pragma unroll_loop_end
+    #pragma unroll_loop_end
 
     vec2 pixelStepOffset = invTexSize * stepSize;
 
-    if (denoiseKernel > EPSILON) {
-        if (blurHorizontal) {
-            for (float i = -denoiseKernel; i <= denoiseKernel; i++) {
-                if (i != 0.) {
-                    vec2 neighborVec = horizontal ? vec2(i, 0.) : vec2(0., i);
+    if (blurHorizontal) {
+        for (float i = -denoiseKernel; i <= denoiseKernel; i++) {
+            if (i != 0.) {
+                vec2 neighborVec = horizontal ? vec2(i, 0.) : vec2(0., i);
+                // neighborVec += invTexSize * 0.5;
 
-                    tap(neighborVec, pixelStepOffset, normal, roughness,
-                        worldPos, luma, colorPhi, denoisedColor, totalWeight, sumVariance);
-                }
-            }
-
-        } else {
-            // diagonal (top left to bottom right) / diagonal (top right to bottom left)
-            for (float i = -denoiseKernel; i <= denoiseKernel; i++) {
-                if (i != 0.) {
-                    vec2 neighborVec = horizontal ? vec2(-i, -i) : vec2(i, -i);
-
-                    tap(neighborVec, pixelStepOffset, normal, roughness,
-                        worldPos, luma, colorPhi, denoisedColor, totalWeight, sumVariance);
-                }
+                tap(neighborVec, pixelStepOffset, normal, roughness,
+                    worldPos, luma, colorPhi, denoisedColor, totalWeight, sumVariance);
             }
         }
 
-#pragma unroll_loop_start
-        for (int i = 0; i < textureCount; i++) {
-            sumVariance[i] /= totalWeight[i] * totalWeight[i];
-            denoisedColor[i] /= totalWeight[i];
+    } else {
+        // diagonal (top left to bottom right) / diagonal (top right to bottom left)
+        for (float i = -denoiseKernel; i <= denoiseKernel; i++) {
+            if (i != 0.) {
+                vec2 neighborVec = horizontal ? vec2(-i, -i) : vec2(i, -i);
+                // neighborVec += invTexSize * 0.5;
+
+                tap(neighborVec, pixelStepOffset, normal, roughness,
+                    worldPos, luma, colorPhi, denoisedColor, totalWeight, sumVariance);
+            }
         }
-#pragma unroll_loop_end
     }
+
+    #pragma unroll_loop_start
+    for (int i = 0; i < textureCount; i++) {
+        sumVariance[i] /= totalWeight[i] * totalWeight[i];
+        denoisedColor[i] /= totalWeight[i];
+    }
+    #pragma unroll_loop_end
+
+#else
+    // no denoise iterations
+    #pragma unroll_loop_start
+    for (int i = 0; i < textureCount; i++) {
+        denoisedColor[i] = textureLod(texture[i], vUv, 0.).rgb;
+    }
+    #pragma unroll_loop_end
+#endif
 
     if (isLastIteration) {
 #include <customComposeShader>
