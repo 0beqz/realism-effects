@@ -15,20 +15,6 @@ vec4 getTexel(const sampler2D tex, vec2 p, const float mip) {
     return textureLod(tex, p, mip);
 }
 
-// source: https://github.com/mrdoob/three.js/blob/dev/examples/js/shaders/SSAOShader.js
-vec3 getViewPosition(const float depth) {
-    float clipW = projectionMatrix[2][3] * depth + projectionMatrix[3][3];
-    vec4 clipPosition = vec4((vec3(vUv, depth) - 0.5) * 2.0, 1.0);
-    clipPosition *= clipW;
-    return (inverseProjectionMatrix * clipPosition).xyz;
-}
-
-vec3 screenSpaceToWorldSpace(vec2 uv, float depth, mat4 camMatrixWorld) {
-    vec3 viewPos = getViewPosition(depth);
-
-    return vec4(camMatrixWorld * vec4(viewPos, 1.)).xyz;
-}
-
 // source: https://github.com/mrdoob/three.js/blob/342946c8392639028da439b6dc0597e58209c696/examples/js/shaders/SAOShader.js#L123
 float getViewZ(const float depth) {
 #ifdef PERSPECTIVE_CAMERA
@@ -36,6 +22,29 @@ float getViewZ(const float depth) {
 #else
     return orthographicDepthToViewZ(depth, cameraNear, cameraFar);
 #endif
+}
+
+#ifdef PERSPECTIVE_CAMERA
+// source: https://github.com/mrdoob/three.js/blob/dev/examples/js/shaders/SSAOShader.js
+vec3 getViewPosition(const float depth) {
+    float clipW = projectionMatrix[2][3] * depth + projectionMatrix[3][3];
+    vec4 clipPosition = vec4((vec3(vUv, depth) - 0.5) * 2.0, 1.0);
+    clipPosition *= clipW;
+    return (inverseProjectionMatrix * clipPosition).xyz;
+}
+#else
+vec3 getViewPosition(const float depth) {
+    float z = getViewZ(depth);
+    vec4 clipPosition = vec4(vUv * 2.0 - 1.0, z, 1.0);
+    clipPosition *= clipPosition.z;
+    return (inverseProjectionMatrix * clipPosition).xyz;
+}
+#endif
+
+vec3 screenSpaceToWorldSpace(vec2 uv, float depth, mat4 camMatrixWorld) {
+    vec3 viewPos = getViewPosition(depth);
+
+    return vec4(camMatrixWorld * vec4(viewPos, 1.)).xyz;
 }
 
 vec2 viewSpaceToScreenSpace(const vec3 position) {

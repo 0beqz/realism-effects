@@ -51,6 +51,10 @@ scene.matrixWorldAutoUpdate = false
 window.scene = scene
 
 const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.01, 250)
+
+// const w = window.innerWidth
+// const h = window.innerHeight
+// const camera = new THREE.OrthographicCamera(w / -2 / 100, w / 2 / 100, h / 2 / 100, h / -2 / 100, 0.01, 250)
 scene.add(camera)
 
 const canvas = document.querySelector(".webgl")

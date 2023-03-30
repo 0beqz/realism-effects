@@ -1,5 +1,4 @@
 ﻿import { DataTexture, FloatType, RGBAFormat, ShaderChunk, ShaderLib, UniformsUtils, Vector4 } from "three"
-import { GroundProjectedEnv } from "three/examples/jsm/objects/GroundProjectedEnv.js"
 
 export const getVisibleChildren = object => {
 	const queue = [object]
@@ -220,7 +219,9 @@ export const splitIntoGroupsOfVector4 = arr => {
 }
 
 export const isGroundProjectedEnv = c => {
-	return c instanceof GroundProjectedEnv
+	return c.material.fragmentShader?.includes(
+		"float intersection2 = diskIntersectWithBackFaceCulling( camPos, p, h, vec3( 0.0, 1.0, 0.0 ), radius );"
+	)
 }
 
 export const isChildMaterialRenderable = (c, material = c.material) => {

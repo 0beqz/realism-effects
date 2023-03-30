@@ -106,6 +106,7 @@ void main() {
 
     // view-space position of the current texel
     vec3 viewPos = getViewPosition(depth);
+
     vec3 viewDir = normalize(viewPos);
     vec3 worldNormal = normalTexel.xyz;
     vec3 viewNormal = normalize((vec4(worldNormal, 1.) * cameraMatrixWorld).xyz);
@@ -280,6 +281,8 @@ void main() {
 
     roughness = sqrt(roughness);
 
+    vec2 uv = viewSpaceToScreenSpace(viewPos);
+
 #ifndef specularOnly
     if (diffuseSamples == 0.0) diffuseGI = vec3(-1.0);
     gDiffuse = vec4(diffuseGI, roughness);
@@ -409,7 +412,6 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
 }
 
 vec2 RayMarch(inout vec3 dir, inout vec3 hitPos) {
-    float stepsFloat = float(steps);
     float rayHitDepthDifference;
 
     dir *= rayDistance / float(steps);
