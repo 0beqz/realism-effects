@@ -263,8 +263,8 @@ if (traaTest) {
 		loadFiles = 15
 	}
 } else {
-	url = "squid_game.optimized.glb"
-	loadFiles = 8
+	url = "cat_with_jet_pack.optimized.glb"
+	loadFiles = 15
 }
 
 let lastScene
