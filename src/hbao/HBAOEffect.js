@@ -6,13 +6,13 @@ import compose from "./shader/compose.frag"
 import { DenoisePass } from "../svgf/pass/DenoisePass"
 
 const defaultHBAOOptions = {
-	denoise: 2.5,
-	denoiseIterations: 3,
+	denoise: 2,
+	denoiseIterations: 2,
 	denoiseKernel: 3,
 	depthPhi: 20,
 	spp: 8,
 	scale: 2.5,
-	scalePower: 6,
+	scalePower: 3,
 	bias: 7.5,
 	power: 10,
 	thickness: 0.075
@@ -49,8 +49,8 @@ class HBAOEffect extends Effect {
 		})
 		this.denoisePass.setDepthTexture(composer.depthTexture)
 
-		// this.uniforms.get("inputTexture").value = this.temporalReprojectPass.renderTarget.texture[0]
 		this.uniforms.get("inputTexture").value = this.denoisePass.texture
+		// this.uniforms.get("inputTexture").value = this.hbaoPass.renderTarget.texture
 		this.uniforms.get("depthTexture").value = composer.depthTexture
 
 		this.makeOptionsReactive(options)

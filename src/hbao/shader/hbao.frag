@@ -164,6 +164,16 @@ vec3 computeNormal(vec2 uv, float unpackedDepth) {
     return -normal;
 }
 
+float computeEdgeStrength(float depth) {
+    float depthX = dFdx(depth);
+    float depthY = dFdy(depth);
+
+    // Compute the edge strength as the magnitude of the gradient
+    float edgeStrength = depthX * depthX + depthY * depthY;
+
+    return min(1., pow(pow(edgeStrength, 0.25) * 50., 4.));
+}
+
 void main() {
     float unpackedDepth = textureLod(depthTexture, vUv, 0.0).r;
 
@@ -185,7 +195,11 @@ void main() {
         occlusion += getOcclusion(worldPos, worldNormal, depth, frame + i);
     }
 
+    // occlusion /= float(spp);
+
     float ao = pow(1. - occlusion, power);
+
+    // ao = computeEdgeStrength(depth);
 
     gl_FragColor = vec4(vec3(ao), 1.);
 }
