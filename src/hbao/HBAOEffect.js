@@ -7,7 +7,7 @@ import { DenoisePass } from "../svgf/pass/DenoisePass"
 
 const defaultHBAOOptions = {
 	denoise: 2,
-	denoiseIterations: 2,
+	denoiseIterations: 3,
 	denoiseKernel: 3,
 	depthPhi: 20,
 	spp: 8,
