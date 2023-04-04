@@ -8,7 +8,6 @@ const defaultTRAAOptions = {
 	blend: 0.8,
 	constantBlend: true,
 	dilation: true,
-	sampling: "catmullRom",
 	logTransform: false, // ! todo: check if can use logTransform without artifacts
 	depthDistance: 10,
 	worldDistance: 5,

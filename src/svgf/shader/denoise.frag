@@ -139,7 +139,7 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec3 normal,
     #endif
 #else
         for (int i = 0; i < textureCount; i++) {
-            neighborInputTexel[i].a = max(0., -pow(neighborInputTexel[i].a, 3.0) + 100.0);
+            neighborInputTexel[i].a = max(0., -pow(neighborInputTexel[i].a, 2.0) + 100.0);
         }
 #endif
     }
@@ -212,7 +212,7 @@ void main() {
         #endif
     #else
         for (int i = 0; i < textureCount; i++) {
-            texel[i].a = max(0., -pow(texel[i].a, 3.0) + 100.0);
+            texel[i].a = max(0., -pow(texel[i].a, 2.0) + 100.0);
         }
     #endif
     }

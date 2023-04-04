@@ -2,6 +2,10 @@ vec4 velocityTexel;
 float dilatedDepth;
 vec2 dilatedUvOffset;
 int texIndex;
+bool didMove;
+
+vec4 depthTexel;
+float depth;
 
 #define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
 
@@ -291,14 +295,42 @@ vec2 sampleBlocky(vec2 p) {
     return (iA + (iB - iA) * (fB - iB) / d + 0.5) * invTexSize;
 }
 
-vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv, int samplingMode) {
-    vec2 p = samplingMode == SAMPLING_BLOCKY ? sampleBlocky(reprojectedUv) : reprojectedUv;
+// float computeEdgeStrength(float unpackedDepth, vec2 texelSize) {
+//     // Compute the depth gradients in the x and y directions using central differences
+//     float depthX = unpackRGBAToDepth(textureLod(depthTexture, vUv + vec2(texelSize.x, 0.0), 0.0)) -
+//                    unpackRGBAToDepth(textureLod(depthTexture, vUv - vec2(texelSize.x, 0.0), 0.0));
 
-    if (samplingMode == SAMPLING_CATMULL_ROM || samplingMode == SAMPLING_BLOCKY) {
-        return SampleTextureCatmullRom(tex, p, 1.0 / invTexSize);
-    }
+//     float depthY = unpackRGBAToDepth(textureLod(depthTexture, vUv + vec2(0.0, texelSize.y), 0.0)) -
+//                    unpackRGBAToDepth(textureLod(depthTexture, vUv - vec2(0.0, texelSize.y), 0.0));
 
-    return textureLod(tex, p, 0.);
+//     // Calculate the gradient magnitude
+//     float gradientMagnitude = sqrt(depthX * depthX + depthY * depthY);
+
+//     // Calculate the edge strength
+//     float edgeStrength = min(100000. * gradientMagnitude / (unpackedDepth + 0.001), 1.);
+
+//     return edgeStrength * edgeStrength;
+// }
+
+float computeEdgeStrengthFast(float unpackedDepth) {
+    float depthX = dFdx(unpackedDepth);
+    float depthY = dFdy(unpackedDepth);
+
+    // Compute the edge strength as the magnitude of the gradient
+    float edgeStrength = depthX * depthX + depthY * depthY;
+
+    return min(1., pow(pow(edgeStrength, 0.25) * 50., 4.));
+}
+
+vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv) {
+    vec4 catmull = SampleTextureCatmullRom(tex, reprojectedUv, 1.0 / invTexSize);
+    vec4 blocky = SampleTextureCatmullRom(tex, sampleBlocky(reprojectedUv), 1.0 / invTexSize);
+
+    float edgeStrength = computeEdgeStrengthFast(depth);
+
+    vec4 reprojectedTexel = mix(catmull, blocky, edgeStrength);
+
+    return reprojectedTexel;
 }
 
 // source: https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/

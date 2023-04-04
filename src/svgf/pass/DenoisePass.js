@@ -1,11 +1,13 @@
 ﻿import { Pass } from "postprocessing"
 import {
+	BasicDepthPacking,
 	GLSL3,
 	HalfFloatType,
 	NoBlending,
 	RGBADepthPacking,
 	ShaderMaterial,
 	Uniform,
+	UnsignedByteType,
 	Vector2,
 	WebGLMultipleRenderTargets
 } from "three"
@@ -145,7 +147,9 @@ export class DenoisePass extends Pass {
 	setDepthTexture(depthTexture) {
 		this.fullscreenMaterial.uniforms.depthTexture.value = depthTexture
 
-		if (depthTexture.encoding === RGBADepthPacking) {
+		const packing = depthTexture.type === UnsignedByteType ? RGBADepthPacking : BasicDepthPacking
+
+		if (packing === RGBADepthPacking) {
 			this.fullscreenMaterial.defines.RGBA_DEPTH_PACKING = ""
 		} else {
 			delete this.fullscreenMaterial.defines.RGBA_DEPTH_PACKING
@@ -157,7 +161,7 @@ export class DenoisePass extends Pass {
 	}
 
 	setNormalTexture(normalTexture, { useRoughnessInAlphaChannel = false } = {}) {
-		this.fullscreenMaterial.uniforms.depthTexture.value = normalTexture
+		this.fullscreenMaterial.uniforms.normalTexture.value = normalTexture
 
 		this.options.normal = true
 		this.options.roughness = useRoughnessInAlphaChannel

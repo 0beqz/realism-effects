@@ -22,8 +22,7 @@ export class SVGF {
 		const textures = this.svgfTemporalReprojectPass.renderTarget.texture.slice(0, textureCount)
 
 		this.denoisePass = new DenoisePass(camera, textures, denoiseComposeShader, denoiseComposeFunctions, options)
-
-		this.denoisePass.fullscreenMaterial.uniforms.momentTexture.value = this.svgfTemporalReprojectPass.momentTexture
+		this.denoisePass.setMomentTexture(this.svgfTemporalReprojectPass.momentTexture)
 
 		this.setNonJitteredDepthTexture(velocityDepthNormalPass.depthTexture)
 	}
@@ -39,8 +38,8 @@ export class SVGF {
 	}
 
 	setJitteredGBuffers(depthTexture, normalTexture) {
-		this.denoisePass.fullscreenMaterial.uniforms.depthTexture.value = depthTexture
-		this.denoisePass.fullscreenMaterial.uniforms.normalTexture.value = normalTexture
+		this.denoisePass.setDepthTexture(depthTexture)
+		this.denoisePass.setNormalTexture(normalTexture, { useRoughnessInAlphaChannel: true })
 	}
 
 	setNonJitteredDepthTexture(depthTexture) {

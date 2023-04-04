@@ -11,8 +11,8 @@ const defaultHBAOOptions = {
 	denoiseKernel: 3,
 	depthPhi: 20,
 	spp: 8,
-	scale: 2.5,
-	scalePower: 3,
+	distance: 2.5,
+	distancePower: 3,
 	bias: 7.5,
 	power: 10,
 	thickness: 0.075
@@ -38,7 +38,6 @@ class HBAOEffect extends Effect {
 
 		this.temporalReprojectPass = new TemporalReprojectPass(scene, camera, velocityDepthNormalPass, 1, {
 			blend: 0.95,
-			sampling: "catmullRom",
 			fullAccumulate: true,
 			neighborhoodClamping: false
 		})
@@ -49,7 +48,6 @@ class HBAOEffect extends Effect {
 		})
 		this.denoisePass.setDepthTexture(composer.depthTexture)
 
-		this.uniforms.get("inputTexture").value = this.denoisePass.texture
 		// this.uniforms.get("inputTexture").value = this.hbaoPass.renderTarget.texture
 		this.uniforms.get("depthTexture").value = composer.depthTexture
 
@@ -83,6 +81,9 @@ class HBAOEffect extends Effect {
 						case "depthPhi":
 							this.denoisePass.fullscreenMaterial.uniforms[key].value = value
 							break
+						case "distance":
+							this.hbaoPass.fullscreenMaterial.uniforms.aoDistance.value = value
+							break
 
 						default:
 							this.hbaoPass.fullscreenMaterial.uniforms[key].value = value
@@ -111,7 +112,13 @@ class HBAOEffect extends Effect {
 	update(renderer) {
 		this.hbaoPass.render(renderer)
 		this.temporalReprojectPass.render(renderer)
-		this.denoisePass.render(renderer)
+
+		if (this.denoiseIterations > 0) {
+			this.denoisePass.render(renderer)
+			this.uniforms.get("inputTexture").value = this.denoisePass.texture
+		} else {
+			this.uniforms.get("inputTexture").value = this.temporalReprojectPass.renderTarget.texture[0]
+		}
 	}
 }
 

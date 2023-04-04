@@ -1,27 +1,27 @@
 varying vec2 vUv;
 
-#include <packing>
-
 uniform sampler2D depthTexture;
 uniform float cameraNear;
 uniform float cameraFar;
-uniform mat4 projectionMatrix;
 uniform mat4 inverseProjectionMatrix;
 uniform mat4 projectionViewMatrix;
+uniform mat4 cameraMatrixWorld;
 uniform int frame;
 
 uniform sampler2D blueNoiseTexture;
 uniform vec2 blueNoiseRepeat;
 uniform vec2 texSize;
 
-uniform float scale;
-uniform float scalePower;
+uniform float aoDistance;
+uniform float distancePower;
 uniform float bias;
 uniform float thickness;
 uniform float power;
 
 #define TWO_PI 6.28318530717958647692528676655900576
 #define PI     3.14159265358979323846264338327950288
+
+#include <packing>
 
 // source: https://github.com/mrdoob/three.js/blob/342946c8392639028da439b6dc0597e58209c696/examples/js/shaders/SAOShader.js#L123
 float getViewZ(const float depth) {
@@ -73,7 +73,7 @@ vec3 getWorldPos(float depth, vec2 coord) {
     vec4 clipSpacePosition = vec4(coord * 2.0 - 1.0, z, 1.0);
     vec4 viewSpacePosition = inverseProjectionMatrix * clipSpacePosition;
     // Perspective division
-    vec4 worldSpacePosition = inverse(viewMatrix) * viewSpacePosition;
+    vec4 worldSpacePosition = cameraMatrixWorld * viewSpacePosition;
     worldSpacePosition.xyz /= worldSpacePosition.w;
     return worldSpacePosition.xyz;
 }
@@ -95,7 +95,7 @@ float getOcclusion(const vec3 worldPos, const vec3 worldNormal, const float dept
     vec4 blueNoise = sampleBlueNoise(seed);
 
     vec3 sampleWorldDir = cosineSampleHemisphere(worldNormal, blueNoise.rg);
-    vec3 sampleWorldPos = worldPos + scale * pow(blueNoise.b, scalePower) * sampleWorldDir;
+    vec3 sampleWorldPos = worldPos + aoDistance * pow(blueNoise.b, distancePower) * sampleWorldDir;
 
     vec4 sampleUv = projectionViewMatrix * vec4(sampleWorldPos, 1.);
     sampleUv.xy /= sampleUv.w;
@@ -119,33 +119,6 @@ float getOcclusion(const vec3 worldPos, const vec3 worldNormal, const float dept
     return occlusion;
 }
 
-vec3 getPos(ivec2 p, float depth) {
-    return getWorldPos(depth, vec2(p) / texSize);
-}
-
-vec3 computeNormalImproved(const float c0, in ivec2 p) {
-    float l2 = texelFetch(depthTexture, p - ivec2(2, 0), 0).r;
-    float l1 = texelFetch(depthTexture, p - ivec2(1, 0), 0).r;
-    float r1 = texelFetch(depthTexture, p + ivec2(1, 0), 0).r;
-    float r2 = texelFetch(depthTexture, p + ivec2(2, 0), 0).r;
-    float b2 = texelFetch(depthTexture, p - ivec2(0, 2), 0).r;
-    float b1 = texelFetch(depthTexture, p - ivec2(0, 1), 0).r;
-    float t1 = texelFetch(depthTexture, p + ivec2(0, 1), 0).r;
-    float t2 = texelFetch(depthTexture, p + ivec2(0, 2), 0).r;
-
-    float dl = abs(l1 * l2 / (2.0 * l2 - l1) - c0);
-    float dr = abs(r1 * r2 / (2.0 * r2 - r1) - c0);
-    float db = abs(b1 * b2 / (2.0 * b2 - b1) - c0);
-    float dt = abs(t1 * t2 / (2.0 * t2 - t1) - c0);
-
-    vec3 ce = getPos(p, c0);
-
-    vec3 dpdx = (dl < dr) ? ce - getPos(p - ivec2(1, 0), l1) : -ce + getPos(p + ivec2(1, 0), r1);
-    vec3 dpdy = (db < dt) ? ce - getPos(p - ivec2(0, 1), b1) : -ce + getPos(p + ivec2(0, 1), t1);
-
-    return normalize(cross(dpdx, dpdy));
-}
-
 vec3 computeNormal(vec2 uv, float unpackedDepth) {
     vec2 uv0 = uv;
     vec2 uv1 = uv + vec2(1., 0.) / texSize;
@@ -162,16 +135,6 @@ vec3 computeNormal(vec2 uv, float unpackedDepth) {
     vec3 normal = normalize(cross(p2 - p0, p1 - p0));
 
     return -normal;
-}
-
-float computeEdgeStrength(float depth) {
-    float depthX = dFdx(depth);
-    float depthY = dFdy(depth);
-
-    // Compute the edge strength as the magnitude of the gradient
-    float edgeStrength = depthX * depthX + depthY * depthY;
-
-    return min(1., pow(pow(edgeStrength, 0.25) * 50., 4.));
 }
 
 void main() {
@@ -199,7 +162,7 @@ void main() {
 
     float ao = pow(1. - occlusion, power);
 
-    // ao = computeEdgeStrength(depth);
+    // ao = computeEdgeStrength(unpackedDepth, 1. / texSize);
 
     gl_FragColor = vec4(vec3(ao), 1.);
 }

@@ -19,8 +19,8 @@ export class HBAODebugGUI {
 
 		const generalFolder = pane.addFolder({ title: "General" })
 		generalFolder.addInput(params, "spp", { min: 1, max: 64, step: 1 })
-		generalFolder.addInput(params, "scale", { min: 0.1, max: 10, step: 0.01 })
-		generalFolder.addInput(params, "scalePower", { min: 1, max: 20, step: 0.25 })
+		generalFolder.addInput(params, "distance", { min: 0.1, max: 10, step: 0.01 })
+		generalFolder.addInput(params, "distancePower", { min: 1, max: 20, step: 0.25 })
 		generalFolder.addInput(params, "bias", {
 			min: 0,
 			max: 20,

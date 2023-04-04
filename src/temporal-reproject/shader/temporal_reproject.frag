@@ -22,18 +22,12 @@ uniform mat4 prevProjectionMatrixInverse;
 uniform bool reset;
 uniform float delta;
 
-#define EPSILON              0.00001
-#define SAMPLING_LINEAR      0
-#define SAMPLING_CATMULL_ROM 1
-#define SAMPLING_BLOCKY      2
+#define EPSILON 0.00001
 
 #include <packing>
 #include <reproject>
 
 void main() {
-    vec4 depthTexel;
-    float depth;
-
     getDepthAndDilatedUVOffset(depthTexture, vUv, depth, dilatedDepth, depthTexel);
     vec2 dilatedUv = vUv + dilatedUvOffset;
 
@@ -75,7 +69,7 @@ void main() {
     texIndex = 0;
 
     velocityTexel = textureLod(velocityTexture, vUv, 0.0);
-    bool didMove = dot(velocityTexel.xy, velocityTexel.xy) > 0.000000001;
+    didMove = dot(velocityTexel.xy, velocityTexel.xy) > 0.000000001;
 
 #ifdef dilation
     vec2 octahedronEncodedNormal = textureLod(velocityTexture, dilatedUv, 0.0).ba;
@@ -90,8 +84,6 @@ void main() {
     vec2 reprojectedUvSpecular[textureCount];
     vec2 reprojectedUv;
     bool reprojectHitPoint;
-
-    int samplingMethod;
 
 #pragma unroll_loop_start
     for (int i = 0; i < textureCount; i++) {
@@ -118,14 +110,7 @@ void main() {
             // reprojection was not successful -> reset to the input texel
             accumulatedTexel[i] = vec4(inputTexel[i].rgb, 0.0);
         } else {
-            // reprojection was successful -> accumulate
-            if (sampling[i] == SAMPLING_BLOCKY) {
-                samplingMethod = didMove ? SAMPLING_BLOCKY : SAMPLING_CATMULL_ROM;
-            } else {
-                samplingMethod = sampling[i];
-            }
-
-            accumulatedTexel[i] = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUv, samplingMethod);
+            accumulatedTexel[i] = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUv);
 
             transformColor(accumulatedTexel[i].rgb);
 

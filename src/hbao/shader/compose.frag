@@ -8,5 +8,6 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 
     // vec3 color = inputColor.rgb * ao;
     vec3 color = ao;
+
     outputColor = vec4(color, inputColor.a);
 }

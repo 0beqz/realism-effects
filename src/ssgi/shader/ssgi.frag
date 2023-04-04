@@ -282,8 +282,6 @@ void main() {
 
     roughness = sqrt(roughness);
 
-    vec2 uv = viewSpaceToScreenSpace(viewPos);
-
 #ifndef specularOnly
     if (diffuseSamples == 0.0) diffuseGI = vec3(-1.0);
     gDiffuse = vec4(diffuseGI, roughness);
