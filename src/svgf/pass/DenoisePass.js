@@ -1,5 +1,14 @@
 ﻿import { Pass } from "postprocessing"
-import { GLSL3, HalfFloatType, NoBlending, ShaderMaterial, Uniform, Vector2, WebGLMultipleRenderTargets } from "three"
+import {
+	GLSL3,
+	HalfFloatType,
+	NoBlending,
+	RGBADepthPacking,
+	ShaderMaterial,
+	Uniform,
+	Vector2,
+	WebGLMultipleRenderTargets
+} from "three"
 import { unrollLoops } from "../../ssgi/utils/Utils"
 import basicVertexShader from "../../utils/shader/basic.vert"
 import fragmentShader from "../shader/denoise.frag"
@@ -9,10 +18,10 @@ import fragmentShader from "../shader/denoise.frag"
 // https://github.com/NVIDIAGameWorks/Falcor/tree/master/Source/RenderPasses/SVGFPass
 
 const defaultDenoisePassOptions = {
-	moment: true,
-	depth: true,
-	normal: true,
-	roughness: true,
+	moment: false,
+	depth: false,
+	normal: false,
+	roughness: false,
 	diffuse: true,
 	roughnessDependent: false,
 	basicVariance: 0.0005
@@ -133,6 +142,33 @@ export class DenoisePass extends Pass {
 		this.options = options
 	}
 
+	setDepthTexture(depthTexture) {
+		this.fullscreenMaterial.uniforms.depthTexture.value = depthTexture
+
+		if (depthTexture.encoding === RGBADepthPacking) {
+			this.fullscreenMaterial.defines.RGBA_DEPTH_PACKING = ""
+		} else {
+			delete this.fullscreenMaterial.defines.RGBA_DEPTH_PACKING
+		}
+
+		this.fullscreenMaterial.needsUpdate = true
+
+		this.options.depth = true
+	}
+
+	setNormalTexture(normalTexture, { useRoughnessInAlphaChannel = false } = {}) {
+		this.fullscreenMaterial.uniforms.depthTexture.value = normalTexture
+
+		this.options.normal = true
+		this.options.roughness = useRoughnessInAlphaChannel
+	}
+
+	setMomentTexture(momentTexture) {
+		this.fullscreenMaterial.uniforms.depthTexture.value = momentTexture
+
+		this.options.moment = true
+	}
+
 	setSize(width, height) {
 		this.renderTargetA.setSize(width, height)
 		this.renderTargetB.setSize(width, height)
@@ -151,6 +187,8 @@ export class DenoisePass extends Pass {
 		for (const [name, phi, define] of useEdgeStoppingTypes) {
 			const useEdgeStoppingType =
 				this.options[name] && (phi === "" || this.fullscreenMaterial.uniforms[phi]?.value > 0.001)
+
+			// if (useEdgeStoppingType) console.log("use", name)
 
 			if (useEdgeStoppingType !== define in this.fullscreenMaterial.defines) {
 				useEdgeStoppingType

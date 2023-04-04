@@ -41,12 +41,6 @@ vec3 getViewPosition(const float depth) {
 }
 #endif
 
-vec3 screenSpaceToWorldSpace(vec2 uv, float depth, mat4 camMatrixWorld) {
-    vec3 viewPos = getViewPosition(depth);
-
-    return vec4(camMatrixWorld * vec4(viewPos, 1.)).xyz;
-}
-
 vec2 viewSpaceToScreenSpace(const vec3 position) {
     vec4 projectedCoord = projectionMatrix * vec4(position, 1.0);
     projectedCoord.xy /= projectedCoord.w;
@@ -54,12 +48,6 @@ vec2 viewSpaceToScreenSpace(const vec3 position) {
     projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;
 
     return projectedCoord.xy;
-}
-
-vec2 worldSpaceToScreenSpace(const vec3 worldPos) {
-    vec4 vsPos = vec4(worldPos, 1.0) * cameraMatrixWorld;
-
-    return viewSpaceToScreenSpace(vsPos.xyz);
 }
 
 #ifdef BOX_PROJECTED_ENV_MAP

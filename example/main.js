@@ -27,6 +27,8 @@ import { Pane } from "tweakpane"
 import { VelocityDepthNormalPass } from "../src/temporal-reproject/pass/VelocityDepthNormalPass"
 import { SSGIDebugGUI } from "./SSGIDebugGUI"
 import "./style.css"
+import { HBAOEffect } from "../src/hbao/HBAOEffect"
+import { HBAODebugGUI } from "./HBAODebugGUI"
 
 let traaEffect
 let traaPass
@@ -149,7 +151,7 @@ controls.minDistance = 7.5
 window.controls = controls
 
 const composer = new POSTPROCESSING.EffectComposer(renderer)
-if (traaTest) {
+if (traaTest || true) {
 	const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
 	composer.addPass(renderPass)
 }
@@ -306,6 +308,7 @@ const refreshLighting = () => {
 const initScene = async () => {
 	const gpuTier = await getGPUTier()
 	fps = gpuTier.fps
+	fps = 512
 
 	const options = {
 		distance: 2.7200000000000104,
@@ -424,11 +427,20 @@ const initScene = async () => {
 
 		if (!traaTest) {
 			if (fps >= 256) {
-				composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, bloomEffect, vignetteEffect, lutEffect))
+				// composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, bloomEffect, vignetteEffect, lutEffect))
 
-				const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass)
+				// const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass)
 
-				composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect))
+				// composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect))
+
+				const hbaoEffect = new HBAOEffect(composer, camera, scene, velocityDepthNormalPass)
+				const pass = new POSTPROCESSING.EffectPass(camera, hbaoEffect)
+
+				const gui3 = new HBAODebugGUI(hbaoEffect, options)
+				gui3.pane.containerElem_.style.left = "8px"
+				// pass.needsDepthTexture = true
+
+				composer.addPass(pass)
 			} else {
 				composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, vignetteEffect, lutEffect))
 				loadFiles--
@@ -445,16 +457,16 @@ const initScene = async () => {
 
 		fxaaPass = new POSTPROCESSING.EffectPass(camera, fxaaEffect)
 
-		if (fps >= 256) {
-			setAA("TRAA")
+		// if (fps >= 256) {
+		// 	setAA("TRAA")
 
-			resize()
-		} else {
-			setAA("FXAA")
-			controls.enableDamping = false
+		// 	resize()
+		// } else {
+		// 	setAA("FXAA")
+		// 	controls.enableDamping = false
 
-			resize()
-		}
+		// 	resize()
+		// }
 
 		loop()
 

@@ -63,7 +63,12 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec3 normal,
 // depth similarity
 #ifdef useDepth
     vec4 neighborDepthTexel = textureLod(depthTexture, neighborUvNearest, 0.);
+
+    #ifdef RGBA_DEPTH_PACKING
     float neighborDepth = unpackRGBAToDepth(neighborDepthTexel);
+    #else
+    float neighborDepth = neighborDepthTexel.r;
+    #endif
     vec3 neighborWorldPos = screenSpaceToWorldSpace(neighborUvNearest, neighborDepth, cameraMatrixWorld);
     float depthDiff = (1. - distToPlane(worldPos, neighborWorldPos, normal));
     float depthSimilarity = max(depthDiff / depthPhi, 0.);
@@ -122,20 +127,22 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec3 normal,
 
 #pragma unroll_loop_end
 
-#ifdef useMoment
-    // moment
     if (isFirstIteration) {
+#ifdef useMoment
+        // moment
         vec4 neighborMoment = textureLod(momentTexture, neighborUvNearest, 0.);
 
         neighborInputTexel[0].a = neighborMoment.g - neighborMoment.r * neighborMoment.r;
-        sumVariance[0] += weight[0] * weight[0] * neighborInputTexel[0].a;
 
     #if momentTextureCount > 1
         neighborInputTexel[1].a = neighborMoment.a - neighborMoment.b * neighborMoment.b;
-        sumVariance[1] += weight[1] * weight[1] * neighborInputTexel[1].a;
     #endif
-    }
+#else
+        for (int i = 0; i < textureCount; i++) {
+            neighborInputTexel[i].a = max(0., -pow(neighborInputTexel[i].a, 2.0) + 100.0);
+        }
 #endif
+    }
 
 #pragma unroll_loop_start
     for (int i = 0; i < momentTextureCount; i++) {
@@ -152,13 +159,18 @@ void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.);
 
     // skip background
-    if (dot(depthTexel.rgb, depthTexel.rgb) == 0.) {
+    if (depthTexel.r > 0.9999 || dot(depthTexel.rgb, depthTexel.rgb) == 0.) {
         discard;
         return;
     }
 
-    // g-buffers
+// g-buffers
+#ifdef RGBA_DEPTH_PACKING
     float depth = unpackRGBAToDepth(depthTexel);
+#else
+    float depth = depthTexel.r;
+#endif
+
     vec3 worldPos = screenSpaceToWorldSpace(vUv, depth, cameraMatrixWorld);
 
     vec4 normalTexel = textureLod(normalTexture, vUv, 0.);
@@ -190,27 +202,25 @@ void main() {
     #pragma unroll_loop_end
 
     // moment
-    #ifdef useMoment
     if (isFirstIteration) {
+    #ifdef useMoment
         vec4 moment = textureLod(momentTexture, vUv, 0.);
         texel[0].a = max(0.0, moment.g - moment.r * moment.r);
-        variance[0] = min(1000., texel[0].a);
 
         #if momentTextureCount > 1
         texel[1].a = max(0.0, moment.a - moment.b * moment.b);
-        variance[1] = min(1000., texel[1].a);
         #endif
-    }
+    #else
+        for (int i = 0; i < textureCount; i++) {
+            texel[i].a = max(0., -pow(texel[i].a, 2.0) + 100.0);
+        }
     #endif
+    }
 
     #pragma unroll_loop_start
     for (int i = 0; i < momentTextureCount; i++) {
-    #ifndef useMoment
-        if (isFirstIteration) texel[i].a = 1.0;
-    #endif
-
-        sumVariance[i] = texel[i].a;
         variance[i] = min(1000., texel[i].a);
+        sumVariance[i] = texel[i].a;
 
         if (roughnessDependent[i]) {
             colorPhi[i] = denoise[i] * sqrt(basicVariance[i] * roughness + sumVariance[i]);

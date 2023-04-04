@@ -1,0 +1,120 @@
+import { Effect } from "postprocessing"
+import { Uniform } from "three"
+import { TemporalReprojectPass } from "../temporal-reproject/TemporalReprojectPass"
+import { HBAOPass } from "./HBAOPass"
+import compose from "./shader/compose.frag"
+import { DenoisePass } from "../svgf/pass/DenoisePass"
+
+const defaultHBAOOptions = {
+	denoise: 2.5,
+	denoiseIterations: 3,
+	denoiseKernel: 3,
+	depthPhi: 20,
+	spp: 8,
+	scale: 2.5,
+	scalePower: 6,
+	bias: 7.5,
+	power: 10,
+	thickness: 0.075
+}
+
+class HBAOEffect extends Effect {
+	constructor(composer, camera, scene, velocityDepthNormalPass, options = defaultHBAOOptions) {
+		super("HBAOEffect", compose, {
+			type: "FinalHBAOMaterial",
+			uniforms: new Map([
+				["inputTexture", new Uniform(null)],
+				["depthTexture", new Uniform(null)]
+			])
+		})
+
+		this._camera = camera
+		this._scene = scene
+
+		this.hbaoPass = new HBAOPass(this._camera, this._scene)
+
+		if (!composer.depthTexture) composer.createDepthTexture()
+		this.hbaoPass.fullscreenMaterial.uniforms.depthTexture.value = composer.depthTexture
+
+		this.temporalReprojectPass = new TemporalReprojectPass(scene, camera, velocityDepthNormalPass, 1, {
+			blend: 0.95,
+			sampling: "catmullRom",
+			fullAccumulate: true,
+			neighborhoodClamping: false
+		})
+		this.temporalReprojectPass.fullscreenMaterial.uniforms.inputTexture0.value = this.hbaoPass.renderTarget.texture
+
+		this.denoisePass = new DenoisePass(camera, [this.temporalReprojectPass.renderTarget.texture[0]], "", "", {
+			basicVariance: 0.05
+		})
+		this.denoisePass.setDepthTexture(composer.depthTexture)
+
+		// this.uniforms.get("inputTexture").value = this.temporalReprojectPass.renderTarget.texture[0]
+		this.uniforms.get("inputTexture").value = this.denoisePass.texture
+		this.uniforms.get("depthTexture").value = composer.depthTexture
+
+		this.makeOptionsReactive(options)
+	}
+
+	makeOptionsReactive(options) {
+		for (const key of Object.keys(options)) {
+			Object.defineProperty(this, key, {
+				get() {
+					return options[key]
+				},
+				set(value) {
+					options[key] = value
+
+					switch (key) {
+						case "spp":
+							this.hbaoPass.fullscreenMaterial.defines.spp = value.toFixed(0)
+							this.hbaoPass.fullscreenMaterial.needsUpdate = true
+							break
+
+						case "denoise":
+							this.denoisePass.fullscreenMaterial.uniforms.denoise.value[0] = value
+							break
+
+						case "denoiseIterations":
+							this.denoisePass.iterations = value
+							break
+
+						case "denoiseKernel":
+						case "depthPhi":
+							this.denoisePass.fullscreenMaterial.uniforms[key].value = value
+							break
+
+						default:
+							this.hbaoPass.fullscreenMaterial.uniforms[key].value = value
+					}
+
+					this.temporalReprojectPass.reset()
+				}
+			})
+
+			// apply all uniforms and defines
+			this[key] = options[key]
+		}
+	}
+
+	initialize(renderer, ...args) {
+		super.initialize(renderer, ...args)
+		this.hbaoPass.initialize(renderer, ...args)
+	}
+
+	setSize(width, height) {
+		this.hbaoPass.setSize(width, height)
+		this.temporalReprojectPass.setSize(width, height)
+		this.denoisePass.setSize(width, height)
+	}
+
+	update(renderer) {
+		this.hbaoPass.render(renderer)
+		this.temporalReprojectPass.render(renderer)
+		this.denoisePass.render(renderer)
+	}
+}
+
+HBAOEffect.DefaultOptions = defaultHBAOOptions
+
+export { HBAOEffect }

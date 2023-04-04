@@ -29,6 +29,7 @@ uniform mat4 inverseProjectionMatrix;
 uniform mat4 cameraMatrixWorld;
 uniform float cameraNear;
 uniform float cameraFar;
+
 uniform float maxEnvMapMipLevel;
 
 uniform float rayDistance;
