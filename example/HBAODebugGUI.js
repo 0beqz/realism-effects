@@ -29,6 +29,13 @@ export class HBAODebugGUI {
 		generalFolder.addInput(params, "power", { min: 0.5, max: 64, step: 0.5 })
 		generalFolder.addInput(params, "thickness", { min: 0, max: 0.1, step: 0.001 })
 
+		generalFolder.addInput(params, "color", {
+			color: { type: "float" }
+		})
+
+		const temporalReprojectionFolder = pane.addFolder({ title: "Temporal Reprojection" })
+		temporalReprojectionFolder.addInput(params, "blend", { min: 0, max: 1, step: 0.001 })
+
 		const denoiseFolder = pane.addFolder({ title: "Denoise" })
 		denoiseFolder.addInput(params, "denoise", {
 			min: 0,

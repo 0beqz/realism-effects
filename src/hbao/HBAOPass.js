@@ -1,5 +1,6 @@
 import { Pass } from "postprocessing"
 import {
+	Color,
 	LinearEncoding,
 	Matrix4,
 	NearestFilter,
@@ -35,6 +36,7 @@ class HBAOPass extends Pass {
 			vertexShader,
 
 			uniforms: {
+				color: { value: new Color() },
 				depthTexture: { value: null },
 				cameraNear: { value: 0 },
 				cameraFar: { value: 0 },

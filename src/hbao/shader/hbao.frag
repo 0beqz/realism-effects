@@ -1,6 +1,7 @@
 varying vec2 vUv;
 
 uniform sampler2D depthTexture;
+uniform vec3 color;
 uniform float cameraNear;
 uniform float cameraFar;
 uniform mat4 inverseProjectionMatrix;
@@ -162,7 +163,9 @@ void main() {
 
     float ao = pow(1. - occlusion, power);
 
+    vec3 aoColor = mix(color, vec3(1.), ao);
+
     // ao = computeEdgeStrength(unpackedDepth, 1. / texSize);
 
-    gl_FragColor = vec4(vec3(ao), 1.);
+    gl_FragColor = vec4(aoColor, 1.);
 }
