@@ -29,7 +29,6 @@ uniform float delta;
 
 void main() {
     getDepthAndDilatedUVOffset(depthTexture, vUv, depth, dilatedDepth, depthTexel);
-    vec2 dilatedUv = vUv + dilatedUvOffset;
 
     if (dot(depthTexel.rgb, depthTexel.rgb) == 0.0) {
 #ifdef neighborhoodClamping
@@ -43,6 +42,9 @@ void main() {
 #endif
         return;
     }
+
+    vec2 dilatedUv = vUv + dilatedUvOffset;
+    edgeStrength = computeEdgeStrength(depth, invTexSize);
 
     vec4 inputTexel[textureCount];
     vec4 accumulatedTexel[textureCount];
@@ -141,7 +143,6 @@ void main() {
 
     vec3 outputColor;
     float temporalReprojectMix;
-    // float moveAlpha = didMove ? fpsAdjustedBlend / (1.0 - fpsAdjustedBlend) : 0.0;
 
 #pragma unroll_loop_start
     for (int i = 0; i < textureCount; i++) {
@@ -149,8 +150,6 @@ void main() {
             temporalReprojectMix = accumulatedTexel[i].a == 0.0 ? 0.0 : fpsAdjustedBlend;
         } else {
             temporalReprojectMix = fpsAdjustedBlend;
-
-            // if (didMove) accumulatedTexel[i].a = moveAlpha;
 
             if (reset) accumulatedTexel[i].a = 0.0;
 

@@ -90,18 +90,48 @@ vec3 cosineSampleHemisphere(const vec3 n, const vec2 u) {
     return normalize(r * sin(theta) * b + sqrt(1.0 - u.x) * n + r * cos(theta) * t);
 }
 
+vec3 sampleHemisphere(vec3 normal, vec2 rand) {
+    vec3 tangent = normalize(cross(normal, vec3(0.0, 1.0, 0.0)));
+    vec3 bitangent = normalize(cross(normal, tangent));
+
+    float r = sqrt(rand.x);
+    float theta = 2.0 * PI * rand.y;
+
+    float x = r * cos(theta);
+    float y = r * sin(theta);
+    float z = sqrt(max(0.0, 1.0 - x * x - y * y));
+
+    vec3 sampleDir = tangent * x + bitangent * y + normal * z;
+    return sampleDir;
+}
+
+// float F_Schlick(const float f0, const float f90, const float theta) {
+//     return f0 + (f90 - f0) * pow(1.0 - theta, 5.0);
+// }
+
+// float evalDisneyDiffuse(const float NoL, const float NoV, const float LoH, const float roughness, const float metalness) {
+//     float FD90 = 0.5 + 2. * roughness * pow(LoH, 2.);
+//     float a = F_Schlick(1., FD90, NoL);
+//     float b = F_Schlick(1., FD90, NoV);
+
+//     return (a * b / PI) * (1. - metalness);
+// }
+
 float getOcclusion(const vec3 worldPos, const vec3 worldNormal, const float depth, const int seed) {
     float occlusion = 0.0;
 
     vec4 blueNoise = sampleBlueNoise(seed);
 
-    vec3 sampleWorldDir = cosineSampleHemisphere(worldNormal, blueNoise.rg);
+    // vec3 sampleWorldDir = cosineSampleHemisphere(worldNormal, blueNoise.rg);
+    vec3 sampleWorldDir = sampleHemisphere(worldNormal, blueNoise.rg);
     vec3 sampleWorldPos = worldPos + aoDistance * pow(blueNoise.b, distancePower) * sampleWorldDir;
 
+    // Project the sample position to screen space
     vec4 sampleUv = projectionViewMatrix * vec4(sampleWorldPos, 1.);
     sampleUv.xy /= sampleUv.w;
     sampleUv.xy = sampleUv.xy * 0.5 + 0.5;
 
+    // Get the depth of the sample position
     float sampleUnpackedDepth = textureLod(depthTexture, sampleUv.xy, 0.0).r;
     float sampleDepth = -getViewZ(sampleUnpackedDepth);
 
@@ -111,9 +141,16 @@ float getOcclusion(const vec3 worldPos, const vec3 worldNormal, const float dept
     if (deltaDepth < thickness) {
         float horizon = sampleDepth + deltaDepth * bias;
 
-        float cosTheta = dot(worldNormal, sampleWorldDir);
+        // vec3 h = normalize(normalize(worldPos) + sampleWorldDir);
+        // float NoL = dot(worldNormal, sampleWorldDir);
+        // float NoV = dot(worldNormal, normalize(worldPos));
+        // float LoH = dot(sampleWorldDir, h);
 
-        float occlusionSample = max(0.0, (horizon - depth) / cosTheta);
+        // float diffuseBrdf = evalDisneyDiffuse(NoL, NoV, LoH, 1., 0.);
+        // float pdf = dot(worldNormal, sampleWorldDir) / PI;
+        // diffuseBrdf /= pdf;
+
+        float occlusionSample = max(0.0, (horizon - depth));
         occlusion += occlusionSample;
     }
 
@@ -151,7 +188,6 @@ void main() {
 
     vec3 worldPos = getWorldPos(unpackedDepth, vUv);
     vec3 worldNormal = computeNormal(vUv, unpackedDepth);
-    // worldNormal = computeNormalImproved(unpackedDepth, ivec2(vUv * texSize));
 
     float occlusion = 0.0;
 
@@ -159,13 +195,11 @@ void main() {
         occlusion += getOcclusion(worldPos, worldNormal, depth, frame + i);
     }
 
-    // occlusion /= float(spp);
+    occlusion /= float(spp);
 
     float ao = pow(1. - occlusion, power);
 
     vec3 aoColor = mix(color, vec3(1.), ao);
-
-    // ao = computeEdgeStrength(unpackedDepth, 1. / texSize);
 
     gl_FragColor = vec4(aoColor, 1.);
 }

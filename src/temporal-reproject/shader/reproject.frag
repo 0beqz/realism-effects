@@ -6,6 +6,7 @@ bool didMove;
 
 vec4 depthTexel;
 float depth;
+float edgeStrength;
 
 #define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
 
@@ -181,9 +182,7 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const bool neighborhoodClam
 
     float worldDistFactor = clamp((50.0 + distance(dilatedWorldPos, cameraPos)) / 100., 0.25, 1.);
 
-#ifndef dilation
     if (worldDistanceDisocclusionCheck(dilatedWorldPos, lastWorldPos, worldDistFactor)) return false;
-#endif
 
     return !planeDistanceDisocclusionCheck(dilatedWorldPos, lastWorldPos, worldNormal, worldDistFactor);
 }
@@ -273,19 +272,6 @@ vec4 SampleTextureCatmullRom(const sampler2D tex, const vec2 uv, const vec2 texS
     return result;
 }
 
-// source: https://iquilezles.org/articles/texture/
-vec4 getTexel(const sampler2D tex, vec2 p) {
-    p = p / invTexSize + 0.5;
-
-    vec2 i = floor(p);
-    vec2 f = p - i;
-    f = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
-    p = i + f;
-
-    p = (p - 0.5) * invTexSize;
-    return textureLod(tex, p, 0.0);
-}
-
 // source: https://www.shadertoy.com/view/stSfW1
 vec2 sampleBlocky(vec2 p) {
     vec2 d = vec2(dFdx(p.x), dFdy(p.y)) / invTexSize;
@@ -295,22 +281,22 @@ vec2 sampleBlocky(vec2 p) {
     return (iA + (iB - iA) * (fB - iB) / d + 0.5) * invTexSize;
 }
 
-// float computeEdgeStrength(float unpackedDepth, vec2 texelSize) {
-//     // Compute the depth gradients in the x and y directions using central differences
-//     float depthX = unpackRGBAToDepth(textureLod(depthTexture, vUv + vec2(texelSize.x, 0.0), 0.0)) -
-//                    unpackRGBAToDepth(textureLod(depthTexture, vUv - vec2(texelSize.x, 0.0), 0.0));
+float computeEdgeStrength(float unpackedDepth, vec2 texelSize) {
+    // Compute the depth gradients in the x and y directions using central differences
+    float depthX = unpackRGBAToDepth(textureLod(depthTexture, vUv + vec2(texelSize.x, 0.0), 0.0)) -
+                   unpackRGBAToDepth(textureLod(depthTexture, vUv - vec2(texelSize.x, 0.0), 0.0));
 
-//     float depthY = unpackRGBAToDepth(textureLod(depthTexture, vUv + vec2(0.0, texelSize.y), 0.0)) -
-//                    unpackRGBAToDepth(textureLod(depthTexture, vUv - vec2(0.0, texelSize.y), 0.0));
+    float depthY = unpackRGBAToDepth(textureLod(depthTexture, vUv + vec2(0.0, texelSize.y), 0.0)) -
+                   unpackRGBAToDepth(textureLod(depthTexture, vUv - vec2(0.0, texelSize.y), 0.0));
 
-//     // Calculate the gradient magnitude
-//     float gradientMagnitude = sqrt(depthX * depthX + depthY * depthY);
+    // Calculate the gradient magnitude
+    float gradientMagnitude = sqrt(depthX * depthX + depthY * depthY);
 
-//     // Calculate the edge strength
-//     float edgeStrength = min(100000. * gradientMagnitude / (unpackedDepth + 0.001), 1.);
+    // Calculate the edge strength
+    float edgeStrength = min(100000. * gradientMagnitude / (unpackedDepth + 0.001), 1.);
 
-//     return edgeStrength * edgeStrength;
-// }
+    return edgeStrength * edgeStrength;
+}
 
 float computeEdgeStrengthFast(float unpackedDepth) {
     float depthX = dFdx(unpackedDepth);
@@ -319,16 +305,15 @@ float computeEdgeStrengthFast(float unpackedDepth) {
     // Compute the edge strength as the magnitude of the gradient
     float edgeStrength = depthX * depthX + depthY * depthY;
 
-    return min(1., pow(pow(edgeStrength, 0.25) * 50., 4.));
+    return min(1., pow(pow(edgeStrength, 0.25) * 500., 4.));
 }
 
 vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv) {
     vec4 catmull = SampleTextureCatmullRom(tex, reprojectedUv, 1.0 / invTexSize);
     vec4 blocky = SampleTextureCatmullRom(tex, sampleBlocky(reprojectedUv), 1.0 / invTexSize);
 
-    float edgeStrength = computeEdgeStrengthFast(depth);
-
     vec4 reprojectedTexel = mix(catmull, blocky, edgeStrength);
+    reprojectedTexel.a = min(catmull.a, blocky.a);
 
     return reprojectedTexel;
 }

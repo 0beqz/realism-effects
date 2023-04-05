@@ -14,8 +14,8 @@ const defaultHBAOOptions = {
 	spp: 8,
 	distance: 2.5,
 	distancePower: 3,
-	bias: 7.5,
-	power: 10,
+	bias: 20,
+	power: 32,
 	thickness: 0.075,
 	color: new Color("black")
 }
