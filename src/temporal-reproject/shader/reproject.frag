@@ -151,11 +151,8 @@ bool worldDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos
     return distance(worldPos, lastWorldPos) > worldDistance * worldDistFactor;
 }
 
-bool validateReprojectedUV(const vec2 reprojectedUv, const bool neighborhoodClamp, const bool neighborhoodClampDisocclusionTest,
-                           const float depth, const vec3 worldPos, const vec3 worldNormal) {
+bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const vec3 worldNormal) {
     if (reprojectedUv.x > 1.0 || reprojectedUv.x < 0.0 || reprojectedUv.y > 1.0 || reprojectedUv.y < 0.0) return false;
-
-    if (neighborhoodClamp && !neighborhoodClampDisocclusionTest) return true;
 
     vec3 dilatedWorldPos = worldPos;
     vec3 lastWorldPos;
@@ -199,13 +196,12 @@ vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength, const float de
     return hitPointUv;
 }
 
-vec2 getReprojectedUV(const bool neighborhoodClamp, const bool neighborhoodClampDisocclusionTest,
-                      const float depth, const vec3 worldPos, const vec3 worldNormal, const float rayLength) {
+vec2 getReprojectedUV(const float depth, const vec3 worldPos, const vec3 worldNormal, const float rayLength) {
     // hit point reprojection
     if (rayLength != 0.0) {
         vec2 reprojectedUv = reprojectHitPoint(worldPos, rayLength, depth);
 
-        if (validateReprojectedUV(reprojectedUv, neighborhoodClamp, neighborhoodClampDisocclusionTest, depth, worldPos, worldNormal)) {
+        if (validateReprojectedUV(reprojectedUv, worldPos, worldNormal)) {
             return reprojectedUv;
         }
 
@@ -215,7 +211,7 @@ vec2 getReprojectedUV(const bool neighborhoodClamp, const bool neighborhoodClamp
     // reprojection using motion vectors
     vec2 reprojectedUv = vUv - velocityTexel.rg;
 
-    if (validateReprojectedUV(reprojectedUv, neighborhoodClamp, neighborhoodClampDisocclusionTest, depth, worldPos, worldNormal)) {
+    if (validateReprojectedUV(reprojectedUv, worldPos, worldNormal)) {
         return reprojectedUv;
     }
 

@@ -9,8 +9,8 @@ export const defaultTemporalReprojectPassOptions = {
 	dilation: false,
 	constantBlend: false,
 	fullAccumulate: false,
-	neighborhoodClamping: false,
-	neighborhoodClampingDisocclusionTest: true,
+	neighborhoodClamp: false,
+	neighborhoodClampIntensity: 1,
 	logTransform: false,
 	logClamp: false,
 	depthDistance: 0.25,
@@ -53,7 +53,7 @@ export class TemporalReprojectPass extends Pass {
 		this.fullscreenMaterial.defines.textureCount = textureCount
 
 		if (options.dilation) this.fullscreenMaterial.defines.dilation = ""
-		if (options.neighborhoodClamping) this.fullscreenMaterial.defines.neighborhoodClamping = ""
+		if (options.neighborhoodClamp) this.fullscreenMaterial.defines.neighborhoodClamp = ""
 		if (options.logTransform) this.fullscreenMaterial.defines.logTransform = ""
 		if (options.logClamp) this.fullscreenMaterial.defines.logClamp = ""
 
@@ -89,7 +89,7 @@ export class TemporalReprojectPass extends Pass {
 		this.fullscreenMaterial.uniforms.velocityTexture.value = velocityDepthNormalPass.texture
 		this.fullscreenMaterial.uniforms.depthTexture.value = velocityDepthNormalPass.depthTexture
 
-		for (const opt of ["reprojectSpecular", "neighborhoodClamping", "neighborhoodClampingDisocclusionTest"]) {
+		for (const opt of ["reprojectSpecular", "neighborhoodClamp"]) {
 			let value = options[opt]
 
 			if (typeof value !== "array") value = Array(textureCount).fill(value)

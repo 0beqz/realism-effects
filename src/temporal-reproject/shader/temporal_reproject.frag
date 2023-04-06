@@ -6,6 +6,7 @@ uniform sampler2D depthTexture;
 uniform sampler2D lastDepthTexture;
 
 uniform float blend;
+uniform float neighborhoodClampIntensity;
 uniform bool constantBlend;
 uniform bool fullAccumulate;
 uniform vec2 invTexSize;
@@ -31,7 +32,7 @@ void main() {
     getDepthAndDilatedUVOffset(depthTexture, vUv, depth, dilatedDepth, depthTexel);
 
     if (dot(depthTexel.rgb, depthTexel.rgb) == 0.0) {
-#ifdef neighborhoodClamping
+#ifdef neighborhoodClamp
     #pragma unroll_loop_start
         for (int i = 0; i < textureCount; i++) {
             gOutput[i] = textureLod(inputTexture[i], vUv, 0.0);
@@ -93,7 +94,7 @@ void main() {
 
         // specular (hit point reprojection)
         if (reprojectHitPoint) {
-            reprojectedUvSpecular[i] = getReprojectedUV(neighborhoodClamping[i], neighborhoodClampingDisocclusionTest[i], depth, worldPos, worldNormal, inputTexel[i].a);
+            reprojectedUvSpecular[i] = getReprojectedUV(depth, worldPos, worldNormal, inputTexel[i].a);
         } else {
             // init to -1 to signify that reprojection failed
             reprojectedUvSpecular[i] = vec2(-1.0);
@@ -101,7 +102,7 @@ void main() {
 
         // diffuse (reprojection using velocity)
         if (reprojectedUvDiffuse.x == -10.0 && reprojectedUvSpecular[i].x < 0.0) {
-            reprojectedUvDiffuse = getReprojectedUV(neighborhoodClamping[i], neighborhoodClampingDisocclusionTest[i], depth, worldPos, worldNormal, 0.0);
+            reprojectedUvDiffuse = getReprojectedUV(depth, worldPos, worldNormal, 0.0);
         }
 
         // choose which UV coordinates to use for reprojecion
@@ -119,11 +120,11 @@ void main() {
             if (textureSampledThisFrame[i]) {
                 accumulatedTexel[i].a++;  // add one more frame
 
-                if (neighborhoodClamping[i]) {
+                if (neighborhoodClamp[i]) {
                     vec3 clampedColor = accumulatedTexel[i].rgb;
                     clampNeighborhood(inputTexture[i], clampedColor, inputTexel[i].rgb);
 
-                    accumulatedTexel[i].rgb = clampedColor;
+                    accumulatedTexel[i].rgb = mix(accumulatedTexel[i].rgb, clampedColor, neighborhoodClampIntensity);
                 }
             } else {
                 inputTexel[i].rgb = accumulatedTexel[i].rgb;

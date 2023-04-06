@@ -7,6 +7,7 @@ import { DenoisePass } from "../svgf/pass/DenoisePass"
 
 const defaultHBAOOptions = {
 	blend: 0.95,
+	neighborhoodClampIntensity: 1,
 	denoise: 2,
 	denoiseIterations: 3,
 	denoiseKernel: 3,
@@ -36,7 +37,9 @@ class HBAOEffect extends Effect {
 		this.hbaoPass = new HBAOPass(this._camera, this._scene)
 
 		this.temporalReprojectPass = new TemporalReprojectPass(scene, camera, velocityDepthNormalPass, 1, {
-			blend: options.blend
+			blend: options.blend,
+			neighborhoodClamp: true,
+			neighborhoodClampIntensity: options.neighborhoodClampIntensity
 		})
 		this.temporalReprojectPass.fullscreenMaterial.uniforms.inputTexture0.value = this.hbaoPass.renderTarget.texture
 
@@ -70,6 +73,7 @@ class HBAOEffect extends Effect {
 							break
 
 						case "blend":
+						case "neighborhoodClampIntensity":
 							this.temporalReprojectPass.fullscreenMaterial.uniforms[key].value = value
 							break
 

@@ -14,8 +14,15 @@ import {
 } from "three"
 import vertexShader from "../utils/shader/basic.vert"
 import fragmentShader from "./shader/hbao.frag"
+// eslint-disable-next-line camelcase
+import hbao_utils from "./shader/hbao_utils.glsl"
+import sampleBlueNoise from "../utils/shader/sampleBlueNoise.glsl"
 
 import blueNoiseImage from "../utils/blue_noise_64_rgba.png"
+
+const finalFragmentShader = fragmentShader
+	.replace("#include <hbao_utils>", hbao_utils)
+	.replace("#include <sampleBlueNoise>", sampleBlueNoise)
 
 class HBAOPass extends Pass {
 	needsDepthTexture = true
@@ -32,7 +39,7 @@ class HBAOPass extends Pass {
 		})
 
 		this.fullscreenMaterial = new ShaderMaterial({
-			fragmentShader,
+			fragmentShader: finalFragmentShader,
 			vertexShader,
 
 			uniforms: {
