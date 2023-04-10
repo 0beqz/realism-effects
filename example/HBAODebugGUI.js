@@ -49,7 +49,7 @@ export class HBAODebugGUI {
 		denoiseFolder.addInput(params, "denoiseKernel", { min: 1, max: 5, step: 1 })
 		denoiseFolder.addInput(params, "depthPhi", {
 			min: 0,
-			max: 50,
+			max: 100,
 			step: 0.001
 		})
 		denoiseFolder.addInput(params, "normalPhi", {

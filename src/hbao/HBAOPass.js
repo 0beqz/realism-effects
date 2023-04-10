@@ -14,8 +14,8 @@ import {
 } from "three"
 import vertexShader from "../utils/shader/basic.vert"
 import fragmentShader from "./shader/hbao.frag"
-// eslint-disable-next-line camelcase
 import sampleBlueNoise from "../utils/shader/sampleBlueNoise.glsl"
+// eslint-disable-next-line camelcase
 import hbao_utils from "./shader/hbao_utils.glsl"
 
 import blueNoiseImage from "../utils/blue_noise_64_rgba.png"

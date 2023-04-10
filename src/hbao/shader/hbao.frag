@@ -96,8 +96,9 @@ void main() {
     float totalWeight = 0.0;
 
     for (int i = 0; i < spp; i++) {
-        float occ = getOcclusion(worldPos, worldNormal, depth, frame + i, sampleWorldDir);
-        float visibility = 1. - occ;
+        float occlusion = getOcclusion(worldPos, worldNormal, depth, frame + i, sampleWorldDir);
+
+        float visibility = 1. - occlusion;
         ao += visibility;
 
 #ifdef bentNormals

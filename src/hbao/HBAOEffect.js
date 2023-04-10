@@ -12,7 +12,7 @@ const defaultHBAOOptions = {
 	denoise: 2,
 	denoiseIterations: 3,
 	denoiseKernel: 3,
-	depthPhi: 20,
+	depthPhi: 40,
 	normalPhi: 20,
 	spp: 8,
 	distance: 2.5,
@@ -22,7 +22,7 @@ const defaultHBAOOptions = {
 	thickness: 0.075,
 	color: new Color("black"),
 	bentNormals: true,
-	useNormalPass: true,
+	useNormalPass: false,
 	normalTexture: null
 }
 
