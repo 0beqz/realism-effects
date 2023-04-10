@@ -35,7 +35,8 @@ class HBAOPass extends Pass {
 		this._scene = scene
 
 		this.renderTarget = new WebGLRenderTarget(1, 1, {
-			encoding: sRGBEncoding,
+			// encoding: sRGBEncoding,
+			type: HalfFloatType,
 			depthBuffer: false
 		})
 

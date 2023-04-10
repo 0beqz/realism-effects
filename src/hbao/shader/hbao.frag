@@ -120,6 +120,10 @@ void main() {
     vec2 velocity = textureLod(velocityTexture, vUv, 0.).rg;
     vec3 accumulatedBentNormal = textureLod(accumulatedTexture, vUv - velocity.xy, 0.).xyz;
 
+    if (dot(accumulatedBentNormal, accumulatedBentNormal) != 0.0) {
+        // worldNormal = Decode(accumulatedBentNormal.rg);
+    }
+
     float depth = -getViewZ(unpackedDepth);
 
     vec3 sampleWorldDir;
@@ -144,5 +148,7 @@ void main() {
 
     vec3 aoColor = mix(color, vec3(1.), ao);
 
-    gl_FragColor = vec4(aoColor, 1.);
+    // vec2 encodedBentNormal = Encode(worldNormal);
+
+    gl_FragColor = vec4(worldNormal * 0.5 + 0.5, 1.);
 }
