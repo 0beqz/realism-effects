@@ -18,13 +18,14 @@ export class HBAODebugGUI {
 		params = { ...HBAOEffect.DefaultOptions, ...params }
 
 		const generalFolder = pane.addFolder({ title: "General" })
+		generalFolder.addInput(params, "resolutionScale", { min: 0.25, max: 1, step: 0.25 })
 		generalFolder.addInput(params, "spp", { min: 1, max: 64, step: 1 })
 		generalFolder.addInput(params, "distance", { min: 0.1, max: 10, step: 0.01 })
 		generalFolder.addInput(params, "distancePower", { min: 1, max: 20, step: 0.25 })
 		generalFolder.addInput(params, "bias", {
 			min: 0,
-			max: 20,
-			step: 0.1
+			max: 200,
+			step: 1
 		})
 		generalFolder.addInput(params, "power", { min: 0.5, max: 64, step: 0.5 })
 		generalFolder.addInput(params, "thickness", { min: 0, max: 0.1, step: 0.001 })
@@ -46,6 +47,11 @@ export class HBAODebugGUI {
 		denoiseFolder.addInput(params, "denoiseIterations", { min: 0, max: 5, step: 1 })
 		denoiseFolder.addInput(params, "denoiseKernel", { min: 1, max: 5, step: 1 })
 		denoiseFolder.addInput(params, "depthPhi", {
+			min: 0,
+			max: 50,
+			step: 0.001
+		})
+		denoiseFolder.addInput(params, "normalPhi", {
 			min: 0,
 			max: 50,
 			step: 0.001

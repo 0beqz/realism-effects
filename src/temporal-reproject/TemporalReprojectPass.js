@@ -10,9 +10,9 @@ export const defaultTemporalReprojectPassOptions = {
 	constantBlend: false,
 	fullAccumulate: false,
 	neighborhoodClamp: false,
+	neighborhoodClampRadius: 1,
 	neighborhoodClampIntensity: 1,
 	logTransform: false,
-	logClamp: false,
 	depthDistance: 0.25,
 	worldDistance: 0.375,
 	reprojectSpecular: false,
@@ -55,7 +55,7 @@ export class TemporalReprojectPass extends Pass {
 		if (options.dilation) this.fullscreenMaterial.defines.dilation = ""
 		if (options.neighborhoodClamp) this.fullscreenMaterial.defines.neighborhoodClamp = ""
 		if (options.logTransform) this.fullscreenMaterial.defines.logTransform = ""
-		if (options.logClamp) this.fullscreenMaterial.defines.logClamp = ""
+		this.fullscreenMaterial.defines.neighborhoodClampRadius = parseInt(options.neighborhoodClampRadius)
 
 		this.fullscreenMaterial.defines.depthDistance = options.depthDistance.toPrecision(5)
 		this.fullscreenMaterial.defines.worldDistance = options.worldDistance.toPrecision(5)

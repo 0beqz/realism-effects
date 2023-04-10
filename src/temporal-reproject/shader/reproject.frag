@@ -60,8 +60,8 @@ void undoColorTransform(inout vec3 color) {
 #endif
 
 void getNeighborhoodAABB(const sampler2D tex, inout vec3 minNeighborColor, inout vec3 maxNeighborColor) {
-    for (int x = -2; x <= 2; x++) {
-        for (int y = -2; y <= 2; y++) {
+    for (int x = -neighborhoodClampRadius; x <= neighborhoodClampRadius; x++) {
+        for (int y = -neighborhoodClampRadius; y <= neighborhoodClampRadius; y++) {
             if (x != 0 || y != 0) {
                 vec2 offset = vec2(x, y) * invTexSize;
                 vec2 neighborUv = vUv + offset;
@@ -76,22 +76,6 @@ void getNeighborhoodAABB(const sampler2D tex, inout vec3 minNeighborColor, inout
     }
 }
 
-#ifdef logClamp
-void clampNeighborhood(const sampler2D tex, inout vec3 color, vec3 inputColor) {
-    transformColor(inputColor);
-
-    vec3 minNeighborColor = inputColor;
-    vec3 maxNeighborColor = inputColor;
-
-    getNeighborhoodAABB(tex, minNeighborColor, maxNeighborColor);
-
-    transformColor(color);
-
-    color = clamp(color, minNeighborColor, maxNeighborColor);
-
-    undoColorTransform(color);
-}
-#else
 void clampNeighborhood(const sampler2D tex, inout vec3 color, const vec3 inputColor) {
     vec3 minNeighborColor = inputColor;
     vec3 maxNeighborColor = inputColor;
@@ -100,7 +84,6 @@ void clampNeighborhood(const sampler2D tex, inout vec3 color, const vec3 inputCo
 
     color = clamp(color, minNeighborColor, maxNeighborColor);
 }
-#endif
 
 #ifdef dilation
 void getDilatedDepthUVOffset(const sampler2D tex, const vec2 centerUv, out float depth, out float dilatedDepth, out vec4 closestDepthTexel) {
@@ -315,6 +298,21 @@ vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv) {
 }
 
 // source: https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/
+vec2 OctWrap(vec2 v) {
+    vec2 w = 1.0 - abs(v.yx);
+    if (v.x < 0.0) w.x = -w.x;
+    if (v.y < 0.0) w.y = -w.y;
+    return w;
+}
+
+vec2 Encode(vec3 n) {
+    n /= (abs(n.x) + abs(n.y) + abs(n.z));
+    n.xy = n.z > 0.0 ? n.xy : OctWrap(n.xy);
+    n.xy = n.xy * 0.5 + 0.5;
+    return n.xy;
+}
+
+// source: https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/
 vec3 Decode(vec2 f) {
     f = f * 2.0 - 1.0;
 
@@ -324,4 +322,19 @@ vec3 Decode(vec2 f) {
     n.x += n.x >= 0.0 ? -t : t;
     n.y += n.y >= 0.0 ? -t : t;
     return normalize(n);
+}
+
+vec3 slerp(vec3 a, vec3 b, float t) {
+    float cosAngle = dot(a, b);
+    float angle = acos(cosAngle);
+
+    if (abs(angle) < 0.001) {
+        return mix(a, b, t);
+    }
+
+    float sinAngle = sin(angle);
+    float t1 = sin((1.0 - t) * angle) / sinAngle;
+    float t2 = sin(t * angle) / sinAngle;
+
+    return (a * t1) + (b * t2);
 }

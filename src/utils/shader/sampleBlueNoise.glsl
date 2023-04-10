@@ -9,7 +9,7 @@ float r1(float n) {
 
 const vec4 hn = vec4(0.618033988749895, 0.3247179572447458, 0.2207440846057596, 0.1673039782614187);
 
-vec4 sampleBlueNoise(int seed, vec2 repeat, vec2 texSize) {
+vec4 sampleBlueNoise(sampler2D texture, int seed, vec2 repeat, vec2 texSize) {
     vec2 size = vUv * texSize;
     vec2 blueNoiseSize = texSize / repeat;
     float blueNoiseIndex = floor(floor(size.y / blueNoiseSize.y) * repeat.x) + floor(size.x / blueNoiseSize.x);
@@ -20,7 +20,7 @@ vec4 sampleBlueNoise(int seed, vec2 repeat, vec2 texSize) {
     vec2 blueNoiseUv = vUv * repeat;
 
     // fetch blue noise for this pixel
-    vec4 blueNoise = textureLod(blueNoiseTexture, blueNoiseUv, 0.);
+    vec4 blueNoise = textureLod(texture, blueNoiseUv, 0.);
 
     // animate blue noise
     blueNoise = fract(blueNoise + hn * float(seed + blueNoiseTileOffset));

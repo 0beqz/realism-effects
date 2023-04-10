@@ -1,7 +1,6 @@
 #include <sampleBlueNoise>
 
-#define TWO_PI 6.28318530717958647692528676655900576
-#define PI     3.14159265358979323846264338327950288
+#define PI 3.14159265358979323846264338327950288
 
 // source: https://github.com/mrdoob/three.js/blob/342946c8392639028da439b6dc0597e58209c696/examples/js/shaders/SAOShader.js#L123
 float getViewZ(const float depth) {
@@ -25,17 +24,6 @@ vec3 getWorldPos(float depth, vec2 coord) {
     return worldSpacePosition.xyz;
 }
 
-// source: https://www.shadertoy.com/view/cll3R4
-vec3 cosineSampleHemisphere(const vec3 n, const vec2 u) {
-    float r = sqrt(u.x);
-    float theta = 2.0 * PI * u.y;
-
-    vec3 b = normalize(cross(n, vec3(0.0, 1.0, 1.0)));
-    vec3 t = cross(b, n);
-
-    return normalize(r * sin(theta) * b + sqrt(1.0 - u.x) * n + r * cos(theta) * t);
-}
-
 vec3 sampleHemisphere(vec3 normal, vec2 rand) {
     vec3 tangent = normalize(cross(normal, vec3(0.0, 1.0, 0.0)));
     vec3 bitangent = normalize(cross(normal, tangent));
@@ -51,19 +39,7 @@ vec3 sampleHemisphere(vec3 normal, vec2 rand) {
     return sampleDir;
 }
 
-// float F_Schlick(const float f0, const float f90, const float theta) {
-//     return f0 + (f90 - f0) * pow(1.0 - theta, 5.0);
-// }
-
-// float evalDisneyDiffuse(const float NoL, const float NoV, const float LoH, const float roughness, const float metalness) {
-//     float FD90 = 0.5 + 2. * roughness * pow(LoH, 2.);
-//     float a = F_Schlick(1., FD90, NoL);
-//     float b = F_Schlick(1., FD90, NoV);
-
-//     return (a * b / PI) * (1. - metalness);
-// }
-
-vec3 computeNormal(vec2 uv, float unpackedDepth) {
+vec3 computeWorldNormal(vec2 uv, float unpackedDepth) {
     vec2 uv0 = uv;
     vec2 uv1 = uv + vec2(1., 0.) / texSize;
     vec2 uv2 = uv + vec2(0., 1.) / texSize;

@@ -1,27 +1,33 @@
-import { Effect } from "postprocessing"
+import { Effect, NormalPass } from "postprocessing"
 import { Color, Uniform } from "three"
+import { DenoisePass } from "../svgf/pass/DenoisePass"
 import { TemporalReprojectPass } from "../temporal-reproject/TemporalReprojectPass"
 import { HBAOPass } from "./HBAOPass"
 import compose from "./shader/compose.frag"
-import { DenoisePass } from "../svgf/pass/DenoisePass"
 
 const defaultHBAOOptions = {
+	resolutionScale: 1,
 	blend: 0.95,
-	neighborhoodClampIntensity: 1,
+	neighborhoodClampIntensity: 0.5,
 	denoise: 2,
 	denoiseIterations: 3,
 	denoiseKernel: 3,
 	depthPhi: 20,
+	normalPhi: 20,
 	spp: 8,
 	distance: 2.5,
 	distancePower: 3,
-	bias: 20,
-	power: 32,
+	bias: 128,
+	power: 4,
 	thickness: 0.075,
-	color: new Color("black")
+	color: new Color("black"),
+	useNormalPass: true,
+	normalTexture: null
 }
 
 class HBAOEffect extends Effect {
+	lastSize = { width: 0, height: 0, resolutionScale: 0 }
+
 	constructor(composer, camera, scene, velocityDepthNormalPass, options = defaultHBAOOptions) {
 		super("HBAOEffect", compose, {
 			type: "FinalHBAOMaterial",
@@ -31,15 +37,18 @@ class HBAOEffect extends Effect {
 			])
 		})
 
+		options = { ...defaultHBAOOptions, ...options }
+
 		this._camera = camera
 		this._scene = scene
 
 		this.hbaoPass = new HBAOPass(this._camera, this._scene)
 
 		this.temporalReprojectPass = new TemporalReprojectPass(scene, camera, velocityDepthNormalPass, 1, {
-			blend: options.blend,
 			neighborhoodClamp: true,
-			neighborhoodClampIntensity: options.neighborhoodClampIntensity
+			neighborhoodClampRadius: 1,
+
+			...options
 		})
 		this.temporalReprojectPass.fullscreenMaterial.uniforms.inputTexture0.value = this.hbaoPass.renderTarget.texture
 
@@ -47,12 +56,27 @@ class HBAOEffect extends Effect {
 			basicVariance: 0.05
 		})
 
+		this.hbaoPass.fullscreenMaterial.uniforms.accumulatedTexture.value = this.denoisePass.texture
+		this.hbaoPass.fullscreenMaterial.uniforms.velocityTexture.value = velocityDepthNormalPass.velocityTexture
+
 		// set up depth texture
 		if (!composer.depthTexture) composer.createDepthTexture()
 
 		this.hbaoPass.fullscreenMaterial.uniforms.depthTexture.value = composer.depthTexture
 		this.denoisePass.setDepthTexture(composer.depthTexture)
 		this.uniforms.get("depthTexture").value = composer.depthTexture
+
+		// set up optional normal texture
+		if (options.useNormalPass || options.normalTexture) {
+			if (options.useNormalPass) this.normalPass = new NormalPass(scene, camera)
+
+			const normalTexture = options.normalTexture ?? this.normalPass.texture
+
+			this.hbaoPass.fullscreenMaterial.uniforms.normalTexture.value = normalTexture
+			this.hbaoPass.fullscreenMaterial.defines.useNormalTexture = ""
+
+			this.denoisePass.setNormalTexture(normalTexture)
+		}
 
 		this.makeOptionsReactive(options)
 	}
@@ -64,6 +88,8 @@ class HBAOEffect extends Effect {
 					return options[key]
 				},
 				set(value) {
+					if (value === null || value === undefined) return
+
 					options[key] = value
 
 					switch (key) {
@@ -87,6 +113,7 @@ class HBAOEffect extends Effect {
 
 						case "denoiseKernel":
 						case "depthPhi":
+						case "normalPhi":
 							this.denoisePass.fullscreenMaterial.uniforms[key].value = value
 							break
 
@@ -98,8 +125,14 @@ class HBAOEffect extends Effect {
 							this.hbaoPass.fullscreenMaterial.uniforms.color.value.copy(value)
 							break
 
+						case "resolutionScale":
+							this.setSize(this.lastSize.width, this.lastSize.height)
+							break
+
 						default:
-							this.hbaoPass.fullscreenMaterial.uniforms[key].value = value
+							if (key in this.hbaoPass.fullscreenMaterial.uniforms) {
+								this.hbaoPass.fullscreenMaterial.uniforms[key].value = value
+							}
 					}
 
 					this.temporalReprojectPass.reset()
@@ -117,12 +150,29 @@ class HBAOEffect extends Effect {
 	}
 
 	setSize(width, height) {
-		this.hbaoPass.setSize(width, height)
+		if (width === undefined || height === undefined) return
+		if (
+			width === this.lastSize.width &&
+			height === this.lastSize.height &&
+			this.resolutionScale === this.lastSize.resolutionScale
+		)
+			return
+
+		this.normalPass?.setSize(width, height)
+		this.hbaoPass.setSize(width * this.resolutionScale, height * this.resolutionScale)
+
 		this.temporalReprojectPass.setSize(width, height)
 		this.denoisePass.setSize(width, height)
+
+		this.lastSize = {
+			width,
+			height,
+			resolutionScale: this.resolutionScale
+		}
 	}
 
 	update(renderer) {
+		this.normalPass?.render(renderer)
 		this.hbaoPass.render(renderer)
 		this.temporalReprojectPass.render(renderer)
 

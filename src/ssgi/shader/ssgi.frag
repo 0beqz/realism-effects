@@ -64,7 +64,8 @@ vec2 invTexSize;
 #include <packing>
 
 // helper functions
-#include <utils>
+#include <sampleBlueNoise>
+#include <ssgi_utils>
 
 vec2 RayMarch(inout vec3 dir, inout vec3 hitPos);
 vec2 BinarySearch(inout vec3 dir, inout vec3 hitPos);
@@ -146,7 +147,7 @@ void main() {
 
 #pragma unroll_loop_start
     for (int i = 0; i < spp; i++) {
-        blueNoise = sampleBlueNoise(frame + sampleCounter++);
+        blueNoise = sampleBlueNoise(blueNoiseTexture, frame + sampleCounter++, blueNoiseRepeat, texSize);
 
         // Disney BRDF and sampling source: https://www.shadertoy.com/view/cll3R4
         // calculate GGX reflection ray

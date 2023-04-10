@@ -1,6 +1,7 @@
 import { Pass } from "postprocessing"
 import {
 	Color,
+	HalfFloatType,
 	LinearEncoding,
 	Matrix4,
 	NearestFilter,
@@ -45,13 +46,16 @@ class HBAOPass extends Pass {
 			uniforms: {
 				color: { value: new Color() },
 				depthTexture: { value: null },
+				normalTexture: { value: null },
+				accumulatedTexture: { value: null },
+				velocityTexture: { value: null },
 				cameraNear: { value: 0 },
 				cameraFar: { value: 0 },
 				frame: { value: 0 },
-				viewMatrix: { value: new Matrix4() },
+				viewMatrix: { value: this._camera.matrixWorldInverse },
 				projectionViewMatrix: { value: new Matrix4() },
-				inverseProjectionMatrix: { value: new Matrix4() },
-				cameraMatrixWorld: { value: new Matrix4() },
+				inverseProjectionMatrix: { value: this._camera.projectionMatrixInverse },
+				cameraMatrixWorld: { value: this._camera.matrixWorld },
 				texSize: { value: new Vector2() },
 				blueNoiseTexture: { value: null },
 				blueNoiseRepeat: { value: new Vector2() },

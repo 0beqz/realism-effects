@@ -47,7 +47,12 @@ float distToPlane(const vec3 worldPos, const vec3 neighborWorldPos, const vec3 w
     return distToPlane;
 }
 
-void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec3 normal,
+// returns the variance of the pixel depending on how many frames it has been visible to denoise more aggressively at recently disoccluded pixels
+float getDisocclusionBoostVariance(float visibleFrames) {
+    return max(0., -pow(visibleFrames, 2.0) + 50.0);
+}
+
+void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec3 normal, const float depth,
          const float roughness, const vec3 worldPos,
          const float luma[textureCount], const float colorPhi[textureCount],
          inout vec3 denoisedColor[textureCount], inout float totalWeight[textureCount], inout float sumVariance[textureCount], inout float variance[textureCount]) {
@@ -69,8 +74,15 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec3 normal,
     #else
     float neighborDepth = neighborDepthTexel.r;
     #endif
+
     vec3 neighborWorldPos = screenSpaceToWorldSpace(neighborUvNearest, neighborDepth, cameraMatrixWorld);
-    float depthDiff = (1. - distToPlane(worldPos, neighborWorldPos, normal));
+
+    #ifdef useNormal
+    float depthDiff = exp(-distToPlane(worldPos, neighborWorldPos, normal) * depthPhi);
+    #else
+    float depthDiff = exp(-abs(depth - neighborDepth) * depthPhi);
+    #endif
+
     float depthSimilarity = max(depthDiff / depthPhi, 0.);
 
     basicWeight *= depthSimilarity;
@@ -83,7 +95,8 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec3 normal,
 
 // normal similarity
 #ifdef useNormal
-    vec3 neighborNormal = neighborNormalTexel.rgb;
+    vec3 neighborNormal = unpackRGBToNormal(neighborNormalTexel.rgb);
+    neighborNormal = (vec4(neighborNormal, 1.) * viewMatrix).xyz;
     float normalDiff = dot(neighborNormal, normal);
     float normalSimilarity = pow(max(0., normalDiff), normalPhi);
 
@@ -139,7 +152,7 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec3 normal,
     #endif
 #else
         for (int i = 0; i < textureCount; i++) {
-            neighborInputTexel[i].a = max(0., -pow(neighborInputTexel[i].a, 2.0) + 100.0);
+            neighborInputTexel[i].a = getDisocclusionBoostVariance(neighborInputTexel[i].a);
         }
 #endif
     }
@@ -164,19 +177,32 @@ void main() {
         return;
     }
 
-// g-buffers
-#ifdef RGBA_DEPTH_PACKING
-    float depth = unpackRGBAToDepth(depthTexel);
-#else
-    float depth = depthTexel.r;
+    // g-buffers
+    vec3 worldPos;
+    float depth;
+
+#ifdef useDepth
+    #ifdef RGBA_DEPTH_PACKING
+    depth = unpackRGBAToDepth(depthTexel);
+    #else
+    depth = depthTexel.r;
+    #endif
+
+    worldPos = screenSpaceToWorldSpace(vUv, depth, cameraMatrixWorld);
 #endif
 
-    vec3 worldPos = screenSpaceToWorldSpace(vUv, depth, cameraMatrixWorld);
+    vec3 normal;
+    float roughness;
 
+#ifdef useNormal
     vec4 normalTexel = textureLod(normalTexture, vUv, 0.);
-    vec3 normal = normalTexel.rgb;
-    float roughness = normalTexel.a;
+    normal = unpackRGBToNormal(normalTexel.rgb);
+    normal = (vec4(normal, 1.) * viewMatrix).xyz;
+#endif
+#ifdef useRoughness
+    roughness = normalTexel.a;
     roughness *= roughness;
+#endif
 
     vec3 denoisedColor[textureCount];
     float sumVariance[textureCount];
@@ -212,7 +238,7 @@ void main() {
         #endif
     #else
         for (int i = 0; i < textureCount; i++) {
-            texel[i].a = max(0., -pow(texel[i].a, 2.0) + 100.0);
+            texel[i].a = getDisocclusionBoostVariance(texel[i].a);
         }
     #endif
     }
@@ -237,7 +263,7 @@ void main() {
             if (i != 0.) {
                 vec2 neighborVec = horizontal ? vec2(i, 0.) : vec2(0., i);
 
-                tap(neighborVec, pixelStepOffset, normal, roughness,
+                tap(neighborVec, pixelStepOffset, normal, depth, roughness,
                     worldPos, luma, colorPhi, denoisedColor, totalWeight, sumVariance, variance);
             }
         }
@@ -248,7 +274,7 @@ void main() {
             if (i != 0.) {
                 vec2 neighborVec = horizontal ? vec2(-i, -i) : vec2(i, -i);
 
-                tap(neighborVec, pixelStepOffset, normal, roughness,
+                tap(neighborVec, pixelStepOffset, normal, depth, roughness,
                     worldPos, luma, colorPhi, denoisedColor, totalWeight, sumVariance, variance);
             }
         }
