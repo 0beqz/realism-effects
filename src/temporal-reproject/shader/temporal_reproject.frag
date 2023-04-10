@@ -157,15 +157,13 @@ void main() {
             temporalReprojectMix = min(1. - 1. / (accumulatedTexel[i].a + 1.0), maxValue);
         }
 
-        vec3 n1 = unpackRGBToNormal(inputTexel[i].rgb);
-        vec3 n2 = unpackRGBToNormal(accumulatedTexel[i].rgb);
-
-        if (dot(accumulatedTexel[i].rgb, accumulatedTexel[i].rgb) == 0.0) n2 = n1;
+        vec3 n1 = oct_to_float32x3(inputTexel[i].rg);
+        vec3 n2 = oct_to_float32x3(accumulatedTexel[i].rg);
 
         vec3 n = slerp(n1, n2, temporalReprojectMix);
 
-        // outputColor = mix(inputTexel[i].rgb, accumulatedTexel[i].rgb, temporalReprojectMix);
-        outputColor = n * 0.5 + 0.5;
+        outputColor = mix(inputTexel[i].rgb, accumulatedTexel[i].rgb, temporalReprojectMix);
+        outputColor.rg = float32x3_to_oct(n);
 
         undoColorTransform(outputColor);
 

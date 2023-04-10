@@ -324,6 +324,28 @@ vec3 Decode(vec2 f) {
     return normalize(n);
 }
 
+vec2 Encode2(vec3 n) {
+    vec2 f;
+    f.x = atan(n.y, n.x) * (1.0 / 3.14159265);
+    f.y = n.z;
+
+    f = f * 0.5 + 0.5;
+    return f;
+}
+
+vec3 Decode2(vec2 f) {
+    vec2 ang = f * 2.0 - 1.0;
+
+    vec2 scth = vec2(sin(ang.x * 3.14159265), cos(ang.x * 3.14159265));
+    vec2 scphi = vec2(sqrt(1.0 - ang.y * ang.y), ang.y);
+
+    vec3 n;
+    n.x = scth.y * scphi.x;
+    n.y = scth.x * scphi.x;
+    n.z = scphi.y;
+    return n;
+}
+
 vec3 slerp(vec3 a, vec3 b, float t) {
     float cosAngle = dot(a, b);
     float angle = acos(cosAngle);
@@ -337,4 +359,23 @@ vec3 slerp(vec3 a, vec3 b, float t) {
     float t2 = sin(t * angle) / sinAngle;
 
     return (a * t1) + (b * t2);
+}
+
+// Returns +/- 1
+vec2 signNotZero(vec2 v) {
+    return vec2((v.x >= 0.0) ? +1.0 : -1.0, (v.y >= 0.0) ? +1.0 : -1.0);
+}
+
+// Assume normalized input. Output is on [-1, 1] for each component.
+vec2 float32x3_to_oct(in vec3 v) {
+    // Project the sphere onto the octahedron, and then onto the xy plane
+    vec2 p = v.xy * (1.0 / (abs(v.x) + abs(v.y) + abs(v.z)));
+    // Reflect the folds of the lower hemisphere over the diagonals
+    return (v.z <= 0.0) ? ((1.0 - abs(p.yx)) * signNotZero(p)) : p;
+}
+
+vec3 oct_to_float32x3(vec2 e) {
+    vec3 v = vec3(e.xy, 1.0 - abs(e.x) - abs(e.y));
+    if (v.z < 0.) v.xy = (1.0 - abs(v.yx)) * signNotZero(v.xy);
+    return normalize(v);
 }

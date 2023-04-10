@@ -71,31 +71,45 @@ vec3 slerp(vec3 a, vec3 b, float t) {
     return (a * t1) + (b * t2);
 }
 
-// source: https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/
-vec2 OctWrap(vec2 v) {
-    vec2 w = 1.0 - abs(v.yx);
-    if (v.x < 0.0) w.x = -w.x;
-    if (v.y < 0.0) w.y = -w.y;
-    return w;
-}
-
 vec2 Encode(vec3 n) {
-    n /= (abs(n.x) + abs(n.y) + abs(n.z));
-    n.xy = n.z > 0.0 ? n.xy : OctWrap(n.xy);
-    n.xy = n.xy * 0.5 + 0.5;
-    return n.xy;
+    vec2 f;
+    f.x = atan(n.y, n.x) * (1.0 / 3.14159265);
+    f.y = n.z;
+
+    f = f * 0.5 + 0.5;
+    return f;
 }
 
-// source: https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/
 vec3 Decode(vec2 f) {
-    f = f * 2.0 - 1.0;
+    vec2 ang = f * 2.0 - 1.0;
 
-    // https://twitter.com/Stubbesaurus/status/937994790553227264
-    vec3 n = vec3(f.x, f.y, 1.0 - abs(f.x) - abs(f.y));
-    float t = max(-n.z, 0.0);
-    n.x += n.x >= 0.0 ? -t : t;
-    n.y += n.y >= 0.0 ? -t : t;
-    return normalize(n);
+    vec2 scth = vec2(sin(ang.x * 3.14159265), cos(ang.x * 3.14159265));
+    vec2 scphi = vec2(sqrt(1.0 - ang.y * ang.y), ang.y);
+
+    vec3 n;
+    n.x = scth.y * scphi.x;
+    n.y = scth.x * scphi.x;
+    n.z = scphi.y;
+    return n;
+}
+
+// Returns +/- 1
+vec2 signNotZero(vec2 v) {
+    return vec2((v.x >= 0.0) ? +1.0 : -1.0, (v.y >= 0.0) ? +1.0 : -1.0);
+}
+
+// Assume normalized input. Output is on [-1, 1] for each component.
+vec2 float32x3_to_oct(in vec3 v) {
+    // Project the sphere onto the octahedron, and then onto the xy plane
+    vec2 p = v.xy * (1.0 / (abs(v.x) + abs(v.y) + abs(v.z)));
+    // Reflect the folds of the lower hemisphere over the diagonals
+    return (v.z <= 0.0) ? ((1.0 - abs(p.yx)) * signNotZero(p)) : p;
+}
+
+vec3 oct_to_float32x3(vec2 e) {
+    vec3 v = vec3(e.xy, 1.0 - abs(e.x) - abs(e.y));
+    if (v.z < 0.) v.xy = (1.0 - abs(v.yx)) * signNotZero(v.xy);
+    return normalize(v);
 }
 
 void main() {
@@ -118,10 +132,13 @@ void main() {
 #endif
 
     vec2 velocity = textureLod(velocityTexture, vUv, 0.).rg;
-    vec3 accumulatedBentNormal = textureLod(accumulatedTexture, vUv - velocity.xy, 0.).xyz;
+    vec4 accumulatedBentNormalTexel = textureLod(accumulatedTexture, vUv - velocity.xy, 0.);
+    vec3 accumulatedBentNormal = accumulatedBentNormalTexel.xyz;
 
-    if (dot(accumulatedBentNormal, accumulatedBentNormal) != 0.0) {
-        // worldNormal = Decode(accumulatedBentNormal.rg);
+    if (dot(accumulatedBentNormal, accumulatedBentNormal) != 0.0 && accumulatedBentNormalTexel.w > 10.) {
+        accumulatedBentNormal = Decode(accumulatedBentNormal.rg) * 2. - 1.;
+
+        // if (dot(worldNormal, accumulatedBentNormal) > 0.0) worldNormal = accumulatedBentNormal;
     }
 
     float depth = -getViewZ(unpackedDepth);
@@ -132,23 +149,20 @@ void main() {
 
     for (int i = 0; i < spp; i++) {
         float occ = getOcclusion(worldPos, worldNormal, depth, frame + i, sampleWorldDir);
-        float visibility = pow(1. - occ, 4.);
+        float visibility = 1. - occ;
+        ao += visibility;
 
         // if (totalWeight == 0.0) totalWeight = visibility;
         totalWeight += visibility;
 
         worldNormal = slerp(worldNormal, sampleWorldDir, visibility / totalWeight);
-
-        ao += visibility;
     }
 
     ao /= float(spp);
 
-    ao = pow(ao, power);
+    ao = pow(ao, 4.);
 
     vec3 aoColor = mix(color, vec3(1.), ao);
 
-    // vec2 encodedBentNormal = Encode(worldNormal);
-
-    gl_FragColor = vec4(worldNormal * 0.5 + 0.5, 1.);
+    gl_FragColor = vec4(float32x3_to_oct(worldNormal * 0.5 + 0.5), ao, 1.);
 }
