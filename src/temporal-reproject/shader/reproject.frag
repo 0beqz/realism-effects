@@ -379,3 +379,18 @@ vec3 oct_to_float32x3(vec2 e) {
     if (v.z < 0.) v.xy = (1.0 - abs(v.yx)) * signNotZero(v.xy);
     return normalize(v);
 }
+
+vec2 encode(vec3 n) {
+    float f = sqrt(8.0 * n.z + 8.0);
+    return n.xy / f + 0.5;
+}
+
+vec3 decode(vec2 enc) {
+    vec2 fenc = enc.xy * 4.0 - 2.0;
+    float f = dot(fenc, fenc);
+    float g = sqrt(1.0 - f / 4.0);
+    vec3 n;
+    n.xy = fenc * g;
+    n.z = 1.0 - f / 2.0;
+    return n;
+}

@@ -112,6 +112,21 @@ vec3 oct_to_float32x3(vec2 e) {
     return normalize(v);
 }
 
+vec2 encode(vec3 n) {
+    float f = sqrt(8.0 * n.z + 8.0);
+    return n.xy / f + 0.5;
+}
+
+vec3 decode(vec2 enc) {
+    vec2 fenc = enc.xy * 4.0 - 2.0;
+    float f = dot(fenc, fenc);
+    float g = sqrt(1.0 - f / 4.0);
+    vec3 n;
+    n.xy = fenc * g;
+    n.z = 1.0 - f / 2.0;
+    return n;
+}
+
 void main() {
     float unpackedDepth = textureLod(depthTexture, vUv, 0.0).r;
 
@@ -135,10 +150,9 @@ void main() {
     vec4 accumulatedBentNormalTexel = textureLod(accumulatedTexture, vUv - velocity.xy, 0.);
     vec3 accumulatedBentNormal = accumulatedBentNormalTexel.xyz;
 
-    if (dot(accumulatedBentNormal, accumulatedBentNormal) != 0.0 && accumulatedBentNormalTexel.w > 10.) {
-        accumulatedBentNormal = Decode(accumulatedBentNormal.rg) * 2. - 1.;
-
+    if (dot(accumulatedBentNormal, accumulatedBentNormal) != 0.0) {
         // if (dot(worldNormal, accumulatedBentNormal) > 0.0) worldNormal = accumulatedBentNormal;
+        worldNormal = mix(worldNormal, decode(accumulatedBentNormalTexel.xy), 0.75);
     }
 
     float depth = -getViewZ(unpackedDepth);
@@ -155,7 +169,8 @@ void main() {
         // if (totalWeight == 0.0) totalWeight = visibility;
         totalWeight += visibility;
 
-        worldNormal = slerp(worldNormal, sampleWorldDir, visibility / totalWeight);
+        // worldNormal = slerp(worldNormal, sampleWorldDir, visibility / totalWeight);
+        // worldNormal = normalize(worldNormal);
     }
 
     ao /= float(spp);
@@ -164,5 +179,5 @@ void main() {
 
     vec3 aoColor = mix(color, vec3(1.), ao);
 
-    gl_FragColor = vec4(float32x3_to_oct(worldNormal * 0.5 + 0.5), ao, 1.);
+    gl_FragColor = vec4(encode(worldNormal), ao, 1.);
 }

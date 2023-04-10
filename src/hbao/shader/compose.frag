@@ -20,11 +20,26 @@ vec3 oct_to_float32x3(vec2 e) {
     return normalize(v);
 }
 
+vec2 encode(vec3 n) {
+    float f = sqrt(8.0 * n.z + 8.0);
+    return n.xy / f + 0.5;
+}
+
+vec3 decode(vec2 enc) {
+    vec2 fenc = enc.xy * 4.0 - 2.0;
+    float f = dot(fenc, fenc);
+    float g = sqrt(1.0 - f / 4.0);
+    vec3 n;
+    n.xy = fenc * g;
+    n.z = 1.0 - f / 2.0;
+    return n;
+}
+
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
     float unpackedDepth = textureLod(depthTexture, uv, 0.).r;
 
-    vec3 ao = unpackedDepth > 0.9999 ? vec3(1.0) : oct_to_float32x3(textureLod(inputTexture, uv, 0.0).rg) * 2. - 1.;
-    // vec3 ao = unpackedDepth > 0.9999 ? vec3(1.0) : textureLod(inputTexture, uv, 0.0).bbb;
+    // vec3 ao = unpackedDepth > 0.9999 ? vec3(1.0) : decode(textureLod(inputTexture, uv, 0.0).rg);
+    vec3 ao = unpackedDepth > 0.9999 ? vec3(1.0) : textureLod(inputTexture, uv, 0.0).bbb;
     // vec3 color = inputColor.rgb * ao;
     vec3 color = ao;
 
