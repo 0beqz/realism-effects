@@ -1,7 +1,6 @@
 import { Pass } from "postprocessing"
 import {
 	Color,
-	HalfFloatType,
 	LinearEncoding,
 	Matrix4,
 	NearestFilter,
@@ -16,8 +15,8 @@ import {
 import vertexShader from "../utils/shader/basic.vert"
 import fragmentShader from "./shader/hbao.frag"
 // eslint-disable-next-line camelcase
-import hbao_utils from "./shader/hbao_utils.glsl"
 import sampleBlueNoise from "../utils/shader/sampleBlueNoise.glsl"
+import hbao_utils from "./shader/hbao_utils.glsl"
 
 import blueNoiseImage from "../utils/blue_noise_64_rgba.png"
 
@@ -35,8 +34,7 @@ class HBAOPass extends Pass {
 		this._scene = scene
 
 		this.renderTarget = new WebGLRenderTarget(1, 1, {
-			// encoding: sRGBEncoding,
-			type: HalfFloatType,
+			encoding: sRGBEncoding,
 			depthBuffer: false
 		})
 

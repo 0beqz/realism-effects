@@ -157,14 +157,7 @@ void main() {
             temporalReprojectMix = min(1. - 1. / (accumulatedTexel[i].a + 1.0), maxValue);
         }
 
-        vec3 n1 = decode(inputTexel[i].rg);
-        vec3 n2 = decode(accumulatedTexel[i].rg);
-
-        vec3 n = slerp(n1, n2, temporalReprojectMix);
-
         outputColor = mix(inputTexel[i].rgb, accumulatedTexel[i].rgb, temporalReprojectMix);
-        // outputColor.rg = encode(n);
-
         undoColorTransform(outputColor);
 
         gOutput[i] = vec4(outputColor, accumulatedTexel[i].a);

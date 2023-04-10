@@ -20,7 +20,6 @@ uniform float aoDistance;
 uniform float distancePower;
 uniform float bias;
 uniform float thickness;
-uniform float power;
 
 #include <packing>
 // HBAO Utils
@@ -71,62 +70,6 @@ vec3 slerp(vec3 a, vec3 b, float t) {
     return (a * t1) + (b * t2);
 }
 
-vec2 Encode(vec3 n) {
-    vec2 f;
-    f.x = atan(n.y, n.x) * (1.0 / 3.14159265);
-    f.y = n.z;
-
-    f = f * 0.5 + 0.5;
-    return f;
-}
-
-vec3 Decode(vec2 f) {
-    vec2 ang = f * 2.0 - 1.0;
-
-    vec2 scth = vec2(sin(ang.x * 3.14159265), cos(ang.x * 3.14159265));
-    vec2 scphi = vec2(sqrt(1.0 - ang.y * ang.y), ang.y);
-
-    vec3 n;
-    n.x = scth.y * scphi.x;
-    n.y = scth.x * scphi.x;
-    n.z = scphi.y;
-    return n;
-}
-
-// Returns +/- 1
-vec2 signNotZero(vec2 v) {
-    return vec2((v.x >= 0.0) ? +1.0 : -1.0, (v.y >= 0.0) ? +1.0 : -1.0);
-}
-
-// Assume normalized input. Output is on [-1, 1] for each component.
-vec2 float32x3_to_oct(in vec3 v) {
-    // Project the sphere onto the octahedron, and then onto the xy plane
-    vec2 p = v.xy * (1.0 / (abs(v.x) + abs(v.y) + abs(v.z)));
-    // Reflect the folds of the lower hemisphere over the diagonals
-    return (v.z <= 0.0) ? ((1.0 - abs(p.yx)) * signNotZero(p)) : p;
-}
-
-vec3 oct_to_float32x3(vec2 e) {
-    vec3 v = vec3(e.xy, 1.0 - abs(e.x) - abs(e.y));
-    if (v.z < 0.) v.xy = (1.0 - abs(v.yx)) * signNotZero(v.xy);
-    return normalize(v);
-}
-
-vec2 encode(vec3 n) {
-    float f = sqrt(8.0 * n.z + 8.0);
-    return n.xy / f + 0.5;
-}
-
-vec3 decode(vec2 enc) {
-    vec2 fenc = enc.xy * 4.0 - 2.0;
-    float f = dot(fenc, fenc);
-    float g = sqrt(1.0 - f / 4.0);
-    vec3 n;
-    n.xy = fenc * g;
-    n.z = 1.0 - f / 2.0;
-    return n;
-}
-
 void main() {
     float unpackedDepth = textureLod(depthTexture, vUv, 0.0).r;
 
@@ -146,15 +89,6 @@ void main() {
     vec3 worldNormal = computeWorldNormal(vUv, unpackedDepth);  // compute world normal from depth
 #endif
 
-    vec2 velocity = textureLod(velocityTexture, vUv, 0.).rg;
-    vec4 accumulatedBentNormalTexel = textureLod(accumulatedTexture, vUv - velocity.xy, 0.);
-    vec3 accumulatedBentNormal = accumulatedBentNormalTexel.xyz;
-
-    if (dot(accumulatedBentNormal, accumulatedBentNormal) != 0.0) {
-        // if (dot(worldNormal, accumulatedBentNormal) > 0.0) worldNormal = accumulatedBentNormal;
-        worldNormal = mix(worldNormal, decode(accumulatedBentNormalTexel.xy), 0.75);
-    }
-
     float depth = -getViewZ(unpackedDepth);
 
     vec3 sampleWorldDir;
@@ -166,18 +100,18 @@ void main() {
         float visibility = 1. - occ;
         ao += visibility;
 
-        // if (totalWeight == 0.0) totalWeight = visibility;
-        totalWeight += visibility;
+#ifdef bentNormals
+        float w = visibility / (totalWeight == 0. ? 1. : totalWeight);
+        worldNormal = slerp(worldNormal, sampleWorldDir, w);
+        worldNormal = normalize(worldNormal);
 
-        // worldNormal = slerp(worldNormal, sampleWorldDir, visibility / totalWeight);
-        // worldNormal = normalize(worldNormal);
+        totalWeight += visibility;
+#endif
     }
 
     ao /= float(spp);
 
-    ao = pow(ao, 4.);
-
     vec3 aoColor = mix(color, vec3(1.), ao);
 
-    gl_FragColor = vec4(encode(worldNormal), ao, 1.);
+    gl_FragColor = vec4(aoColor, 1.);
 }

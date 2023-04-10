@@ -33,6 +33,7 @@ export class HBAODebugGUI {
 		generalFolder.addInput(params, "color", {
 			color: { type: "float" }
 		})
+		generalFolder.addInput(params, "bentNormals")
 
 		const temporalReprojectionFolder = pane.addFolder({ title: "Temporal Reprojection" })
 		temporalReprojectionFolder.addInput(params, "blend", { min: 0, max: 1, step: 0.001 })

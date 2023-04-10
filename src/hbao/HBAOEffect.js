@@ -21,6 +21,7 @@ const defaultHBAOOptions = {
 	power: 4,
 	thickness: 0.075,
 	color: new Color("black"),
+	bentNormals: true,
 	useNormalPass: true,
 	normalTexture: null
 }
@@ -33,7 +34,8 @@ class HBAOEffect extends Effect {
 			type: "FinalHBAOMaterial",
 			uniforms: new Map([
 				["inputTexture", new Uniform(null)],
-				["depthTexture", new Uniform(null)]
+				["depthTexture", new Uniform(null)],
+				["power", new Uniform(0)]
 			])
 		})
 
@@ -98,6 +100,16 @@ class HBAOEffect extends Effect {
 							this.hbaoPass.fullscreenMaterial.needsUpdate = true
 							break
 
+						case "bentNormals":
+							if (value) {
+								this.hbaoPass.fullscreenMaterial.defines.bentNormals = ""
+							} else {
+								delete this.hbaoPass.fullscreenMaterial.defines.bentNormals
+							}
+
+							this.hbaoPass.fullscreenMaterial.needsUpdate = true
+							break
+
 						case "blend":
 						case "neighborhoodClampIntensity":
 							this.temporalReprojectPass.fullscreenMaterial.uniforms[key].value = value
@@ -127,6 +139,11 @@ class HBAOEffect extends Effect {
 
 						case "resolutionScale":
 							this.setSize(this.lastSize.width, this.lastSize.height)
+							break
+
+						case "power":
+							this.uniforms.get("power").value = value
+
 							break
 
 						default:
