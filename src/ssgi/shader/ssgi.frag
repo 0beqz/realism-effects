@@ -110,8 +110,8 @@ void main() {
     vec3 viewPos = getViewPosition(depth);
 
     vec3 viewDir = normalize(viewPos);
-    vec3 worldNormal = normalTexel.xyz;
-    vec3 viewNormal = normalize((vec4(worldNormal, 1.) * cameraMatrixWorld).xyz);
+    vec3 viewNormal = unpackRGBToNormal(normalTexel.rgb);
+    vec3 worldNormal = (vec4(viewNormal, 1.) * viewMatrix).xyz;
 
     vec3 worldPos = vec4(vec4(viewPos, 1.) * viewMatrix).xyz;
 

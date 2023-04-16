@@ -25,12 +25,21 @@ uniform float thickness;
 // HBAO Utils
 #include <hbao_utils>
 
-float getOcclusion(const vec3 worldPos, const vec3 worldNormal, const float depth, const int seed, out vec3 sampleWorldDir) {
-    float occlusion = 0.0;
+#ifdef bentNormals
+const bool useBentNormals = true;
+#else
+const bool useBentNormals = false;
+#endif
 
+float getOcclusion(const vec3 worldPos, const vec3 worldNormal, const float depth, const int seed, out vec3 sampleWorldDir) {
     vec4 blueNoise = sampleBlueNoise(blueNoiseTexture, seed, blueNoiseRepeat, texSize);
 
-    sampleWorldDir = sampleHemisphere(worldNormal, blueNoise.rg);
+    if (useBentNormals && seed == frame) {
+        sampleWorldDir = worldNormal;
+    } else {
+        sampleWorldDir = cosineSampleHemisphere(worldNormal, blueNoise.rg);
+    }
+
     vec3 sampleWorldPos = worldPos + aoDistance * pow(blueNoise.b, distancePower) * sampleWorldDir;
 
     // Project the sample position to screen space
@@ -49,10 +58,11 @@ float getOcclusion(const vec3 worldPos, const vec3 worldNormal, const float dept
         float horizon = sampleDepth + deltaDepth * bias;
 
         float occlusionSample = max(0.0, horizon - depth);
-        occlusion += occlusionSample * dot(worldNormal, sampleWorldDir);
+        float occlusion = occlusionSample * dot(worldNormal, sampleWorldDir);
+        return occlusion;
     }
 
-    return occlusion;
+    return 0.;
 }
 
 vec3 slerp(vec3 a, vec3 b, float t) {
@@ -70,6 +80,17 @@ vec3 slerp(vec3 a, vec3 b, float t) {
     return (a * t1) + (b * t2);
 }
 
+vec3 getWorldNormal(vec2 uv) {
+#ifdef useNormalTexture
+    vec3 worldNormal = unpackRGBToNormal(textureLod(normalTexture, uv, 0.).rgb);
+
+    worldNormal = (vec4(worldNormal, 1.) * viewMatrix).xyz;  // view-space to world-space
+    return normalize(worldNormal);
+#else
+    return computeWorldNormal(uv, unpackedDepth);  // compute world normal from depth
+#endif
+}
+
 void main() {
     float unpackedDepth = textureLod(depthTexture, vUv, 0.0).r;
 
@@ -79,38 +100,43 @@ void main() {
         return;
     }
 
-    vec3 worldPos = getWorldPos(unpackedDepth, vUv);
-
-#ifdef useNormalTexture
-    vec3 worldNormal = unpackRGBToNormal(textureLod(normalTexture, vUv, 0.).rgb);
-
-    worldNormal = (vec4(worldNormal, 1.) * viewMatrix).xyz;  // view-space to world-space
-#else
-    vec3 worldNormal = computeWorldNormal(vUv, unpackedDepth);  // compute world normal from depth
-#endif
-
     float depth = -getViewZ(unpackedDepth);
+    vec3 worldPos = getWorldPos(unpackedDepth, vUv);
+    vec3 worldNormal = getWorldNormal(vUv);
 
     vec3 sampleWorldDir;
     float ao = 0.0;
+    int extraSamples = 0;
+
+#ifdef bentNormals
     float totalWeight = 0.0;
 
+    float worldNormalOcclusion = getOcclusion(worldPos, worldNormal, depth, frame, sampleWorldDir);
+    float worldNormalOcclusionVisibility = 1. - worldNormalOcclusion;
+    totalWeight += worldNormalOcclusionVisibility;
+    ao += 1. - worldNormalOcclusion;
+
+    extraSamples = 1;
+#endif
+
     for (int i = 0; i < spp; i++) {
-        float occlusion = getOcclusion(worldPos, worldNormal, depth, frame + i, sampleWorldDir);
+        float occlusion = getOcclusion(worldPos, worldNormal, depth, frame + i + extraSamples, sampleWorldDir);
 
         float visibility = 1. - occlusion;
         ao += visibility;
 
 #ifdef bentNormals
-        float w = visibility / (totalWeight == 0. ? 1. : totalWeight);
-        worldNormal = slerp(worldNormal, sampleWorldDir, w);
-        worldNormal = normalize(worldNormal);
+        if (visibility >= worldNormalOcclusionVisibility) {
+            totalWeight += visibility;
+            float w = visibility / totalWeight;
 
-        totalWeight += visibility;
+            // slerp towards the sample direction based on the visibility
+            worldNormal = slerp(worldNormal, sampleWorldDir, w);
+        }
 #endif
     }
 
-    ao /= float(spp);
+    ao /= float(spp + extraSamples);
 
     vec3 aoColor = mix(color, vec3(1.), ao);
 

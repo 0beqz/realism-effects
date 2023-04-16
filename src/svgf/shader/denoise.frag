@@ -78,9 +78,9 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec3 normal, 
     vec3 neighborWorldPos = screenSpaceToWorldSpace(neighborUvNearest, neighborDepth, cameraMatrixWorld);
 
     #ifdef useNormal
-    float depthDiff = exp(-distToPlane(worldPos, neighborWorldPos, normal) * depthPhi);
+    float depthDiff = 1. - distToPlane(worldPos, neighborWorldPos, normal);
     #else
-    float depthDiff = exp(-abs(depth - neighborDepth) * depthPhi);
+    float depthDiff = 1. - abs(depth - neighborDepth);
     #endif
 
     float depthSimilarity = max(depthDiff / depthPhi, 0.);

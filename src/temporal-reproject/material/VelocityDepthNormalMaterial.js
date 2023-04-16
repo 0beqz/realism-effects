@@ -44,7 +44,7 @@ uniform mat4 prevVelocityMatrix;
 varying vec4 prevPosition;
 varying vec4 newPosition;
 
-#ifdef renderDepthNormal
+#ifdef renderDepth
 varying vec2 vHighPrecisionZW;
 #endif
 `
@@ -64,7 +64,7 @@ prevPosition = prevVelocityMatrix * vec4( transformed, 1.0 );
 
 gl_Position = newPosition;
 
-#ifdef renderDepthNormal
+#ifdef renderDepth
 vHighPrecisionZW = gl_Position.zw;
 #endif
 `
@@ -73,7 +73,7 @@ export const velocity_fragment_pars = /* glsl */ `
 varying vec4 prevPosition;
 varying vec4 newPosition;
 
-#ifdef renderDepthNormal
+#ifdef renderDepth
 varying vec2 vHighPrecisionZW;
 #endif
 `
@@ -84,7 +84,7 @@ vec2 pos1 = (newPosition.xy / newPosition.w) * 0.5 + 0.5;
 
 vec2 vel = pos1 - pos0;
 
-#ifdef renderDepthNormal
+#ifdef renderDepth
 float fragCoordZ = 0.5 * vHighPrecisionZW[0] / vHighPrecisionZW[1] + 0.5;
 #endif
 
@@ -151,7 +151,7 @@ export class VelocityDepthNormalMaterial extends ShaderMaterial {
 						varying vec3 vViewPosition;
 					#endif
 
-					#ifdef renderDepthNormal
+					#ifdef renderDepth
 					layout(location = 0) out vec4 gDepth;
 					layout(location = 1) out vec4 gVelocity;
 					#else
@@ -187,7 +187,7 @@ export class VelocityDepthNormalMaterial extends ShaderMaterial {
 						vec3 worldNormal = normalize((vec4(normal, 1.) * viewMatrix).xyz);
 						gVelocity.ba = Encode(worldNormal);
 
-						#ifdef renderDepthNormal
+						#ifdef renderDepth
 						gDepth = packDepthToRGBA(fragCoordZ);
 						#endif
                     }`

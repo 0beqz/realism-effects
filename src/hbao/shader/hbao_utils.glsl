@@ -24,6 +24,17 @@ vec3 getWorldPos(float depth, vec2 coord) {
     return worldSpacePosition.xyz;
 }
 
+// source: https://www.shadertoy.com/view/cll3R4
+vec3 cosineSampleHemisphere(const vec3 n, const vec2 u) {
+    float r = sqrt(u.x);
+    float theta = 2.0 * PI * u.y;
+
+    vec3 b = normalize(cross(n, vec3(0.0, 1.0, 1.0)));
+    vec3 t = cross(b, n);
+
+    return normalize(r * sin(theta) * b + sqrt(1.0 - u.x) * n + r * cos(theta) * t);
+}
+
 vec3 sampleHemisphere(vec3 normal, vec2 rand) {
     vec3 tangent = normalize(cross(normal, vec3(0.0, 1.0, 0.0)));
     vec3 bitangent = normalize(cross(normal, tangent));

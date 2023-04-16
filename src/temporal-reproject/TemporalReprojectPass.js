@@ -63,6 +63,7 @@ export class TemporalReprojectPass extends Pass {
 		this.fullscreenMaterial.uniforms.blend.value = options.blend
 		this.fullscreenMaterial.uniforms.constantBlend.value = options.constantBlend
 		this.fullscreenMaterial.uniforms.fullAccumulate.value = options.fullAccumulate
+		this.fullscreenMaterial.uniforms.neighborhoodClampIntensity.value = options.neighborhoodClampIntensity
 
 		this.fullscreenMaterial.uniforms.projectionMatrix.value = camera.projectionMatrix.clone()
 		this.fullscreenMaterial.uniforms.projectionMatrixInverse.value = camera.projectionMatrixInverse.clone()

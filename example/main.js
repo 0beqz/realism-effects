@@ -438,7 +438,6 @@ const initScene = async () => {
 
 				const gui3 = new HBAODebugGUI(hbaoEffect, options)
 				gui3.pane.containerElem_.style.left = "8px"
-				// pass.needsDepthTexture = true
 
 				composer.addPass(pass)
 			} else {

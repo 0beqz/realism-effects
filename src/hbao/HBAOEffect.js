@@ -12,7 +12,7 @@ const defaultHBAOOptions = {
 	denoise: 2,
 	denoiseIterations: 3,
 	denoiseKernel: 3,
-	depthPhi: 40,
+	depthPhi: 25,
 	normalPhi: 20,
 	spp: 8,
 	distance: 2.5,
@@ -22,7 +22,7 @@ const defaultHBAOOptions = {
 	thickness: 0.075,
 	color: new Color("black"),
 	bentNormals: true,
-	useNormalPass: false,
+	useNormalPass: true,
 	normalTexture: null
 }
 
@@ -55,7 +55,7 @@ class HBAOEffect extends Effect {
 		this.temporalReprojectPass.fullscreenMaterial.uniforms.inputTexture0.value = this.hbaoPass.renderTarget.texture
 
 		this.denoisePass = new DenoisePass(camera, [this.temporalReprojectPass.renderTarget.texture[0]], "", "", {
-			basicVariance: 0.05
+			basicVariance: 0.1
 		})
 
 		this.hbaoPass.fullscreenMaterial.uniforms.accumulatedTexture.value = this.denoisePass.texture
@@ -97,6 +97,7 @@ class HBAOEffect extends Effect {
 					switch (key) {
 						case "spp":
 							this.hbaoPass.fullscreenMaterial.defines.spp = value.toFixed(0)
+
 							this.hbaoPass.fullscreenMaterial.needsUpdate = true
 							break
 
@@ -147,9 +148,8 @@ class HBAOEffect extends Effect {
 							break
 
 						default:
-							if (key in this.hbaoPass.fullscreenMaterial.uniforms) {
+							if (key in this.hbaoPass.fullscreenMaterial.uniforms)
 								this.hbaoPass.fullscreenMaterial.uniforms[key].value = value
-							}
 					}
 
 					this.temporalReprojectPass.reset()

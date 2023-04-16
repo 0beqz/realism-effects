@@ -25,7 +25,6 @@ const finalFragmentShader = fragmentShader
 	.replace("#include <sampleBlueNoise>", sampleBlueNoise)
 
 class HBAOPass extends Pass {
-	needsDepthTexture = true
 	frame = 0
 
 	constructor(camera, scene) {
@@ -97,7 +96,7 @@ class HBAOPass extends Pass {
 	}
 
 	render(renderer) {
-		const spp = 16
+		const spp = +this.fullscreenMaterial.defines.spp
 		this.frame = (this.frame + spp) % 65536
 
 		this.fullscreenMaterial.uniforms.frame.value = this.frame

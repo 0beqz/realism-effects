@@ -32,7 +32,7 @@ export class VelocityDepthNormalPass extends Pass {
 	visibleMeshes = []
 	needsSwap = false
 
-	constructor(scene, camera, renderDepthNormal = true) {
+	constructor(scene, camera, renderDepth = true) {
 		super("velocityDepthNormalPass")
 
 		if (!(camera instanceof PerspectiveCamera)) {
@@ -47,7 +47,7 @@ export class VelocityDepthNormalPass extends Pass {
 		this._scene = scene
 		this._camera = camera
 
-		const bufferCount = renderDepthNormal ? 2 : 1
+		const bufferCount = renderDepth ? 2 : 1
 
 		this.renderTarget = new WebGLMultipleRenderTargets(1, 1, bufferCount, {
 			minFilter: NearestFilter,
@@ -57,7 +57,7 @@ export class VelocityDepthNormalPass extends Pass {
 		this.renderTarget.depthTexture = new DepthTexture(1, 1)
 		this.renderTarget.depthTexture.type = FloatType
 
-		if (renderDepthNormal) {
+		if (renderDepth) {
 			this.renderTarget.texture[0].type = UnsignedByteType
 			this.renderTarget.texture[0].needsUpdate = true
 
@@ -65,7 +65,7 @@ export class VelocityDepthNormalPass extends Pass {
 			this.renderTarget.texture[1].needsUpdate = true
 		}
 
-		this.renderDepthNormal = renderDepthNormal
+		this.renderDepth = renderDepth
 	}
 
 	setVelocityDepthNormalMaterialInScene() {
@@ -92,7 +92,7 @@ export class VelocityDepthNormalPass extends Pass {
 
 			c.visible = isChildMaterialRenderable(c, originalMaterial)
 
-			if (this.renderDepthNormal) velocityDepthNormalMaterial.defines.renderDepthNormal = ""
+			if (this.renderDepth) velocityDepthNormalMaterial.defines.renderDepth = ""
 
 			const map =
 				originalMaterial.map ||
