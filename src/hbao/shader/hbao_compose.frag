@@ -10,5 +10,5 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
     vec3 color = pow(ao, vec3(power));
     // vec3 color = ao;
 
-    outputColor = vec4(color, inputColor.a);
+    outputColor = vec4(inputColor.rgb * color, inputColor.a);
 }

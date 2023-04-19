@@ -1,5 +1,4 @@
-﻿/* eslint-disable camelcase */
-import { Effect, RenderPass, Selection } from "postprocessing"
+﻿import { Effect, RenderPass, Selection } from "postprocessing"
 import {
 	LinearMipMapLinearFilter,
 	NoToneMapping,
@@ -11,7 +10,8 @@ import {
 import { SVGF } from "../svgf/SVGF.js"
 import { CubeToEquirectEnvPass } from "./pass/CubeToEquirectEnvPass.js"
 import { SSGIPass } from "./pass/SSGIPass.js"
-import compose from "./shader/compose.frag"
+/* eslint-disable camelcase */
+import ssgi_compose from "./shader/ssgi_compose.frag"
 import denoise_compose from "./shader/denoise_compose.frag"
 import denoise_compose_functions from "./shader/denoise_compose_functions.frag"
 import { defaultSSGIOptions } from "./SSGIOptions"
@@ -42,7 +42,7 @@ export class SSGIEffect extends Effect {
 	constructor(scene, camera, velocityDepthNormalPass, options = defaultSSGIOptions) {
 		options = { ...defaultSSGIOptions, ...options }
 
-		super("SSGIEffect", compose, {
+		super("SSGIEffect", ssgi_compose, {
 			type: "FinalSSGIMaterial",
 			uniforms: new Map([
 				["inputTexture", new Uniform(null)],
@@ -88,15 +88,15 @@ export class SSGIEffect extends Effect {
 
 		const textureCount = options.diffuseOnly || options.specularOnly ? 1 : 2
 
-		this.svgf = new SVGF(
-			scene,
-			camera,
-			velocityDepthNormalPass,
-			textureCount,
-			denoise_compose,
-			denoise_compose_functions,
-			options
-		)
+		options = {
+			...options,
+			...{
+				denoiseCustomComposeShader: denoise_compose,
+				denoiseCustomComposeShaderFunctions: denoise_compose_functions
+			}
+		}
+
+		this.svgf = new SVGF(scene, camera, velocityDepthNormalPass, textureCount, options)
 
 		if (definesName === "ssgi") {
 			this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.fragmentShader =
@@ -133,7 +133,9 @@ export class SSGIEffect extends Effect {
 				this.ssgiPass.specularTexture
 		}
 
-		this.svgf.setJitteredGBuffers(this.ssgiPass.depthTexture, this.ssgiPass.normalTexture)
+		this.svgf.setJitteredGBuffers(this.ssgiPass.depthTexture, this.ssgiPass.normalTexture, {
+			useRoughnessInAlphaChannel: true
+		})
 
 		// patch the denoise pass
 		this.svgf.denoisePass.fullscreenMaterial.uniforms = {

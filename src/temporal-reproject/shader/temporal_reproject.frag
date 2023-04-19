@@ -167,7 +167,7 @@ void main() {
 #pragma unroll_loop_end
 
 // the user's shader to compose a final outputColor from the inputTexel and accumulatedTexel
-#ifdef useCustomComposeShader
-    customComposeShader
+#ifdef useTemporalReprojectCustomComposeShader
+    temporalReprojectCustomComposeShader
 #endif
 }

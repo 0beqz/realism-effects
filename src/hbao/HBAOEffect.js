@@ -3,7 +3,8 @@ import { Color, Uniform } from "three"
 import { DenoisePass } from "../svgf/pass/DenoisePass"
 import { TemporalReprojectPass } from "../temporal-reproject/TemporalReprojectPass"
 import { HBAOPass } from "./HBAOPass"
-import compose from "./shader/compose.frag"
+// eslint-disable-next-line camelcase
+import hbao_compose from "./shader/hbao_compose.frag"
 
 const defaultHBAOOptions = {
 	resolutionScale: 1,
@@ -12,7 +13,7 @@ const defaultHBAOOptions = {
 	denoise: 2,
 	denoiseIterations: 3,
 	denoiseKernel: 3,
-	depthPhi: 25,
+	depthPhi: 35,
 	normalPhi: 20,
 	spp: 8,
 	distance: 2.5,
@@ -22,15 +23,16 @@ const defaultHBAOOptions = {
 	thickness: 0.075,
 	color: new Color("black"),
 	bentNormals: true,
-	useNormalPass: true,
-	normalTexture: null
+	useNormalPass: false,
+	normalTexture: null,
+	temporalReprojection: false
 }
 
 class HBAOEffect extends Effect {
 	lastSize = { width: 0, height: 0, resolutionScale: 0 }
 
 	constructor(composer, camera, scene, velocityDepthNormalPass, options = defaultHBAOOptions) {
-		super("HBAOEffect", compose, {
+		super("HBAOEffect", hbao_compose, {
 			type: "FinalHBAOMaterial",
 			uniforms: new Map([
 				["inputTexture", new Uniform(null)],
@@ -52,9 +54,11 @@ class HBAOEffect extends Effect {
 
 			...options
 		})
-		this.temporalReprojectPass.fullscreenMaterial.uniforms.inputTexture0.value = this.hbaoPass.renderTarget.texture
+		this.temporalReprojectPass.setTextures(this.hbaoPass.texture)
 
-		this.denoisePass = new DenoisePass(camera, [this.temporalReprojectPass.renderTarget.texture[0]], "", "", {
+		if (!options.temporalReprojection) options.blend = 0
+
+		this.denoisePass = new DenoisePass(camera, this.temporalReprojectPass.texture, {
 			basicVariance: 0.1
 		})
 
@@ -79,6 +83,8 @@ class HBAOEffect extends Effect {
 
 			this.denoisePass.setNormalTexture(normalTexture)
 		}
+
+		this.bindBuffers()
 
 		this.makeOptionsReactive(options)
 	}
@@ -109,6 +115,10 @@ class HBAOEffect extends Effect {
 							}
 
 							this.hbaoPass.fullscreenMaterial.needsUpdate = true
+							break
+
+						case "temporalReprojection":
+							this.blend = defaultHBAOOptions.blend
 							break
 
 						case "blend":
@@ -188,17 +198,38 @@ class HBAOEffect extends Effect {
 		}
 	}
 
-	update(renderer) {
-		this.normalPass?.render(renderer)
-		this.hbaoPass.render(renderer)
-		this.temporalReprojectPass.render(renderer)
+	bindBuffers() {
+		if (this.blend > 0) {
+			if (this.denoisePass.textures[0] !== this.temporalReprojectPass.renderTarget.texture[0]) {
+				this.denoisePass.setTextures(this.temporalReprojectPass.renderTarget.texture[0])
+
+				this.hbaoPass.fullscreenMaterial.defines.animateNoise = ""
+				this.hbaoPass.fullscreenMaterial.needsUpdate = true
+			}
+		} else {
+			if (this.denoisePass.textures[0] !== this.hbaoPass.renderTarget.texture) {
+				this.denoisePass.setTextures(this.hbaoPass.renderTarget.texture)
+
+				delete this.hbaoPass.fullscreenMaterial.defines.animateNoise
+				this.hbaoPass.fullscreenMaterial.needsUpdate = true
+			}
+		}
 
 		if (this.denoiseIterations > 0) {
-			this.denoisePass.render(renderer)
 			this.uniforms.get("inputTexture").value = this.denoisePass.texture
 		} else {
 			this.uniforms.get("inputTexture").value = this.temporalReprojectPass.renderTarget.texture[0]
 		}
+	}
+
+	update(renderer) {
+		this.bindBuffers()
+
+		this.normalPass?.render(renderer)
+		this.hbaoPass.render(renderer)
+
+		if (this.blend > 0) this.temporalReprojectPass.render(renderer)
+		if (this.denoiseIterations > 0) this.denoisePass.render(renderer)
 	}
 }
 

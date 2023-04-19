@@ -19,9 +19,5 @@ if (!reset && reprojectedUvDiffuse.x >= 0.0) {
     return;
 }
 
-// if (reprojectedUvDiffuse.x < 0. && dot(inputTexel[0].rgb, inputTexel[0].rgb) != 0.0) {
-//     gOutput0.rgb = vec3(0., 1., 0.);
-// }
-
 // float variance = max(0.0, gMoment.a - gMoment.b * gMoment.b);
 // gOutput0.xyz = vec3(variance);

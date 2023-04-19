@@ -27,7 +27,7 @@ export class HBAODebugGUI {
 			max: 200,
 			step: 1
 		})
-		generalFolder.addInput(params, "power", { min: 0.5, max: 64, step: 0.5 })
+		generalFolder.addInput(params, "power", { min: 0.5, max: 8, step: 0.5 })
 		generalFolder.addInput(params, "thickness", { min: 0, max: 0.1, step: 0.001 })
 
 		generalFolder.addInput(params, "color", {
@@ -36,6 +36,10 @@ export class HBAODebugGUI {
 		generalFolder.addInput(params, "bentNormals")
 
 		const temporalReprojectionFolder = pane.addFolder({ title: "Temporal Reprojection" })
+		temporalReprojectionFolder.addInput(params, "temporalReprojection").on("change", () => {
+			pane.refresh()
+			params.blend = HBAOEffect.DefaultOptions.blend
+		})
 		temporalReprojectionFolder.addInput(params, "blend", { min: 0, max: 1, step: 0.001 })
 		temporalReprojectionFolder.addInput(params, "neighborhoodClampIntensity", { min: 0, max: 1, step: 0.001 })
 

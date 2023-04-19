@@ -75,6 +75,10 @@ class HBAOPass extends Pass {
 		this.fullscreenMaterial.uniforms.cameraMatrixWorld.value = this._camera.matrixWorld
 	}
 
+	get texture() {
+		return this.renderTarget.texture
+	}
+
 	initialize(renderer, ...args) {
 		super.initialize(renderer, ...args)
 

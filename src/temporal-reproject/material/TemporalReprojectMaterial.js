@@ -7,11 +7,14 @@ import reproject from "../shader/reproject.frag"
 import { unrollLoops } from "../../ssgi/utils/Utils"
 
 export class TemporalReprojectMaterial extends ShaderMaterial {
-	constructor(textureCount = 1, customComposeShader = "") {
+	constructor(textureCount = 1, temporalReprojectCustomComposeShader = "") {
 		let finalFragmentShader = fragmentShader.replace("#include <reproject>", reproject)
 
-		if (typeof customComposeShader === "string") {
-			finalFragmentShader = finalFragmentShader.replace("customComposeShader", customComposeShader)
+		if (typeof temporalReprojectCustomComposeShader === "string") {
+			finalFragmentShader = finalFragmentShader.replace(
+				"temporalReprojectCustomComposeShader",
+				temporalReprojectCustomComposeShader
+			)
 		}
 
 		let definitions = ""
@@ -85,6 +88,7 @@ export class TemporalReprojectMaterial extends ShaderMaterial {
 			this.uniforms["accumulatedTexture" + i] = new Uniform(null)
 		}
 
-		if (typeof customComposeShader === "string") this.defines.useCustomComposeShader = ""
+		if (typeof temporalReprojectCustomComposeShader === "string")
+			this.defines.useTemporalReprojectCustomComposeShader = ""
 	}
 }

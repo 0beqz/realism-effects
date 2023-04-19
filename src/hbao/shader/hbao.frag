@@ -2,8 +2,6 @@ varying vec2 vUv;
 
 uniform sampler2D depthTexture;
 uniform sampler2D normalTexture;
-uniform sampler2D velocityTexture;
-uniform sampler2D accumulatedTexture;
 uniform vec3 color;
 uniform float cameraNear;
 uniform float cameraFar;
@@ -25,20 +23,18 @@ uniform float thickness;
 // HBAO Utils
 #include <hbao_utils>
 
-#ifdef bentNormals
-const bool useBentNormals = true;
-#else
-const bool useBentNormals = false;
-#endif
-
 float getOcclusion(const vec3 worldPos, const vec3 worldNormal, const float depth, const int seed, out vec3 sampleWorldDir) {
     vec4 blueNoise = sampleBlueNoise(blueNoiseTexture, seed, blueNoiseRepeat, texSize);
 
-    if (useBentNormals && seed == frame) {
+#ifdef bentNormals
+    if (seed == frame) {
         sampleWorldDir = worldNormal;
     } else {
         sampleWorldDir = cosineSampleHemisphere(worldNormal, blueNoise.rg);
     }
+#else
+    sampleWorldDir = cosineSampleHemisphere(worldNormal, blueNoise.rg);
+#endif
 
     vec3 sampleWorldPos = worldPos + aoDistance * pow(blueNoise.b, distancePower) * sampleWorldDir;
 
@@ -65,32 +61,6 @@ float getOcclusion(const vec3 worldPos, const vec3 worldNormal, const float dept
     return 0.;
 }
 
-vec3 slerp(vec3 a, vec3 b, float t) {
-    float cosAngle = dot(a, b);
-    float angle = acos(cosAngle);
-
-    if (abs(angle) < 0.001) {
-        return mix(a, b, t);
-    }
-
-    float sinAngle = sin(angle);
-    float t1 = sin((1.0 - t) * angle) / sinAngle;
-    float t2 = sin(t * angle) / sinAngle;
-
-    return (a * t1) + (b * t2);
-}
-
-vec3 getWorldNormal(vec2 uv) {
-#ifdef useNormalTexture
-    vec3 worldNormal = unpackRGBToNormal(textureLod(normalTexture, uv, 0.).rgb);
-
-    worldNormal = (vec4(worldNormal, 1.) * viewMatrix).xyz;  // view-space to world-space
-    return normalize(worldNormal);
-#else
-    return computeWorldNormal(uv, unpackedDepth);  // compute world normal from depth
-#endif
-}
-
 void main() {
     float unpackedDepth = textureLod(depthTexture, vUv, 0.0).r;
 
@@ -100,9 +70,9 @@ void main() {
         return;
     }
 
-    float depth = -getViewZ(unpackedDepth);
     vec3 worldPos = getWorldPos(unpackedDepth, vUv);
-    vec3 worldNormal = getWorldNormal(vUv);
+    vec3 worldNormal = getWorldNormal(unpackedDepth, vUv);
+    float depth = -getViewZ(unpackedDepth);
 
     vec3 sampleWorldDir;
     float ao = 0.0;
@@ -120,7 +90,12 @@ void main() {
 #endif
 
     for (int i = 0; i < spp; i++) {
-        float occlusion = getOcclusion(worldPos, worldNormal, depth, frame + i + extraSamples, sampleWorldDir);
+        int seed = i + extraSamples;
+#ifdef animateNoise
+        seed += frame;
+#endif
+
+        float occlusion = getOcclusion(worldPos, worldNormal, depth, seed, sampleWorldDir);
 
         float visibility = 1. - occlusion;
         ao += visibility;

@@ -1,5 +1,14 @@
 ﻿import { Pass } from "postprocessing"
-import { Clock, HalfFloatType, LinearFilter, Matrix4, Quaternion, Vector3, WebGLMultipleRenderTargets } from "three"
+import {
+	Clock,
+	HalfFloatType,
+	LinearFilter,
+	Matrix4,
+	Quaternion,
+	Uniform,
+	Vector3,
+	WebGLMultipleRenderTargets
+} from "three"
 import { CopyPass } from "../ssgi/pass/CopyPass"
 import { TemporalReprojectMaterial } from "./material/TemporalReprojectMaterial"
 import { generateR2 } from "./utils/QuasirandomGenerator"
@@ -16,7 +25,7 @@ export const defaultTemporalReprojectPassOptions = {
 	depthDistance: 0.25,
 	worldDistance: 0.375,
 	reprojectSpecular: false,
-	customComposeShader: null,
+	temporalReprojectCustomComposeShader: null,
 	renderTarget: null
 }
 
@@ -49,7 +58,7 @@ export class TemporalReprojectPass extends Pass {
 			depthBuffer: false
 		})
 
-		this.fullscreenMaterial = new TemporalReprojectMaterial(textureCount, options.customComposeShader)
+		this.fullscreenMaterial = new TemporalReprojectMaterial(textureCount, options.temporalReprojectCustomComposeShader)
 		this.fullscreenMaterial.defines.textureCount = textureCount
 
 		if (options.dilation) this.fullscreenMaterial.defines.dilation = ""
@@ -100,6 +109,14 @@ export class TemporalReprojectPass extends Pass {
 
 		this.options = options
 		this.velocityDepthNormalPass = velocityDepthNormalPass
+	}
+
+	setTextures(textures) {
+		if (!Array.isArray(textures)) textures = [textures]
+
+		for (let i = 0; i < textures.length; i++) {
+			this.fullscreenMaterial.uniforms["inputTexture" + i] = new Uniform(textures[i])
+		}
 	}
 
 	dispose() {

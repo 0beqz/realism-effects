@@ -1,7 +1,5 @@
 #include <sampleBlueNoise>
 
-#define PI 3.14159265358979323846264338327950288
-
 // source: https://github.com/mrdoob/three.js/blob/342946c8392639028da439b6dc0597e58209c696/examples/js/shaders/SAOShader.js#L123
 float getViewZ(const float depth) {
 #ifdef PERSPECTIVE_CAMERA
@@ -12,7 +10,7 @@ float getViewZ(const float depth) {
 }
 
 // source: https://github.com/N8python/ssao/blob/master/EffectShader.js#L52
-vec3 getWorldPos(float depth, vec2 coord) {
+vec3 getWorldPos(const float depth, const vec2 coord) {
     float z = depth * 2.0 - 1.0;
     vec4 clipSpacePosition = vec4(coord * 2.0 - 1.0, z, 1.0);
     vec4 viewSpacePosition = inverseProjectionMatrix * clipSpacePosition;
@@ -24,33 +22,22 @@ vec3 getWorldPos(float depth, vec2 coord) {
     return worldSpacePosition.xyz;
 }
 
-// source: https://www.shadertoy.com/view/cll3R4
-vec3 cosineSampleHemisphere(const vec3 n, const vec2 u) {
-    float r = sqrt(u.x);
-    float theta = 2.0 * PI * u.y;
+vec3 slerp(const vec3 a, const vec3 b, const float t) {
+    float cosAngle = dot(a, b);
+    float angle = acos(cosAngle);
 
-    vec3 b = normalize(cross(n, vec3(0.0, 1.0, 1.0)));
-    vec3 t = cross(b, n);
+    if (abs(angle) < 0.001) {
+        return mix(a, b, t);
+    }
 
-    return normalize(r * sin(theta) * b + sqrt(1.0 - u.x) * n + r * cos(theta) * t);
+    float sinAngle = sin(angle);
+    float t1 = sin((1.0 - t) * angle) / sinAngle;
+    float t2 = sin(t * angle) / sinAngle;
+
+    return (a * t1) + (b * t2);
 }
 
-vec3 sampleHemisphere(vec3 normal, vec2 rand) {
-    vec3 tangent = normalize(cross(normal, vec3(0.0, 1.0, 0.0)));
-    vec3 bitangent = normalize(cross(normal, tangent));
-
-    float r = sqrt(rand.x);
-    float theta = 2.0 * PI * rand.y;
-
-    float x = r * cos(theta);
-    float y = r * sin(theta);
-    float z = sqrt(max(0.0, 1.0 - x * x - y * y));
-
-    vec3 sampleDir = tangent * x + bitangent * y + normal * z;
-    return sampleDir;
-}
-
-vec3 computeWorldNormal(vec2 uv, float unpackedDepth) {
+vec3 computeWorldNormal(const float unpackedDepth, const vec2 uv) {
     vec2 uv0 = uv;
     vec2 uv1 = uv + vec2(1., 0.) / texSize;
     vec2 uv2 = uv + vec2(0., 1.) / texSize;
@@ -66,4 +53,28 @@ vec3 computeWorldNormal(vec2 uv, float unpackedDepth) {
     vec3 normal = normalize(cross(p2 - p0, p1 - p0));
 
     return -normal;
+}
+
+vec3 getWorldNormal(const float unpackedDepth, const vec2 uv) {
+#ifdef useNormalTexture
+    vec3 worldNormal = unpackRGBToNormal(textureLod(normalTexture, uv, 0.).rgb);
+
+    worldNormal = (vec4(worldNormal, 1.) * viewMatrix).xyz;  // view-space to world-space
+    return normalize(worldNormal);
+#else
+    return computeWorldNormal(unpackedDepth, uv);  // compute world normal from depth
+#endif
+}
+
+#define PI 3.14159265358979323846264338327950288
+
+// source: https://www.shadertoy.com/view/cll3R4
+vec3 cosineSampleHemisphere(const vec3 n, const vec2 u) {
+    float r = sqrt(u.x);
+    float theta = 2.0 * PI * u.y;
+
+    vec3 b = normalize(cross(n, vec3(0.0, 1.0, 1.0)));
+    vec3 t = cross(b, n);
+
+    return normalize(r * sin(theta) * b + sqrt(1.0 - u.x) * n + r * cos(theta) * t);
 }

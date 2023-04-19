@@ -26,7 +26,9 @@ const defaultDenoisePassOptions = {
 	roughness: false,
 	diffuse: true,
 	roughnessDependent: false,
-	basicVariance: 0.0005
+	basicVariance: 0.0005,
+	denoiseCustomComposeShader: "",
+	denoiseCustomComposeShaderFunctions: ""
 }
 
 const useEdgeStoppingTypes = [
@@ -39,52 +41,16 @@ const useEdgeStoppingTypes = [
 export class DenoisePass extends Pass {
 	iterations = 1
 
-	constructor(
-		camera,
-		textures = [],
-		customComposeShader = "",
-		customComposeShaderFunctions = "",
-		options = defaultDenoisePassOptions
-	) {
+	constructor(camera, textures = [], options = defaultDenoisePassOptions) {
 		super("DenoisePass")
-		options = { ...defaultDenoisePassOptions, ...options }
 
-		let definitions = ""
-		const finalOutputShader = ""
-		let outputShader = ""
-
-		this.textures = textures
-
-		for (let i = 0; i < this.textures.length; i++) {
-			definitions += /* glsl */ `layout(location = ${i}) out vec4 gTexture${i};\n`
-			definitions += /* glsl */ `uniform sampler2D texture${i};\n`
-
-			outputShader += /* glsl */ `gTexture${i} = vec4(denoisedColor[${i}], sumVariance[${i}]);\n`
-		}
-
-		let finalFragmentShader =
-			definitions +
-			fragmentShader
-				.replace("#include <customComposeShaderFunctions>", customComposeShaderFunctions)
-				.replace("#include <customComposeShader>", customComposeShader)
-				.replace("#include <finalOutputShader>", finalOutputShader)
-				.replace("#include <outputShader>", outputShader)
-				.replaceAll("textureCount", this.textures.length)
-				.replaceAll("momentTextureCount", Math.min(this.textures.length, 2))
-
-		finalFragmentShader = unrollLoops(finalFragmentShader)
-
-		const matches = finalFragmentShader.matchAll(/texture\[\s*[0-9]+\s*]/g)
-
-		for (const [key] of matches) {
-			const number = key.replace(/[^0-9]/g, "")
-			finalFragmentShader = finalFragmentShader.replace(key, "texture" + number)
-		}
+		if (!Array.isArray(textures)) textures = [textures]
 
 		options = { ...defaultDenoisePassOptions, ...options }
+		this.options = options
 
 		this.fullscreenMaterial = new ShaderMaterial({
-			fragmentShader: finalFragmentShader,
+			fragmentShader: "",
 			vertexShader: basicVertexShader,
 			uniforms: {
 				depthTexture: new Uniform(null),
@@ -119,29 +85,62 @@ export class DenoisePass extends Pass {
 			depthBuffer: false
 		}
 
-		this.renderTargetA = new WebGLMultipleRenderTargets(1, 1, this.textures.length, renderTargetOptions)
-		this.renderTargetB = new WebGLMultipleRenderTargets(1, 1, this.textures.length, renderTargetOptions)
+		this.renderTargetA = new WebGLMultipleRenderTargets(1, 1, textures.length, renderTargetOptions)
+		this.renderTargetB = new WebGLMultipleRenderTargets(1, 1, textures.length, renderTargetOptions)
 
-		// register the texture uniforms
-		for (let i = 0; i < this.textures.length; i++) {
-			this.fullscreenMaterial.uniforms["texture" + i] = new Uniform(textures[i])
-		}
-
-		if (typeof options.roughnessDependent === "boolean") {
+		if (typeof options.roughnessDependent === "boolean")
 			options.roughnessDependent = Array(textures.length).fill(options.roughnessDependent)
-		}
-
 		this.fullscreenMaterial.defines.roughnessDependent = /* glsl */ `bool[](${options.roughnessDependent.join(", ")})`
 
-		if (typeof options.basicVariance === "number") {
+		if (typeof options.basicVariance === "number")
 			options.basicVariance = Array(textures.length).fill(options.basicVariance)
-		}
-
 		this.fullscreenMaterial.defines.basicVariance = /* glsl */ `float[](${options.basicVariance
 			.map(n => n.toPrecision(5))
 			.join(", ")})`
 
-		this.options = options
+		// register the texture uniforms
+		this.setTextures(textures)
+	}
+
+	setTextures(textures) {
+		if (!Array.isArray(textures)) textures = [textures]
+
+		this.textures = textures
+
+		let definitions = ""
+		let outputShader = ""
+
+		for (let i = 0; i < this.textures.length; i++) {
+			definitions += /* glsl */ `layout(location = ${i}) out vec4 gTexture${i};\n`
+			definitions += /* glsl */ `uniform sampler2D inputTexture${i};\n`
+
+			outputShader += /* glsl */ `gTexture${i} = vec4(denoisedColor[${i}], sumVariance[${i}]);\n`
+		}
+
+		let finalFragmentShader =
+			definitions +
+			fragmentShader
+				.replace("#include <denoiseCustomComposeShaderFunctions>", this.options.denoiseCustomComposeShaderFunctions)
+				.replace("#include <denoiseCustomComposeShader>", this.options.denoiseCustomComposeShader)
+				.replace("#include <outputShader>", outputShader)
+				.replaceAll("textureCount", this.textures.length)
+				.replaceAll("momentTextureCount", Math.min(this.textures.length, 2))
+
+		finalFragmentShader = unrollLoops(finalFragmentShader)
+
+		const matches = finalFragmentShader.matchAll(/inputTexture\[\s*[0-9]+\s*]/g)
+
+		for (const [key] of matches) {
+			const number = key.replace(/[^0-9]/g, "")
+			finalFragmentShader = finalFragmentShader.replace(key, "inputTexture" + number)
+		}
+
+		for (let i = 0; i < textures.length; i++) {
+			this.fullscreenMaterial.uniforms["inputTexture" + i] = new Uniform(textures[i])
+		}
+
+		this.fullscreenMaterial.fragmentShader = finalFragmentShader
+		this.fullscreenMaterial.needsUpdate = true
 	}
 
 	setDepthTexture(depthTexture) {
@@ -154,8 +153,6 @@ export class DenoisePass extends Pass {
 		} else {
 			delete this.fullscreenMaterial.defines.RGBA_DEPTH_PACKING
 		}
-
-		this.fullscreenMaterial.needsUpdate = true
 
 		this.options.depth = true
 	}
@@ -192,8 +189,6 @@ export class DenoisePass extends Pass {
 			const useEdgeStoppingType =
 				this.options[name] && (phi === "" || this.fullscreenMaterial.uniforms[phi]?.value > 0.001)
 
-			// if (useEdgeStoppingType) console.log("use", name)
-
 			if (useEdgeStoppingType !== define in this.fullscreenMaterial.defines) {
 				useEdgeStoppingType
 					? (this.fullscreenMaterial.defines[define] = "")
@@ -219,7 +214,7 @@ export class DenoisePass extends Pass {
 				const horizontal = i % 2 === 0
 				const stepSize = 2 ** ~~(i / 2)
 
-				const n = parseInt(Math.log2(stepSize))
+				const n = Math.log2(stepSize)
 				const blurHorizontal = n % 2 == 0
 
 				this.fullscreenMaterial.uniforms.horizontal.value = horizontal
@@ -232,7 +227,7 @@ export class DenoisePass extends Pass {
 				const renderTarget = horizontal ? this.renderTargetA : this.renderTargetB
 
 				for (let j = 0; j < this.textures.length; j++) {
-					this.fullscreenMaterial.uniforms["texture" + j].value = horizontal
+					this.fullscreenMaterial.uniforms["inputTexture" + j].value = horizontal
 						? i === 0
 							? this.textures[j]
 							: this.renderTargetB.texture[j]
@@ -254,8 +249,9 @@ export class DenoisePass extends Pass {
 			this.fullscreenMaterial.uniforms.denoiseKernel.value = denoiseKernel
 		}
 
+		// reset the input textures
 		for (let i = 0; i < this.textures.length; i++) {
-			this.fullscreenMaterial.uniforms["texture" + i].value = this.textures[i]
+			this.fullscreenMaterial.uniforms["inputTexture" + i].value = this.textures[i]
 		}
 	}
 

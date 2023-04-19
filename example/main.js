@@ -429,17 +429,17 @@ const initScene = async () => {
 			if (fps >= 256) {
 				// composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, bloomEffect, vignetteEffect, lutEffect))
 
-				// const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass)
-
-				// composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect))
-
-				const hbaoEffect = new HBAOEffect(composer, camera, scene, velocityDepthNormalPass)
+				const hbaoEffect = new HBAOEffect(composer, camera, scene, velocityDepthNormalPass, {})
 				const pass = new POSTPROCESSING.EffectPass(camera, hbaoEffect)
 
 				const gui3 = new HBAODebugGUI(hbaoEffect, options)
 				gui3.pane.containerElem_.style.left = "8px"
 
 				composer.addPass(pass)
+
+				const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass)
+
+				composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect))
 			} else {
 				composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, vignetteEffect, lutEffect))
 				loadFiles--
