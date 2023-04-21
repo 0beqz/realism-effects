@@ -427,7 +427,7 @@ const initScene = async () => {
 
 		if (!traaTest) {
 			if (fps >= 256) {
-				// composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, bloomEffect, vignetteEffect, lutEffect))
+				composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, bloomEffect, vignetteEffect, lutEffect))
 
 				const hbaoEffect = new HBAOEffect(composer, camera, scene, velocityDepthNormalPass, {})
 				const pass = new POSTPROCESSING.EffectPass(camera, hbaoEffect)
@@ -437,7 +437,7 @@ const initScene = async () => {
 
 				composer.addPass(pass)
 
-				// const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass)
+				const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass)
 
 				// composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect))
 			} else {

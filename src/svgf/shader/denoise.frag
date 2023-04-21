@@ -13,6 +13,7 @@ uniform float roughnessPhi;
 uniform float denoiseKernel;
 uniform float stepSize;
 uniform mat4 projectionMatrixInverse;
+uniform mat4 projectionMatrix;
 uniform mat4 cameraMatrixWorld;
 uniform bool isFirstIteration;
 uniform bool isLastIteration;

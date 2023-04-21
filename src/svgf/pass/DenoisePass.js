@@ -70,6 +70,7 @@ export class DenoisePass extends Pass {
 				isFirstIteration: new Uniform(false),
 				isLastIteration: new Uniform(false),
 				viewMatrix: new Uniform(camera.matrixWorldInverse),
+				projectionMatrix: new Uniform(camera.projectionMatrix),
 				cameraMatrixWorld: new Uniform(camera.matrixWorld),
 				projectionMatrixInverse: new Uniform(camera.projectionMatrixInverse)
 			},
