@@ -13,7 +13,7 @@ const defaultHBAOOptions = {
 	denoise: 2,
 	denoiseIterations: 3,
 	denoiseKernel: 3,
-	depthPhi: 35,
+	depthPhi: 40,
 	normalPhi: 20,
 	spp: 8,
 	distance: 2.5,
@@ -118,7 +118,7 @@ class HBAOEffect extends Effect {
 							break
 
 						case "temporalReprojection":
-							this.blend = defaultHBAOOptions.blend
+							this.blend = value ? defaultHBAOOptions.blend : 0
 							break
 
 						case "blend":

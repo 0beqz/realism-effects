@@ -437,9 +437,9 @@ const initScene = async () => {
 
 				composer.addPass(pass)
 
-				const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass)
+				// const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass)
 
-				composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect))
+				// composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect))
 			} else {
 				composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, vignetteEffect, lutEffect))
 				loadFiles--

@@ -25,8 +25,6 @@ const finalFragmentShader = fragmentShader
 	.replace("#include <sampleBlueNoise>", sampleBlueNoise)
 
 class HBAOPass extends Pass {
-	frame = 0
-
 	constructor(camera, scene) {
 		super()
 		this._camera = camera
@@ -101,9 +99,8 @@ class HBAOPass extends Pass {
 
 	render(renderer) {
 		const spp = +this.fullscreenMaterial.defines.spp
-		this.frame = (this.frame + spp) % 65536
 
-		this.fullscreenMaterial.uniforms.frame.value = this.frame
+		this.fullscreenMaterial.uniforms.frame.value = (this.fullscreenMaterial.uniforms.frame.value + spp) % 65536
 		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
 		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far
 
