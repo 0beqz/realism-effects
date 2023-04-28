@@ -84,17 +84,19 @@ void main() {
     vec3 normal = data.rgb;
     float count = 1.0;
     float d = depthTexel.x;
-    float depth = linearize_depth(d, 0.1, 1000.0);
     vec3 worldPos = getWorldPos(d, vUv);
     float size = radius;
 
     for (int i = 0; i < NUM_SAMPLES; i++) {
         vec2 offset = poissonDisk[i] * texelSize * size;
         vec4 dataSample = textureLod(tDiffuse, uv + offset, 0.0);
+
         float occSample = dataSample.a;
         vec3 normalSample = dataSample.rgb;
+
         float dSample = textureLod(sceneDepth, uv + offset, 0.0).x;
         float depthSample = linearize_depth(dSample, 0.1, 1000.0);
+
         vec3 worldPosSample = getWorldPos(dSample, uv + offset);
         float tangentPlaneDist = abs(dot(worldPos - worldPosSample, normal));
 
