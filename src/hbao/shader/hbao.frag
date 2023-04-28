@@ -2,7 +2,6 @@ varying vec2 vUv;
 
 uniform sampler2D depthTexture;
 uniform sampler2D normalTexture;
-uniform vec3 color;
 uniform float cameraNear;
 uniform float cameraFar;
 uniform mat4 inverseProjectionMatrix;
@@ -72,7 +71,7 @@ void main() {
 
     vec3 worldPos = getWorldPos(unpackedDepth, vUv);
     vec3 worldNormal = getWorldNormal(unpackedDepth, vUv);
-    vec3 n = worldNormal;
+    vec3 bentNormal = worldNormal;
     float depth = -getViewZ(unpackedDepth);
 
     vec3 sampleWorldDir;
@@ -96,7 +95,7 @@ void main() {
         seed += frame;
 #endif
 
-        float occlusion = getOcclusion(worldPos, worldNormal, depth, seed, sampleWorldDir);
+        float occlusion = getOcclusion(worldPos, bentNormal, depth, seed, sampleWorldDir);
 
         float visibility = 1. - occlusion;
         ao += visibility;
@@ -107,12 +106,12 @@ void main() {
             float w = visibility / totalWeight;
 
             // slerp towards the sample direction based on the visibility
-            worldNormal = slerp(worldNormal, sampleWorldDir, w);
+            bentNormal = slerp(bentNormal, sampleWorldDir, w);
         }
 #endif
     }
 
     ao /= float(spp + extraSamples);
 
-    gl_FragColor = vec4(n, ao);
+    gl_FragColor = vec4(worldNormal, ao);
 }

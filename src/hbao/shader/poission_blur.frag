@@ -15,8 +15,8 @@ varying vec2 vUv;
 
 #include <sampleBlueNoise>
 
-highp float linearize_depth(highp float d, highp float zNear, highp float zFar) {
-    highp float z_n = 2.0 * d - 1.0;
+float linearize_depth(highp float d, highp float zNear, highp float zFar) {
+    float z_n = 2.0 * d - 1.0;
     return 2.0 * zNear * zFar / (zFar + zNear - z_n * (zFar - zNear));
 }
 
@@ -24,6 +24,7 @@ vec3 getWorldPos(float depth, vec2 coord) {
     float z = depth * 2.0 - 1.0;
     vec4 clipSpacePosition = vec4(coord * 2.0 - 1.0, z, 1.0);
     vec4 viewSpacePosition = projectionMatrixInv * clipSpacePosition;
+
     // Perspective division
     vec4 worldSpacePosition = viewMatrixInv * viewSpacePosition;
     worldSpacePosition.xyz /= worldSpacePosition.w;
@@ -39,11 +40,12 @@ void initPoissonSamples() {
     float ANGLE_STEP = PI2 * float(NUM_RINGS) / float(NUM_SAMPLES);
     float INV_NUM_SAMPLES = 1.0 / float(NUM_SAMPLES);
 
-    int seed = 1;
+    const int seed = 1;
 
     // jsfiddle that shows sample pattern: https://jsfiddle.net/a16ff1p7/
     // float angle = sampleBlueNoise(blueNoise, seed, blueNoiseRepeat, texSize).x * PI2;
     float angle;
+
     if (index == 0.0) {
         angle = sampleBlueNoise(blueNoise, seed, blueNoiseRepeat, texSize).x * PI2;
     } else if (index == 1.0) {
@@ -53,6 +55,7 @@ void initPoissonSamples() {
     } else {
         angle = sampleBlueNoise(blueNoise, seed, blueNoiseRepeat, texSize).w * PI2;
     }
+
     float radius = INV_NUM_SAMPLES;
     float radiusStep = radius;
 
@@ -71,37 +74,36 @@ void main() {
         return;
     }
 
-    const float pi = 3.14159;
-
     initPoissonSamples();
 
     vec2 texelSize = vec2(1.0 / resolution.x, 1.0 / resolution.y);
     vec2 uv = vUv;
+
     vec4 data = textureLod(tDiffuse, vUv, 0.0);
+    vec3 normal = data.rgb;
 
     float occlusion = data.a;
     float baseOcc = data.a;
-    vec3 normal = data.rgb;
-    float count = 1.0;
+
     float d = depthTexel.x;
     vec3 worldPos = getWorldPos(d, vUv);
-    float size = radius;
+
+    float count = 1.0;
 
     for (int i = 0; i < NUM_SAMPLES; i++) {
-        vec2 offset = poissonDisk[i] * texelSize * size;
+        vec2 offset = poissonDisk[i] * texelSize * radius;
         vec4 dataSample = textureLod(tDiffuse, uv + offset, 0.0);
 
         float occSample = dataSample.a;
         vec3 normalSample = dataSample.rgb;
 
         float dSample = textureLod(sceneDepth, uv + offset, 0.0).x;
-        float depthSample = linearize_depth(dSample, 0.1, 1000.0);
 
         vec3 worldPosSample = getWorldPos(dSample, uv + offset);
         float tangentPlaneDist = abs(dot(worldPos - worldPosSample, normal));
 
         float normalDiff = dot(normal, normalSample);
-        float normalSimilarity = normalDiff > 0. ? pow(normalDiff, normalPhi) : 0.;
+        float normalSimilarity = pow(max(normalDiff, 0.), normalPhi);
 
         float rangeCheck = exp(-1.0 * tangentPlaneDist) * (0.5 + 0.5 * dot(normal, normalSample)) * (1.0 - abs(occSample - baseOcc));
 
@@ -111,6 +113,11 @@ void main() {
         count += depthSimilarity * normalSimilarity;
     }
 
-    occlusion /= count;
+    if (count > EPSILON) {
+        occlusion /= count;
+    } else {
+        occlusion = baseOcc;
+    }
+
     gl_FragColor = vec4(normal, occlusion);
 }
