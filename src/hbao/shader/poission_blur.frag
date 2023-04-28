@@ -13,7 +13,12 @@ uniform float normalPhi;
 uniform float index;
 varying vec2 vUv;
 
+#include <common>
 #include <sampleBlueNoise>
+
+#define NUM_SAMPLES 16
+#define NUM_RINGS   11
+vec2 poissonDisk[NUM_SAMPLES];
 
 float linearize_depth(highp float d, highp float zNear, highp float zFar) {
     float z_n = 2.0 * d - 1.0;
@@ -31,30 +36,12 @@ vec3 getWorldPos(float depth, vec2 coord) {
     return worldSpacePosition.xyz;
 }
 
-#include <common>
-#define NUM_SAMPLES 16
-#define NUM_RINGS   11
-vec2 poissonDisk[NUM_SAMPLES];
-
 void initPoissonSamples() {
     float ANGLE_STEP = PI2 * float(NUM_RINGS) / float(NUM_SAMPLES);
     float INV_NUM_SAMPLES = 1.0 / float(NUM_SAMPLES);
 
-    const int seed = 1;
-
     // jsfiddle that shows sample pattern: https://jsfiddle.net/a16ff1p7/
-    // float angle = sampleBlueNoise(blueNoise, seed, blueNoiseRepeat, texSize).x * PI2;
-    float angle;
-
-    if (index == 0.0) {
-        angle = sampleBlueNoise(blueNoise, seed, blueNoiseRepeat, texSize).x * PI2;
-    } else if (index == 1.0) {
-        angle = sampleBlueNoise(blueNoise, seed, blueNoiseRepeat, texSize).y * PI2;
-    } else if (index == 2.0) {
-        angle = sampleBlueNoise(blueNoise, seed, blueNoiseRepeat, texSize).z * PI2;
-    } else {
-        angle = sampleBlueNoise(blueNoise, seed, blueNoiseRepeat, texSize).w * PI2;
-    }
+    float angle = sampleBlueNoise(blueNoise, 0, blueNoiseRepeat, texSize).x * PI2;
 
     float radius = INV_NUM_SAMPLES;
     float radiusStep = radius;

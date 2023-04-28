@@ -10,12 +10,11 @@ import {
 	ShaderMaterial,
 	TextureLoader,
 	Vector2,
-	WebGLRenderTarget,
-	sRGBEncoding
+	WebGLRenderTarget
 } from "three"
 import vertexShader from "../utils/shader/basic.vert"
-import fragmentShader from "./shader/hbao.frag"
 import sampleBlueNoise from "../utils/shader/sampleBlueNoise.glsl"
+import fragmentShader from "./shader/hbao.frag"
 // eslint-disable-next-line camelcase
 import hbao_utils from "./shader/hbao_utils.glsl"
 
@@ -46,7 +45,6 @@ class HBAOPass extends Pass {
 				normalTexture: { value: null },
 				cameraNear: { value: 0 },
 				cameraFar: { value: 0 },
-				frame: { value: 0 },
 				viewMatrix: { value: this._camera.matrixWorldInverse },
 				projectionViewMatrix: { value: new Matrix4() },
 				inverseProjectionMatrix: { value: this._camera.projectionMatrixInverse },
@@ -97,9 +95,6 @@ class HBAOPass extends Pass {
 	}
 
 	render(renderer) {
-		const spp = +this.fullscreenMaterial.defines.spp
-
-		this.fullscreenMaterial.uniforms.frame.value = (this.fullscreenMaterial.uniforms.frame.value + spp) % 65536
 		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
 		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far
 

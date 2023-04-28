@@ -91,9 +91,6 @@ void main() {
 
     for (int i = 0; i < spp; i++) {
         int seed = i + extraSamples;
-#ifdef animateNoise
-        seed += frame;
-#endif
 
         float occlusion = getOcclusion(worldPos, bentNormal, depth, seed, sampleWorldDir);
 

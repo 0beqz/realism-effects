@@ -35,10 +35,6 @@ export class HBAODebugGUI {
 		})
 		generalFolder.addInput(params, "bentNormals")
 
-		const temporalReprojectionFolder = pane.addFolder({ title: "Temporal Reprojection" })
-		temporalReprojectionFolder.addInput(params, "blend", { min: 0, max: 1, step: 0.001 })
-		temporalReprojectionFolder.addInput(params, "neighborhoodClampIntensity", { min: 0, max: 1, step: 0.001 })
-
 		const denoiseFolder = pane.addFolder({ title: "Denoise" })
 
 		denoiseFolder.addInput(params, "iterations", { min: 0, max: 3, step: 1 })
