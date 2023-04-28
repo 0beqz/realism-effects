@@ -1,6 +1,5 @@
 import { Effect, NormalPass } from "postprocessing"
 import { Color, Uniform } from "three"
-import { DenoisePass } from "../svgf/pass/DenoisePass"
 import { TemporalReprojectPass } from "../temporal-reproject/TemporalReprojectPass"
 import { HBAOPass } from "./HBAOPass"
 // eslint-disable-next-line camelcase
@@ -11,11 +10,7 @@ const defaultHBAOOptions = {
 	resolutionScale: 1,
 	blend: 0.95,
 	neighborhoodClampIntensity: 0.5,
-	denoise: 2,
-	denoiseIterations: 3,
-	denoiseKernel: 3,
-	depthPhi: 20,
-	normalPhi: 20,
+
 	spp: 8,
 	distance: 2.5,
 	distancePower: 3,
@@ -24,9 +19,10 @@ const defaultHBAOOptions = {
 	thickness: 0.075,
 	color: new Color("black"),
 	bentNormals: true,
-	useNormalPass: true,
+	useNormalPass: false,
 	velocityDepthNormalPass: null,
-	normalTexture: null
+	normalTexture: null,
+	...PoissionBlurPass.DefaultOptions
 }
 
 class HBAOEffect extends Effect {
@@ -59,23 +55,12 @@ class HBAOEffect extends Effect {
 			})
 
 			this.temporalReprojectPass.setTextures(this.hbaoPass.texture)
-
-			console.log("setr")
 		}
-
-		const denoiseInputTexture = options.velocityDepthNormalPass
-			? this.temporalReprojectPass.texture
-			: this.hbaoPass.texture
-
-		this.denoisePass = new DenoisePass(camera, denoiseInputTexture, {
-			basicVariance: 0.1
-		})
 
 		// set up depth texture
 		if (!composer.depthTexture) composer.createDepthTexture()
 
 		this.hbaoPass.fullscreenMaterial.uniforms.depthTexture.value = composer.depthTexture
-		this.denoisePass.setDepthTexture(composer.depthTexture)
 		this.uniforms.get("depthTexture").value = composer.depthTexture
 
 		// set up optional normal texture
@@ -86,25 +71,20 @@ class HBAOEffect extends Effect {
 
 			this.hbaoPass.fullscreenMaterial.uniforms.normalTexture.value = normalTexture
 			this.hbaoPass.fullscreenMaterial.defines.useNormalTexture = ""
-
-			this.denoisePass.setNormalTexture(normalTexture)
 		}
 
 		if (this.temporalReprojectPass) {
-			this.denoisePass.setTextures(this.temporalReprojectPass.renderTarget.texture[0])
-
 			this.hbaoPass.fullscreenMaterial.defines.animateNoise = ""
-			this.hbaoPass.fullscreenMaterial.needsUpdate = true
 		} else {
-			if (this.denoisePass.textures[0] !== this.hbaoPass.renderTarget.texture) {
-				this.denoisePass.setTextures(this.hbaoPass.renderTarget.texture)
-
-				delete this.hbaoPass.fullscreenMaterial.defines.animateNoise
-				this.hbaoPass.fullscreenMaterial.needsUpdate = true
-			}
+			delete this.hbaoPass.fullscreenMaterial.defines.animateNoise
 		}
+		this.hbaoPass.fullscreenMaterial.needsUpdate = true
 
-		this.poissionBlurPass = new PoissionBlurPass(camera, this.hbaoPass.renderTarget.texture, composer.depthTexture)
+		const blurInputTexture = this.temporalReprojectPass
+			? this.temporalReprojectPass.renderTarget.texture[0]
+			: this.hbaoPass.texture
+
+		this.poissionBlurPass = new PoissionBlurPass(camera, blurInputTexture, composer.depthTexture)
 
 		this.makeOptionsReactive(options)
 	}
@@ -146,18 +126,17 @@ class HBAOEffect extends Effect {
 							if (this.temporalReprojectPass) this.temporalReprojectPass.fullscreenMaterial.uniforms[key].value = value
 							break
 
-						case "denoise":
-							this.denoisePass.fullscreenMaterial.uniforms.denoise.value[0] = value
+						case "iterations":
+							this.poissionBlurPass.iterations = value
 							break
 
-						case "denoiseIterations":
-							this.denoisePass.iterations = value
+						case "radius":
+							this.poissionBlurPass.radius = value
 							break
 
-						case "denoiseKernel":
 						case "depthPhi":
 						case "normalPhi":
-							this.denoisePass.fullscreenMaterial.uniforms[key].value = value
+							this.poissionBlurPass.fullscreenMaterial.uniforms[key].value = Math.max(value, 0.0001)
 							break
 
 						case "distance":
@@ -209,7 +188,6 @@ class HBAOEffect extends Effect {
 		this.hbaoPass.setSize(width * this.resolutionScale, height * this.resolutionScale)
 
 		this.temporalReprojectPass?.setSize(width, height)
-		this.denoisePass.setSize(width, height)
 		this.poissionBlurPass.setSize(width, height)
 
 		this.lastSize = {
@@ -220,8 +198,8 @@ class HBAOEffect extends Effect {
 	}
 
 	update(renderer) {
-		if (this.denoiseIterations > 0) {
-			this.uniforms.get("inputTexture").value = this.denoisePass.texture
+		if (this.iterations > 0) {
+			this.uniforms.get("inputTexture").value = this.poissionBlurPass.texture
 		} else {
 			this.uniforms.get("inputTexture").value =
 				this.temporalReprojectPass?.renderTarget.texture[0] ?? this.hbaoPass.renderTarget.texture
@@ -231,11 +209,8 @@ class HBAOEffect extends Effect {
 		this.hbaoPass.render(renderer)
 
 		this.temporalReprojectPass?.render(renderer)
-		if (this.denoiseIterations > 0) this.denoisePass.render(renderer)
 
-		this.denoiseIterations = 0
 		this.poissionBlurPass.render(renderer)
-		this.uniforms.get("inputTexture").value = this.poissionBlurPass.texture
 	}
 }
 

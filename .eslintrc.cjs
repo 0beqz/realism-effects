@@ -1,4 +1,5 @@
-{
+// eslint-disable-next-line no-undef
+module.exports = {
 	"env": {
 		"browser": true,
 		"es2021": true
@@ -11,18 +12,19 @@
 	"rules": {
 		"require-jsdoc": "off",
 		"no-undef": "error",
-		"indent": ["error", "tab", { "SwitchCase": 1 }],
+		"indent": ["error", "tab"],
 		"no-tabs": "off",
 		"linebreak-style": "off",
 		"quotes": ["error", "double"],
 		"object-curly-spacing": "off",
 		"padded-blocks": "off",
 		"max-len": "off",
-		"comma-dangle": "off",
+		"comma-dangle": ["error", "never"],
 		"eol-last": "off",
-		"semi": "off",
+		"semi": [2, "never"],
 		"arrow-parens": "off",
 		"curly": "off",
 		"operator-linebreak": "off"
 	}
 }
+

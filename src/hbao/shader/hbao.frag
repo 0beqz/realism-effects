@@ -116,5 +116,5 @@ void main() {
 
     vec3 aoColor = mix(color, vec3(1.), ao);
 
-    gl_FragColor = vec4(ao);
+    gl_FragColor = vec4(n, ao);
 }

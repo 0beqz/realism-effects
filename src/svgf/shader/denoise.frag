@@ -99,11 +99,9 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec3 normal, 
 
 // normal similarity
 #ifdef useNormal
-    vec3 neighborNormal = unpackRGBToNormal(neighborNormalTexel.rgb);
-    neighborNormal = (vec4(neighborNormal, 1.) * viewMatrix).xyz;
-
-    float normalPhi = 20.;
-    float normalSimilarity = exp(-normalDiff / normalPhi);
+    vec3 neighborNormal = neighborNormalTexel.rgb;
+    float normalDiff = dot(neighborNormal, normal);
+    float normalSimilarity = pow(max(0., normalDiff), normalPhi);
 
     basicWeight *= normalSimilarity;
 #endif

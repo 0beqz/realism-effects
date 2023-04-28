@@ -40,16 +40,12 @@ export class HBAODebugGUI {
 		temporalReprojectionFolder.addInput(params, "neighborhoodClampIntensity", { min: 0, max: 1, step: 0.001 })
 
 		const denoiseFolder = pane.addFolder({ title: "Denoise" })
-		denoiseFolder.addInput(params, "denoise", {
-			min: 0,
-			max: 5,
-			step: 0.01
-		})
-		denoiseFolder.addInput(params, "denoiseIterations", { min: 0, max: 5, step: 1 })
-		denoiseFolder.addInput(params, "denoiseKernel", { min: 1, max: 5, step: 1 })
+
+		denoiseFolder.addInput(params, "iterations", { min: 0, max: 3, step: 1 })
+		denoiseFolder.addInput(params, "radius", { min: 0, max: 30, step: 1 })
 		denoiseFolder.addInput(params, "depthPhi", {
 			min: 0,
-			max: 100,
+			max: 20,
 			step: 0.001
 		})
 		denoiseFolder.addInput(params, "normalPhi", {
