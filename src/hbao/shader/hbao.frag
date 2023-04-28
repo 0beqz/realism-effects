@@ -114,7 +114,5 @@ void main() {
 
     ao /= float(spp + extraSamples);
 
-    vec3 aoColor = mix(color, vec3(1.), ao);
-
     gl_FragColor = vec4(n, ao);
 }

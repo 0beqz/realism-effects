@@ -35,7 +35,8 @@ class HBAOEffect extends Effect {
 			uniforms: new Map([
 				["inputTexture", new Uniform(null)],
 				["depthTexture", new Uniform(null)],
-				["power", new Uniform(0)]
+				["power", new Uniform(0)],
+				["color", new Uniform(new Color("black"))]
 			])
 		})
 
@@ -117,10 +118,6 @@ class HBAOEffect extends Effect {
 							this.hbaoPass.fullscreenMaterial.needsUpdate = true
 							break
 
-						case "temporalReprojection":
-							this.blend = value ? defaultHBAOOptions.blend : 0
-							break
-
 						case "blend":
 						case "neighborhoodClampIntensity":
 							if (this.temporalReprojectPass) this.temporalReprojectPass.fullscreenMaterial.uniforms[key].value = value
@@ -143,17 +140,16 @@ class HBAOEffect extends Effect {
 							this.hbaoPass.fullscreenMaterial.uniforms.aoDistance.value = value
 							break
 
-						case "color":
-							this.hbaoPass.fullscreenMaterial.uniforms.color.value.copy(value)
-							break
-
 						case "resolutionScale":
 							this.setSize(this.lastSize.width, this.lastSize.height)
 							break
 
 						case "power":
 							this.uniforms.get("power").value = value
+							break
 
+						case "color":
+							this.uniforms.get("color").value.copy(value)
 							break
 
 						default:

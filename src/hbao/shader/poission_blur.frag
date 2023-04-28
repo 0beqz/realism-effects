@@ -101,7 +101,7 @@ void main() {
         float tangentPlaneDist = abs(dot(worldPos - worldPosSample, normal));
 
         float normalDiff = dot(normal, normalSample);
-        float normalSimilarity = pow(max(0., normalDiff), normalPhi);
+        float normalSimilarity = normalDiff > 0. ? pow(normalDiff, normalPhi) : 0.;
 
         float rangeCheck = exp(-1.0 * tangentPlaneDist) * (0.5 + 0.5 * dot(normal, normalSample)) * (1.0 - abs(occSample - baseOcc));
 
