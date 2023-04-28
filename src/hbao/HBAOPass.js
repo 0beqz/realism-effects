@@ -1,6 +1,7 @@
 import { Pass } from "postprocessing"
 import {
 	Color,
+	HalfFloatType,
 	LinearEncoding,
 	Matrix4,
 	NearestFilter,
@@ -31,7 +32,7 @@ class HBAOPass extends Pass {
 		this._scene = scene
 
 		this.renderTarget = new WebGLRenderTarget(1, 1, {
-			encoding: sRGBEncoding,
+			type: HalfFloatType,
 			depthBuffer: false
 		})
 

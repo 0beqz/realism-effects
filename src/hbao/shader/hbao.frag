@@ -72,6 +72,7 @@ void main() {
 
     vec3 worldPos = getWorldPos(unpackedDepth, vUv);
     vec3 worldNormal = getWorldNormal(unpackedDepth, vUv);
+    vec3 n = worldNormal;
     float depth = -getViewZ(unpackedDepth);
 
     vec3 sampleWorldDir;
@@ -115,5 +116,5 @@ void main() {
 
     vec3 aoColor = mix(color, vec3(1.), ao);
 
-    gl_FragColor = vec4(aoColor, 1.);
+    gl_FragColor = vec4(ao);
 }

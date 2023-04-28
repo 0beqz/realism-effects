@@ -171,7 +171,7 @@ export class DenoisePass extends Pass {
 	}
 
 	setMomentTexture(momentTexture) {
-		this.fullscreenMaterial.uniforms.depthTexture.value = momentTexture
+		this.fullscreenMaterial.uniforms.momentTexture.value = momentTexture
 
 		this.options.moment = true
 	}

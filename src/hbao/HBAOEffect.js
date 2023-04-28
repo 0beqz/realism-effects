@@ -5,6 +5,7 @@ import { TemporalReprojectPass } from "../temporal-reproject/TemporalReprojectPa
 import { HBAOPass } from "./HBAOPass"
 // eslint-disable-next-line camelcase
 import hbao_compose from "./shader/hbao_compose.frag"
+import { PoissionBlurPass } from "./PoissionBlurPass"
 
 const defaultHBAOOptions = {
 	resolutionScale: 1,
@@ -23,7 +24,7 @@ const defaultHBAOOptions = {
 	thickness: 0.075,
 	color: new Color("black"),
 	bentNormals: true,
-	useNormalPass: false,
+	useNormalPass: true,
 	velocityDepthNormalPass: null,
 	normalTexture: null
 }
@@ -102,6 +103,8 @@ class HBAOEffect extends Effect {
 				this.hbaoPass.fullscreenMaterial.needsUpdate = true
 			}
 		}
+
+		this.poissionBlurPass = new PoissionBlurPass(camera, this.hbaoPass.renderTarget.texture, composer.depthTexture)
 
 		this.makeOptionsReactive(options)
 	}
@@ -207,6 +210,7 @@ class HBAOEffect extends Effect {
 
 		this.temporalReprojectPass?.setSize(width, height)
 		this.denoisePass.setSize(width, height)
+		this.poissionBlurPass.setSize(width, height)
 
 		this.lastSize = {
 			width,
@@ -228,6 +232,10 @@ class HBAOEffect extends Effect {
 
 		this.temporalReprojectPass?.render(renderer)
 		if (this.denoiseIterations > 0) this.denoisePass.render(renderer)
+
+		this.denoiseIterations = 0
+		this.poissionBlurPass.render(renderer)
+		this.uniforms.get("inputTexture").value = this.poissionBlurPass.texture
 	}
 }
 
