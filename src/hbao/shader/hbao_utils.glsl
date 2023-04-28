@@ -66,8 +66,6 @@ vec3 getWorldNormal(const float unpackedDepth, const vec2 uv) {
 #endif
 }
 
-#define PI 3.14159265358979323846264338327950288
-
 // source: https://www.shadertoy.com/view/cll3R4
 vec3 cosineSampleHemisphere(const vec3 n, const vec2 u) {
     float r = sqrt(u.x);
@@ -77,4 +75,45 @@ vec3 cosineSampleHemisphere(const vec3 n, const vec2 u) {
     vec3 t = cross(b, n);
 
     return normalize(r * sin(theta) * b + sqrt(1.0 - u.x) * n + r * cos(theta) * t);
+}
+
+vec3 computeNormal(vec3 worldPos, vec2 vUv) {
+    vec2 resolution = texSize;
+    vec2 downUv = vUv + vec2(0.0, 1.0 / resolution.y);
+    vec3 downPos = getWorldPos(texture2D(depthTexture, downUv).x, downUv).xyz;
+    vec2 rightUv = vUv + vec2(1.0 / resolution.x, 0.0);
+    vec3 rightPos = getWorldPos(texture2D(depthTexture, rightUv).x, rightUv).xyz;
+    vec2 upUv = vUv - vec2(0.0, 1.0 / resolution.y);
+    vec3 upPos = getWorldPos(texture2D(depthTexture, upUv).x, upUv).xyz;
+    vec2 leftUv = vUv - vec2(1.0 / resolution.x, 0.0);
+    ;
+    vec3 leftPos = getWorldPos(texture2D(depthTexture, leftUv).x, leftUv).xyz;
+    int hChoice;
+    int vChoice;
+    if (length(leftPos - worldPos) < length(rightPos - worldPos)) {
+        hChoice = 0;
+    } else {
+        hChoice = 1;
+    }
+    if (length(upPos - worldPos) < length(downPos - worldPos)) {
+        vChoice = 0;
+    } else {
+        vChoice = 1;
+    }
+    vec3 hVec;
+    vec3 vVec;
+    if (hChoice == 0 && vChoice == 0) {
+        hVec = leftPos - worldPos;
+        vVec = upPos - worldPos;
+    } else if (hChoice == 0 && vChoice == 1) {
+        hVec = leftPos - worldPos;
+        vVec = worldPos - downPos;
+    } else if (hChoice == 1 && vChoice == 1) {
+        hVec = rightPos - worldPos;
+        vVec = downPos - worldPos;
+    } else if (hChoice == 1 && vChoice == 0) {
+        hVec = rightPos - worldPos;
+        vVec = worldPos - upPos;
+    }
+    return normalize(cross(hVec, vVec));
 }

@@ -9,6 +9,7 @@ import {
 	ShaderMaterial,
 	TextureLoader,
 	Vector2,
+	Vector3,
 	WebGLRenderTarget,
 	sRGBEncoding
 } from "three"
@@ -46,6 +47,7 @@ class HBAOPass extends Pass {
 				cameraNear: { value: 0 },
 				cameraFar: { value: 0 },
 				frame: { value: 0 },
+				time: { value: 0 },
 				viewMatrix: { value: this._camera.matrixWorldInverse },
 				projectionViewMatrix: { value: new Matrix4() },
 				inverseProjectionMatrix: { value: this._camera.projectionMatrixInverse },
@@ -53,6 +55,8 @@ class HBAOPass extends Pass {
 				texSize: { value: new Vector2() },
 				blueNoiseTexture: { value: null },
 				blueNoiseRepeat: { value: new Vector2() },
+				samples: { value: null },
+				samplesR: { value: null },
 				aoDistance: { value: 0 },
 				distancePower: { value: 0 },
 				bias: { value: 0 },
@@ -69,6 +73,31 @@ class HBAOPass extends Pass {
 		this.fullscreenMaterial.uniforms.inverseProjectionMatrix.value = this._camera.projectionMatrixInverse
 		this.fullscreenMaterial.uniforms.viewMatrix.value = this._camera.matrixWorldInverse
 		this.fullscreenMaterial.uniforms.cameraMatrixWorld.value = this._camera.matrixWorld
+
+		function getPointsOnSphere(n) {
+			const points = []
+			const inc = Math.PI * (3 - Math.sqrt(5))
+			const off = 2 / n
+			for (let k = 0; k < n; k++) {
+				const y = k * off - 1 + off / 2
+				const r = Math.sqrt(1 - y * y)
+				const phi = k * inc
+				points.push(new Vector3(Math.cos(phi) * r, y, Math.sin(phi) * r))
+			}
+			return points
+		}
+
+		const aoSamples = 16
+
+		const samples = getPointsOnSphere(aoSamples)
+
+		const samplesR = []
+		for (let i = 0; i < aoSamples; i++) {
+			samplesR.push((i + 1) / aoSamples)
+		}
+
+		this.fullscreenMaterial.uniforms.samples.value = samples
+		this.fullscreenMaterial.uniforms.samplesR.value = samplesR
 	}
 
 	get texture() {
@@ -101,6 +130,7 @@ class HBAOPass extends Pass {
 		this.fullscreenMaterial.uniforms.frame.value = (this.fullscreenMaterial.uniforms.frame.value + spp) % 65536
 		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
 		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far
+		this.fullscreenMaterial.uniforms.time.value = performance.now()
 
 		this.fullscreenMaterial.uniforms.projectionViewMatrix.value.multiplyMatrices(
 			this._camera.projectionMatrix,

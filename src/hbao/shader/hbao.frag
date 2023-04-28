@@ -4,6 +4,7 @@ uniform sampler2D depthTexture;
 uniform sampler2D normalTexture;
 uniform vec3 color;
 uniform float cameraNear;
+uniform float time;
 uniform float cameraFar;
 uniform mat4 inverseProjectionMatrix;
 uniform mat4 projectionViewMatrix;
@@ -19,101 +20,70 @@ uniform float distancePower;
 uniform float bias;
 uniform float thickness;
 
+#define SAMPLES  16
+#define FSAMPLES 16.0
+
+const float radius = 5.0;
+
+uniform vec3[SAMPLES] samples;
+uniform float[SAMPLES] samplesR;
+
+#include <common>
 #include <packing>
 // HBAO Utils
 #include <hbao_utils>
 
-float getOcclusion(const vec3 worldPos, const vec3 worldNormal, const float depth, const int seed, out vec3 sampleWorldDir) {
-    vec4 blueNoise = sampleBlueNoise(blueNoiseTexture, seed, blueNoiseRepeat, texSize);
-
-#ifdef bentNormals
-    if (seed == frame) {
-        sampleWorldDir = worldNormal;
-    } else {
-        sampleWorldDir = cosineSampleHemisphere(worldNormal, blueNoise.rg);
-    }
-#else
-    sampleWorldDir = cosineSampleHemisphere(worldNormal, blueNoise.rg);
-#endif
-
-    vec3 sampleWorldPos = worldPos + aoDistance * pow(blueNoise.b, distancePower) * sampleWorldDir;
-
-    // Project the sample position to screen space
-    vec4 sampleUv = projectionViewMatrix * vec4(sampleWorldPos, 1.);
-    sampleUv.xy /= sampleUv.w;
-    sampleUv.xy = sampleUv.xy * 0.5 + 0.5;
-
-    // Get the depth of the sample position
-    float sampleUnpackedDepth = textureLod(depthTexture, sampleUv.xy, 0.0).r;
-    float sampleDepth = -getViewZ(sampleUnpackedDepth);
-
-    // Compute the horizon line
-    float deltaDepth = depth - sampleDepth;
-
-    if (deltaDepth < thickness) {
-        float horizon = sampleDepth + deltaDepth * bias;
-
-        float occlusionSample = max(0.0, horizon - depth);
-        float occlusion = occlusionSample * dot(worldNormal, sampleWorldDir);
-        return occlusion;
-    }
-
-    return 0.;
+highp float linearize_depth(highp float d, highp float zNear, highp float zFar) {
+    highp float z_n = 2.0 * d - 1.0;
+    return 2.0 * zNear * zFar / (zFar + zNear - z_n * (zFar - zNear));
 }
 
 void main() {
-    float unpackedDepth = textureLod(depthTexture, vUv, 0.0).r;
-
-    // filter out background
-    if (unpackedDepth > 0.9999) {
-        discard;
+    float depth = texture2D(depthTexture, vUv).x;
+    if (depth == 1.0) {
+        gl_FragColor = vec4(vec3(1.0), 1.0);
         return;
     }
 
-    vec3 worldPos = getWorldPos(unpackedDepth, vUv);
-    vec3 worldNormal = getWorldNormal(unpackedDepth, vUv);
-    float depth = -getViewZ(unpackedDepth);
+    vec3 worldPos = getWorldPos(depth, vUv);
+    vec3 normal = computeNormal(worldPos, vUv);
 
-    vec3 sampleWorldDir;
-    float ao = 0.0;
-    int extraSamples = 0;
+    normal = unpackRGBToNormal(texture2D(normalTexture, vUv).rgb);
 
-#ifdef bentNormals
+    // convert normal to world-space
+    normal = normalize((cameraMatrixWorld * vec4(normal, 0.0)).xyz);
+
+    vec4 noise = sampleBlueNoise(blueNoiseTexture, frame, blueNoiseRepeat, texSize);
+    vec3 randomVec = normalize(noise.rgb * 2.0 - 1.0);
+    vec3 tangent = normalize(randomVec - normal * dot(randomVec, normal));
+    vec3 bitangent = cross(normal, tangent);
+    mat3 tbn = mat3(tangent, bitangent, normal);
+    float occluded = 0.0;
     float totalWeight = 0.0;
 
-    float worldNormalOcclusion = getOcclusion(worldPos, worldNormal, depth, frame, sampleWorldDir);
-    float worldNormalOcclusionVisibility = 1. - worldNormalOcclusion;
-    totalWeight += worldNormalOcclusionVisibility;
-    ao += 1. - worldNormalOcclusion;
+    vec3 samplePos;
 
-    extraSamples = 1;
-#endif
+    for (float i = 0.0; i < FSAMPLES; i++) {
+        vec3 sampleDirection = tbn * samples[int(i)];
 
-    for (int i = 0; i < spp; i++) {
-        int seed = i + extraSamples;
-#ifdef animateNoise
-        seed += frame;
-#endif
+        float moveAmt = samplesR[int(mod(i + noise.a * FSAMPLES, FSAMPLES))];
+        samplePos = worldPos + radius * moveAmt * sampleDirection;
 
-        float occlusion = getOcclusion(worldPos, worldNormal, depth, seed, sampleWorldDir);
+        vec4 offset = projectionViewMatrix * vec4(samplePos, 1.0);
+        offset.xyz /= offset.w;
+        offset.xyz = offset.xyz * 0.5 + 0.5;
 
-        float visibility = 1. - occlusion;
-        ao += visibility;
+        float sampleDepth = textureLod(depthTexture, offset.xy, 0.0).x;
 
-#ifdef bentNormals
-        if (visibility >= worldNormalOcclusionVisibility) {
-            totalWeight += visibility;
-            float w = visibility / totalWeight;
+        float distSample = linearize_depth(sampleDepth, 0.1, 1000.0);
+        float distWorld = linearize_depth(offset.z, 0.1, 1000.0);
+        float rangeCheck = smoothstep(0.0, 1.0, radius / (radius * abs(distSample - distWorld)));
+        float weight = dot(sampleDirection, normal);
 
-            // slerp towards the sample direction based on the visibility
-            worldNormal = slerp(worldNormal, sampleWorldDir, w);
-        }
-#endif
+        occluded += rangeCheck * weight * (distSample < distWorld ? 1.0 : 0.0);
+        totalWeight += weight;
     }
 
-    ao /= float(spp + extraSamples);
-
-    vec3 aoColor = mix(color, vec3(1.), ao);
-
-    gl_FragColor = vec4(aoColor, 1.);
+    float occ = clamp(1.0 - occluded / totalWeight, 0.0, 1.0);
+    gl_FragColor = vec4(1. - occ);
 }

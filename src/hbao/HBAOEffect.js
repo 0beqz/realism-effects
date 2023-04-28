@@ -23,7 +23,7 @@ const defaultHBAOOptions = {
 	thickness: 0.075,
 	color: new Color("black"),
 	bentNormals: true,
-	useNormalPass: false,
+	useNormalPass: true,
 	velocityDepthNormalPass: null,
 	normalTexture: null
 }
