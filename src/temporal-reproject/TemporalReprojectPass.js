@@ -58,6 +58,10 @@ export class TemporalReprojectPass extends Pass {
 			depthBuffer: false
 		})
 
+		this.renderTarget.texture.map(
+			(texture, index) => (texture.name = "TemporalReprojectPass.accumulatedTexture" + index)
+		)
+
 		this.fullscreenMaterial = new TemporalReprojectMaterial(textureCount, options.temporalReprojectCustomComposeShader)
 		this.fullscreenMaterial.defines.textureCount = textureCount
 
@@ -115,7 +119,8 @@ export class TemporalReprojectPass extends Pass {
 		if (!Array.isArray(textures)) textures = [textures]
 
 		for (let i = 0; i < textures.length; i++) {
-			this.fullscreenMaterial.uniforms["inputTexture" + i] = new Uniform(textures[i])
+			const texture = textures[i]
+			this.fullscreenMaterial.uniforms["inputTexture" + i] = new Uniform(texture)
 		}
 	}
 

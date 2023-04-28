@@ -13,7 +13,7 @@ const defaultHBAOOptions = {
 	denoise: 2,
 	denoiseIterations: 3,
 	denoiseKernel: 3,
-	depthPhi: 40,
+	depthPhi: 20,
 	normalPhi: 20,
 	spp: 8,
 	distance: 2.5,
@@ -24,14 +24,15 @@ const defaultHBAOOptions = {
 	color: new Color("black"),
 	bentNormals: true,
 	useNormalPass: false,
-	normalTexture: null,
-	temporalReprojection: false
+	velocityDepthNormalPass: null,
+	normalTexture: null
 }
 
 class HBAOEffect extends Effect {
 	lastSize = { width: 0, height: 0, resolutionScale: 0 }
 
-	constructor(composer, camera, scene, velocityDepthNormalPass, options = defaultHBAOOptions) {
+	constructor(composer, camera, scene, options = defaultHBAOOptions) {
+		console.log(composer)
 		super("HBAOEffect", hbao_compose, {
 			type: "FinalHBAOMaterial",
 			uniforms: new Map([
@@ -48,22 +49,26 @@ class HBAOEffect extends Effect {
 
 		this.hbaoPass = new HBAOPass(this._camera, this._scene)
 
-		this.temporalReprojectPass = new TemporalReprojectPass(scene, camera, velocityDepthNormalPass, 1, {
-			neighborhoodClamp: true,
-			neighborhoodClampRadius: 1,
+		if (options.velocityDepthNormalPass) {
+			this.temporalReprojectPass = new TemporalReprojectPass(scene, camera, options.velocityDepthNormalPass, 1, {
+				neighborhoodClamp: true,
+				neighborhoodClampRadius: 1,
 
-			...options
-		})
-		this.temporalReprojectPass.setTextures(this.hbaoPass.texture)
+				...options
+			})
 
-		if (!options.temporalReprojection) options.blend = 0
+			this.temporalReprojectPass.setTextures(this.hbaoPass.texture)
 
-		this.denoisePass = new DenoisePass(camera, this.temporalReprojectPass.texture, {
+			console.log("setr")
+		}
+
+		const denoiseInputTexture = options.velocityDepthNormalPass
+			? this.temporalReprojectPass.texture
+			: this.hbaoPass.texture
+
+		this.denoisePass = new DenoisePass(camera, denoiseInputTexture, {
 			basicVariance: 0.1
 		})
-
-		this.hbaoPass.fullscreenMaterial.uniforms.accumulatedTexture.value = this.denoisePass.texture
-		this.hbaoPass.fullscreenMaterial.uniforms.velocityTexture.value = velocityDepthNormalPass.velocityTexture
 
 		// set up depth texture
 		if (!composer.depthTexture) composer.createDepthTexture()
@@ -84,7 +89,19 @@ class HBAOEffect extends Effect {
 			this.denoisePass.setNormalTexture(normalTexture)
 		}
 
-		this.bindBuffers()
+		if (this.temporalReprojectPass) {
+			this.denoisePass.setTextures(this.temporalReprojectPass.renderTarget.texture[0])
+
+			this.hbaoPass.fullscreenMaterial.defines.animateNoise = ""
+			this.hbaoPass.fullscreenMaterial.needsUpdate = true
+		} else {
+			if (this.denoisePass.textures[0] !== this.hbaoPass.renderTarget.texture) {
+				this.denoisePass.setTextures(this.hbaoPass.renderTarget.texture)
+
+				delete this.hbaoPass.fullscreenMaterial.defines.animateNoise
+				this.hbaoPass.fullscreenMaterial.needsUpdate = true
+			}
+		}
 
 		this.makeOptionsReactive(options)
 	}
@@ -123,7 +140,7 @@ class HBAOEffect extends Effect {
 
 						case "blend":
 						case "neighborhoodClampIntensity":
-							this.temporalReprojectPass.fullscreenMaterial.uniforms[key].value = value
+							if (this.temporalReprojectPass) this.temporalReprojectPass.fullscreenMaterial.uniforms[key].value = value
 							break
 
 						case "denoise":
@@ -162,7 +179,7 @@ class HBAOEffect extends Effect {
 								this.hbaoPass.fullscreenMaterial.uniforms[key].value = value
 					}
 
-					this.temporalReprojectPass.reset()
+					this.temporalReprojectPass?.reset()
 				}
 			})
 
@@ -188,7 +205,7 @@ class HBAOEffect extends Effect {
 		this.normalPass?.setSize(width, height)
 		this.hbaoPass.setSize(width * this.resolutionScale, height * this.resolutionScale)
 
-		this.temporalReprojectPass.setSize(width, height)
+		this.temporalReprojectPass?.setSize(width, height)
 		this.denoisePass.setSize(width, height)
 
 		this.lastSize = {
@@ -198,37 +215,18 @@ class HBAOEffect extends Effect {
 		}
 	}
 
-	bindBuffers() {
-		if (this.blend > 0) {
-			if (this.denoisePass.textures[0] !== this.temporalReprojectPass.renderTarget.texture[0]) {
-				this.denoisePass.setTextures(this.temporalReprojectPass.renderTarget.texture[0])
-
-				this.hbaoPass.fullscreenMaterial.defines.animateNoise = ""
-				this.hbaoPass.fullscreenMaterial.needsUpdate = true
-			}
-		} else {
-			if (this.denoisePass.textures[0] !== this.hbaoPass.renderTarget.texture) {
-				this.denoisePass.setTextures(this.hbaoPass.renderTarget.texture)
-
-				delete this.hbaoPass.fullscreenMaterial.defines.animateNoise
-				this.hbaoPass.fullscreenMaterial.needsUpdate = true
-			}
-		}
-
+	update(renderer) {
 		if (this.denoiseIterations > 0) {
 			this.uniforms.get("inputTexture").value = this.denoisePass.texture
 		} else {
-			this.uniforms.get("inputTexture").value = this.temporalReprojectPass.renderTarget.texture[0]
+			this.uniforms.get("inputTexture").value =
+				this.temporalReprojectPass?.renderTarget.texture[0] ?? this.hbaoPass.renderTarget.texture
 		}
-	}
-
-	update(renderer) {
-		this.bindBuffers()
 
 		this.normalPass?.render(renderer)
 		this.hbaoPass.render(renderer)
 
-		if (this.blend > 0) this.temporalReprojectPass.render(renderer)
+		this.temporalReprojectPass?.render(renderer)
 		if (this.denoiseIterations > 0) this.denoisePass.render(renderer)
 	}
 }

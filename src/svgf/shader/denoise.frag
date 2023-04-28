@@ -49,7 +49,11 @@ float distToPlane(const vec3 worldPos, const vec3 neighborWorldPos, const vec3 w
 
 // returns the variance of the pixel depending on how many frames it has been visible to denoise more aggressively at recently disoccluded pixels
 float getDisocclusionBoostVariance(float visibleFrames) {
+#ifdef useTemporalReprojectTextures
     return max(0., -pow(visibleFrames, 2.0) + 50.0);
+#else
+    return 0.;
+#endif
 }
 
 void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec3 normal, const float depth,

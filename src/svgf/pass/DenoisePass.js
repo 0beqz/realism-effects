@@ -3,7 +3,6 @@ import {
 	BasicDepthPacking,
 	GLSL3,
 	HalfFloatType,
-	NearestFilter,
 	NoBlending,
 	RGBADepthPacking,
 	ShaderMaterial,
@@ -136,8 +135,14 @@ export class DenoisePass extends Pass {
 			finalFragmentShader = finalFragmentShader.replace(key, "inputTexture" + number)
 		}
 
+		delete this.fullscreenMaterial.defines.useTemporalReprojectTextures
+
 		for (let i = 0; i < textures.length; i++) {
-			this.fullscreenMaterial.uniforms["inputTexture" + i] = new Uniform(textures[i])
+			const texture = textures[i]
+			this.fullscreenMaterial.uniforms["inputTexture" + i] = new Uniform(texture)
+
+			if (texture.name.includes("TemporalReprojectPass.accumulatedTexture"))
+				this.fullscreenMaterial.defines.useTemporalReprojectTextures = ""
 		}
 
 		this.fullscreenMaterial.fragmentShader = finalFragmentShader

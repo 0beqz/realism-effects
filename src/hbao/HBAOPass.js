@@ -43,8 +43,6 @@ class HBAOPass extends Pass {
 				color: { value: new Color() },
 				depthTexture: { value: null },
 				normalTexture: { value: null },
-				accumulatedTexture: { value: null },
-				velocityTexture: { value: null },
 				cameraNear: { value: 0 },
 				cameraFar: { value: 0 },
 				frame: { value: 0 },

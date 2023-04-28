@@ -427,15 +427,17 @@ const initScene = async () => {
 
 		if (!traaTest) {
 			if (fps >= 256) {
-				composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, bloomEffect, vignetteEffect, lutEffect))
+				// composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, bloomEffect, vignetteEffect, lutEffect))
 
-				const hbaoEffect = new HBAOEffect(composer, camera, scene, velocityDepthNormalPass, {})
-				const pass = new POSTPROCESSING.EffectPass(camera, hbaoEffect)
+				const hbaoEffect = new HBAOEffect(composer, camera, scene)
+				const hbaoPass = new POSTPROCESSING.EffectPass(camera, hbaoEffect)
 
 				const gui3 = new HBAODebugGUI(hbaoEffect, options)
+
+				// gui3.pane.containerElem_.style.visibility = "hidden"
 				gui3.pane.containerElem_.style.left = "8px"
 
-				composer.addPass(pass)
+				composer.addPass(hbaoPass)
 
 				const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass)
 
