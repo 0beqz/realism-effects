@@ -110,5 +110,8 @@ void main() {
 
     ao /= float(spp + extraSamples);
 
+    // clamp ao to [0, 1]
+    ao = clamp(ao, 0., 1.);
+
     gl_FragColor = vec4(worldNormal, ao);
 }

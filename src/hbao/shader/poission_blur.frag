@@ -1,17 +1,15 @@
-uniform highp sampler2D sceneDepth;
-uniform sampler2D tDiffuse;
-uniform sampler2D blueNoise;
+varying vec2 vUv;
+
+uniform sampler2D inputTexture;
+uniform sampler2D depthTexture;
+uniform sampler2D blueNoiseTexture;
 uniform vec2 blueNoiseRepeat;
-uniform vec2 texSize;
-uniform mat4 projectionMatrixInv;
-uniform mat4 viewMatrixInv;
+uniform mat4 projectionMatrixInverse;
+uniform mat4 cameraMatrixWorld;
 uniform vec2 resolution;
-uniform float r;
 uniform float radius;
 uniform float depthPhi;
 uniform float normalPhi;
-uniform float index;
-varying vec2 vUv;
 
 #include <common>
 #include <sampleBlueNoise>
@@ -28,10 +26,10 @@ float linearize_depth(highp float d, highp float zNear, highp float zFar) {
 vec3 getWorldPos(float depth, vec2 coord) {
     float z = depth * 2.0 - 1.0;
     vec4 clipSpacePosition = vec4(coord * 2.0 - 1.0, z, 1.0);
-    vec4 viewSpacePosition = projectionMatrixInv * clipSpacePosition;
+    vec4 viewSpacePosition = projectionMatrixInverse * clipSpacePosition;
 
     // Perspective division
-    vec4 worldSpacePosition = viewMatrixInv * viewSpacePosition;
+    vec4 worldSpacePosition = cameraMatrixWorld * viewSpacePosition;
     worldSpacePosition.xyz /= worldSpacePosition.w;
     return worldSpacePosition.xyz;
 }
@@ -41,7 +39,7 @@ void initPoissonSamples() {
     float INV_NUM_SAMPLES = 1.0 / float(NUM_SAMPLES);
 
     // jsfiddle that shows sample pattern: https://jsfiddle.net/a16ff1p7/
-    float angle = sampleBlueNoise(blueNoise, 0, blueNoiseRepeat, texSize).x * PI2;
+    float angle = sampleBlueNoise(blueNoiseTexture, 0, blueNoiseRepeat, resolution).x * PI2;
 
     float radius = INV_NUM_SAMPLES;
     float radiusStep = radius;
@@ -54,7 +52,7 @@ void initPoissonSamples() {
 }
 
 void main() {
-    vec4 depthTexel = textureLod(sceneDepth, vUv, 0.);
+    vec4 depthTexel = textureLod(depthTexture, vUv, 0.);
 
     if (depthTexel.r > 0.9999 || dot(depthTexel.rgb, depthTexel.rgb) == 0.) {
         discard;
@@ -66,7 +64,7 @@ void main() {
     vec2 texelSize = vec2(1.0 / resolution.x, 1.0 / resolution.y);
     vec2 uv = vUv;
 
-    vec4 data = textureLod(tDiffuse, vUv, 0.0);
+    vec4 data = textureLod(inputTexture, vUv, 0.0);
     vec3 normal = data.rgb;
 
     float occlusion = data.a;
@@ -79,12 +77,12 @@ void main() {
 
     for (int i = 0; i < NUM_SAMPLES; i++) {
         vec2 offset = poissonDisk[i] * texelSize * radius;
-        vec4 dataSample = textureLod(tDiffuse, uv + offset, 0.0);
+        vec4 dataSample = textureLod(inputTexture, uv + offset, 0.0);
 
         float occSample = dataSample.a;
         vec3 normalSample = dataSample.rgb;
 
-        float dSample = textureLod(sceneDepth, uv + offset, 0.0).x;
+        float dSample = textureLod(depthTexture, uv + offset, 0.0).x;
 
         vec3 worldPosSample = getWorldPos(dSample, uv + offset);
         float tangentPlaneDist = abs(dot(worldPos - worldPosSample, normal));

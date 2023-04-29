@@ -40,24 +40,17 @@ export class PoissionBlurPass extends Pass {
 
 		this.fullscreenMaterial = new ShaderMaterial({
 			uniforms: {
-				sceneDepth: { value: null },
-				tDiffuse: { value: null },
-				projMat: { value: new Matrix4() },
-				viewMat: { value: new Matrix4() },
-				projectionMatrixInv: { value: new Matrix4() },
-				viewMatrixInv: { value: new Matrix4() },
-				cameraPos: { value: new Vector3() },
+				depthTexture: { value: null },
+				inputTexture: { value: null },
+				projectionMatrixInverse: { value: new Matrix4() },
+				cameraMatrixWorld: { value: new Matrix4() },
 				resolution: { value: new Vector2() },
 				time: { value: 0.0 },
-				r: { value: 5.0 },
 				depthPhi: { value: 5.0 },
 				normalPhi: { value: 5.0 },
-				blueNoise: { value: null },
-				radius: { value: 12.0 },
-				index: { value: 0.0 },
-				blueNoise: { value: null },
+				blueNoiseTexture: { value: null },
 				blueNoiseRepeat: { value: new Vector2() },
-				texSize: { value: new Vector2() }
+				radius: { value: 12.0 }
 			},
 			vertexShader,
 			fragmentShader: finalFragmentShader
@@ -73,19 +66,12 @@ export class PoissionBlurPass extends Pass {
 
 		const { uniforms } = this.fullscreenMaterial
 
-		uniforms["tDiffuse"].value = this.inputTexture
-		uniforms["sceneDepth"].value = this.depthTexture
-		uniforms["projMat"].value = camera.projectionMatrix
-		uniforms["viewMat"].value = camera.matrixWorldInverse
-		uniforms["projectionMatrixInv"].value = camera.projectionMatrixInverse
-		uniforms["viewMatrixInv"].value = camera.matrixWorld
-		uniforms["cameraPos"].value = camera.position
+		uniforms["inputTexture"].value = this.inputTexture
+		uniforms["depthTexture"].value = this.depthTexture
+		uniforms["projectionMatrixInverse"].value = camera.projectionMatrixInverse
+		uniforms["cameraMatrixWorld"].value = camera.matrixWorld
 		uniforms["depthPhi"].value = options.depthPhi
 		uniforms["normalPhi"].value = options.normalPhi
-	}
-
-	initialize(renderer, ...args) {
-		super.initialize(renderer, ...args)
 
 		new TextureLoader().load(blueNoiseImage, blueNoiseTexture => {
 			blueNoiseTexture.minFilter = NearestFilter
@@ -94,7 +80,7 @@ export class PoissionBlurPass extends Pass {
 			blueNoiseTexture.wrapT = RepeatWrapping
 			blueNoiseTexture.encoding = LinearEncoding
 
-			this.fullscreenMaterial.uniforms.blueNoise.value = blueNoiseTexture
+			this.fullscreenMaterial.uniforms.blueNoiseTexture.value = blueNoiseTexture
 		})
 	}
 
@@ -102,7 +88,7 @@ export class PoissionBlurPass extends Pass {
 		this.renderTargetA.setSize(width, height)
 		this.renderTargetB.setSize(width, height)
 
-		this.fullscreenMaterial.uniforms.texSize.value.set(this.renderTargetA.width, this.renderTargetA.height)
+		this.fullscreenMaterial.uniforms.resolution.value.set(this.renderTargetA.width, this.renderTargetA.height)
 	}
 
 	dispose() {
@@ -119,21 +105,16 @@ export class PoissionBlurPass extends Pass {
 	render(renderer) {
 		const { uniforms } = this.fullscreenMaterial
 
-		const clientWidth = window.innerWidth * 0.99
-		const clientHeight = window.innerHeight * 0.98
-
 		uniforms["radius"].value = this.radius
-
-		uniforms["resolution"].value = new Vector2(clientWidth, clientHeight)
 		uniforms["time"].value = performance.now() / 1000
 
-		const noiseTexture = this.fullscreenMaterial.uniforms.blueNoise.value
+		const noiseTexture = this.fullscreenMaterial.uniforms.blueNoiseTexture.value
 		if (noiseTexture) {
 			const { width, height } = noiseTexture.source.data
 
 			this.fullscreenMaterial.uniforms.blueNoiseRepeat.value.set(
-				this.renderTarget.width / width,
-				this.renderTarget.height / height
+				this.renderTargetA.width / width,
+				this.renderTargetA.height / height
 			)
 		}
 
@@ -142,7 +123,7 @@ export class PoissionBlurPass extends Pass {
 
 			const renderTarget = horizontal ? this.renderTargetA : this.renderTargetB
 
-			this.fullscreenMaterial.uniforms["tDiffuse"].value = horizontal
+			this.fullscreenMaterial.uniforms["inputTexture"].value = horizontal
 				? i === 0
 					? this.inputTexture
 					: this.renderTargetB.texture
