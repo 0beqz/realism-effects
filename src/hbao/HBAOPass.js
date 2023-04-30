@@ -47,7 +47,7 @@ class HBAOPass extends Pass {
 				cameraFar: { value: 0 },
 				viewMatrix: { value: this._camera.matrixWorldInverse },
 				projectionViewMatrix: { value: new Matrix4() },
-				inverseProjectionMatrix: { value: this._camera.projectionMatrixInverse },
+				projectionMatrixInverse: { value: this._camera.projectionMatrixInverse },
 				cameraMatrixWorld: { value: this._camera.matrixWorld },
 				texSize: { value: new Vector2() },
 				blueNoiseTexture: { value: null },
@@ -64,10 +64,6 @@ class HBAOPass extends Pass {
 			depthTest: false,
 			toneMapped: false
 		})
-
-		this.fullscreenMaterial.uniforms.inverseProjectionMatrix.value = this._camera.projectionMatrixInverse
-		this.fullscreenMaterial.uniforms.viewMatrix.value = this._camera.matrixWorldInverse
-		this.fullscreenMaterial.uniforms.cameraMatrixWorld.value = this._camera.matrixWorld
 	}
 
 	get texture() {

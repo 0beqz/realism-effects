@@ -1,12 +1,8 @@
 varying vec2 vUv;
 
 uniform sampler2D depthTexture;
-uniform sampler2D normalTexture;
-uniform float cameraNear;
-uniform float cameraFar;
-uniform mat4 inverseProjectionMatrix;
+
 uniform mat4 projectionViewMatrix;
-uniform mat4 cameraMatrixWorld;
 uniform int frame;
 
 uniform sampler2D blueNoiseTexture;

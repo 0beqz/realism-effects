@@ -74,9 +74,10 @@ void main() {
     vec3 worldPos = getWorldPos(d, vUv);
 
     float count = 1.0;
+    vec2 texelSizeRadius = texelSize * radius;
 
     for (int i = 0; i < NUM_SAMPLES; i++) {
-        vec2 offset = poissonDisk[i] * texelSize * radius;
+        vec2 offset = poissonDisk[i] * texelSizeRadius;
         vec4 dataSample = textureLod(inputTexture, uv + offset, 0.0);
 
         float occSample = dataSample.a;

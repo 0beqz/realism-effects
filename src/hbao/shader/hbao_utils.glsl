@@ -1,5 +1,11 @@
 #include <sampleBlueNoise>
 
+uniform sampler2D normalTexture;
+uniform float cameraNear;
+uniform float cameraFar;
+uniform mat4 projectionMatrixInverse;
+uniform mat4 cameraMatrixWorld;
+
 // source: https://github.com/mrdoob/three.js/blob/342946c8392639028da439b6dc0597e58209c696/examples/js/shaders/SAOShader.js#L123
 float getViewZ(const float depth) {
 #ifdef PERSPECTIVE_CAMERA
@@ -13,7 +19,7 @@ float getViewZ(const float depth) {
 vec3 getWorldPos(const float depth, const vec2 coord) {
     float z = depth * 2.0 - 1.0;
     vec4 clipSpacePosition = vec4(coord * 2.0 - 1.0, z, 1.0);
-    vec4 viewSpacePosition = inverseProjectionMatrix * clipSpacePosition;
+    vec4 viewSpacePosition = projectionMatrixInverse * clipSpacePosition;
 
     // Perspective division
     vec4 worldSpacePosition = cameraMatrixWorld * viewSpacePosition;

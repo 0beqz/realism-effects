@@ -3,7 +3,7 @@ import { Color, Uniform } from "three"
 import { HBAOPass } from "./HBAOPass"
 // eslint-disable-next-line camelcase
 import hbao_compose from "./shader/hbao_compose.frag"
-import { PoissionBlurPass } from "./PoissionBlurPass"
+import { PoissionDenoisePass } from "../poissionDenoise/PoissionDenoisePass"
 
 const defaultHBAOOptions = {
 	resolutionScale: 1,
@@ -18,14 +18,13 @@ const defaultHBAOOptions = {
 	useNormalPass: false,
 	velocityDepthNormalPass: null,
 	normalTexture: null,
-	...PoissionBlurPass.DefaultOptions
+	...PoissionDenoisePass.DefaultOptions
 }
 
 class HBAOEffect extends Effect {
 	lastSize = { width: 0, height: 0, resolutionScale: 0 }
 
 	constructor(composer, camera, scene, options = defaultHBAOOptions) {
-		console.log(composer)
 		super("HBAOEffect", hbao_compose, {
 			type: "FinalHBAOMaterial",
 			uniforms: new Map([
@@ -59,7 +58,7 @@ class HBAOEffect extends Effect {
 			this.hbaoPass.fullscreenMaterial.defines.useNormalTexture = ""
 		}
 
-		this.poissionBlurPass = new PoissionBlurPass(camera, this.hbaoPass.texture, composer.depthTexture)
+		this.poissionDenoisePass = new PoissionDenoisePass(camera, this.hbaoPass.texture, composer.depthTexture)
 
 		this.makeOptionsReactive(options)
 	}
@@ -93,16 +92,16 @@ class HBAOEffect extends Effect {
 							break
 
 						case "iterations":
-							this.poissionBlurPass.iterations = value
+							this.poissionDenoisePass.iterations = value
 							break
 
 						case "radius":
-							this.poissionBlurPass.radius = value
+							this.poissionDenoisePass.radius = value
 							break
 
 						case "depthPhi":
 						case "normalPhi":
-							this.poissionBlurPass.fullscreenMaterial.uniforms[key].value = Math.max(value, 0.0001)
+							this.poissionDenoisePass.fullscreenMaterial.uniforms[key].value = Math.max(value, 0.0001)
 							break
 
 						case "distance":
@@ -122,8 +121,9 @@ class HBAOEffect extends Effect {
 							break
 
 						default:
-							if (key in this.hbaoPass.fullscreenMaterial.uniforms)
+							if (key in this.hbaoPass.fullscreenMaterial.uniforms) {
 								this.hbaoPass.fullscreenMaterial.uniforms[key].value = value
+							}
 					}
 				}
 			})
@@ -144,13 +144,14 @@ class HBAOEffect extends Effect {
 			width === this.lastSize.width &&
 			height === this.lastSize.height &&
 			this.resolutionScale === this.lastSize.resolutionScale
-		)
+		) {
 			return
+		}
 
 		this.normalPass?.setSize(width, height)
 		this.hbaoPass.setSize(width * this.resolutionScale, height * this.resolutionScale)
 
-		this.poissionBlurPass.setSize(width, height)
+		this.poissionDenoisePass.setSize(width, height)
 
 		this.lastSize = {
 			width,
@@ -161,7 +162,7 @@ class HBAOEffect extends Effect {
 
 	update(renderer) {
 		if (this.iterations > 0) {
-			this.uniforms.get("inputTexture").value = this.poissionBlurPass.texture
+			this.uniforms.get("inputTexture").value = this.poissionDenoisePass.texture
 		} else {
 			this.uniforms.get("inputTexture").value = this.hbaoPass.renderTarget.texture
 		}
@@ -169,7 +170,7 @@ class HBAOEffect extends Effect {
 		this.normalPass?.render(renderer)
 		this.hbaoPass.render(renderer)
 
-		this.poissionBlurPass.render(renderer)
+		this.poissionDenoisePass.render(renderer)
 	}
 }
 

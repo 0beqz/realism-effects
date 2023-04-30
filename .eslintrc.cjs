@@ -14,17 +14,44 @@ module.exports = {
 		"no-undef": "error",
 		"indent": ["error", "tab"],
 		"no-tabs": "off",
+		"no-trailing-spaces": "error",
 		"linebreak-style": "off",
 		"quotes": ["error", "double"],
-		"object-curly-spacing": "off",
+		"space-infix-ops": ["error"],
+		"no-multi-spaces": ["error"],
+		"no-multiple-empty-lines": ["error", { "max": 1, "maxEOF": 1 }],
+		"no-var": "error",
+		"prefer-const": "error",
+		"no-else-return": "error",
+		"no-unneeded-ternary": "error",
+		"no-nested-ternary": "error",
+		"no-underscore-dangle": "off",
+		"no-use-before-define": "off",
+		"no-unused-expressions": "off",
+		"no-prototype-builtins": "off",
+		"no-restricted-syntax": "off",
 		"padded-blocks": "off",
-		"max-len": "off",
 		"comma-dangle": ["error", "never"],
-		"eol-last": "off",
 		"semi": [2, "never"],
-		"arrow-parens": "off",
-		"curly": "off",
-		"operator-linebreak": "off"
+		"no-unused-vars": "warn", // warn about unused variables instead of error
+		"no-console": "warn", // warn about console.log statements instead of error
+		"no-dupe-keys": "error",
+		"arrow-parens": ["error", "as-needed"],
+		"object-curly-spacing": ["error", "always"],
+		"no-mixed-spaces-and-tabs": ["error", "smart-tabs"],
+		"max-len": [
+		  "error",
+		  {
+				"code": 120,
+				"ignoreUrls": true,
+				"ignoreStrings": true,
+				"ignoreTemplateLiterals": true,
+				"ignoreRegExpLiterals": true
+		  }
+		],
+		"eol-last": ["error", "always"],
+		"curly": ["error", "multi-line"]
+
 	}
 }
 

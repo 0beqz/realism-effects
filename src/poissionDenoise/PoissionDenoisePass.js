@@ -8,13 +8,12 @@ import {
 	ShaderMaterial,
 	TextureLoader,
 	Vector2,
-	Vector3,
 	WebGLRenderTarget
 } from "three"
 import blueNoiseImage from "../utils/blue_noise_64_rgba.png"
 import vertexShader from "../utils/shader/basic.vert"
 import sampleBlueNoise from "../utils/shader/sampleBlueNoise.glsl"
-import fragmentShader from "./shader/poission_blur.frag"
+import fragmentShader from "./shader/poissionDenoise.frag"
 
 const finalFragmentShader = fragmentShader.replace("#include <sampleBlueNoise>", sampleBlueNoise)
 
@@ -25,7 +24,7 @@ const defaultPoissonBlurOptions = {
 	normalPhi: 7.5
 }
 
-export class PoissionBlurPass extends Pass {
+export class PoissionDenoisePass extends Pass {
 	iterations = defaultPoissonBlurOptions.iterations
 	radius = defaultPoissonBlurOptions.radius
 
@@ -34,7 +33,6 @@ export class PoissionBlurPass extends Pass {
 
 		options = { ...defaultPoissonBlurOptions, ...options }
 
-		this._camera = camera
 		this.inputTexture = inputTexture
 		this.depthTexture = depthTexture
 
@@ -91,13 +89,6 @@ export class PoissionBlurPass extends Pass {
 		this.fullscreenMaterial.uniforms.resolution.value.set(this.renderTargetA.width, this.renderTargetA.height)
 	}
 
-	dispose() {
-		super.dispose()
-
-		this.renderTargetA.dispose()
-		this.renderTargetB.dispose()
-	}
-
 	get texture() {
 		return this.renderTargetB.texture
 	}
@@ -121,13 +112,11 @@ export class PoissionBlurPass extends Pass {
 		for (let i = 0; i < 2 * this.iterations; i++) {
 			const horizontal = i % 2 === 0
 
-			const renderTarget = horizontal ? this.renderTargetA : this.renderTargetB
+			const inputRenderTarget = horizontal ? this.renderTargetB : this.renderTargetA
 
-			this.fullscreenMaterial.uniforms["inputTexture"].value = horizontal
-				? i === 0
-					? this.inputTexture
-					: this.renderTargetB.texture
-				: this.renderTargetA.texture
+			this.fullscreenMaterial.uniforms["inputTexture"].value = i === 0 ? this.inputTexture : inputRenderTarget.texture
+
+			const renderTarget = horizontal ? this.renderTargetA : this.renderTargetB
 
 			renderer.setRenderTarget(renderTarget)
 			renderer.render(this.scene, this.camera)
@@ -135,4 +124,4 @@ export class PoissionBlurPass extends Pass {
 	}
 }
 
-PoissionBlurPass.DefaultOptions = defaultPoissonBlurOptions
+PoissionDenoisePass.DefaultOptions = defaultPoissonBlurOptions
