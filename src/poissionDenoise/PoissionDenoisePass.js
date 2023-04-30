@@ -19,7 +19,7 @@ const finalFragmentShader = fragmentShader.replace("#include <sampleBlueNoise>",
 
 const defaultPoissonBlurOptions = {
 	iterations: 1,
-	radius: 10,
+	radius: 5,
 	depthPhi: 2.5,
 	normalPhi: 7.5
 }
@@ -34,7 +34,6 @@ export class PoissionDenoisePass extends Pass {
 		options = { ...defaultPoissonBlurOptions, ...options }
 
 		this.inputTexture = inputTexture
-		this.depthTexture = depthTexture
 
 		this.fullscreenMaterial = new ShaderMaterial({
 			uniforms: {
@@ -65,7 +64,7 @@ export class PoissionDenoisePass extends Pass {
 		const { uniforms } = this.fullscreenMaterial
 
 		uniforms["inputTexture"].value = this.inputTexture
-		uniforms["depthTexture"].value = this.depthTexture
+		uniforms["depthTexture"].value = depthTexture
 		uniforms["projectionMatrixInverse"].value = camera.projectionMatrixInverse
 		uniforms["cameraMatrixWorld"].value = camera.matrixWorld
 		uniforms["depthPhi"].value = options.depthPhi

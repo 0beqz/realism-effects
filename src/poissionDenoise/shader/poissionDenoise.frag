@@ -18,11 +18,6 @@ uniform float normalPhi;
 #define NUM_RINGS   11
 vec2 poissonDisk[NUM_SAMPLES];
 
-float linearize_depth(highp float d, highp float zNear, highp float zFar) {
-    float z_n = 2.0 * d - 1.0;
-    return 2.0 * zNear * zFar / (zFar + zNear - z_n * (zFar - zNear));
-}
-
 vec3 getWorldPos(float depth, vec2 coord) {
     float z = depth * 2.0 - 1.0;
     vec4 clipSpacePosition = vec4(coord * 2.0 - 1.0, z, 1.0);
@@ -45,7 +40,7 @@ void initPoissonSamples() {
     float radiusStep = radius;
 
     for (int i = 0; i < NUM_SAMPLES; i++) {
-        poissonDisk[i] = vec2(cos(angle), sin(angle)) * pow(radius, 0.75);
+        poissonDisk[i] = vec2(cos(angle), sin(angle));
         radius += radiusStep;
         angle += ANGLE_STEP;
     }
@@ -62,40 +57,39 @@ void main() {
     initPoissonSamples();
 
     vec2 texelSize = vec2(1.0 / resolution.x, 1.0 / resolution.y);
-    vec2 uv = vUv;
 
-    vec4 data = textureLod(inputTexture, vUv, 0.0);
-    vec3 normal = data.rgb;
+    vec4 texel = textureLod(inputTexture, vUv, 0.0);
 
-    float occlusion = data.a;
-    float baseOcc = data.a;
+    vec3 normal = texel.rgb;
+    float occlusion = texel.a;
+    float baseOcc = texel.a;
 
-    float d = depthTexel.x;
-    vec3 worldPos = getWorldPos(d, vUv);
+    float depth = depthTexel.x;
+    vec3 worldPos = getWorldPos(depth, vUv);
 
-    float count = 1.0;
     vec2 texelSizeRadius = texelSize * radius;
+    float count = 1.0;
 
     for (int i = 0; i < NUM_SAMPLES; i++) {
         vec2 offset = poissonDisk[i] * texelSizeRadius;
-        vec4 dataSample = textureLod(inputTexture, uv + offset, 0.0);
+        vec4 neighborTexel = textureLod(inputTexture, vUv + offset, 0.0);
 
-        float occSample = dataSample.a;
-        vec3 normalSample = dataSample.rgb;
+        float neighborOcclusion = neighborTexel.a;
+        vec3 neighborNormal = neighborTexel.rgb;
 
-        float dSample = textureLod(depthTexture, uv + offset, 0.0).x;
+        float depth = textureLod(depthTexture, vUv + offset, 0.0).x;
 
-        vec3 worldPosSample = getWorldPos(dSample, uv + offset);
+        vec3 worldPosSample = getWorldPos(depth, vUv + offset);
         float tangentPlaneDist = abs(dot(worldPos - worldPosSample, normal));
 
-        float normalDiff = dot(normal, normalSample);
+        float normalDiff = dot(normal, neighborNormal);
         float normalSimilarity = pow(max(normalDiff, 0.), normalPhi);
 
-        float rangeCheck = exp(-1.0 * tangentPlaneDist) * (0.5 + 0.5 * dot(normal, normalSample)) * (1.0 - abs(occSample - baseOcc));
+        float rangeCheck = exp(-1.0 * tangentPlaneDist) * (0.5 + 0.5 * dot(normal, neighborNormal)) * (1.0 - abs(neighborOcclusion - baseOcc));
 
         float depthSimilarity = max(rangeCheck / depthPhi, 0.);
 
-        occlusion += occSample * depthSimilarity * normalSimilarity;
+        occlusion += neighborOcclusion * depthSimilarity * normalSimilarity;
         count += depthSimilarity * normalSimilarity;
     }
 
