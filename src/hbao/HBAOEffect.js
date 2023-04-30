@@ -2,15 +2,23 @@ import { HBAOPass } from "./HBAOPass"
 // eslint-disable-next-line camelcase
 import { AOEffect } from "../ao/AOEffect"
 
-const defaultHBAOOptions = {
-	bentNormals: true
-}
-
 class HBAOEffect extends AOEffect {
 	lastSize = { width: 0, height: 0, resolutionScale: 0 }
 
 	constructor(composer, camera, scene, options = AOEffect.DefaultOptions) {
 		const hbaoPass = new HBAOPass(camera, scene)
+
+		HBAOEffect.DefaultOptions = {
+			...AOEffect.DefaultOptions,
+			...{
+				bentNormals: false
+			}
+		}
+
+		options = {
+			...HBAOEffect.DefaultOptions,
+			...options
+		}
 
 		super(composer, camera, scene, hbaoPass, (options = AOEffect.DefaultOptions))
 
@@ -29,12 +37,12 @@ class HBAOEffect extends AOEffect {
 					switch (key) {
 						case "bentNormals":
 							if (value) {
-								this.hbaoPass.fullscreenMaterial.defines.bentNormals = ""
+								hbaoPass.fullscreenMaterial.defines.bentNormals = ""
 							} else {
-								delete this.hbaoPass.fullscreenMaterial.defines.bentNormals
+								delete hbaoPass.fullscreenMaterial.defines.bentNormals
 							}
 
-							this.hbaoPass.fullscreenMaterial.needsUpdate = true
+							hbaoPass.fullscreenMaterial.needsUpdate = true
 							break
 					}
 				}
@@ -45,7 +53,5 @@ class HBAOEffect extends AOEffect {
 		}
 	}
 }
-
-HBAOEffect.DefaultOptions = { ...AOEffect.DefaultOptions, ...defaultHBAOOptions }
 
 export { HBAOEffect }

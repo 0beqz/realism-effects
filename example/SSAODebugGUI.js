@@ -1,10 +1,10 @@
 import { Pane } from "tweakpane"
 import copy from "copy-to-clipboard"
-import { HBAOEffect } from "../src/hbao/HBAOEffect"
+import { SSAOEffect } from "../src/ssao/SSAOEffect"
 
-export class HBAODebugGUI {
-	constructor(hbaoEffect, params = HBAOEffect.DefaultOptions) {
-		const pane = new Pane({ title: "HBAO" })
+export class SSAODebugGUI {
+	constructor(ssaoEffect, params = SSAOEffect.DefaultOptions) {
+		const pane = new Pane({ title: "SSAO" })
 		this.pane = pane
 		pane.containerElem_.style.userSelect = "none"
 		pane.containerElem_.style.width = "380px"
@@ -12,28 +12,29 @@ export class HBAODebugGUI {
 		pane.on("change", ev => {
 			const { presetKey } = ev
 
-			hbaoEffect[presetKey] = ev.value
+			ssaoEffect[presetKey] = ev.value
 		})
 
-		params = { ...HBAOEffect.DefaultOptions, ...params }
+		params = { ...SSAOEffect.DefaultOptions, ...params }
 
 		const generalFolder = pane.addFolder({ title: "General" })
 		generalFolder.addInput(params, "resolutionScale", { min: 0.25, max: 1, step: 0.25 })
 		generalFolder.addInput(params, "spp", { min: 1, max: 64, step: 1 })
-		generalFolder.addInput(params, "distance", { min: 0.1, max: 10, step: 0.01 })
-		generalFolder.addInput(params, "distancePower", { min: 1, max: 20, step: 0.25 })
-		generalFolder.addInput(params, "bias", {
-			min: 0,
-			max: 200,
-			step: 1
+		generalFolder.addInput(params, "distance", {
+			min: 0.1,
+			max: 10,
+			step: 0.1
 		})
-		generalFolder.addInput(params, "power", { min: 0.5, max: 8, step: 0.5 })
-		generalFolder.addInput(params, "thickness", { min: 0, max: 0.1, step: 0.001 })
+		generalFolder.addInput(params, "distancePower", {
+			min: 0,
+			max: 2,
+			step: 0.125
+		})
+		generalFolder.addInput(params, "power", { min: 0.5, max: 32, step: 0.5 })
 
 		generalFolder.addInput(params, "color", {
 			color: { type: "float" }
 		})
-		generalFolder.addInput(params, "bentNormals")
 
 		const denoiseFolder = pane.addFolder({ title: "Denoise" })
 
@@ -57,8 +58,8 @@ export class HBAODebugGUI {
 			.on("click", () => {
 				const json = {}
 
-				for (const prop of Object.keys(HBAOEffect.DefaultOptions)) {
-					json[prop] = hbaoEffect[prop]
+				for (const prop of Object.keys(SSAOEffect.DefaultOptions)) {
+					json[prop] = ssaoEffect[prop]
 				}
 
 				const output = JSON.stringify(json, null, 2)

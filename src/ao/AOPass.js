@@ -1,6 +1,5 @@
 import { Pass } from "postprocessing"
 import {
-	Color,
 	HalfFloatType,
 	LinearEncoding,
 	Matrix4,
@@ -12,9 +11,9 @@ import {
 	Vector2,
 	WebGLRenderTarget
 } from "three"
+import blueNoiseImage from "../utils/blue_noise_64_rgba.png"
 import vertexShader from "../utils/shader/basic.vert"
 import sampleBlueNoise from "../utils/shader/sampleBlueNoise.glsl"
-import blueNoiseImage from "../utils/blue_noise_64_rgba.png"
 
 // a general AO pass that can be used for any AO algorithm
 class AOPass extends Pass {
@@ -35,7 +34,6 @@ class AOPass extends Pass {
 			vertexShader,
 
 			uniforms: {
-				color: { value: new Color() },
 				depthTexture: { value: null },
 				normalTexture: { value: null },
 				cameraNear: { value: 0 },
@@ -51,7 +49,8 @@ class AOPass extends Pass {
 				distancePower: { value: 0 },
 				bias: { value: 0 },
 				thickness: { value: 0 },
-				power: { value: 0 }
+				power: { value: 0 },
+				frame: { value: 0 }
 			},
 
 			blending: NoBlending,
@@ -82,6 +81,10 @@ class AOPass extends Pass {
 	}
 
 	render(renderer) {
+		const spp = +this.fullscreenMaterial.defines.spp
+
+		this.fullscreenMaterial.uniforms.frame.value = (this.fullscreenMaterial.uniforms.frame.value + spp) % 65536
+
 		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
 		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far
 

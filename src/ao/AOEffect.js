@@ -3,6 +3,7 @@ import { Color, Uniform } from "three"
 import { PoissionDenoisePass } from "../poissionDenoise/PoissionDenoisePass"
 // eslint-disable-next-line camelcase
 import ao_compose from "./shader/ao_compose.frag"
+import { TRAAEffect } from "../traa/TRAAEffect"
 
 const defaultAOOptions = {
 	resolutionScale: 1,
@@ -33,6 +34,7 @@ class AOEffect extends Effect {
 			])
 		})
 
+		this.composer = composer
 		this.aoPass = aoPass
 		options = { ...defaultAOOptions, ...options }
 
@@ -110,7 +112,8 @@ class AOEffect extends Effect {
 								this.aoPass.fullscreenMaterial.uniforms[key].value = value
 							}
 					}
-				}
+				},
+				configurable: true
 			})
 
 			// apply all uniforms and defines
@@ -141,6 +144,21 @@ class AOEffect extends Effect {
 	}
 
 	update(renderer) {
+		// check if TRAA is being used so we can animate the noise
+		const hasTRAA = this.composer.passes.some(pass => {
+			return pass.enabled && !pass.skipRendering && pass.effects?.some(effect => effect instanceof TRAAEffect)
+		})
+
+		// set animated noise depending on TRAA
+		if (hasTRAA && !("animatedNoise" in this.aoPass.fullscreenMaterial.defines)) {
+			this.aoPass.fullscreenMaterial.defines.animatedNoise = ""
+			this.aoPass.fullscreenMaterial.needsUpdate = true
+		} else if (!hasTRAA && "animatedNoise" in this.aoPass.fullscreenMaterial.defines) {
+			delete this.aoPass.fullscreenMaterial.defines.animatedNoise
+			this.aoPass.fullscreenMaterial.needsUpdate = true
+		}
+
+		// set input texture
 		if (this.iterations > 0) {
 			this.uniforms.get("inputTexture").value = this.poissionDenoisePass.texture
 		} else {

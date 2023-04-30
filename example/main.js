@@ -29,6 +29,9 @@ import { SSGIDebugGUI } from "./SSGIDebugGUI"
 import "./style.css"
 import { HBAOEffect } from "../src/hbao/HBAOEffect"
 import { HBAODebugGUI } from "./HBAODebugGUI"
+import { SSAODebugGUI } from "./SSAODebugGUI"
+import { SSAOEffect } from "../src/ssao/SSAOEffect"
+import { HBAOSSAOComparisonEffect } from "./HBAOSSAOComparisonEffect"
 
 let traaEffect
 let traaPass
@@ -430,14 +433,57 @@ const initScene = async () => {
 				// composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, bloomEffect, vignetteEffect, lutEffect))
 
 				const hbaoEffect = new HBAOEffect(composer, camera, scene)
+				const ssaoEffect = new SSAOEffect(composer, camera, scene)
+
+				const ssaoPass = new POSTPROCESSING.EffectPass(camera, ssaoEffect)
 				const hbaoPass = new POSTPROCESSING.EffectPass(camera, hbaoEffect)
 
-				const gui3 = new HBAODebugGUI(hbaoEffect, options)
+				const gui3 = new HBAODebugGUI(hbaoEffect)
+				const gui4 = new SSAODebugGUI(ssaoEffect)
+
+				const hbaoText = document.createElement("div")
+				hbaoText.innerHTML = "HBAO"
+				hbaoText.style.position = "absolute"
+				hbaoText.style.bottom = "128px"
+				hbaoText.style.left = "64px"
+				hbaoText.style.color = "#00ff00"
+				hbaoText.style.fontFamily = "monospace"
+				hbaoText.style.fontSize = "48px"
+				hbaoText.style.fontWeight = "bold"
+				hbaoText.style.userSelect = "none"
+				hbaoText.style.letterSpacing = "4px"
+				hbaoText.style.pointerEvents = "none"
+				hbaoText.style.zIndex = "1000"
+				document.body.appendChild(hbaoText)
+
+				const ssaoText = document.createElement("div")
+				ssaoText.innerHTML = "SSAO"
+				ssaoText.style.position = "absolute"
+				ssaoText.style.bottom = "128px"
+				ssaoText.style.right = "64px"
+				ssaoText.style.color = "#00ff00"
+				ssaoText.style.fontFamily = "monospace"
+				ssaoText.style.fontSize = "48px"
+				ssaoText.style.fontWeight = "bold"
+				ssaoText.style.userSelect = "none"
+				ssaoText.style.letterSpacing = "4px"
+				ssaoText.style.pointerEvents = "none"
+				ssaoText.style.zIndex = "1000"
+				document.body.appendChild(ssaoText)
+
+				document.querySelector("#info").style.color = "black"
+				document.querySelector("#info").innerHTML += "<br>Hold SHIFT to move blue line"
 
 				// gui3.pane.containerElem_.style.visibility = "hidden"
 				gui3.pane.containerElem_.style.left = "8px"
+				gui4.pane.containerElem_.style.right = "8px"
 
 				composer.addPass(hbaoPass)
+				composer.addPass(ssaoPass)
+
+				const hbaoSsaoComparisonEffect = new HBAOSSAOComparisonEffect(hbaoEffect, ssaoEffect)
+
+				composer.addPass(new POSTPROCESSING.EffectPass(camera, hbaoSsaoComparisonEffect))
 
 				const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass)
 
