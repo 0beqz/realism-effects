@@ -12,6 +12,8 @@ uniform mat4 projectionMatrixInverse;
 
 uniform float aoDistance;
 uniform float distancePower;
+uniform float cameraNear;
+uniform float cameraFar;
 uniform int frame;
 
 uniform vec3[spp] samples;
@@ -110,8 +112,8 @@ void main() {
 
         float sampleDepth = textureLod(depthTexture, offset.xy, 0.0).x;
 
-        float distSample = linearize_depth(sampleDepth, 0.01, 250.0);
-        float distWorld = linearize_depth(offset.z, 0.01, 250.0);
+        float distSample = linearize_depth(sampleDepth, cameraNear, cameraFar);
+        float distWorld = linearize_depth(offset.z, cameraNear, cameraFar);
 
         float rangeCheck = smoothstep(0.0, 1.0, aoDistance / (aoDistance * abs(distSample - distWorld)));
         rangeCheck = pow(rangeCheck, distancePower);
