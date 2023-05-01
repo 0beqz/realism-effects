@@ -34,22 +34,28 @@ vec3 getWorldPos(const float depth, const vec2 coord) {
     return worldSpacePosition.xyz;
 }
 
-vec3 computeWorldNormal(const float unpackedDepth, const vec2 uv) {
-    vec2 uv0 = uv;
-    vec2 uv1 = uv + vec2(1., 0.) / texSize;
-    vec2 uv2 = uv + vec2(0., 1.) / texSize;
-
-    float depth0 = unpackedDepth;
-    float depth1 = textureLod(depthTexture, uv1, 0.0).r;
-    float depth2 = textureLod(depthTexture, uv2, 0.0).r;
-
-    vec3 p0 = getWorldPos(depth0, uv0);
-    vec3 p1 = getWorldPos(depth1, uv1);
-    vec3 p2 = getWorldPos(depth2, uv2);
-
-    vec3 normal = normalize(cross(p2 - p0, p1 - p0));
-
-    return -normal;
+vec3 computeNormal(vec3 worldPos, vec2 vUv) {
+    vec2 size = vec2(textureSize(depthTexture, 0));
+    ivec2 p = ivec2(vUv * size);
+    float c0 = texelFetch(depthTexture, p, 0).x;
+    float l2 = texelFetch(depthTexture, p - ivec2(2, 0), 0).x;
+    float l1 = texelFetch(depthTexture, p - ivec2(1, 0), 0).x;
+    float r1 = texelFetch(depthTexture, p + ivec2(1, 0), 0).x;
+    float r2 = texelFetch(depthTexture, p + ivec2(2, 0), 0).x;
+    float b2 = texelFetch(depthTexture, p - ivec2(0, 2), 0).x;
+    float b1 = texelFetch(depthTexture, p - ivec2(0, 1), 0).x;
+    float t1 = texelFetch(depthTexture, p + ivec2(0, 1), 0).x;
+    float t2 = texelFetch(depthTexture, p + ivec2(0, 2), 0).x;
+    float dl = abs((2.0 * l1 - l2) - c0);
+    float dr = abs((2.0 * r1 - r2) - c0);
+    float db = abs((2.0 * b1 - b2) - c0);
+    float dt = abs((2.0 * t1 - t2) - c0);
+    vec3 ce = getWorldPos(c0, vUv).xyz;
+    vec3 dpdx = (dl < dr) ? ce - getWorldPos(l1, (vUv - vec2(1.0 / size.x, 0.0))).xyz
+                          : -ce + getWorldPos(r1, (vUv + vec2(1.0 / size.x, 0.0))).xyz;
+    vec3 dpdy = (db < dt) ? ce - getWorldPos(b1, (vUv - vec2(0.0, 1.0 / size.y))).xyz
+                          : -ce + getWorldPos(t1, (vUv + vec2(0.0, 1.0 / size.y))).xyz;
+    return normalize(cross(dpdx, dpdy));
 }
 
 highp float linearize_depth(highp float d, highp float zNear, highp float zFar) {
@@ -61,13 +67,13 @@ void main() {
     float depth = textureLod(depthTexture, vUv, 0.).x;
 
     // filter out background
-    if (depth > 0.9999) {
+    if (depth == 1.0) {
         discard;
         return;
     }
 
     vec3 worldPos = getWorldPos(depth, vUv);
-    vec3 normal = computeWorldNormal(depth, vUv);
+    vec3 normal = computeNormal(worldPos, vUv);
 
 #ifdef animatedNoise
     int seed = frame;
@@ -104,8 +110,8 @@ void main() {
 
         float sampleDepth = textureLod(depthTexture, offset.xy, 0.0).x;
 
-        float distSample = linearize_depth(sampleDepth, 0.1, 1000.0);
-        float distWorld = linearize_depth(offset.z, 0.1, 1000.0);
+        float distSample = linearize_depth(sampleDepth, 0.01, 250.0);
+        float distWorld = linearize_depth(offset.z, 0.01, 250.0);
 
         float rangeCheck = smoothstep(0.0, 1.0, aoDistance / (aoDistance * abs(distSample - distWorld)));
         rangeCheck = pow(rangeCheck, distancePower);

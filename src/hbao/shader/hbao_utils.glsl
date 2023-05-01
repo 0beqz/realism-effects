@@ -62,14 +62,14 @@ vec3 computeWorldNormal(const float unpackedDepth, const vec2 uv) {
 }
 
 vec3 getWorldNormal(const float unpackedDepth, const vec2 uv) {
-#ifdef useNormalTexture
+/*#ifdef useNormalTexture
     vec3 worldNormal = unpackRGBToNormal(textureLod(normalTexture, uv, 0.).rgb);
 
     worldNormal = (vec4(worldNormal, 1.) * viewMatrix).xyz;  // view-space to world-space
     return normalize(worldNormal);
-#else
+#else*/
     return computeWorldNormal(unpackedDepth, uv);  // compute world normal from depth
-#endif
+//#endif
 }
 
 #define PI 3.14159265358979323846264338327950288
