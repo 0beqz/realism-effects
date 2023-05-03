@@ -454,8 +454,8 @@ const initScene = async () => {
 					normalTexture: null,
 					iterations: 1,
 					radius: 8,
-					depthPhi: 0.43499999999999994,
-					normalPhi: 3.261
+					depthPhi: 0.6519999999999999,
+					normalPhi: 12.5
 				}
 
 				const ssaoOptions = {
