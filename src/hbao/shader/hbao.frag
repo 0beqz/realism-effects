@@ -48,7 +48,7 @@ float getOcclusion(const vec3 cameraPosition, const vec3 worldPos, const vec3 wo
         float occlusion = max(0.0, horizon - depth) * dot(worldNormal, sampleWorldDir);
 
         float m = max(0., 1. - deltaDepth / th);
-        return occlusion * m;
+        return 10. * occlusion * m / d;
     }
 
     return 0.;
