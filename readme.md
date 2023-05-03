@@ -222,3 +222,4 @@ If you'd like, you could also buy me a coffee:
 ### HBAO
 
 - [Horizon-Based Indirect Lighting (HBIL)](https://drive.google.com/file/d/1fmceYuM5J2s8puNHZ9o4OF3YjqzIvmRR/view)
+- [Pyramid HBAO — a Scalable Horizon-based Ambient Occlusion Method](https://ceur-ws.org/Vol-3027/paper5.pdf)
