@@ -18,18 +18,10 @@ uniform float thickness;
 // HBAO Utils
 #include <hbao_utils>
 
-float getOcclusion(const vec3 worldPos, const vec3 worldNormal, const float depth, const int seed, out vec3 sampleWorldDir) {
+float getOcclusion(const vec3 cameraPosition, const vec3 worldPos, const vec3 worldNormal, const float depth, const int seed, out vec3 sampleWorldDir) {
     vec4 blueNoise = sampleBlueNoise(blueNoiseTexture, seed, blueNoiseRepeat, texSize);
 
-#ifdef bentNormals
-    if (seed == frame) {
-        sampleWorldDir = worldNormal;
-    } else {
-        sampleWorldDir = cosineSampleHemisphere(worldNormal, blueNoise.rg);
-    }
-#else
     sampleWorldDir = cosineSampleHemisphere(worldNormal, blueNoise.rg);
-#endif
 
     vec3 sampleWorldPos = worldPos + aoDistance * pow(blueNoise.b, distancePower) * sampleWorldDir;
 
@@ -44,6 +36,9 @@ float getOcclusion(const vec3 worldPos, const vec3 worldNormal, const float dept
 
     // Compute the horizon line
     float deltaDepth = depth - sampleDepth;
+
+    float d = distance(sampleWorldPos, cameraPosition);
+    deltaDepth *= 0.001 * d * d;
 
     if (deltaDepth < thickness) {
         float horizon = sampleDepth + deltaDepth * bias;
@@ -65,6 +60,8 @@ void main() {
         return;
     }
 
+    vec4 cameraPosition = cameraMatrixWorld * vec4(0.0, 0.0, 0.0, 1.0);
+
     vec3 worldPos = getWorldPos(unpackedDepth, vUv);
     vec3 worldNormal = getWorldNormal(unpackedDepth, vUv);
     vec3 bentNormal = worldNormal;
@@ -72,26 +69,14 @@ void main() {
 
     vec3 sampleWorldDir;
     float ao = 0.0;
-    int extraSamples = 0;
-
-#ifdef bentNormals
-    float totalWeight = 0.0;
-
-    float worldNormalOcclusion = getOcclusion(worldPos, worldNormal, depth, frame, sampleWorldDir);
-    float worldNormalOcclusionVisibility = 1. - worldNormalOcclusion;
-    totalWeight += worldNormalOcclusionVisibility;
-    ao += 1. - worldNormalOcclusion;
-
-    extraSamples = 1;
-#endif
 
     for (int i = 0; i < spp; i++) {
-        int seed = i + extraSamples;
+        int seed = i;
 #ifdef animatedNoise
         seed += frame;
 #endif
 
-        float occlusion = getOcclusion(worldPos, bentNormal, depth, seed, sampleWorldDir);
+        float occlusion = getOcclusion(cameraPosition.xyz, worldPos, bentNormal, depth, seed, sampleWorldDir);
 
         float visibility = 1. - occlusion;
         ao += visibility;
@@ -107,7 +92,7 @@ void main() {
 #endif
     }
 
-    ao /= float(spp + extraSamples);
+    ao /= float(spp);
 
     // clamp ao to [0, 1]
     ao = clamp(ao, 0., 1.);

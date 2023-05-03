@@ -24,7 +24,7 @@ export class HBAODebugGUI {
 		generalFolder.addInput(params, "distancePower", { min: 1, max: 20, step: 0.25 })
 		generalFolder.addInput(params, "bias", {
 			min: 0,
-			max: 200,
+			max: 500,
 			step: 1
 		})
 		generalFolder.addInput(params, "power", { min: 0.5, max: 8, step: 0.5 })
@@ -33,8 +33,6 @@ export class HBAODebugGUI {
 		generalFolder.addInput(params, "color", {
 			color: { type: "float" }
 		})
-		generalFolder.addInput(params, "bentNormals")
-
 		const denoiseFolder = pane.addFolder({ title: "Denoise" })
 
 		denoiseFolder.addInput(params, "iterations", { min: 0, max: 3, step: 1 })
