@@ -43,32 +43,39 @@ vec3 slerp(const vec3 a, const vec3 b, const float t) {
     return (a * t1) + (b * t2);
 }
 
-vec3 computeWorldNormal(const float unpackedDepth, const vec2 uv) {
-    vec2 uv0 = uv;
-    vec2 uv1 = uv + vec2(1., 0.) / texSize;
-    vec2 uv2 = uv + vec2(0., 1.) / texSize;
+vec3 computeWorldNormal(vec3 worldPos) {
+    vec2 resolution = texSize;
 
-    float depth0 = unpackedDepth;
-    float depth1 = textureLod(depthTexture, uv1, 0.0).r;
-    float depth2 = textureLod(depthTexture, uv2, 0.0).r;
-
-    vec3 p0 = getWorldPos(depth0, uv0);
-    vec3 p1 = getWorldPos(depth1, uv1);
-    vec3 p2 = getWorldPos(depth2, uv2);
-
-    vec3 normal = normalize(cross(p2 - p0, p1 - p0));
-
-    return -normal;
+    ivec2 p = ivec2(vUv * resolution);
+    float c0 = texelFetch(depthTexture, p, 0).x;
+    float l2 = texelFetch(depthTexture, p - ivec2(2, 0), 0).x;
+    float l1 = texelFetch(depthTexture, p - ivec2(1, 0), 0).x;
+    float r1 = texelFetch(depthTexture, p + ivec2(1, 0), 0).x;
+    float r2 = texelFetch(depthTexture, p + ivec2(2, 0), 0).x;
+    float b2 = texelFetch(depthTexture, p - ivec2(0, 2), 0).x;
+    float b1 = texelFetch(depthTexture, p - ivec2(0, 1), 0).x;
+    float t1 = texelFetch(depthTexture, p + ivec2(0, 1), 0).x;
+    float t2 = texelFetch(depthTexture, p + ivec2(0, 2), 0).x;
+    float dl = abs((2.0 * l1 - l2) - c0);
+    float dr = abs((2.0 * r1 - r2) - c0);
+    float db = abs((2.0 * b1 - b2) - c0);
+    float dt = abs((2.0 * t1 - t2) - c0);
+    vec3 ce = getWorldPos(c0, vUv).xyz;
+    vec3 dpdx = (dl < dr) ? ce - getWorldPos(l1, (vUv - vec2(1.0 / resolution.x, 0.0))).xyz
+                          : -ce + getWorldPos(r1, (vUv + vec2(1.0 / resolution.x, 0.0))).xyz;
+    vec3 dpdy = (db < dt) ? ce - getWorldPos(b1, (vUv - vec2(0.0, 1.0 / resolution.y))).xyz
+                          : -ce + getWorldPos(t1, (vUv + vec2(0.0, 1.0 / resolution.y))).xyz;
+    return normalize(cross(dpdx, dpdy));
 }
 
-vec3 getWorldNormal(const float unpackedDepth, const vec2 uv) {
+vec3 getWorldNormal(vec3 worldPos, const vec2 uv) {
 #ifdef useNormalTexture
     vec3 worldNormal = unpackRGBToNormal(textureLod(normalTexture, uv, 0.).rgb);
 
     worldNormal = (vec4(worldNormal, 1.) * viewMatrix).xyz;  // view-space to world-space
     return normalize(worldNormal);
 #else
-    return computeWorldNormal(unpackedDepth, uv);  // compute world normal from depth
+    return computeWorldNormal(worldPos);  // compute world normal from depth
 #endif
 }
 

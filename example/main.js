@@ -48,6 +48,8 @@ const guiParams = {
 	Background: false
 }
 
+const isAoDemo = true
+
 // extract if the paramaterer "traa_test" is set to true in the URL
 const traaTest = new URLSearchParams(window.location.search).get("traa_test") === "true"
 
@@ -150,8 +152,14 @@ const cameraY = traaTest ? 7 : 8.75
 camera.position.fromArray([0, cameraY, 25])
 controls.target.set(0, cameraY, 0)
 controls.maxPolarAngle = Math.PI / 2
-controls.minDistance = 7.5
+controls.minDistance = 5
 window.controls = controls
+window.camera = camera
+
+if (isAoDemo) {
+	camera.position.fromArray([4, 3, 0])
+	controls.target.set(0, 3, 0)
+}
 
 const composer = new POSTPROCESSING.EffectComposer(renderer)
 if (traaTest || true) {
@@ -266,8 +274,8 @@ if (traaTest) {
 		loadFiles = 15
 	}
 } else {
-	url = "cat_with_jet_pack.optimized.glb"
-	loadFiles = 15
+	url = "sponza_no_textures.optimized.glb"
+	loadFiles = 9
 }
 
 let lastScene
@@ -432,14 +440,51 @@ const initScene = async () => {
 			if (fps >= 256) {
 				// composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, bloomEffect, vignetteEffect, lutEffect))
 
-				const hbaoEffect = new HBAOEffect(composer, camera, scene)
-				const ssaoEffect = new SSAOEffect(composer, camera, scene)
+				const hbaoOptions = {
+					resolutionScale: 1,
+					spp: 16,
+					distance: 3,
+					distancePower: 1,
+					power: 1.5,
+					bias: 321,
+					thickness: 0.05,
+					color: 0,
+					useNormalPass: false,
+					velocityDepthNormalPass: null,
+					normalTexture: null,
+					iterations: 1,
+					radius: 8,
+					depthPhi: 0.43499999999999994,
+					normalPhi: 3.261
+				}
+
+				const ssaoOptions = {
+					resolutionScale: 1,
+					spp: 16,
+					distance: 1,
+					distancePower: 0.25,
+					power: 2,
+					bias: 250,
+					thickness: 0.075,
+					color: 0,
+					useNormalPass: false,
+					velocityDepthNormalPass: null,
+					normalTexture: null,
+					iterations: 1,
+					radius: 5,
+					depthPhi: 2.5,
+					normalPhi: 7.5
+				}
+
+				const hbaoEffect = new HBAOEffect(composer, camera, scene, hbaoOptions)
+
+				const ssaoEffect = new SSAOEffect(composer, camera, scene, ssaoOptions)
 
 				const ssaoPass = new POSTPROCESSING.EffectPass(camera, ssaoEffect)
 				const hbaoPass = new POSTPROCESSING.EffectPass(camera, hbaoEffect)
 
-				const gui3 = new HBAODebugGUI(hbaoEffect)
-				const gui4 = new SSAODebugGUI(ssaoEffect)
+				const gui3 = new HBAODebugGUI(hbaoEffect, hbaoOptions)
+				const gui4 = new SSAODebugGUI(ssaoEffect, ssaoOptions)
 
 				const hbaoText = document.createElement("div")
 				hbaoText.innerHTML = "HBAO"

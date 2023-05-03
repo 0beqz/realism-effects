@@ -8,16 +8,13 @@ class HBAOEffect extends AOEffect {
 	constructor(composer, camera, scene, options = AOEffect.DefaultOptions) {
 		const hbaoPass = new HBAOPass(camera, scene)
 
-		HBAOEffect.DefaultOptions = {
-			...AOEffect.DefaultOptions
-		}
-
 		options = {
+			...AOEffect.DefaultOptions,
 			...HBAOEffect.DefaultOptions,
 			...options
 		}
 
-		super(composer, camera, scene, hbaoPass, (options = AOEffect.DefaultOptions))
+		super(composer, camera, scene, hbaoPass, options)
 
 		options = { ...AOEffect.DefaultOptions, ...options }
 	}
