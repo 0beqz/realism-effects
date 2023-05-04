@@ -446,7 +446,7 @@ const initScene = async () => {
 					distance: 3,
 					distancePower: 1,
 					power: 2,
-					bias: 300,
+					bias: 39,
 					thickness: 0.05,
 					color: 0,
 					useNormalPass: false,

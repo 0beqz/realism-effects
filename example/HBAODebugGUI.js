@@ -21,10 +21,10 @@ export class HBAODebugGUI {
 		generalFolder.addInput(params, "resolutionScale", { min: 0.25, max: 1, step: 0.25 })
 		generalFolder.addInput(params, "spp", { min: 1, max: 64, step: 1 })
 		generalFolder.addInput(params, "distance", { min: 0.1, max: 10, step: 0.01 })
-		generalFolder.addInput(params, "distancePower", { min: 1, max: 20, step: 0.25 })
+		generalFolder.addInput(params, "distancePower", { min: 0.1, max: 10, step: 0.1 })
 		generalFolder.addInput(params, "bias", {
 			min: 0,
-			max: 500,
+			max: 100,
 			step: 1
 		})
 		generalFolder.addInput(params, "power", { min: 0.5, max: 8, step: 0.5 })

@@ -11,7 +11,7 @@ const defaultAOOptions = {
 	distance: 3,
 	distancePower: 1,
 	power: 2,
-	bias: 300,
+	bias: 40,
 	thickness: 0.075,
 	color: new Color("black"),
 	useNormalPass: false,
