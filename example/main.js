@@ -442,7 +442,7 @@ const initScene = async () => {
 
 				const hbaoOptions = {
 					resolutionScale: 1,
-					spp: 16,
+					spp: 4,
 					distance: 2.1399999999999997,
 					distancePower: 1,
 					power: 2,
@@ -462,7 +462,7 @@ const initScene = async () => {
 
 				const ssaoOptions = {
 					resolutionScale: 1,
-					spp: 16,
+					spp: 4,
 					distance: 1,
 					distancePower: 0.25,
 					power: 2,
