@@ -442,7 +442,7 @@ const initScene = async () => {
 
 				const hbaoOptions = {
 					resolutionScale: 1,
-					spp: 4,
+					spp: 16,
 					distance: 2.1399999999999997,
 					distancePower: 1,
 					power: 2,
@@ -457,12 +457,12 @@ const initScene = async () => {
 					normalPhi: 9.783,
 					radius: 8,
 					rings: 11,
-					samples: 16
+					samples: 4
 				}
 
 				const ssaoOptions = {
 					resolutionScale: 1,
-					spp: 4,
+					spp: 16,
 					distance: 1,
 					distancePower: 0.25,
 					power: 2,
@@ -474,7 +474,8 @@ const initScene = async () => {
 					normalTexture: null,
 					iterations: 1,
 					depthPhi: 2.5,
-					normalPhi: 7.5
+					normalPhi: 7.5,
+					samples: 4
 				}
 
 				const hbaoEffect = new HBAOEffect(composer, camera, scene, hbaoOptions)
