@@ -72,7 +72,7 @@ void main() {
     vec4 cameraPosition = cameraMatrixWorld * vec4(0.0, 0.0, 0.0, 1.0);
 
     vec3 worldPos = getWorldPos(depth, vUv);
-    vec3 worldNormal = getWorldNormal(worldPos, vUv);
+    vec3 worldNormal = getWorldNormal(vUv);
 
     float ao = 0.0, totalWeight = 0.0;
 

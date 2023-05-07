@@ -10,7 +10,8 @@ const defaultPoissonBlurOptions = {
 	depthPhi: 2.5,
 	normalPhi: 7.5,
 	rings: 11,
-	samples: 16
+	samples: 16,
+	normalTexture: null
 }
 
 export class PoissionDenoisePass extends Pass {
@@ -52,6 +53,12 @@ export class PoissionDenoisePass extends Pass {
 		uniforms["cameraMatrixWorld"].value = camera.matrixWorld
 		uniforms["depthPhi"].value = options.depthPhi
 		uniforms["normalPhi"].value = options.normalPhi
+
+		if (options.normalTexture) {
+			uniforms["normalTexture"].value = options.normalTexture
+		} else {
+			this.fullscreenMaterial.defines.NORMAL_IN_RGB = ""
+		}
 
 		// these properties need the shader to be recompiled
 		for (const prop of ["radius", "rings", "samples"]) {

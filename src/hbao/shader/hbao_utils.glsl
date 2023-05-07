@@ -43,7 +43,7 @@ vec3 slerp(const vec3 a, const vec3 b, const float t) {
     return (a * t1) + (b * t2);
 }
 
-vec3 computeWorldNormal(vec3 worldPos) {
+vec3 computeWorldNormal() {
     vec2 resolution = texSize;
 
     ivec2 p = ivec2(vUv * resolution);
@@ -68,14 +68,14 @@ vec3 computeWorldNormal(vec3 worldPos) {
     return normalize(cross(dpdx, dpdy));
 }
 
-vec3 getWorldNormal(vec3 worldPos, const vec2 uv) {
+vec3 getWorldNormal(const vec2 uv) {
 #ifdef useNormalTexture
     vec3 worldNormal = unpackRGBToNormal(textureLod(normalTexture, uv, 0.).rgb);
 
     worldNormal = (vec4(worldNormal, 1.) * viewMatrix).xyz;  // view-space to world-space
     return normalize(worldNormal);
 #else
-    return computeWorldNormal(worldPos);  // compute world normal from depth
+    return computeWorldNormal();  // compute world normal from depth
 #endif
 }
 
