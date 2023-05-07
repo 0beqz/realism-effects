@@ -1,32 +1,20 @@
 import { Pass } from "postprocessing"
-import {
-	HalfFloatType,
-	LinearEncoding,
-	Matrix4,
-	NearestFilter,
-	RepeatWrapping,
-	ShaderMaterial,
-	TextureLoader,
-	Vector2,
-	WebGLRenderTarget
-} from "three"
-import blueNoiseImage from "../utils/blue_noise_64_rgba.png"
+import { HalfFloatType, Matrix4, ShaderMaterial, Vector2, WebGLRenderTarget } from "three"
 import vertexShader from "../utils/shader/basic.vert"
-import sampleBlueNoise from "../utils/shader/sampleBlueNoise.glsl"
 import fragmentShader from "./shader/poissionDenoise.frag"
-
-const finalFragmentShader = fragmentShader.replace("#include <sampleBlueNoise>", sampleBlueNoise)
+import { generatePoissonDiskConstant, generatePoissonSamples } from "./utils/PoissonUtils"
 
 const defaultPoissonBlurOptions = {
 	iterations: 1,
-	radius: 5,
+	radius: 8,
 	depthPhi: 2.5,
-	normalPhi: 7.5
+	normalPhi: 7.5,
+	rings: 11,
+	samples: 16
 }
 
 export class PoissionDenoisePass extends Pass {
 	iterations = defaultPoissonBlurOptions.iterations
-	radius = defaultPoissonBlurOptions.radius
 
 	constructor(camera, inputTexture, depthTexture, options = defaultPoissonBlurOptions) {
 		super("PoissionBlurPass")
@@ -36,21 +24,16 @@ export class PoissionDenoisePass extends Pass {
 		this.inputTexture = inputTexture
 
 		this.fullscreenMaterial = new ShaderMaterial({
+			fragmentShader,
+			vertexShader,
 			uniforms: {
 				depthTexture: { value: null },
 				inputTexture: { value: null },
 				projectionMatrixInverse: { value: new Matrix4() },
 				cameraMatrixWorld: { value: new Matrix4() },
-				resolution: { value: new Vector2() },
-				time: { value: 0.0 },
 				depthPhi: { value: 5.0 },
-				normalPhi: { value: 5.0 },
-				blueNoiseTexture: { value: null },
-				blueNoiseRepeat: { value: new Vector2() },
-				radius: { value: 12.0 }
-			},
-			vertexShader,
-			fragmentShader: finalFragmentShader
+				normalPhi: { value: 5.0 }
+			}
 		})
 
 		const renderTargetOptions = {
@@ -70,22 +53,33 @@ export class PoissionDenoisePass extends Pass {
 		uniforms["depthPhi"].value = options.depthPhi
 		uniforms["normalPhi"].value = options.normalPhi
 
-		new TextureLoader().load(blueNoiseImage, blueNoiseTexture => {
-			blueNoiseTexture.minFilter = NearestFilter
-			blueNoiseTexture.magFilter = NearestFilter
-			blueNoiseTexture.wrapS = RepeatWrapping
-			blueNoiseTexture.wrapT = RepeatWrapping
-			blueNoiseTexture.encoding = LinearEncoding
+		// these properties need the shader to be recompiled
+		for (const prop of ["radius", "rings", "samples"]) {
+			Object.defineProperty(this, prop, {
+				get: () => options[prop],
+				set: value => {
+					options[prop] = value
 
-			this.fullscreenMaterial.uniforms.blueNoiseTexture.value = blueNoiseTexture
-		})
+					this.setSize(this.renderTargetA.width, this.renderTargetA.height)
+				}
+			})
+		}
 	}
 
 	setSize(width, height) {
 		this.renderTargetA.setSize(width, height)
 		this.renderTargetB.setSize(width, height)
 
-		this.fullscreenMaterial.uniforms.resolution.value.set(this.renderTargetA.width, this.renderTargetA.height)
+		const poissonDisk = generatePoissonSamples(
+			this.samples,
+			this.rings,
+			this.radius,
+			new Vector2(1 / width, 1 / height)
+		)
+		const poissonDiskConstant = generatePoissonDiskConstant(poissonDisk)
+
+		this.fullscreenMaterial.fragmentShader = poissonDiskConstant + "\n" + fragmentShader
+		this.fullscreenMaterial.needsUpdate = true
 	}
 
 	get texture() {
@@ -93,26 +87,10 @@ export class PoissionDenoisePass extends Pass {
 	}
 
 	render(renderer) {
-		const { uniforms } = this.fullscreenMaterial
-
-		uniforms["radius"].value = this.radius
-		uniforms["time"].value = performance.now() / 1000
-
-		const noiseTexture = this.fullscreenMaterial.uniforms.blueNoiseTexture.value
-		if (noiseTexture) {
-			const { width, height } = noiseTexture.source.data
-
-			this.fullscreenMaterial.uniforms.blueNoiseRepeat.value.set(
-				this.renderTargetA.width / width,
-				this.renderTargetA.height / height
-			)
-		}
-
 		for (let i = 0; i < 2 * this.iterations; i++) {
 			const horizontal = i % 2 === 0
 
 			const inputRenderTarget = horizontal ? this.renderTargetB : this.renderTargetA
-
 			this.fullscreenMaterial.uniforms["inputTexture"].value = i === 0 ? this.inputTexture : inputRenderTarget.texture
 
 			const renderTarget = horizontal ? this.renderTargetA : this.renderTargetB

@@ -11,7 +11,7 @@ import {
 	Vector2,
 	WebGLRenderTarget
 } from "three"
-import blueNoiseImage from "../utils/blue_noise_64_rgba.png"
+import blueNoiseImage from "../utils/LDR_RGBA_0.png"
 import vertexShader from "../utils/shader/basic.vert"
 import sampleBlueNoise from "../utils/shader/sampleBlueNoise.glsl"
 

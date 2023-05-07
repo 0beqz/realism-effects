@@ -8,7 +8,7 @@ import { TRAAEffect } from "../traa/TRAAEffect"
 const defaultAOOptions = {
 	resolutionScale: 1,
 	spp: 8,
-	distance: 3,
+	distance: 2,
 	distancePower: 1,
 	power: 2,
 	bias: 40,
@@ -95,11 +95,10 @@ class AOEffect extends Effect {
 
 						// denoiser
 						case "iterations":
-							this.poissionDenoisePass.iterations = value
-							break
-
 						case "radius":
-							this.poissionDenoisePass.radius = value
+						case "samples":
+						case "rings":
+							this.poissionDenoisePass[key] = value
 							break
 
 						case "depthPhi":
@@ -162,7 +161,7 @@ class AOEffect extends Effect {
 		if (this.iterations > 0) {
 			this.uniforms.get("inputTexture").value = this.poissionDenoisePass.texture
 		} else {
-			this.uniforms.get("inputTexture").value = this.aoPass.renderTarget.texture
+			this.uniforms.get("inputTexture").value = this.aoPass.texture
 		}
 
 		this.normalPass?.render(renderer)

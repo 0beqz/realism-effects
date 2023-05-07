@@ -18,12 +18,12 @@ uniform float thickness;
 // HBAO Utils
 #include <hbao_utils>
 
-float getOcclusion(const vec3 cameraPosition, const vec3 worldPos, const vec3 worldNormal, const float depth, const int seed, out vec3 sampleWorldDir) {
+float getOcclusion(const vec3 cameraPosition, const vec3 worldPos, const vec3 worldNormal, const float depth, const int seed, inout float totalWeight) {
     vec4 blueNoise = sampleBlueNoise(blueNoiseTexture, seed, blueNoiseRepeat, texSize);
 
-    sampleWorldDir = cosineSampleHemisphere(worldNormal, blueNoise.rg);
+    vec3 sampleWorldDir = cosineSampleHemisphere(worldNormal, blueNoise.rg);
 
-    vec3 sampleWorldPos = worldPos + aoDistance * pow(blueNoise.b, distancePower) * sampleWorldDir;
+    vec3 sampleWorldPos = worldPos + aoDistance * pow(blueNoise.b, distancePower + 1.0) * sampleWorldDir;
 
     // Project the sample position to screen space
     vec4 sampleUv = projectionViewMatrix * vec4(sampleWorldPos, 1.);
@@ -42,10 +42,13 @@ float getOcclusion(const vec3 cameraPosition, const vec3 worldPos, const vec3 wo
 
     float th = thickness * 0.01;
 
+    float theta = dot(worldNormal, sampleWorldDir);
+    totalWeight += theta;
+
     if (deltaDepth < th) {
         float horizon = sampleDepth + deltaDepth * bias * 1000.;
 
-        float occlusion = max(0.0, horizon - depth) * dot(worldNormal, sampleWorldDir);
+        float occlusion = max(0.0, horizon - depth) * theta;
 
         float m = max(0., 1. - deltaDepth / th);
         occlusion = 10. * occlusion * m / d;
@@ -61,7 +64,7 @@ void main() {
     float depth = textureLod(depthTexture, vUv, 0.0).r;
 
     // filter out background
-    if (depth > 0.9999) {
+    if (depth == 1.0) {
         discard;
         return;
     }
@@ -71,8 +74,7 @@ void main() {
     vec3 worldPos = getWorldPos(depth, vUv);
     vec3 worldNormal = getWorldNormal(worldPos, vUv);
 
-    vec3 sampleWorldDir;
-    float ao = 0.0;
+    float ao = 0.0, totalWeight = 0.0;
 
     for (int i = 0; i < spp; i++) {
         int seed = i;
@@ -80,11 +82,11 @@ void main() {
         seed += frame;
 #endif
 
-        float occlusion = getOcclusion(cameraPosition.xyz, worldPos, worldNormal, depth, seed, sampleWorldDir);
+        float occlusion = getOcclusion(cameraPosition.xyz, worldPos, worldNormal, depth, seed, totalWeight);
         ao += occlusion;
     }
 
-    ao /= float(spp);
+    if (totalWeight > 0.) ao /= totalWeight;
 
     // clamp ao to [0, 1]
     ao = clamp(1. - ao, 0., 1.);

@@ -275,7 +275,7 @@ if (traaTest) {
 	}
 } else {
 	url = "sponza_no_textures.optimized.glb"
-	loadFiles = 9
+	loadFiles = 7
 }
 
 let lastScene
@@ -443,19 +443,21 @@ const initScene = async () => {
 				const hbaoOptions = {
 					resolutionScale: 1,
 					spp: 16,
-					distance: 3,
+					distance: 2.1399999999999997,
 					distancePower: 1,
 					power: 2,
 					bias: 39,
-					thickness: 0.05,
+					thickness: 0.1,
 					color: 0,
 					useNormalPass: false,
 					velocityDepthNormalPass: null,
 					normalTexture: null,
 					iterations: 1,
 					radius: 8,
-					depthPhi: 0.6519999999999999,
-					normalPhi: 12.5
+					depthPhi: 1.522,
+					normalPhi: 9.783,
+					rings: 11,
+					samples: 16
 				}
 
 				const ssaoOptions = {
@@ -471,7 +473,6 @@ const initScene = async () => {
 					velocityDepthNormalPass: null,
 					normalTexture: null,
 					iterations: 1,
-					radius: 5,
 					depthPhi: 2.5,
 					normalPhi: 7.5
 				}

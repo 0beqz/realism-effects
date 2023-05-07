@@ -34,8 +34,8 @@ class HBAOSSAOComparisonEffect extends Effect {
 		super("AOEffect", compose, {
 			type: "FinalAOMaterial",
 			uniforms: new Map([
-				["hbaoTexture", new Uniform(hbaoEffect.poissionDenoisePass.texture)],
-				["ssaoTexture", new Uniform(ssaoEffect.poissionDenoisePass.texture)],
+				["hbaoTexture", new Uniform(null)],
+				["ssaoTexture", new Uniform(null)],
 				["depthTexture", new Uniform(ssaoEffect.composer.depthTexture)],
 				["x", new Uniform(0.5)],
 				["hbaoPower", new Uniform(0.5)],
@@ -57,6 +57,9 @@ class HBAOSSAOComparisonEffect extends Effect {
 	update() {
 		this.uniforms.get("hbaoPower").value = this.hbaoEffect.uniforms.get("power").value
 		this.uniforms.get("ssaoPower").value = this.ssaoEffect.uniforms.get("power").value
+
+		this.uniforms.get("hbaoTexture").value = this.hbaoEffect.uniforms.get("inputTexture").value
+		this.uniforms.get("ssaoTexture").value = this.ssaoEffect.uniforms.get("inputTexture").value
 	}
 }
 
