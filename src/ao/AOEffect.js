@@ -97,7 +97,6 @@ class AOEffect extends Effect {
 						case "iterations":
 						case "radius":
 						case "samples":
-						case "rings":
 							this.poissionDenoisePass[key] = value
 							break
 

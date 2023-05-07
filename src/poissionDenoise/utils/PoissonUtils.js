@@ -1,9 +1,9 @@
 import { Vector2 } from "three"
 
-export function generatePoissonSamples(samples, rings, radius, texelSize) {
+export function generatePoissonSamples(samples, radius, texelSize) {
 	const poissonDisk = []
 
-	const ANGLE_STEP = (2 * Math.PI * rings) / samples
+	const ANGLE_STEP = (2 * Math.PI) / samples
 	let angle = 0
 
 	for (let i = 0; i < samples; i++) {
@@ -18,7 +18,8 @@ export function generatePoissonSamples(samples, rings, radius, texelSize) {
 
 export function generatePoissonDiskConstant(poissonDisk) {
 	const samples = poissonDisk.length
-	let glslCode = `const int samples = ${samples};\nconst vec2 poissonDisk[samples] = vec2[samples](\n`
+
+	let glslCode = "const vec2 poissonDisk[samples] = vec2[samples](\n"
 
 	for (let i = 0; i < samples; i++) {
 		const sample = poissonDisk[i]

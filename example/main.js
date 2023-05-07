@@ -455,9 +455,8 @@ const initScene = async () => {
 					iterations: 1,
 					depthPhi: 1.522,
 					normalPhi: 9.783,
-					radius: 8,
-					rings: 11,
-					samples: 16
+					radius: 6,
+					samples: 5
 				}
 
 				const ssaoOptions = {
@@ -473,8 +472,10 @@ const initScene = async () => {
 					velocityDepthNormalPass: null,
 					normalTexture: null,
 					iterations: 1,
+					radius: 4,
 					depthPhi: 2.5,
-					normalPhi: 7.5
+					normalPhi: 7.5,
+					samples: 5
 				}
 
 				const hbaoEffect = new HBAOEffect(composer, camera, scene, hbaoOptions)

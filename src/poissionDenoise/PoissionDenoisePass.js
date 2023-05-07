@@ -1,15 +1,25 @@
 import { Pass } from "postprocessing"
-import { HalfFloatType, Matrix4, ShaderMaterial, Vector2, WebGLRenderTarget } from "three"
+import {
+	HalfFloatType,
+	LinearEncoding,
+	Matrix4,
+	NearestFilter,
+	RepeatWrapping,
+	ShaderMaterial,
+	TextureLoader,
+	Vector2,
+	WebGLRenderTarget
+} from "three"
 import vertexShader from "../utils/shader/basic.vert"
 import fragmentShader from "./shader/poissionDenoise.frag"
 import { generatePoissonDiskConstant, generatePoissonSamples } from "./utils/PoissonUtils"
+import blueNoiseImage from "../utils/LDR_RGBA_0.png"
 
 const defaultPoissonBlurOptions = {
 	iterations: 1,
 	radius: 8,
 	depthPhi: 2.5,
 	normalPhi: 7.5,
-	rings: 11,
 	samples: 16,
 	normalTexture: null
 }
@@ -33,7 +43,10 @@ export class PoissionDenoisePass extends Pass {
 				projectionMatrixInverse: { value: new Matrix4() },
 				cameraMatrixWorld: { value: new Matrix4() },
 				depthPhi: { value: 5.0 },
-				normalPhi: { value: 5.0 }
+				normalPhi: { value: 5.0 },
+				resolution: { value: new Vector2() },
+				blueNoiseTexture: { value: null },
+				blueNoiseRepeat: { value: new Vector2() }
 			}
 		})
 
@@ -61,7 +74,7 @@ export class PoissionDenoisePass extends Pass {
 		}
 
 		// these properties need the shader to be recompiled
-		for (const prop of ["radius", "rings", "samples"]) {
+		for (const prop of ["radius", "samples"]) {
 			Object.defineProperty(this, prop, {
 				get: () => options[prop],
 				set: value => {
@@ -71,21 +84,31 @@ export class PoissionDenoisePass extends Pass {
 				}
 			})
 		}
+
+		new TextureLoader().load(blueNoiseImage, blueNoiseTexture => {
+			blueNoiseTexture.minFilter = NearestFilter
+			blueNoiseTexture.magFilter = NearestFilter
+			blueNoiseTexture.wrapS = RepeatWrapping
+			blueNoiseTexture.wrapT = RepeatWrapping
+			blueNoiseTexture.encoding = LinearEncoding
+
+			this.fullscreenMaterial.uniforms.blueNoiseTexture.value = blueNoiseTexture
+		})
 	}
 
 	setSize(width, height) {
 		this.renderTargetA.setSize(width, height)
 		this.renderTargetB.setSize(width, height)
 
-		const poissonDisk = generatePoissonSamples(
-			this.samples,
-			this.rings,
-			this.radius,
-			new Vector2(1 / width, 1 / height)
-		)
+		this.fullscreenMaterial.uniforms.resolution.value.set(width, height)
+
+		const poissonDisk = generatePoissonSamples(this.samples, this.radius, new Vector2(1 / width, 1 / height))
+
+		const sampleDefine = `const int samples = ${this.samples};\n`
+
 		const poissonDiskConstant = generatePoissonDiskConstant(poissonDisk)
 
-		this.fullscreenMaterial.fragmentShader = poissonDiskConstant + "\n" + fragmentShader
+		this.fullscreenMaterial.fragmentShader = sampleDefine + poissonDiskConstant + "\n" + fragmentShader
 		this.fullscreenMaterial.needsUpdate = true
 	}
 
@@ -94,6 +117,16 @@ export class PoissionDenoisePass extends Pass {
 	}
 
 	render(renderer) {
+		const noiseTexture = this.fullscreenMaterial.uniforms.blueNoiseTexture.value
+		if (noiseTexture) {
+			const { width, height } = noiseTexture.source.data
+
+			this.fullscreenMaterial.uniforms.blueNoiseRepeat.value.set(
+				this.renderTargetA.width / width,
+				this.renderTargetA.height / height
+			)
+		}
+
 		for (let i = 0; i < 2 * this.iterations; i++) {
 			const horizontal = i % 2 === 0
 
