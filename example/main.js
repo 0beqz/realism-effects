@@ -453,10 +453,10 @@ const initScene = async () => {
 					velocityDepthNormalPass: null,
 					normalTexture: null,
 					iterations: 1,
+					radius: 6,
 					depthPhi: 1.522,
 					normalPhi: 9.783,
-					radius: 8,
-					rings: 11,
+					rings: 9,
 					samples: 4
 				}
 
@@ -473,8 +473,10 @@ const initScene = async () => {
 					velocityDepthNormalPass: null,
 					normalTexture: null,
 					iterations: 1,
+					radius: 6,
 					depthPhi: 2.5,
 					normalPhi: 7.5,
+					rings: 10,
 					samples: 4
 				}
 
