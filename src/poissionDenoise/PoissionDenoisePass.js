@@ -1,8 +1,19 @@
 import { Pass } from "postprocessing"
-import { HalfFloatType, Matrix4, ShaderMaterial, Vector2, WebGLRenderTarget } from "three"
+import {
+	HalfFloatType,
+	LinearEncoding,
+	Matrix4,
+	NearestFilter,
+	RepeatWrapping,
+	ShaderMaterial,
+	TextureLoader,
+	Vector2,
+	WebGLRenderTarget
+} from "three"
 import vertexShader from "../utils/shader/basic.vert"
 import fragmentShader from "./shader/poissionDenoise.frag"
 import { generatePoissonDiskConstant, generatePoissonSamples } from "./utils/PoissonUtils"
+import blueNoiseImage from "../utils/LDR_RGBA_0.png"
 
 const defaultPoissonBlurOptions = {
 	iterations: 1,
@@ -32,8 +43,11 @@ export class PoissionDenoisePass extends Pass {
 				inputTexture: { value: null },
 				projectionMatrixInverse: { value: new Matrix4() },
 				cameraMatrixWorld: { value: new Matrix4() },
+				resolution: { value: new Vector2() },
 				depthPhi: { value: 5.0 },
-				normalPhi: { value: 5.0 }
+				normalPhi: { value: 5.0 },
+				blueNoiseTexture: { value: null },
+				blueNoiseRepeat: { value: new Vector2() }
 			}
 		})
 
@@ -41,6 +55,16 @@ export class PoissionDenoisePass extends Pass {
 			type: HalfFloatType,
 			depthBuffer: false
 		}
+
+		new TextureLoader().load(blueNoiseImage, blueNoiseTexture => {
+			blueNoiseTexture.minFilter = NearestFilter
+			blueNoiseTexture.magFilter = NearestFilter
+			blueNoiseTexture.wrapS = RepeatWrapping
+			blueNoiseTexture.wrapT = RepeatWrapping
+			blueNoiseTexture.encoding = LinearEncoding
+
+			this.fullscreenMaterial.uniforms.blueNoiseTexture.value = blueNoiseTexture
+		})
 
 		this.renderTargetA = new WebGLRenderTarget(1, 1, renderTargetOptions)
 		this.renderTargetB = new WebGLRenderTarget(1, 1, renderTargetOptions)
@@ -83,10 +107,12 @@ export class PoissionDenoisePass extends Pass {
 			this.radius,
 			new Vector2(1 / width, 1 / height)
 		)
-		const poissonDiskConstant = generatePoissonDiskConstant(poissonDisk)
+		const poissonDiskConstant = generatePoissonDiskConstant(poissonDisk, this.rings, this.radius)
 
 		this.fullscreenMaterial.fragmentShader = poissonDiskConstant + "\n" + fragmentShader
 		this.fullscreenMaterial.needsUpdate = true
+
+		this.fullscreenMaterial.uniforms.resolution.value.set(width, height)
 	}
 
 	get texture() {
@@ -94,6 +120,16 @@ export class PoissionDenoisePass extends Pass {
 	}
 
 	render(renderer) {
+		const noiseTexture = this.fullscreenMaterial.uniforms.blueNoiseTexture.value
+		if (noiseTexture) {
+			const { width, height } = noiseTexture.source.data
+
+			this.fullscreenMaterial.uniforms.blueNoiseRepeat.value.set(
+				this.renderTargetA.width / width,
+				this.renderTargetA.height / height
+			)
+		}
+
 		for (let i = 0; i < 2 * this.iterations; i++) {
 			const horizontal = i % 2 === 0
 

@@ -16,9 +16,10 @@ export function generatePoissonSamples(samples, rings, radius, texelSize) {
 	return poissonDisk
 }
 
-export function generatePoissonDiskConstant(poissonDisk) {
+export function generatePoissonDiskConstant(poissonDisk, rings, radius) {
 	const samples = poissonDisk.length
-	let glslCode = `const int samples = ${samples};\nconst vec2 poissonDisk[samples] = vec2[samples](\n`
+	let glslCode = `const int samples = ${samples};\nconst int rings = ${rings};\nconst int radius = ${radius};`
+	return glslCode
 
 	for (let i = 0; i < samples; i++) {
 		const sample = poissonDisk[i]
