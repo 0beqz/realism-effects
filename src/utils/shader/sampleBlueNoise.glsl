@@ -15,7 +15,7 @@ vec4 sampleBlueNoise(sampler2D texture, int seed, vec2 repeat, vec2 texSize) {
     float blueNoiseIndex = floor(floor(size.y / blueNoiseSize.y) * repeat.x) + floor(size.x / blueNoiseSize.x);
 
     // get the offset of this pixel's blue noise tile
-    // int blueNoiseTileOffset = int(r1(blueNoiseIndex + 1.0) * 65536.);
+    int blueNoiseTileOffset = int(r1(blueNoiseIndex + 1.0) * 65536.);
 
     vec2 blueNoiseUv = vUv * repeat;
 
@@ -24,7 +24,7 @@ vec4 sampleBlueNoise(sampler2D texture, int seed, vec2 repeat, vec2 texSize) {
 
     // animate blue noise
     if (seed != 0) {
-        blueNoise = fract(blueNoise + hn * float(seed));
+        blueNoise = fract(blueNoise + hn * float(seed + blueNoiseTileOffset));
 
         blueNoise.r = (blueNoise.r > 0.5 ? 1.0 - blueNoise.r : blueNoise.r) * 2.0;
         blueNoise.g = (blueNoise.g > 0.5 ? 1.0 - blueNoise.g : blueNoise.g) * 2.0;

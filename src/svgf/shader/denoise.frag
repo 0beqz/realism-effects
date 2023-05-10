@@ -199,7 +199,7 @@ void main() {
 
 #ifdef useNormal
     vec4 normalTexel = textureLod(normalTexture, vUv, 0.);
-    normal = unpackRGBToNormal(normalTexel.rgb);
+    normal = normalTexel.rgb;
     normal = (vec4(normal, 1.) * viewMatrix).xyz;
 #endif
 #ifdef useRoughness
