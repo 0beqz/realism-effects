@@ -39,6 +39,7 @@ let smaaPass
 let fxaaPass
 let ssgiEffect
 let postprocessingEnabled = true
+let hbaoSsaoComparisonEffect
 let pane
 let gui2
 let envMesh
@@ -513,7 +514,31 @@ const initScene = async () => {
 				document.body.appendChild(ssaoText)
 
 				document.querySelector("#info").style.color = "black"
-				document.querySelector("#info").innerHTML += "<br>Hold SHIFT to move blue line"
+				document.querySelector("#info").innerHTML = "HBAO & SSAO Comparison<br>Hold <b>SHIFT</b> to move blue line"
+
+				const toggle = document.createElement("div")
+				toggle.style.background = "white"
+				toggle.style.borderRadius = "8px"
+				toggle.style.padding = "8px"
+				toggle.style.cursor = "pointer"
+				toggle.innerHTML = "HBAO"
+				toggle.style.position = "absolute"
+				toggle.style.bottom = "64px"
+				toggle.style.left = "50%"
+				toggle.style.userSelect = "none"
+				toggle.style.transform = "translateX(-50%)"
+				toggle.style.boxShadow = "0 0 16px rgba(0, 0, 0, 0.25)"
+				toggle.innerHTML = `
+				AO only&ensp;<input type="checkbox" id="aoToggle" checked>
+				`
+				document.body.appendChild(toggle)
+
+				toggle.onclick = ev => {
+					if (ev.target === document.querySelector("#aoToggle")) return
+					document.querySelector("#aoToggle").checked = !document.querySelector("#aoToggle").checked
+
+					hbaoSsaoComparisonEffect.setAlbedo(!hbaoSsaoComparisonEffect.isAlbedo())
+				}
 
 				// gui3.pane.containerElem_.style.visibility = "hidden"
 				gui3.pane.containerElem_.style.left = "8px"
@@ -522,7 +547,7 @@ const initScene = async () => {
 				composer.addPass(hbaoPass)
 				composer.addPass(ssaoPass)
 
-				const hbaoSsaoComparisonEffect = new HBAOSSAOComparisonEffect(hbaoEffect, ssaoEffect)
+				hbaoSsaoComparisonEffect = new HBAOSSAOComparisonEffect(hbaoEffect, ssaoEffect)
 
 				composer.addPass(new POSTPROCESSING.EffectPass(camera, hbaoSsaoComparisonEffect))
 
@@ -729,6 +754,11 @@ document.addEventListener("keydown", ev => {
 		a.href = data
 		a.download = "screenshot-" + uuidv4() + ".png" // File name Here
 		a.click() // Downloaded file
+	}
+
+	// if space was pressed
+	if (ev.code === "Space" && isAoDemo) {
+		hbaoSsaoComparisonEffect.setAlbedo(!hbaoSsaoComparisonEffect.isAlbedo())
 	}
 })
 

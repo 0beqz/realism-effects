@@ -9,6 +9,7 @@ uniform sampler2D depthTexture;
 uniform float x;
 uniform float hbaoPower;
 uniform float ssaoPower;
+uniform bool albedo;
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
     float unpackedDepth = textureLod(depthTexture, uv, 0.).r;
@@ -25,7 +26,7 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 
     float ao = vUv.x > x ? pow(textureLod(ssaoTexture, uv, 0.).a, ssaoPower) : pow(textureLod(hbaoTexture, uv, 0.).a, hbaoPower);
 
-    outputColor = vec4(vec3(ao), inputColor.a);
+    outputColor = vec4(vec3(ao) * (albedo ? inputColor.rgb : vec3(1.)), inputColor.a);
 }
 `
 
@@ -39,7 +40,8 @@ class HBAOSSAOComparisonEffect extends Effect {
 				["depthTexture", new Uniform(ssaoEffect.composer.depthTexture)],
 				["x", new Uniform(0.5)],
 				["hbaoPower", new Uniform(0.5)],
-				["ssaoPower", new Uniform(0.5)]
+				["ssaoPower", new Uniform(0.5)],
+				["albedo", new Uniform(false)]
 			])
 		})
 
@@ -52,6 +54,14 @@ class HBAOSSAOComparisonEffect extends Effect {
 
 		this.hbaoEffect = hbaoEffect
 		this.ssaoEffect = ssaoEffect
+	}
+
+	setAlbedo(value) {
+		this.uniforms.get("albedo").value = value
+	}
+
+	isAlbedo() {
+		return this.uniforms.get("albedo").value
 	}
 
 	update() {
