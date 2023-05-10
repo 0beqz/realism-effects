@@ -30,7 +30,6 @@ uniform bool isLastIteration;
 float getDisocclusionBoostVariance(float visibleFrames) {
 #ifdef useTemporalReprojectTextures
     return max(0., -pow(visibleFrames, 2.0) + 50.0);
-    x
 #else
     return 0.;
 #endif

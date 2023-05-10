@@ -1,5 +1,14 @@
 ﻿import { Pass } from "postprocessing"
-import { Clock, HalfFloatType, LinearFilter, Matrix4, Quaternion, Vector3, WebGLMultipleRenderTargets } from "three"
+import {
+	Clock,
+	HalfFloatType,
+	LinearFilter,
+	Matrix4,
+	Quaternion,
+	Uniform,
+	Vector3,
+	WebGLMultipleRenderTargets
+} from "three"
 import { CopyPass } from "../ssgi/pass/CopyPass"
 import { TemporalReprojectMaterial } from "./material/TemporalReprojectMaterial"
 import { generateR2 } from "./utils/QuasirandomGenerator"
@@ -9,12 +18,10 @@ export const defaultTemporalReprojectPassOptions = {
 	dilation: false,
 	constantBlend: false,
 	fullAccumulate: false,
-	sampling: "blocky", // "catmullRom" | "blocky" | "linear"
 	neighborhoodClamp: false,
 	neighborhoodClampRadius: 1,
 	neighborhoodClampIntensity: 1,
 	logTransform: false,
-	logClamp: false,
 	depthDistance: 0.25,
 	worldDistance: 0.375,
 	reprojectSpecular: false,
@@ -50,6 +57,10 @@ export class TemporalReprojectPass extends Pass {
 			type: HalfFloatType,
 			depthBuffer: false
 		})
+
+		this.renderTarget.texture.map(
+			(texture, index) => (texture.name = "TemporalReprojectPass.accumulatedTexture" + index)
+		)
 
 		this.fullscreenMaterial = new TemporalReprojectMaterial(textureCount, options.temporalReprojectCustomComposeShader)
 		this.fullscreenMaterial.defines.textureCount = textureCount
@@ -92,22 +103,25 @@ export class TemporalReprojectPass extends Pass {
 		this.fullscreenMaterial.uniforms.velocityTexture.value = velocityDepthNormalPass.texture
 		this.fullscreenMaterial.uniforms.depthTexture.value = velocityDepthNormalPass.depthTexture
 
-		const samplingTypes = ["linear", "catmullRom", "blocky"]
-
-		for (const opt of ["sampling", "reprojectSpecular", "neighborhoodClamp", "neighborhoodClampDisocclusionTest"]) {
-			let value = opt === "sampling" ? samplingTypes.indexOf(options[opt]) : options[opt]
-
-			if (value === -1) throw new Error(`Invalid value for option ${opt}: ${options[opt]}`)
-
-			const arrayType = opt === "sampling" ? "int" : "bool"
+		for (const opt of ["reprojectSpecular", "neighborhoodClamp"]) {
+			let value = options[opt]
 
 			if (typeof value !== "array") value = Array(textureCount).fill(value)
 
-			this.fullscreenMaterial.defines[opt] = /* glsl */ `${arrayType}[](${value.join(", ")})`
+			this.fullscreenMaterial.defines[opt] = /* glsl */ `bool[](${value.join(", ")})`
 		}
 
 		this.options = options
 		this.velocityDepthNormalPass = velocityDepthNormalPass
+	}
+
+	setTextures(textures) {
+		if (!Array.isArray(textures)) textures = [textures]
+
+		for (let i = 0; i < textures.length; i++) {
+			const texture = textures[i]
+			this.fullscreenMaterial.uniforms["inputTexture" + i] = new Uniform(texture)
+		}
 	}
 
 	dispose() {
