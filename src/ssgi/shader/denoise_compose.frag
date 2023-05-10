@@ -1,4 +1,4 @@
-vec3 viewNormal = normalize((vec4(normal, 1.) * cameraMatrixWorld).xyz);
+vec3 viewNormal = (vec4(normal, 0.) * cameraMatrixWorld).xyz;
 
 roughness *= roughness;
 
@@ -12,8 +12,8 @@ vec3 n = viewNormal;  // view-space normal
 vec3 v = viewDir;     // incoming vector
 
 // convert view dir and view normal to world-space
-vec3 V = (vec4(v, 1.) * viewMatrix).xyz;  // invert view dir
-vec3 N = (vec4(n, 1.) * viewMatrix).xyz;  // invert view dir
+vec3 V = (vec4(v, 0.) * viewMatrix).xyz;  // invert view dir
+vec3 N = normal;
 
 Onb(N, T, B);
 

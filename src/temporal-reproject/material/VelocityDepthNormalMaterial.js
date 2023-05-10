@@ -184,7 +184,7 @@ export class VelocityDepthNormalMaterial extends ShaderMaterial {
                     	#include <normal_fragment_maps>
 
 						${velocity_fragment_main.replaceAll("gl_FragColor", "gVelocity")}
-						vec3 worldNormal = normalize((vec4(normal, 1.) * viewMatrix).xyz);
+						vec3 worldNormal = normalize((vec4(normal, 0.) * viewMatrix).xyz);
 						gVelocity.ba = Encode(worldNormal);
 
 						#ifdef renderDepthNormal

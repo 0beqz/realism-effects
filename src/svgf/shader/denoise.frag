@@ -27,14 +27,6 @@ uniform bool isLastIteration;
 
 #include <denoiseCustomComposeShaderFunctions>
 
-float getDisocclusionBoostVariance(float visibleFrames) {
-#ifdef useTemporalReprojectTextures
-    return max(0., -pow(visibleFrames, 2.0) + 50.0);
-#else
-    return 0.;
-#endif
-}
-
 vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth, const mat4 curMatrixWorld) {
     vec4 ndc = vec4(
         (uv.x - 0.5) * 2.0,
@@ -55,7 +47,16 @@ float distToPlane(const vec3 worldPos, const vec3 neighborWorldPos, const vec3 w
     return distToPlane;
 }
 
-void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec3 normal,
+// returns the variance of the pixel depending on how many frames it has been visible to denoise more aggressively at recently disoccluded pixels
+float getDisocclusionBoostVariance(float visibleFrames) {
+#ifdef useTemporalReprojectTextures
+    return max(0., -pow(visibleFrames, 2.0) + 50.0);
+#else
+    return 0.;
+#endif
+}
+
+void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec3 normal, const float depth,
          const float roughness, const vec3 worldPos,
          const float luma[textureCount], const float colorPhi[textureCount],
          inout vec3 denoisedColor[textureCount], inout float totalWeight[textureCount], inout float sumVariance[textureCount], inout float variance[textureCount]) {
@@ -71,9 +72,21 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec3 normal,
 // depth similarity
 #ifdef useDepth
     vec4 neighborDepthTexel = textureLod(depthTexture, neighborUvNearest, 0.);
+
+    #ifdef RGBA_DEPTH_PACKING
     float neighborDepth = unpackRGBAToDepth(neighborDepthTexel);
+    #else
+    float neighborDepth = neighborDepthTexel.r;
+    #endif
+
     vec3 neighborWorldPos = screenSpaceToWorldSpace(neighborUvNearest, neighborDepth, cameraMatrixWorld);
-    float depthDiff = (1. - distToPlane(worldPos, neighborWorldPos, normal));
+
+    #ifdef useNormal
+    float depthDiff = 1. - distToPlane(worldPos, neighborWorldPos, normal);
+    #else
+    float depthDiff = 1. - abs(depth - neighborDepth);
+    #endif
+
     float depthSimilarity = max(depthDiff / depthPhi, 0.);
 
     basicWeight *= depthSimilarity;
@@ -86,7 +99,7 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec3 normal,
 
 // normal similarity
 #ifdef useNormal
-    vec3 neighborNormal = neighborNormalTexel.rgb;
+    vec3 neighborNormal = neighborNormalTexel.xyz;
     float normalDiff = dot(neighborNormal, normal);
     float normalSimilarity = pow(max(0., normalDiff), normalPhi);
 
@@ -130,20 +143,22 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec3 normal,
 
 #pragma unroll_loop_end
 
-#ifdef useMoment
-    // moment
     if (isFirstIteration) {
+#ifdef useMoment
+        // moment
         vec4 neighborMoment = textureLod(momentTexture, neighborUvNearest, 0.);
 
         neighborInputTexel[0].a = neighborMoment.g - neighborMoment.r * neighborMoment.r;
-        sumVariance[0] += weight[0] * weight[0] * neighborInputTexel[0].a;
 
     #if momentTextureCount > 1
         neighborInputTexel[1].a = neighborMoment.a - neighborMoment.b * neighborMoment.b;
-        sumVariance[1] += weight[1] * weight[1] * neighborInputTexel[1].a;
     #endif
-    }
+#else
+        for (int i = 0; i < textureCount; i++) {
+            neighborInputTexel[i].a = getDisocclusionBoostVariance(neighborInputTexel[i].a);
+        }
 #endif
+    }
 
 #pragma unroll_loop_start
     for (int i = 0; i < momentTextureCount; i++) {
@@ -160,26 +175,42 @@ void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.);
 
     // skip background
-    if (dot(depthTexel.rgb, depthTexel.rgb) == 0.) {
+    if (depthTexel.r > 0.9999 || dot(depthTexel.rgb, depthTexel.rgb) == 0.) {
         discard;
         return;
     }
 
     // g-buffers
-    float depth = unpackRGBAToDepth(depthTexel);
-    vec3 worldPos = screenSpaceToWorldSpace(vUv, depth, cameraMatrixWorld);
+    vec3 worldPos;
+    float depth;
 
+#ifdef useDepth
+    #ifdef RGBA_DEPTH_PACKING
+    depth = unpackRGBAToDepth(depthTexel);
+    #else
+    depth = depthTexel.r;
+    #endif
+
+    worldPos = screenSpaceToWorldSpace(vUv, depth, cameraMatrixWorld);
+#endif
+
+    vec3 normal;
+    float roughness;
+
+#ifdef useNormal
     vec4 normalTexel = textureLod(normalTexture, vUv, 0.);
-    vec3 normal = normalTexel.rgb;
-    float roughness = normalTexel.a;
+    normal = normalTexel.xyz;
+#endif
+#ifdef useRoughness
+    roughness = normalTexel.a;
     roughness *= roughness;
+#endif
 
     vec3 denoisedColor[textureCount];
     float sumVariance[textureCount];
     float variance[textureCount];
 
 #ifdef doDenoise
-
     // color information
 
     vec4 texel[textureCount];
@@ -198,27 +229,25 @@ void main() {
     #pragma unroll_loop_end
 
     // moment
-    #ifdef useMoment
     if (isFirstIteration) {
+    #ifdef useMoment
         vec4 moment = textureLod(momentTexture, vUv, 0.);
         texel[0].a = max(0.0, moment.g - moment.r * moment.r);
-        variance[0] = min(1000., texel[0].a);
 
         #if momentTextureCount > 1
         texel[1].a = max(0.0, moment.a - moment.b * moment.b);
-        variance[1] = min(1000., texel[1].a);
         #endif
-    }
+    #else
+        for (int i = 0; i < textureCount; i++) {
+            texel[i].a = getDisocclusionBoostVariance(texel[i].a);
+        }
     #endif
+    }
 
     #pragma unroll_loop_start
     for (int i = 0; i < momentTextureCount; i++) {
-    #ifndef useMoment
-        if (isFirstIteration) texel[i].a = 1.0;
-    #endif
-
-        sumVariance[i] = texel[i].a;
         variance[i] = min(1000., texel[i].a);
+        sumVariance[i] = texel[i].a;
 
         if (roughnessDependent[i]) {
             colorPhi[i] = denoise[i] * sqrt(basicVariance[i] * roughness + sumVariance[i]);
@@ -235,7 +264,7 @@ void main() {
             if (i != 0.) {
                 vec2 neighborVec = horizontal ? vec2(i, 0.) : vec2(0., i);
 
-                tap(neighborVec, pixelStepOffset, normal, roughness,
+                tap(neighborVec, pixelStepOffset, normal, depth, roughness,
                     worldPos, luma, colorPhi, denoisedColor, totalWeight, sumVariance, variance);
             }
         }
@@ -246,7 +275,7 @@ void main() {
             if (i != 0.) {
                 vec2 neighborVec = horizontal ? vec2(-i, -i) : vec2(i, -i);
 
-                tap(neighborVec, pixelStepOffset, normal, roughness,
+                tap(neighborVec, pixelStepOffset, normal, depth, roughness,
                     worldPos, luma, colorPhi, denoisedColor, totalWeight, sumVariance, variance);
             }
         }
