@@ -27,6 +27,15 @@ uniform bool isLastIteration;
 
 #include <denoiseCustomComposeShaderFunctions>
 
+float getDisocclusionBoostVariance(float visibleFrames) {
+#ifdef useTemporalReprojectTextures
+    return max(0., -pow(visibleFrames, 2.0) + 50.0);
+    x
+#else
+    return 0.;
+#endif
+}
+
 vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth, const mat4 curMatrixWorld) {
     vec4 ndc = vec4(
         (uv.x - 0.5) * 2.0,

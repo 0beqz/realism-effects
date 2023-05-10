@@ -12,7 +12,7 @@ const defaultTRAAOptions = {
 	logTransform: false, // ! todo: check if can use logTransform without artifacts
 	depthDistance: 10,
 	worldDistance: 5,
-	neighborhoodClamping: true
+	neighborhoodClamp: true
 }
 
 export class TRAAEffect extends Effect {

@@ -1,7 +1,7 @@
 ﻿vec4 moment;
 
 if (!reset && reprojectedUvDiffuse.x >= 0.0) {
-    vec4 historyMoment = sampleReprojectedTexture(lastMomentTexture, reprojectedUvDiffuse, didMove ? SAMPLING_BLOCKY : SAMPLING_CATMULL_ROM);
+    vec4 historyMoment = sampleReprojectedTexture(lastMomentTexture, reprojectedUvDiffuse);
     moment.r = luminance(gOutput[0].rgb);
     moment.g = moment.r * moment.r;
 
@@ -18,10 +18,6 @@ if (!reset && reprojectedUvDiffuse.x >= 0.0) {
     gMoment = moment;
     return;
 }
-
-// if (reprojectedUvDiffuse.x < 0. && dot(inputTexel[0].rgb, inputTexel[0].rgb) != 0.0) {
-//     gOutput0.rgb = vec3(0., 1., 0.);
-// }
 
 // float variance = max(0.0, gMoment.a - gMoment.b * gMoment.b);
 // gOutput0.xyz = vec3(variance);

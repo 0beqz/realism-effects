@@ -2,6 +2,11 @@ vec4 velocityTexel;
 float dilatedDepth;
 vec2 dilatedUvOffset;
 int texIndex;
+bool didMove;
+
+vec4 depthTexel;
+float depth;
+float edgeStrength;
 
 #define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
 
@@ -55,8 +60,8 @@ void undoColorTransform(inout vec3 color) {
 #endif
 
 void getNeighborhoodAABB(const sampler2D tex, inout vec3 minNeighborColor, inout vec3 maxNeighborColor) {
-    for (int x = -2; x <= 2; x++) {
-        for (int y = -2; y <= 2; y++) {
+    for (int x = -neighborhoodClampRadius; x <= neighborhoodClampRadius; x++) {
+        for (int y = -neighborhoodClampRadius; y <= neighborhoodClampRadius; y++) {
             if (x != 0 || y != 0) {
                 vec2 offset = vec2(x, y) * invTexSize;
                 vec2 neighborUv = vUv + offset;
@@ -71,22 +76,6 @@ void getNeighborhoodAABB(const sampler2D tex, inout vec3 minNeighborColor, inout
     }
 }
 
-#ifdef logClamp
-void clampNeighborhood(const sampler2D tex, inout vec3 color, vec3 inputColor) {
-    transformColor(inputColor);
-
-    vec3 minNeighborColor = inputColor;
-    vec3 maxNeighborColor = inputColor;
-
-    getNeighborhoodAABB(tex, minNeighborColor, maxNeighborColor);
-
-    transformColor(color);
-
-    color = clamp(color, minNeighborColor, maxNeighborColor);
-
-    undoColorTransform(color);
-}
-#else
 void clampNeighborhood(const sampler2D tex, inout vec3 color, const vec3 inputColor) {
     vec3 minNeighborColor = inputColor;
     vec3 maxNeighborColor = inputColor;
@@ -95,7 +84,6 @@ void clampNeighborhood(const sampler2D tex, inout vec3 color, const vec3 inputCo
 
     color = clamp(color, minNeighborColor, maxNeighborColor);
 }
-#endif
 
 #ifdef dilation
 void getDilatedDepthUVOffset(const sampler2D tex, const vec2 centerUv, out float depth, out float dilatedDepth, out vec4 closestDepthTexel) {
@@ -146,11 +134,8 @@ bool worldDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos
     return distance(worldPos, lastWorldPos) > worldDistance * worldDistFactor;
 }
 
-bool validateReprojectedUV(const vec2 reprojectedUv, const bool neighborhoodClamp, const bool neighborhoodClampDisocclusionTest,
-                           const float depth, const vec3 worldPos, const vec3 worldNormal) {
+bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const vec3 worldNormal) {
     if (reprojectedUv.x > 1.0 || reprojectedUv.x < 0.0 || reprojectedUv.y > 1.0 || reprojectedUv.y < 0.0) return false;
-
-    if (neighborhoodClamp && !neighborhoodClampDisocclusionTest) return true;
 
     vec3 dilatedWorldPos = worldPos;
     vec3 lastWorldPos;
@@ -177,9 +162,7 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const bool neighborhoodClam
 
     float worldDistFactor = clamp((50.0 + distance(dilatedWorldPos, cameraPos)) / 100., 0.25, 1.);
 
-#ifndef dilation
     if (worldDistanceDisocclusionCheck(dilatedWorldPos, lastWorldPos, worldDistFactor)) return false;
-#endif
 
     return !planeDistanceDisocclusionCheck(dilatedWorldPos, lastWorldPos, worldNormal, worldDistFactor);
 }
@@ -196,13 +179,12 @@ vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength, const float de
     return hitPointUv;
 }
 
-vec2 getReprojectedUV(const bool neighborhoodClamp, const bool neighborhoodClampDisocclusionTest,
-                      const float depth, const vec3 worldPos, const vec3 worldNormal, const float rayLength) {
+vec2 getReprojectedUV(const float depth, const vec3 worldPos, const vec3 worldNormal, const float rayLength) {
     // hit point reprojection
     if (rayLength != 0.0) {
         vec2 reprojectedUv = reprojectHitPoint(worldPos, rayLength, depth);
 
-        if (validateReprojectedUV(reprojectedUv, neighborhoodClamp, neighborhoodClampDisocclusionTest, depth, worldPos, worldNormal)) {
+        if (validateReprojectedUV(reprojectedUv, worldPos, worldNormal)) {
             return reprojectedUv;
         }
 
@@ -212,7 +194,7 @@ vec2 getReprojectedUV(const bool neighborhoodClamp, const bool neighborhoodClamp
     // reprojection using motion vectors
     vec2 reprojectedUv = vUv - velocityTexel.rg;
 
-    if (validateReprojectedUV(reprojectedUv, neighborhoodClamp, neighborhoodClampDisocclusionTest, depth, worldPos, worldNormal)) {
+    if (validateReprojectedUV(reprojectedUv, worldPos, worldNormal)) {
         return reprojectedUv;
     }
 
@@ -269,19 +251,6 @@ vec4 SampleTextureCatmullRom(const sampler2D tex, const vec2 uv, const vec2 texS
     return result;
 }
 
-// source: https://iquilezles.org/articles/texture/
-vec4 getTexel(const sampler2D tex, vec2 p) {
-    p = p / invTexSize + 0.5;
-
-    vec2 i = floor(p);
-    vec2 f = p - i;
-    f = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
-    p = i + f;
-
-    p = (p - 0.5) * invTexSize;
-    return textureLod(tex, p, 0.0);
-}
-
 // source: https://www.shadertoy.com/view/stSfW1
 vec2 sampleBlocky(vec2 p) {
     vec2 d = vec2(dFdx(p.x), dFdy(p.y)) / invTexSize;
@@ -291,14 +260,56 @@ vec2 sampleBlocky(vec2 p) {
     return (iA + (iB - iA) * (fB - iB) / d + 0.5) * invTexSize;
 }
 
-vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv, int samplingMode) {
-    vec2 p = samplingMode == SAMPLING_BLOCKY ? sampleBlocky(reprojectedUv) : reprojectedUv;
+float computeEdgeStrength(float unpackedDepth, vec2 texelSize) {
+    // Compute the depth gradients in the x and y directions using central differences
+    float depthX = unpackRGBAToDepth(textureLod(depthTexture, vUv + vec2(texelSize.x, 0.0), 0.0)) -
+                   unpackRGBAToDepth(textureLod(depthTexture, vUv - vec2(texelSize.x, 0.0), 0.0));
 
-    if (samplingMode == SAMPLING_CATMULL_ROM || samplingMode == SAMPLING_BLOCKY) {
-        return SampleTextureCatmullRom(tex, p, 1.0 / invTexSize);
-    }
+    float depthY = unpackRGBAToDepth(textureLod(depthTexture, vUv + vec2(0.0, texelSize.y), 0.0)) -
+                   unpackRGBAToDepth(textureLod(depthTexture, vUv - vec2(0.0, texelSize.y), 0.0));
 
-    return textureLod(tex, p, 0.);
+    // Calculate the gradient magnitude
+    float gradientMagnitude = sqrt(depthX * depthX + depthY * depthY);
+
+    // Calculate the edge strength
+    float edgeStrength = min(100000. * gradientMagnitude / (unpackedDepth + 0.001), 1.);
+
+    return edgeStrength * edgeStrength;
+}
+
+float computeEdgeStrengthFast(float unpackedDepth) {
+    float depthX = dFdx(unpackedDepth);
+    float depthY = dFdy(unpackedDepth);
+
+    // Compute the edge strength as the magnitude of the gradient
+    float edgeStrength = depthX * depthX + depthY * depthY;
+
+    return min(1., pow(pow(edgeStrength, 0.25) * 500., 4.));
+}
+
+vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv) {
+    vec4 catmull = SampleTextureCatmullRom(tex, reprojectedUv, 1.0 / invTexSize);
+    vec4 blocky = SampleTextureCatmullRom(tex, sampleBlocky(reprojectedUv), 1.0 / invTexSize);
+
+    vec4 reprojectedTexel = mix(catmull, blocky, edgeStrength);
+    reprojectedTexel.a = min(catmull.a, blocky.a);
+
+    return reprojectedTexel;
+}
+
+// source: https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/
+vec2 OctWrap(vec2 v) {
+    vec2 w = 1.0 - abs(v.yx);
+    if (v.x < 0.0) w.x = -w.x;
+    if (v.y < 0.0) w.y = -w.y;
+    return w;
+}
+
+vec2 Encode(vec3 n) {
+    n /= (abs(n.x) + abs(n.y) + abs(n.z));
+    n.xy = n.z > 0.0 ? n.xy : OctWrap(n.xy);
+    n.xy = n.xy * 0.5 + 0.5;
+    return n.xy;
 }
 
 // source: https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/

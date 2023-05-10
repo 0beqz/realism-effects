@@ -1,5 +1,14 @@
 ﻿import { Pass } from "postprocessing"
-import { Clock, HalfFloatType, LinearFilter, Matrix4, Quaternion, Vector3, WebGLMultipleRenderTargets } from "three"
+import {
+	Clock,
+	HalfFloatType,
+	LinearFilter,
+	Matrix4,
+	Quaternion,
+	Vector3,
+	WebGLMultipleRenderTargets,
+	Uniform
+} from "three"
 import { CopyPass } from "../ssgi/pass/CopyPass"
 import { TemporalReprojectMaterial } from "./material/TemporalReprojectMaterial"
 import { generateR2 } from "./utils/QuasirandomGenerator"
@@ -10,8 +19,9 @@ export const defaultTemporalReprojectPassOptions = {
 	constantBlend: false,
 	fullAccumulate: false,
 	sampling: "blocky", // "catmullRom" | "blocky" | "linear"
-	neighborhoodClamping: false,
-	neighborhoodClampingDisocclusionTest: true,
+	neighborhoodClamp: false,
+	neighborhoodClampRadius: 1,
+	neighborhoodClampIntensity: 1,
 	logTransform: false,
 	logClamp: false,
 	depthDistance: 0.25,
@@ -54,9 +64,9 @@ export class TemporalReprojectPass extends Pass {
 		this.fullscreenMaterial.defines.textureCount = textureCount
 
 		if (options.dilation) this.fullscreenMaterial.defines.dilation = ""
-		if (options.neighborhoodClamping) this.fullscreenMaterial.defines.neighborhoodClamping = ""
+		if (options.neighborhoodClamp) this.fullscreenMaterial.defines.neighborhoodClamp = ""
 		if (options.logTransform) this.fullscreenMaterial.defines.logTransform = ""
-		if (options.logClamp) this.fullscreenMaterial.defines.logClamp = ""
+		this.fullscreenMaterial.defines.neighborhoodClampRadius = parseInt(options.neighborhoodClampRadius)
 
 		this.fullscreenMaterial.defines.depthDistance = options.depthDistance.toPrecision(5)
 		this.fullscreenMaterial.defines.worldDistance = options.worldDistance.toPrecision(5)
@@ -92,12 +102,7 @@ export class TemporalReprojectPass extends Pass {
 
 		const samplingTypes = ["linear", "catmullRom", "blocky"]
 
-		for (const opt of [
-			"sampling",
-			"reprojectSpecular",
-			"neighborhoodClamping",
-			"neighborhoodClampingDisocclusionTest"
-		]) {
+		for (const opt of ["sampling", "reprojectSpecular", "neighborhoodClamp", "neighborhoodClampDisocclusionTest"]) {
 			let value = opt === "sampling" ? samplingTypes.indexOf(options[opt]) : options[opt]
 
 			if (value === -1) throw new Error(`Invalid value for option ${opt}: ${options[opt]}`)
@@ -111,6 +116,17 @@ export class TemporalReprojectPass extends Pass {
 
 		this.options = options
 		this.velocityDepthNormalPass = velocityDepthNormalPass
+	}
+
+	setTextures(textures) {
+		if (!Array.isArray(textures)) textures = [textures]
+
+		for (let i = 0; i < textures.length; i++) {
+			const texture = textures[i]
+			this.fullscreenMaterial.uniforms["inputTexture" + i] = new Uniform(texture)
+		}
+
+		console.log("set textures")
 	}
 
 	dispose() {
