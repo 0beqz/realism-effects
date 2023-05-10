@@ -326,8 +326,9 @@ export class SSGIEffect extends Effect {
 			width === this.lastSize.width &&
 			height === this.lastSize.height &&
 			this.resolutionScale === this.lastSize.resolutionScale
-		)
+		) {
 			return
+		}
 
 		this.ssgiPass.setSize(width, height)
 		this.svgf.setSize(width, height)

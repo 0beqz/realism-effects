@@ -577,16 +577,16 @@ const initScene = async () => {
 
 		fxaaPass = new POSTPROCESSING.EffectPass(camera, fxaaEffect)
 
-		// if (fps >= 256) {
-		// 	setAA("TRAA")
+		if (fps >= 256) {
+			setAA("TRAA")
 
-		// 	resize()
-		// } else {
-		// 	setAA("FXAA")
-		// 	controls.enableDamping = false
+			resize()
+		} else {
+			setAA("FXAA")
+			controls.enableDamping = false
 
-		// 	resize()
-		// }
+			resize()
+		}
 
 		loop()
 
