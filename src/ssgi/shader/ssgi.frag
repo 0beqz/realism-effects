@@ -63,7 +63,8 @@ vec2 invTexSize;
 #include <packing>
 
 // helper functions
-#include <utils>
+#include <sampleBlueNoise>
+#include <ssgi_utils>
 
 vec2 RayMarch(inout vec3 dir, inout vec3 hitPos);
 vec2 BinarySearch(inout vec3 dir, inout vec3 hitPos);
@@ -109,7 +110,7 @@ void main() {
 
     vec3 viewDir = normalize(viewPos);
     vec3 worldNormal = normalTexel.xyz;
-    vec3 viewNormal = normalize((vec4(worldNormal, 1.) * cameraMatrixWorld).xyz);
+    vec3 viewNormal = normalize((vec4(worldNormal, 0.) * cameraMatrixWorld).xyz);
 
     vec3 worldPos = vec4(vec4(viewPos, 1.) * viewMatrix).xyz;
 
@@ -122,7 +123,7 @@ void main() {
     float NoV = max(EPSILON, dot(n, v));
 
     // convert view dir to world-space
-    vec3 V = (vec4(v, 1.) * viewMatrix).xyz;
+    vec3 V = (vec4(v, 0.) * viewMatrix).xyz;
     vec3 N = worldNormal;
 
     vec4 blueNoise;
@@ -145,7 +146,7 @@ void main() {
 
 #pragma unroll_loop_start
     for (int i = 0; i < spp; i++) {
-        blueNoise = sampleBlueNoise(frame + sampleCounter++);
+        blueNoise = sampleBlueNoise(blueNoiseTexture, frame + sampleCounter++, blueNoiseRepeat, texSize);
 
         // Disney BRDF and sampling source: https://www.shadertoy.com/view/cll3R4
         // calculate GGX reflection ray
@@ -156,7 +157,7 @@ void main() {
         l = ToWorld(T, B, N, l);
 
         // convert reflected vector back to view-space
-        l = (vec4(l, 1.) * cameraMatrixWorld).xyz;
+        l = (vec4(l, 0.) * cameraMatrixWorld).xyz;
         l = normalize(l);
 
         h = normalize(v + l);  // half vector
@@ -196,7 +197,7 @@ void main() {
 
 #ifdef importanceSampling
         envPdf = sampleEquirectProbability(envMapInfo, blueNoise.rg, envMisDir);
-        envMisDir = normalize((vec4(envMisDir, 1.) * cameraMatrixWorld).xyz);
+        envMisDir = normalize((vec4(envMisDir, 0.) * cameraMatrixWorld).xyz);
 
         envMisProbability = 0.25 + dot(envMisDir, viewNormal) * 0.5;
         isEnvMisSample = blueNoise.a < envMisProbability;
@@ -347,7 +348,7 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
     if (isMissedRay || allowMissedRays) {
 #ifdef USE_ENVMAP
         // world-space reflected ray
-        vec3 reflectedWS = normalize((vec4(l, 1.) * viewMatrix).xyz);
+        vec3 reflectedWS = normalize((vec4(l, 0.) * viewMatrix).xyz);
 
     #ifdef BOX_PROJECTED_ENV_MAP
         reflectedWS = parallaxCorrectNormal(reflectedWS.xyz, envMapSize, envMapPosition, worldPosition);

@@ -41,12 +41,6 @@ vec3 getViewPosition(const float depth) {
 }
 #endif
 
-vec3 screenSpaceToWorldSpace(vec2 uv, float depth, mat4 camMatrixWorld) {
-    vec3 viewPos = getViewPosition(depth);
-
-    return vec4(camMatrixWorld * vec4(viewPos, 1.)).xyz;
-}
-
 vec2 viewSpaceToScreenSpace(const vec3 position) {
     vec4 projectedCoord = projectionMatrix * vec4(position, 1.0);
     projectedCoord.xy /= projectedCoord.w;
@@ -54,12 +48,6 @@ vec2 viewSpaceToScreenSpace(const vec3 position) {
     projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;
 
     return projectedCoord.xy;
-}
-
-vec2 worldSpaceToScreenSpace(const vec3 worldPos) {
-    vec4 vsPos = vec4(worldPos, 1.0) * cameraMatrixWorld;
-
-    return viewSpaceToScreenSpace(vsPos.xyz);
 }
 
 #ifdef BOX_PROJECTED_ENV_MAP
@@ -257,41 +245,6 @@ float misHeuristic(float a, float b) {
     float aa = a * a;
     float bb = b * b;
     return aa / (aa + bb);
-}
-
-const float g = 1.6180339887498948482;
-const float a1 = 1.0 / g;
-
-// reference: https://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/
-float r1(float n) {
-    // 7th harmonious number
-    return fract(1.1127756842787055 + a1 * n);
-}
-
-const vec4 hn = vec4(0.618033988749895, 0.3247179572447458, 0.2207440846057596, 0.1673039782614187);
-
-vec4 sampleBlueNoise(int seed) {
-    vec2 size = vUv * texSize;
-    vec2 blueNoiseSize = texSize / blueNoiseRepeat;
-    float blueNoiseIndex = floor(floor(size.y / blueNoiseSize.y) * blueNoiseRepeat.x) + floor(size.x / blueNoiseSize.x);
-
-    // get the offset of this pixel's blue noise tile
-    int blueNoiseTileOffset = int(r1(blueNoiseIndex + 1.0) * 65536.);
-
-    vec2 blueNoiseUv = vUv * blueNoiseRepeat;
-
-    // fetch blue noise for this pixel
-    vec4 blueNoise = textureLod(blueNoiseTexture, blueNoiseUv, 0.);
-
-    // animate blue noise
-    blueNoise = fract(blueNoise + hn * float(seed + blueNoiseTileOffset));
-
-    blueNoise.r = (blueNoise.r > 0.5 ? 1.0 - blueNoise.r : blueNoise.r) * 2.0;
-    blueNoise.g = (blueNoise.g > 0.5 ? 1.0 - blueNoise.g : blueNoise.g) * 2.0;
-    blueNoise.b = (blueNoise.b > 0.5 ? 1.0 - blueNoise.b : blueNoise.b) * 2.0;
-    blueNoise.a = (blueNoise.a > 0.5 ? 1.0 - blueNoise.a : blueNoise.a) * 2.0;
-
-    return blueNoise;
 }
 
 // source: https://madebyevan.com/shaders/curvature/

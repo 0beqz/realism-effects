@@ -3,6 +3,7 @@ import vertexShader from "../../utils/shader/basic.vert"
 import fragmentShader from "../shader/ssgi.frag"
 // eslint-disable-next-line camelcase
 import ssgi_utils from "../shader/ssgi_utils.frag"
+import sampleBlueNoise from "../../utils/shader/sampleBlueNoise.glsl"
 import { EquirectHdrInfoUniform } from "../utils/EquirectHdrInfoUniform"
 
 export class SSGIMaterial extends ShaderMaterial {
@@ -51,7 +52,9 @@ export class SSGIMaterial extends ShaderMaterial {
 				vWorldPosition: "worldPos"
 			},
 
-			fragmentShader: fragmentShader.replace("#include <utils>", ssgi_utils),
+			fragmentShader: fragmentShader
+				.replace("#include <ssgi_utils>", ssgi_utils)
+				.replace("#include <sampleBlueNoise>", sampleBlueNoise),
 			vertexShader,
 
 			blending: NoBlending,
