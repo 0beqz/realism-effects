@@ -9,6 +9,7 @@ uniform float depthPhi;
 uniform float normalPhi;
 uniform sampler2D blueNoiseTexture;
 uniform vec2 blueNoiseRepeat;
+uniform int index;
 uniform vec2 resolution;
 
 const float g = 1.6180339887498948482;
@@ -95,8 +96,13 @@ void main() {
 
     float totalWeight = 1.0;
 
+    vec4 blueNoise = sampleBlueNoise(blueNoiseTexture, 0, blueNoiseRepeat, resolution);
+    float angle = blueNoise[index];
+
+    mat2 rotationMatrix = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
+
     for (int i = 0; i < samples; i++) {
-        vec2 offset = poissonDisk[i];
+        vec2 offset = rotationMatrix * poissonDisk[i];
         vec2 neighborUv = vUv + offset;
 
         vec4 neighborTexel = textureLod(inputTexture, neighborUv, 0.0);

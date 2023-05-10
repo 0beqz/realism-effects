@@ -96,6 +96,7 @@ class AOEffect extends Effect {
 						// denoiser
 						case "iterations":
 						case "radius":
+						case "rings":
 						case "samples":
 							this.poissionDenoisePass[key] = value
 							break

@@ -10,14 +10,15 @@ import {
 	Vector2,
 	WebGLRenderTarget
 } from "three"
+import blueNoiseImage from "../utils/LDR_RGBA_0.png"
 import vertexShader from "../utils/shader/basic.vert"
 import fragmentShader from "./shader/poissionDenoise.frag"
-import { generatePoissonDiskConstant, generatePoissonSamples } from "./utils/PoissonUtils"
-import blueNoiseImage from "../utils/LDR_RGBA_0.png"
+import { generateDenoiseSamples, generatePoissonDiskConstant } from "./utils/PoissonUtils"
 
 const defaultPoissonBlurOptions = {
 	iterations: 1,
 	radius: 8,
+	rings: 5.625,
 	depthPhi: 2.5,
 	normalPhi: 7.5,
 	samples: 16,
@@ -26,6 +27,7 @@ const defaultPoissonBlurOptions = {
 
 export class PoissionDenoisePass extends Pass {
 	iterations = defaultPoissonBlurOptions.iterations
+	index = 0
 
 	constructor(camera, inputTexture, depthTexture, options = defaultPoissonBlurOptions) {
 		super("PoissionBlurPass")
@@ -46,6 +48,7 @@ export class PoissionDenoisePass extends Pass {
 				normalPhi: { value: 5.0 },
 				resolution: { value: new Vector2() },
 				blueNoiseTexture: { value: null },
+				index: { value: 0 },
 				blueNoiseRepeat: { value: new Vector2() }
 			}
 		})
@@ -74,7 +77,7 @@ export class PoissionDenoisePass extends Pass {
 		}
 
 		// these properties need the shader to be recompiled
-		for (const prop of ["radius", "samples"]) {
+		for (const prop of ["radius", "rings", "samples"]) {
 			Object.defineProperty(this, prop, {
 				get: () => options[prop],
 				set: value => {
@@ -102,7 +105,12 @@ export class PoissionDenoisePass extends Pass {
 
 		this.fullscreenMaterial.uniforms.resolution.value.set(width, height)
 
-		const poissonDisk = generatePoissonSamples(this.samples, this.radius, new Vector2(1 / width, 1 / height))
+		const poissonDisk = generateDenoiseSamples(
+			this.samples,
+			this.rings,
+			this.radius,
+			new Vector2(1 / width, 1 / height)
+		)
 
 		const sampleDefine = `const int samples = ${this.samples};\n`
 
@@ -117,6 +125,8 @@ export class PoissionDenoisePass extends Pass {
 	}
 
 	render(renderer) {
+		this.fullscreenMaterial.uniforms.index.value = 0
+
 		const noiseTexture = this.fullscreenMaterial.uniforms.blueNoiseTexture.value
 		if (noiseTexture) {
 			const { width, height } = noiseTexture.source.data
@@ -137,6 +147,8 @@ export class PoissionDenoisePass extends Pass {
 
 			renderer.setRenderTarget(renderTarget)
 			renderer.render(this.scene, this.camera)
+
+			this.fullscreenMaterial.uniforms.index.value = (this.fullscreenMaterial.uniforms.index.value + 1) % 4
 		}
 	}
 }

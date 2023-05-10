@@ -1,19 +1,25 @@
 import { Vector2 } from "three"
 
-export function generatePoissonSamples(samples, radius, texelSize) {
-	const poissonDisk = []
-
-	const ANGLE_STEP = (2 * Math.PI) / samples
+export function generateDenoiseSamples(numSamples, numRings, r, texelSize) {
+	const angleStep = (2 * Math.PI * numRings) / numSamples
+	const invNumSamples = 1.0 / numSamples
+	const radiusStep = invNumSamples
+	const samples = []
+	let radius = invNumSamples
 	let angle = 0
 
-	for (let i = 0; i < samples; i++) {
-		const sample = new Vector2(Math.cos(angle), Math.sin(angle)).multiply(texelSize).multiplyScalar(radius)
-		poissonDisk.push(sample)
+	for (let i = 0; i < numSamples; i++) {
+		const v = new Vector2(Math.cos(angle), Math.sin(angle))
+			.multiplyScalar(Math.pow(radius, 0.75))
+			.multiply(texelSize)
+			.multiplyScalar(r)
 
-		angle += ANGLE_STEP
+		samples.push(v)
+		radius += radiusStep
+		angle += angleStep
 	}
 
-	return poissonDisk
+	return samples
 }
 
 export function generatePoissonDiskConstant(poissonDisk) {
