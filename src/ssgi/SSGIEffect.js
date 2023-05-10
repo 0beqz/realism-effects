@@ -86,6 +86,9 @@ export class SSGIEffect extends Effect {
 			options.basicVariance = [0.00025, 0.00025]
 		}
 
+		options.neighborhoodClampRadius = 2
+		options.neighborhoodClampIntensity = 0.5
+
 		const textureCount = options.diffuseOnly || options.specularOnly ? 1 : 2
 
 		options = {
