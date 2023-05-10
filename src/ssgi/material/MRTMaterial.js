@@ -173,8 +173,15 @@ export class MRTMaterial extends ShaderMaterial {
                     // if(alpha < alphaThreshold){
                     //     discard;
                     //     return;
-                    // }
+                    // }metalnessnor
                     // #endif
+
+                    //! todo: find better solution
+                    #define vMapUv vUv
+                    #define vMetalnessMapUv vUv
+                    #define vRoughnessMapUv vUv
+                    #define vNormalMapUv vUv
+                    #define vEmissiveMapUv vUv
 
                     #include <clipping_planes_fragment>
                     #include <logdepthbuf_fragment>

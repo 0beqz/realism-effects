@@ -22,7 +22,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader"
-import { GroundProjectedEnv } from "three/examples/jsm/objects/GroundProjectedEnv"
+import { GroundProjectedSkybox } from "three/examples/jsm/objects/GroundProjectedSkybox"
 import { Pane } from "tweakpane"
 import { VelocityDepthNormalPass } from "../src/temporal-reproject/pass/VelocityDepthNormalPass"
 import { SSGIDebugGUI } from "./SSGIDebugGUI"
@@ -219,7 +219,7 @@ const setEnvMesh = envMap => {
 		envMesh?.material.dispose()
 		envMesh?.geometry.dispose()
 
-		envMesh = new GroundProjectedEnv(envMap)
+		envMesh = new GroundProjectedSkybox(envMap)
 		envMesh.radius = 100
 		envMesh.height = 20
 		envMesh.scale.setScalar(100)
