@@ -2,8 +2,9 @@ import {
 	DataTexture,
 	EquirectangularReflectionMapping,
 	FloatType,
-	LinearEncoding,
+	NoColorSpace,
 	NearestFilter,
+	NoColorSpace,
 	PMREMGenerator,
 	RepeatWrapping,
 	RGBAFormat,
@@ -292,7 +293,7 @@ export class BlurredEnvMapGenerator {
 				blueNoiseTexture.magFilter = NearestFilter
 				blueNoiseTexture.wrapS = RepeatWrapping
 				blueNoiseTexture.wrapT = RepeatWrapping
-				blueNoiseTexture.encoding = LinearEncoding
+				blueNoiseTexture.colorSpace = NoColorSpace
 
 				this.copyQuad.material.uniforms.blueNoiseTexture.value = blueNoiseTexture
 

@@ -92,8 +92,6 @@ const renderer = new THREE.WebGLRenderer({
 
 renderer.autoClear = false
 
-if (!traaTest) renderer.outputEncoding = THREE.sRGBEncoding
-
 renderer.setSize(window.innerWidth, window.innerHeight)
 
 const effectPass = new POSTPROCESSING.EffectPass(camera)

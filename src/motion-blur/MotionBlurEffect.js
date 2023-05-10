@@ -1,7 +1,7 @@
 ﻿/* eslint-disable camelcase */
 
 import { Effect } from "postprocessing"
-import { LinearEncoding, NearestFilter, RepeatWrapping, TextureLoader, Uniform, Vector2 } from "three"
+import { NoColorSpace, NearestFilter, RepeatWrapping, TextureLoader, Uniform, Vector2 } from "three"
 import motion_blur from "./shader/motion_blur.frag"
 
 import blueNoiseImage from "./../utils/blue_noise_64_rgba.png"
@@ -70,7 +70,7 @@ export class MotionBlurEffect extends Effect {
 			blueNoiseTexture.magFilter = NearestFilter
 			blueNoiseTexture.wrapS = RepeatWrapping
 			blueNoiseTexture.wrapT = RepeatWrapping
-			blueNoiseTexture.encoding = LinearEncoding
+			blueNoiseTexture.colorSpace = NoColorSpace
 
 			this.uniforms.get("blueNoiseTexture").value = blueNoiseTexture
 		})

@@ -4,11 +4,11 @@ import {
 	DepthTexture,
 	FloatType,
 	HalfFloatType,
-	LinearEncoding,
+	SRGBColorSpace,
+	NoColorSpace,
 	LinearFilter,
 	NearestFilter,
 	RepeatWrapping,
-	sRGBEncoding,
 	Texture,
 	TextureLoader,
 	WebGLMultipleRenderTargets
@@ -74,7 +74,7 @@ export class SSGIPass extends Pass {
 			blueNoiseTexture.magFilter = NearestFilter
 			blueNoiseTexture.wrapS = RepeatWrapping
 			blueNoiseTexture.wrapT = RepeatWrapping
-			blueNoiseTexture.encoding = LinearEncoding
+			blueNoiseTexture.colorSpace = NoColorSpace
 
 			this.fullscreenMaterial.uniforms.blueNoiseTexture.value = blueNoiseTexture
 		})
@@ -107,7 +107,7 @@ export class SSGIPass extends Pass {
 
 		this.diffuseTexture.minFilter = LinearFilter
 		this.diffuseTexture.magFilter = LinearFilter
-		this.diffuseTexture.encoding = sRGBEncoding
+		this.diffuseTexture.colorSpace = SRGBColorSpace
 		this.diffuseTexture.needsUpdate = true
 
 		this.emissiveTexture.minFilter = LinearFilter

@@ -4,7 +4,7 @@ import {
 	LinearMipMapLinearFilter,
 	NoToneMapping,
 	PerspectiveCamera,
-	sRGBEncoding,
+	SRGBColorSpace,
 	Uniform,
 	WebGLRenderTarget
 } from "three"
@@ -157,7 +157,7 @@ export class SSGIEffect extends Effect {
 		}
 
 		this.sceneRenderTarget = new WebGLRenderTarget(1, 1, {
-			encoding: sRGBEncoding
+			colorSpace: SRGBColorSpace
 		})
 
 		this.renderPass = new RenderPass(this._scene, this._camera)
