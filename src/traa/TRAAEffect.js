@@ -2,14 +2,15 @@
 import { Uniform } from "three"
 import { getVisibleChildren, isGroundProjectedEnv } from "../ssgi/utils/Utils"
 import { TemporalReprojectPass } from "../temporal-reproject/TemporalReprojectPass.js"
-import compose from "./shader/compose.frag"
+// eslint-disable-next-line camelcase
+import traa_compose from "./shader/traa_compose.frag"
 
 const defaultTRAAOptions = {
 	blend: 0.8,
 	constantBlend: true,
 	dilation: true,
-	sampling: "catmullRom",
 	logTransform: false, // ! todo: check if can use logTransform without artifacts
+	neighborhoodClampRadius: 2,
 	depthDistance: 10,
 	worldDistance: 5,
 	neighborhoodClamp: true
@@ -17,7 +18,7 @@ const defaultTRAAOptions = {
 
 export class TRAAEffect extends Effect {
 	constructor(scene, camera, velocityDepthNormalPass, options = defaultTRAAOptions) {
-		super("TRAAEffect", compose, {
+		super("TRAAEffect", traa_compose, {
 			type: "FinalTRAAEffectMaterial",
 			uniforms: new Map([["inputTexture", new Uniform(null)]])
 		})

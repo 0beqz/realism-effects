@@ -29,14 +29,6 @@ uniform float delta;
 #include <reproject>
 
 void main() {
-#pragma unroll_loop_start
-    for (int i = 0; i < textureCount; i++) {
-        gOutput[i] = vec4(1.0);
-    }
-#pragma unroll_loop_end
-
-    return;
-
     getDepthAndDilatedUVOffset(depthTexture, vUv, depth, dilatedDepth, depthTexel);
 
     if (dot(depthTexel.rgb, depthTexel.rgb) == 0.0) {
