@@ -1,17 +1,17 @@
-﻿/* eslint-disable camelcase */
-import { Effect, RenderPass, Selection } from "postprocessing"
+﻿import { Effect, RenderPass, Selection } from "postprocessing"
 import {
 	LinearMipMapLinearFilter,
 	NoToneMapping,
 	PerspectiveCamera,
-	SRGBColorSpace,
+	sRGBEncoding,
 	Uniform,
 	WebGLRenderTarget
 } from "three"
 import { SVGF } from "../svgf/SVGF.js"
 import { CubeToEquirectEnvPass } from "./pass/CubeToEquirectEnvPass.js"
 import { SSGIPass } from "./pass/SSGIPass.js"
-import compose from "./shader/compose.frag"
+/* eslint-disable camelcase */
+import ssgi_compose from "./shader/ssgi_compose.frag"
 import denoise_compose from "./shader/denoise_compose.frag"
 import denoise_compose_functions from "./shader/denoise_compose_functions.frag"
 import { defaultSSGIOptions } from "./SSGIOptions"
@@ -42,7 +42,7 @@ export class SSGIEffect extends Effect {
 	constructor(scene, camera, velocityDepthNormalPass, options = defaultSSGIOptions) {
 		options = { ...defaultSSGIOptions, ...options }
 
-		super("SSGIEffect", compose, {
+		super("SSGIEffect", ssgi_compose, {
 			type: "FinalSSGIMaterial",
 			uniforms: new Map([
 				["inputTexture", new Uniform(null)],
@@ -71,34 +71,32 @@ export class SSGIEffect extends Effect {
 			options.reprojectSpecular = false
 			options.roughnessDependent = false
 			options.basicVariance = 0.00025
-			options.neighborhoodClamping = false
+			options.neighborhoodClamp = false
 		} else if (options.specularOnly) {
 			definesName = "ssr"
 			options.reprojectSpecular = true
 			options.roughnessDependent = true
 			options.basicVariance = 0.00025
-			options.neighborhoodClamping = true
+			options.neighborhoodClamp = true
 		} else {
 			definesName = "ssgi"
 			options.reprojectSpecular = [false, true]
-			options.neighborhoodClamping = [false, true]
+			options.neighborhoodClamp = [false, true]
 			options.roughnessDependent = [false, true]
 			options.basicVariance = [0.00025, 0.00025]
 		}
 
-		options.neighborhoodClampIntensity = 0.5
-
 		const textureCount = options.diffuseOnly || options.specularOnly ? 1 : 2
 
-		this.svgf = new SVGF(
-			scene,
-			camera,
-			velocityDepthNormalPass,
-			textureCount,
-			denoise_compose,
-			denoise_compose_functions,
-			options
-		)
+		options = {
+			...options,
+			...{
+				denoiseCustomComposeShader: denoise_compose,
+				denoiseCustomComposeShaderFunctions: denoise_compose_functions
+			}
+		}
+
+		this.svgf = new SVGF(scene, camera, velocityDepthNormalPass, textureCount, options)
 
 		if (definesName === "ssgi") {
 			this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.fragmentShader =
@@ -135,7 +133,9 @@ export class SSGIEffect extends Effect {
 				this.ssgiPass.specularTexture
 		}
 
-		this.svgf.setJitteredGBuffers(this.ssgiPass.depthTexture, this.ssgiPass.normalTexture)
+		this.svgf.setJitteredGBuffers(this.ssgiPass.depthTexture, this.ssgiPass.normalTexture, {
+			useRoughnessInAlphaChannel: true
+		})
 
 		// patch the denoise pass
 		this.svgf.denoisePass.fullscreenMaterial.uniforms = {
@@ -157,7 +157,7 @@ export class SSGIEffect extends Effect {
 		}
 
 		this.sceneRenderTarget = new WebGLRenderTarget(1, 1, {
-			colorSpace: SRGBColorSpace
+			encoding: sRGBEncoding
 		})
 
 		this.renderPass = new RenderPass(this._scene, this._camera)
@@ -326,8 +326,9 @@ export class SSGIEffect extends Effect {
 			width === this.lastSize.width &&
 			height === this.lastSize.height &&
 			this.resolutionScale === this.lastSize.resolutionScale
-		)
+		) {
 			return
+		}
 
 		this.ssgiPass.setSize(width, height)
 		this.svgf.setSize(width, height)

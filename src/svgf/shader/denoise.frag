@@ -25,7 +25,7 @@ uniform bool isLastIteration;
 #define PI           M_PI
 #define luminance(a) dot(a, vec3(0.2125, 0.7154, 0.0721))
 
-#include <customComposeShaderFunctions>
+#include <denoiseCustomComposeShaderFunctions>
 
 vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth, const mat4 curMatrixWorld) {
     vec4 ndc = vec4(
@@ -104,7 +104,7 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec3 normal,
 
 #pragma unroll_loop_start
     for (int i = 0; i < textureCount; i++) {
-        neighborInputTexel[i] = textureLod(texture[i], roughnessDependent[i] ? neighborUvRoughness : neighborUv, 0.);
+        neighborInputTexel[i] = textureLod(inputTexture[i], roughnessDependent[i] ? neighborUvRoughness : neighborUv, 0.);
         neighborColor = neighborInputTexel[i].rgb;
 
         neighborLuma = luminance(neighborColor);
@@ -183,7 +183,7 @@ void main() {
     for (int i = 0; i < textureCount; i++) {
         totalWeight[i] = 1.0;
 
-        texel[i] = textureLod(texture[i], vUv, 0.);
+        texel[i] = textureLod(inputTexture[i], vUv, 0.);
         denoisedColor[i] = texel[i].rgb;
         luma[i] = luminance(texel[i].rgb);
     }
@@ -255,13 +255,13 @@ void main() {
     // no denoise iterations
     #pragma unroll_loop_start
     for (int i = 0; i < textureCount; i++) {
-        denoisedColor[i] = textureLod(texture[i], vUv, 0.).rgb;
+        denoisedColor[i] = textureLod(inputTexture[i], vUv, 0.).rgb;
     }
     #pragma unroll_loop_end
 #endif
 
     if (isLastIteration) {
-#include <customComposeShader>
+#include <denoiseCustomComposeShader>
     }
 
 #include <outputShader>

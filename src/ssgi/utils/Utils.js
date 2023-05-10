@@ -234,22 +234,22 @@ export const isChildMaterialRenderable = (c, material = c.material) => {
 	)
 }
 
-export const copyNecessaryProps = (originalMaterial, newMaterial) => {
-	const keys = [
-		"vertexTangent",
-		"vertexColors",
-		"vertexAlphas",
-		"vertexUvs",
-		"uvsVertexOnly",
-		"supportsVertexTextures",
-		"instancing",
-		"instancingColor",
-		"side",
-		"flatShading",
-		"skinning",
-		"doubleSided",
-		"flipSided"
-	]
+const materialProps = [
+	"vertexTangent",
+	"vertexColors",
+	"vertexAlphas",
+	"vertexUvs",
+	"uvsVertexOnly",
+	"supportsVertexTextures",
+	"instancing",
+	"instancingColor",
+	"side",
+	"flatShading",
+	"skinning",
+	"doubleSided",
+	"flipSided"
+]
 
-	for (const key of keys) newMaterial[key] = originalMaterial[key]
+export const copyNecessaryProps = (originalMaterial, newMaterial) => {
+	for (const props of materialProps) newMaterial[props] = originalMaterial[props]
 }

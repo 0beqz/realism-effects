@@ -2,15 +2,7 @@
 import { SVGFTemporalReprojectPass } from "./pass/SVGFTemporalReprojectPass.js"
 
 export class SVGF {
-	constructor(
-		scene,
-		camera,
-		velocityDepthNormalPass,
-		textureCount = 1,
-		denoiseComposeShader = "",
-		denoiseComposeFunctions = "",
-		options = {}
-	) {
+	constructor(scene, camera, velocityDepthNormalPass, textureCount = 1, options = {}) {
 		this.svgfTemporalReprojectPass = new SVGFTemporalReprojectPass(
 			scene,
 			camera,
@@ -21,9 +13,8 @@ export class SVGF {
 
 		const textures = this.svgfTemporalReprojectPass.renderTarget.texture.slice(0, textureCount)
 
-		this.denoisePass = new DenoisePass(camera, textures, denoiseComposeShader, denoiseComposeFunctions, options)
-
-		this.denoisePass.fullscreenMaterial.uniforms.momentTexture.value = this.svgfTemporalReprojectPass.momentTexture
+		this.denoisePass = new DenoisePass(camera, textures, options)
+		this.denoisePass.setMomentTexture(this.svgfTemporalReprojectPass.momentTexture)
 
 		this.setNonJitteredDepthTexture(velocityDepthNormalPass.depthTexture)
 	}
@@ -38,9 +29,9 @@ export class SVGF {
 		this.setNonJitteredGBuffers(depthTexture, normalTexture)
 	}
 
-	setJitteredGBuffers(depthTexture, normalTexture) {
-		this.denoisePass.fullscreenMaterial.uniforms.depthTexture.value = depthTexture
-		this.denoisePass.fullscreenMaterial.uniforms.normalTexture.value = normalTexture
+	setJitteredGBuffers(depthTexture, normalTexture, { useRoughnessInAlphaChannel = false } = {}) {
+		this.denoisePass.setDepthTexture(depthTexture)
+		this.denoisePass.setNormalTexture(normalTexture, { useRoughnessInAlphaChannel })
 	}
 
 	setNonJitteredDepthTexture(depthTexture) {
