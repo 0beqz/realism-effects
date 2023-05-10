@@ -101,6 +101,7 @@ class AOEffect extends Effect {
 							this.poissionDenoisePass[key] = value
 							break
 
+						case "lumaPhi":
 						case "depthPhi":
 						case "normalPhi":
 							this.poissionDenoisePass.fullscreenMaterial.uniforms[key].value = Math.max(value, 0.0001)

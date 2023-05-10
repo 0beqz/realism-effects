@@ -5,6 +5,7 @@ uniform sampler2D depthTexture;
 uniform sampler2D normalTexture;
 uniform mat4 projectionMatrixInverse;
 uniform mat4 cameraMatrixWorld;
+uniform float lumaPhi;
 uniform float depthPhi;
 uniform float normalPhi;
 uniform sampler2D blueNoiseTexture;
@@ -12,42 +13,8 @@ uniform vec2 blueNoiseRepeat;
 uniform int index;
 uniform vec2 resolution;
 
-const float g = 1.6180339887498948482;
-const float a1 = 1.0 / g;
-
-// reference: https://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/
-float r1(float n) {
-    // 7th harmonious number
-    return fract(1.1127756842787055 + a1 * n);
-}
-
-const vec4 hn = vec4(0.618033988749895, 0.3247179572447458, 0.2207440846057596, 0.1673039782614187);
-
-vec4 sampleBlueNoise(sampler2D texture, int seed, vec2 repeat, vec2 texSize) {
-    vec2 size = vUv * texSize;
-    vec2 blueNoiseSize = texSize / repeat;
-    float blueNoiseIndex = floor(floor(size.y / blueNoiseSize.y) * repeat.x) + floor(size.x / blueNoiseSize.x);
-
-    // get the offset of this pixel's blue noise tile
-    // int blueNoiseTileOffset = int(r1(blueNoiseIndex + 1.0) * 65536.);
-
-    vec2 blueNoiseUv = vUv * repeat;
-
-    // fetch blue noise for this pixel
-    vec4 blueNoise = textureLod(texture, blueNoiseUv, 0.);
-
-    // animate blue noise
-    blueNoise = fract(blueNoise + hn * float(seed));
-
-    blueNoise.r = (blueNoise.r > 0.5 ? 1.0 - blueNoise.r : blueNoise.r) * 2.0;
-    blueNoise.g = (blueNoise.g > 0.5 ? 1.0 - blueNoise.g : blueNoise.g) * 2.0;
-    blueNoise.b = (blueNoise.b > 0.5 ? 1.0 - blueNoise.b : blueNoise.b) * 2.0;
-    blueNoise.a = (blueNoise.a > 0.5 ? 1.0 - blueNoise.a : blueNoise.a) * 2.0;
-
-    return blueNoise;
-}
-
 #include <common>
+#include <sampleBlueNoise>
 
 vec3 getWorldPos(float depth, vec2 coord) {
     float z = depth * 2.0 - 1.0;
@@ -69,6 +36,13 @@ vec3 getNormal(vec2 uv, vec4 texel) {
 #else
     return normalize(textureLod(normalTexture, uv, 0.).xyz * 2.0 - 1.0);
 #endif
+}
+
+float distToPlane(const vec3 worldPos, const vec3 neighborWorldPos, const vec3 worldNormal) {
+    vec3 toCurrent = worldPos - neighborWorldPos;
+    float distToPlane = abs(dot(toCurrent, worldNormal));
+
+    return distToPlane;
 }
 
 void main() {
@@ -99,7 +73,9 @@ void main() {
     vec4 blueNoise = sampleBlueNoise(blueNoiseTexture, 0, blueNoiseRepeat, resolution);
     float angle = blueNoise[index];
 
-    mat2 rotationMatrix = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
+    float s = sin(angle), c = cos(angle);
+
+    mat2 rotationMatrix = mat2(c, -s, s, c);
 
     for (int i = 0; i < samples; i++) {
         vec2 offset = rotationMatrix * poissonDisk[i];
@@ -123,11 +99,12 @@ void main() {
 #else
         float lumaDiff = abs(luminance(neighborColor) - luminance(center));
 #endif
+        float lumaSimilarity = max(1.0 - lumaDiff / lumaPhi, 0.0);
 
-        float rangeCheck = exp(-1.0 * tangentPlaneDist) * max(normalDiff, 0.5 - 0.5 * lumaDiff);
-        float depthSimilarity = rangeCheck / depthPhi;
+        float depthDiff = 1. - distToPlane(worldPos, worldPosSample, normal);
+        float depthSimilarity = max(depthDiff / depthPhi, 0.);
 
-        float w = depthSimilarity * normalSimilarity;
+        float w = lumaSimilarity * depthSimilarity * normalSimilarity;
 
         denoised += w * neighborColor;
         totalWeight += w;

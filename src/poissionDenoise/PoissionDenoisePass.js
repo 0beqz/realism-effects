@@ -12,15 +12,19 @@ import {
 } from "three"
 import blueNoiseImage from "../utils/LDR_RGBA_0.png"
 import vertexShader from "../utils/shader/basic.vert"
+import sampleBlueNoise from "../utils/shader/sampleBlueNoise.glsl"
 import fragmentShader from "./shader/poissionDenoise.frag"
 import { generateDenoiseSamples, generatePoissonDiskConstant } from "./utils/PoissonUtils"
+
+const finalFragmentShader = fragmentShader.replace("#include <sampleBlueNoise>", sampleBlueNoise)
 
 const defaultPoissonBlurOptions = {
 	iterations: 1,
 	radius: 8,
 	rings: 5.625,
-	depthPhi: 2.5,
-	normalPhi: 7.5,
+	lumaPhi: 10,
+	depthPhi: 2,
+	normalPhi: 3.25,
 	samples: 16,
 	normalTexture: null
 }
@@ -37,13 +41,14 @@ export class PoissionDenoisePass extends Pass {
 		this.inputTexture = inputTexture
 
 		this.fullscreenMaterial = new ShaderMaterial({
-			fragmentShader,
+			fragmentShader: finalFragmentShader,
 			vertexShader,
 			uniforms: {
 				depthTexture: { value: null },
 				inputTexture: { value: null },
 				projectionMatrixInverse: { value: new Matrix4() },
 				cameraMatrixWorld: { value: new Matrix4() },
+				lumaPhi: { value: 5.0 },
 				depthPhi: { value: 5.0 },
 				normalPhi: { value: 5.0 },
 				resolution: { value: new Vector2() },
@@ -116,7 +121,7 @@ export class PoissionDenoisePass extends Pass {
 
 		const poissonDiskConstant = generatePoissonDiskConstant(poissonDisk)
 
-		this.fullscreenMaterial.fragmentShader = sampleDefine + poissonDiskConstant + "\n" + fragmentShader
+		this.fullscreenMaterial.fragmentShader = sampleDefine + poissonDiskConstant + "\n" + finalFragmentShader
 		this.fullscreenMaterial.needsUpdate = true
 	}
 

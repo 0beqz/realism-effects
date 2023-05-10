@@ -42,6 +42,11 @@ export class SSAODebugGUI {
 		denoiseFolder.addInput(params, "radius", { min: 0, max: 32, step: 1 })
 		denoiseFolder.addInput(params, "rings", { min: 0, max: 16, step: 0.125 })
 		denoiseFolder.addInput(params, "samples", { min: 0, max: 32, step: 1 })
+		denoiseFolder.addInput(params, "lumaPhi", {
+			min: 0,
+			max: 20,
+			step: 0.001
+		})
 		denoiseFolder.addInput(params, "depthPhi", {
 			min: 0,
 			max: 20,

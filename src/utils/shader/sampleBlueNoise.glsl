@@ -23,12 +23,14 @@ vec4 sampleBlueNoise(sampler2D texture, int seed, vec2 repeat, vec2 texSize) {
     vec4 blueNoise = textureLod(texture, blueNoiseUv, 0.);
 
     // animate blue noise
-    blueNoise = fract(blueNoise + hn * float(seed));
+    if (seed != 0) {
+        blueNoise = fract(blueNoise + hn * float(seed));
 
-    blueNoise.r = (blueNoise.r > 0.5 ? 1.0 - blueNoise.r : blueNoise.r) * 2.0;
-    blueNoise.g = (blueNoise.g > 0.5 ? 1.0 - blueNoise.g : blueNoise.g) * 2.0;
-    blueNoise.b = (blueNoise.b > 0.5 ? 1.0 - blueNoise.b : blueNoise.b) * 2.0;
-    blueNoise.a = (blueNoise.a > 0.5 ? 1.0 - blueNoise.a : blueNoise.a) * 2.0;
+        blueNoise.r = (blueNoise.r > 0.5 ? 1.0 - blueNoise.r : blueNoise.r) * 2.0;
+        blueNoise.g = (blueNoise.g > 0.5 ? 1.0 - blueNoise.g : blueNoise.g) * 2.0;
+        blueNoise.b = (blueNoise.b > 0.5 ? 1.0 - blueNoise.b : blueNoise.b) * 2.0;
+        blueNoise.a = (blueNoise.a > 0.5 ? 1.0 - blueNoise.a : blueNoise.a) * 2.0;
+    }
 
     return blueNoise;
 }
