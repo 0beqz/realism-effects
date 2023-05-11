@@ -7,6 +7,8 @@ import { VelocityDepthNormalPass } from "./temporal-reproject/pass/VelocityDepth
 import { VelocityPass } from "./temporal-reproject/pass/VelocityPass"
 import { SVGF } from "./svgf/SVGF"
 import { TemporalReprojectPass } from "./temporal-reproject/TemporalReprojectPass"
+import { PoissionDenoisePass } from "./poissionDenoise/PoissionDenoisePass"
+import { HBAOEffect } from "./hbao/HBAOEffect"
 
 export {
 	SSGIEffect,
@@ -17,5 +19,7 @@ export {
 	VelocityPass,
 	VelocityDepthNormalPass,
 	TemporalReprojectPass,
-	SVGF
+	SVGF,
+	PoissionDenoisePass,
+	HBAOEffect
 }

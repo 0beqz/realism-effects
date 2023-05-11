@@ -30,9 +30,9 @@ export class SSGIDebugGUI {
 		generalFolder.addInput(params, "envBlur", { min: 0, max: 1, step: 0.01 })
 		generalFolder.addInput(params, "importanceSampling")
 
-		const temporalResolveFolder = pane.addFolder({ title: "Temporal Resolve" })
+		const temporalReprojectionFolder = pane.addFolder({ title: "Temporal Reprojection" })
 
-		temporalResolveFolder.addInput(params, "blend", { min: 0, max: 1, step: 0.001 })
+		temporalReprojectionFolder.addInput(params, "blend", { min: 0, max: 1, step: 0.001 })
 		const denoiseFolder = pane.addFolder({ title: "Denoise" })
 		denoiseFolder.addInput(params, "denoiseIterations", { min: 0, max: 5, step: 1 })
 		denoiseFolder.addInput(params, "denoiseKernel", { min: 1, max: 5, step: 1 })
