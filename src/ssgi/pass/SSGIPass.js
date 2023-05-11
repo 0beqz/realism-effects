@@ -23,7 +23,7 @@ import {
 } from "../utils/Utils"
 import { BackSideDepthPass } from "./BackSideDepthPass"
 
-import blueNoiseImage from "./../../utils/blue_noise_64_rgba.png"
+import blueNoiseImage from "./../../utils/LDR_RGBA_0.png"
 
 const backgroundColor = new Color(0)
 

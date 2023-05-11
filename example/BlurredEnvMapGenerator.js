@@ -165,7 +165,7 @@ export class MaterialBase extends ShaderMaterial {
 	}
 }
 
-import blueNoiseImage from "../src/utils/blue_noise_64_rgba.png"
+import blueNoiseImage from "../src/utils/LDR_RGBA_0.png"
 
 class PMREMCopyMaterial extends MaterialBase {
 	constructor() {
