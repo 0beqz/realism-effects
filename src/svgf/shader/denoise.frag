@@ -199,12 +199,7 @@ void main() {
 
 #ifdef useNormal
     vec4 normalTexel = textureLod(normalTexture, vUv, 0.);
-<<<<<<< HEAD
     normal = normalTexel.xyz;
-=======
-    normal = normalTexel.rgb;
-    normal = (vec4(normal, 1.) * viewMatrix).xyz;
->>>>>>> hbao-ssao
 #endif
 #ifdef useRoughness
     roughness = normalTexel.a;

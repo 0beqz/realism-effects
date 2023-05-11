@@ -9,6 +9,7 @@ import { SVGF } from "./svgf/SVGF"
 import { TemporalReprojectPass } from "./temporal-reproject/TemporalReprojectPass"
 import { PoissionDenoisePass } from "./poissionDenoise/PoissionDenoisePass"
 import { HBAOEffect } from "./hbao/HBAOEffect"
+import { SSAOEffect } from "./ssao/SSAOEffect"
 
 export {
 	SSGIEffect,
@@ -21,5 +22,6 @@ export {
 	TemporalReprojectPass,
 	SVGF,
 	PoissionDenoisePass,
-	HBAOEffect
+	HBAOEffect,
+	SSAOEffect
 }

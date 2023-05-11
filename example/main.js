@@ -49,7 +49,8 @@ const guiParams = {
 	Background: false
 }
 
-const isAoDemo = false
+// if the URL contains "ao" then the AO demo will be loaded
+const isAoDemo = window.location.search.includes("ao")
 
 // extract if the paramaterer "traa_test" is set to true in the URL
 const traaTest = new URLSearchParams(window.location.search).get("traa_test") === "true"
@@ -575,16 +576,18 @@ const initScene = async () => {
 
 		fxaaPass = new POSTPROCESSING.EffectPass(camera, fxaaEffect)
 
-		// if (fps >= 256) {
-		// 	setAA("TRAA")
+		if (!isAoDemo) {
+			if (fps >= 256) {
+				setAA("TRAA")
 
-		// 	resize()
-		// } else {
-		// 	setAA("FXAA")
-		// 	controls.enableDamping = false
+				resize()
+			} else {
+				setAA("FXAA")
+				controls.enableDamping = false
 
-		// 	resize()
-		// }
+				resize()
+			}
+		}
 
 		loop()
 

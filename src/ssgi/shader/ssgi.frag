@@ -110,13 +110,8 @@ void main() {
     vec3 viewPos = getViewPosition(depth);
 
     vec3 viewDir = normalize(viewPos);
-<<<<<<< HEAD
     vec3 worldNormal = normalTexel.xyz;
     vec3 viewNormal = normalize((vec4(worldNormal, 0.) * cameraMatrixWorld).xyz);
-=======
-    vec3 viewNormal = normalTexel.rgb;
-    vec3 worldNormal = (vec4(viewNormal, 1.) * viewMatrix).xyz;
->>>>>>> hbao-ssao
 
     vec3 worldPos = vec4(vec4(viewPos, 1.) * viewMatrix).xyz;
 

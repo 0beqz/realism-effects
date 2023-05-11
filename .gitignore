@@ -106,3 +106,4 @@ dist
 .tern-port
 
 example/public/hdr/8k
+example/main.js
