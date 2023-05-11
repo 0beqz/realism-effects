@@ -140,6 +140,8 @@ export class SSGIEffect extends Effect {
 			useRoughnessInAlphaChannel: true
 		})
 
+		this.svgf.denoisePass.setGBuffersTexture(this.ssgiPass.gBuffersRenderTarget.texture)
+
 		// patch the denoise pass
 		this.svgf.denoisePass.fullscreenMaterial.uniforms = {
 			...this.svgf.denoisePass.fullscreenMaterial.uniforms,

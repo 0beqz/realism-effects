@@ -3,6 +3,8 @@ import vertexShader from "../../utils/shader/basic.vert"
 import fragmentShader from "../shader/ssgi.frag"
 // eslint-disable-next-line camelcase
 import ssgi_utils from "../shader/ssgi_utils.frag"
+// eslint-disable-next-line camelcase
+import gbuffer_packing from "../shader/gbuffer_packing.glsl"
 import sampleBlueNoise from "../../utils/shader/sampleBlueNoise.glsl"
 import { EquirectHdrInfoUniform } from "../utils/EquirectHdrInfoUniform"
 
@@ -14,6 +16,7 @@ export class SSGIMaterial extends ShaderMaterial {
 			uniforms: {
 				directLightTexture: new Uniform(null),
 				accumulatedTexture: new Uniform(null),
+				gBuffersTexture: new Uniform(null),
 				normalTexture: new Uniform(null),
 				depthTexture: new Uniform(null),
 				diffuseTexture: new Uniform(null),
@@ -36,7 +39,6 @@ export class SSGIMaterial extends ShaderMaterial {
 				envMapInfo: { value: new EquirectHdrInfoUniform() },
 				envMapPosition: new Uniform(new Vector3()),
 				envMapSize: new Uniform(new Vector3()),
-				viewMatrix: new Uniform(new Matrix4()),
 				texSize: new Uniform(new Vector2()),
 				blueNoiseRepeat: new Uniform(new Vector2())
 			},
@@ -54,6 +56,7 @@ export class SSGIMaterial extends ShaderMaterial {
 
 			fragmentShader: fragmentShader
 				.replace("#include <ssgi_utils>", ssgi_utils)
+				.replace("#include <gbuffer_packing>", gbuffer_packing)
 				.replace("#include <sampleBlueNoise>", sampleBlueNoise),
 			vertexShader,
 

@@ -4,10 +4,8 @@ import {
 	DepthTexture,
 	FloatType,
 	HalfFloatType,
-	SRGBColorSpace,
-	NoColorSpace,
-	LinearFilter,
 	NearestFilter,
+	NoColorSpace,
 	RepeatWrapping,
 	Texture,
 	TextureLoader,
@@ -23,6 +21,7 @@ import {
 } from "../utils/Utils"
 import { BackSideDepthPass } from "./BackSideDepthPass"
 
+import { WebGLRenderTarget } from "three"
 import blueNoiseImage from "./../../utils/LDR_RGBA_0.png"
 
 const backgroundColor = new Color(0)
@@ -90,39 +89,22 @@ export class SSGIPass extends Pass {
 	}
 
 	initMRTRenderTarget() {
-		this.gBuffersRenderTarget = new WebGLMultipleRenderTargets(1, 1, 4, {
+		this.gBuffersRenderTarget = new WebGLRenderTarget(1, 1, {
 			minFilter: NearestFilter,
-			magFilter: NearestFilter
+			magFilter: NearestFilter,
+			type: FloatType
 		})
 
 		this.gBuffersRenderTarget.depthTexture = new DepthTexture(1, 1)
 		this.gBuffersRenderTarget.depthTexture.type = FloatType
 
+		this.depthTexture = this.gBuffersRenderTarget.depthTexture
+		this.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
+
 		this.backSideDepthPass = new BackSideDepthPass(this._scene, this._camera)
 
-		this.depthTexture = this.gBuffersRenderTarget.texture[0]
-		this.normalTexture = this.gBuffersRenderTarget.texture[1]
-		this.diffuseTexture = this.gBuffersRenderTarget.texture[2]
-		this.emissiveTexture = this.gBuffersRenderTarget.texture[3]
-
-		this.diffuseTexture.minFilter = LinearFilter
-		this.diffuseTexture.magFilter = LinearFilter
-		this.diffuseTexture.colorSpace = SRGBColorSpace
-		this.diffuseTexture.needsUpdate = true
-
-		this.emissiveTexture.minFilter = LinearFilter
-		this.emissiveTexture.magFilter = LinearFilter
-		this.emissiveTexture.type = HalfFloatType
-		this.emissiveTexture.needsUpdate = true
-
-		this.normalTexture.type = HalfFloatType
-		this.normalTexture.needsUpdate = true
-
-		this.fullscreenMaterial.uniforms.normalTexture.value = this.normalTexture
-		this.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
-		this.fullscreenMaterial.uniforms.diffuseTexture.value = this.diffuseTexture
-		this.fullscreenMaterial.uniforms.emissiveTexture.value = this.emissiveTexture
 		this.fullscreenMaterial.uniforms.backSideDepthTexture.value = this.backSideDepthPass.renderTarget.texture
+		this.fullscreenMaterial.uniforms.gBuffersTexture.value = this.gBuffersRenderTarget.texture
 	}
 
 	setSize(width, height) {

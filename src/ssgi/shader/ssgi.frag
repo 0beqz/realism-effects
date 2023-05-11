@@ -13,6 +13,7 @@ varying vec2 vUv;
 
 uniform sampler2D directLightTexture;
 uniform sampler2D accumulatedTexture;
+uniform sampler2D gBuffersTexture;
 uniform sampler2D normalTexture;
 uniform sampler2D depthTexture;
 uniform sampler2D diffuseTexture;
@@ -64,6 +65,7 @@ vec2 invTexSize;
 #include <packing>
 
 // helper functions
+#include <gbuffer_packing>
 #include <sampleBlueNoise>
 #include <ssgi_utils>
 
@@ -79,13 +81,15 @@ void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.0);
 
     // filter out background
-    if (dot(depthTexel.rgb, depthTexel.rgb) == 0.) {
+    if (depthTexel.r == 1.0) {
         discard;
         return;
     }
 
-    vec4 normalTexel = textureLod(normalTexture, vUv, 0.0);
-    float roughness = normalTexel.a;
+    vec3 diffuse, normal, emissive;
+    float roughness, metalness;
+
+    getGData(gBuffersTexture, vUv, diffuse, normal, roughness, metalness, emissive);
 
     // a roughness of 1 is only being used for deselected meshes
     if (roughness == 1.0 || roughness > maxRoughness) {
@@ -102,7 +106,7 @@ void main() {
     nearMulFar = cameraNear * cameraFar;
     farMinusNear = cameraFar - cameraNear;
 
-    float unpackedDepth = unpackRGBAToDepth(depthTexel);
+    float unpackedDepth = depthTexel.r;
     // view-space depth
     float depth = fastGetViewZ(unpackedDepth);
 
@@ -110,14 +114,10 @@ void main() {
     vec3 viewPos = getViewPosition(depth);
 
     vec3 viewDir = normalize(viewPos);
-    vec3 worldNormal = normalTexel.xyz;
+    vec3 worldNormal = normal;
     vec3 viewNormal = normalize((vec4(worldNormal, 0.) * cameraMatrixWorld).xyz);
 
     vec3 worldPos = vec4(vec4(viewPos, 1.) * viewMatrix).xyz;
-
-    vec4 diffuseTexel = textureLod(diffuseTexture, vUv, 0.);
-    vec3 diffuse = diffuseTexel.rgb;
-    float metalness = diffuseTexel.a;
 
     vec3 n = viewNormal;  // view-space normal
     vec3 v = -viewDir;    // incoming vector
@@ -431,21 +431,12 @@ vec2 RayMarch(inout vec3 dir, inout vec3 hitPos) {
         if (uv.x < 0. || uv.y < 0. || uv.x > 1. || uv.y > 1.) return INVALID_RAY_COORDS;
 #endif
 
-        float unpackedDepth = unpackRGBAToDepth(textureLod(depthTexture, uv, 0.0));
+        float unpackedDepth = textureLod(depthTexture, uv, 0.0).r;
         float depth = fastGetViewZ(unpackedDepth);
-
-#ifdef autoThickness
-        float unpackedBackSideDepth = unpackRGBAToDepth(textureLod(backSideDepthTexture, uv, 0.0));
-        float backSideDepth = fastGetViewZ(unpackedBackSideDepth);
-
-        float currentThickness = max(abs(depth - backSideDepth), thickness);
-#else
-        float currentThickness = thickness;
-#endif
 
         rayHitDepthDifference = depth - hitPos.z;
 
-        if (rayHitDepthDifference >= 0.0 && rayHitDepthDifference < currentThickness) {
+        if (rayHitDepthDifference >= 0.0) {
 #if refineSteps == 0
             return uv;
 #else
@@ -471,7 +462,7 @@ vec2 BinarySearch(inout vec3 dir, inout vec3 hitPos) {
     for (int i = 0; i < refineSteps; i++) {
         uv = viewSpaceToScreenSpace(hitPos);
 
-        float unpackedDepth = unpackRGBAToDepth(textureLod(depthTexture, uv, 0.0));
+        float unpackedDepth = textureLod(depthTexture, uv, 0.0).r;
         float depth = fastGetViewZ(unpackedDepth);
 
         rayHitDepthDifference = depth - hitPos.z;

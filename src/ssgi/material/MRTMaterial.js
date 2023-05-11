@@ -1,4 +1,5 @@
 ﻿import { Color, GLSL3, Matrix3, ShaderMaterial, TangentSpaceNormalMap, Uniform, Vector2 } from "three"
+import gbuffer_packing from "../shader/gbuffer_packing.glsl"
 
 // will render normals to RGB channel of "gNormal" buffer, roughness to A channel of "gNormal" buffer, depth to RGBA channel of "gDepth" buffer
 // and velocity to "gVelocity" buffer
@@ -99,11 +100,6 @@ export class MRTMaterial extends ShaderMaterial {
                 #include <clipping_planes_pars_fragment>
                 #include <color_pars_fragment>
                 #include <alphamap_pars_fragment>
-                
-                layout(location = 0) out vec4 gDepth;
-                layout(location = 1) out vec4 gNormal;
-                layout(location = 2) out vec4 gDiffuse;
-                layout(location = 3) out vec4 gEmissive;
 
                 #include <map_pars_fragment>
                 uniform vec3 color;
@@ -120,7 +116,7 @@ export class MRTMaterial extends ShaderMaterial {
                 uniform vec3 emissive;
                 uniform float emissiveIntensity;
 
-#ifdef USE_ALPHAMAP
+            #ifdef USE_ALPHAMAP
                 uniform sampler2D blueNoiseTexture;
                 uniform vec2 blueNoiseRepeat;
                 uniform vec2 texSize;
@@ -162,7 +158,9 @@ export class MRTMaterial extends ShaderMaterial {
 
                     return blueNoise;
                 }
-#endif
+            #endif
+
+                #include <gbuffer_packing>
 
                 void main() {
                     // !todo: properly implement alpha hashing
@@ -190,35 +188,23 @@ export class MRTMaterial extends ShaderMaterial {
 
                     float roughnessFactor = roughness;
                     bool isDeselected = roughness > 10.0e9;
-                    
-                    if(isDeselected){
-                        roughnessFactor = 1.;
-                        gNormal = vec4(0.);
-                    }else{
-                        #ifdef USE_ROUGHNESSMAP
-                            vec4 texelRoughness = textureLod( roughnessMap, vUv, 0. );
-                            // reads channel G, compatible with a combined OcclusionRoughnessMetallic (RGB) texture
-                            roughnessFactor *= texelRoughness.g;
-                        #endif
 
-                        // roughness of 1.0 is reserved for deselected meshes
-                        roughnessFactor = min(0.99, roughnessFactor);
+                    #ifdef USE_ROUGHNESSMAP
+                        vec4 texelRoughness = textureLod( roughnessMap, vUv, 0. );
+                        // reads channel G, compatible with a combined OcclusionRoughnessMetallic (RGB) texture
+                        roughnessFactor *= texelRoughness.g;
+                    #endif
 
-                        vec3 worldNormal = normalize((vec4(normal, 1.) * viewMatrix).xyz);
-                        gNormal = vec4( worldNormal, roughnessFactor );
-                    }
-                    
+                    // roughness of 1.0 is reserved for deselected meshes
+                    roughnessFactor = min(0.99, roughnessFactor);
+
+                    vec3 worldNormal = normalize((vec4(normal, 1.) * viewMatrix).xyz);
 
                     if(isDeselected){
                         discard;
                         return;
                     }
-
-                    float fragCoordZ = 0.5 * vHighPrecisionZW[0] / vHighPrecisionZW[1] + 0.5;
-
-                    vec4 depthColor = packDepthToRGBA( fragCoordZ );
-                    gDepth = depthColor;
-
+                    
                     #include <metalnessmap_fragment>
 
                     vec4 diffuseColor = vec4(color, metalnessFactor);
@@ -226,15 +212,12 @@ export class MRTMaterial extends ShaderMaterial {
                     #include <map_fragment>
                     #include <color_fragment>
 
-                    gDiffuse = diffuseColor;
-
-                    vec3 totalEmissiveRadiance = emissive * emissiveIntensity;
-                    #include <emissivemap_fragment>
-                    
-                    gEmissive = vec4(totalEmissiveRadiance, 0.);
+                    gl_FragColor.r = color2float(diffuseColor.rgb);
+                    gl_FragColor.g = packNormal(worldNormal);
+                    gl_FragColor.b = packVec2(vec2(roughnessFactor, metalnessFactor));
+                    gl_FragColor.a = color2float(emissive);
                 }
-            `,
-			glslVersion: GLSL3,
+            `.replace("#include <gbuffer_packing>", gbuffer_packing),
 			toneMapped: false,
 			alphaTest: false,
 			fog: false,

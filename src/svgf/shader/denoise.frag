@@ -3,6 +3,7 @@
 uniform sampler2D depthTexture;
 uniform sampler2D normalTexture;
 uniform sampler2D momentTexture;
+uniform sampler2D gBuffersTexture;
 uniform vec2 invTexSize;
 uniform bool horizontal;
 uniform bool blurHorizontal;
@@ -26,6 +27,7 @@ uniform bool isLastIteration;
 #define luminance(a) dot(a, vec3(0.2125, 0.7154, 0.0721))
 
 #include <denoiseCustomComposeShaderFunctions>
+#include <gbuffer_packing>
 
 vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth, const mat4 curMatrixWorld) {
     vec4 ndc = vec4(
@@ -69,6 +71,11 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec3 normal, 
 
     float basicWeight = 1.0;
 
+    vec3 neighborNormal, neighborDiffuse, neighborEmissive;
+    float neighborRoughness, neighborMetalness;
+
+    getGData(gBuffersTexture, neighborUvNearest, neighborDiffuse, neighborNormal, neighborRoughness, neighborMetalness, neighborEmissive);
+
 // depth similarity
 #ifdef useDepth
     vec4 neighborDepthTexel = textureLod(depthTexture, neighborUvNearest, 0.);
@@ -92,30 +99,19 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec3 normal, 
     basicWeight *= depthSimilarity;
 #endif
 
-// the normal texel saves the normal in the RGB channels and the roughness in the A channel
-#if defined(useNormal) || defined(useRoughness)
-    vec4 neighborNormalTexel = textureLod(normalTexture, neighborUvNearest, 0.);
-#endif
-
-// normal similarity
-#ifdef useNormal
-    vec3 neighborNormal = neighborNormalTexel.xyz;
+    // normal similarity
     float normalDiff = dot(neighborNormal, normal);
     float normalSimilarity = pow(max(0., normalDiff), normalPhi);
 
     basicWeight *= normalSimilarity;
-#endif
 
-// roughness similarity
-#ifdef useRoughness
-    float neighborRoughness = neighborNormalTexel.a;
+    // roughness similarity
     neighborRoughness *= neighborRoughness;
 
     float roughnessDiff = abs(roughness - neighborRoughness);
     float roughnessSimilarity = exp(-roughnessDiff * roughnessPhi);
 
     basicWeight *= roughnessSimilarity;
-#endif
 
     vec4 neighborInputTexel[textureCount];
     vec3 neighborColor;
@@ -194,17 +190,11 @@ void main() {
     worldPos = screenSpaceToWorldSpace(vUv, depth, cameraMatrixWorld);
 #endif
 
-    vec3 normal;
-    float roughness;
+    vec3 diffuse, normal, emissive;
+    float roughness, metalness;
 
-#ifdef useNormal
-    vec4 normalTexel = textureLod(normalTexture, vUv, 0.);
-    normal = normalTexel.xyz;
-#endif
-#ifdef useRoughness
-    roughness = normalTexel.a;
+    getGData(gBuffersTexture, vUv, diffuse, normal, roughness, metalness, emissive);
     roughness *= roughness;
-#endif
 
     vec3 denoisedColor[textureCount];
     float sumVariance[textureCount];

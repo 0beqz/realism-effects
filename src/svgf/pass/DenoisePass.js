@@ -12,6 +12,7 @@ import {
 	WebGLMultipleRenderTargets
 } from "three"
 import { unrollLoops } from "../../ssgi/utils/Utils"
+import gbuffer_packing from "../../ssgi/shader/gbuffer_packing.glsl"
 import basicVertexShader from "../../utils/shader/basic.vert"
 import fragmentShader from "../shader/denoise.frag"
 
@@ -54,6 +55,7 @@ export class DenoisePass extends Pass {
 			vertexShader: basicVertexShader,
 			uniforms: {
 				depthTexture: new Uniform(null),
+				gBuffersTexture: new Uniform(null),
 				normalTexture: new Uniform(null),
 				momentTexture: new Uniform(null),
 				invTexSize: new Uniform(new Vector2()),
@@ -88,12 +90,14 @@ export class DenoisePass extends Pass {
 		this.renderTargetA = new WebGLMultipleRenderTargets(1, 1, textures.length, renderTargetOptions)
 		this.renderTargetB = new WebGLMultipleRenderTargets(1, 1, textures.length, renderTargetOptions)
 
-		if (typeof options.roughnessDependent === "boolean")
+		if (typeof options.roughnessDependent === "boolean") {
 			options.roughnessDependent = Array(textures.length).fill(options.roughnessDependent)
+		}
 		this.fullscreenMaterial.defines.roughnessDependent = /* glsl */ `bool[](${options.roughnessDependent.join(", ")})`
 
-		if (typeof options.basicVariance === "number")
+		if (typeof options.basicVariance === "number") {
 			options.basicVariance = Array(textures.length).fill(options.basicVariance)
+		}
 		this.fullscreenMaterial.defines.basicVariance = /* glsl */ `float[](${options.basicVariance
 			.map(n => n.toPrecision(5))
 			.join(", ")})`
@@ -123,6 +127,7 @@ export class DenoisePass extends Pass {
 				.replace("#include <denoiseCustomComposeShaderFunctions>", this.options.denoiseCustomComposeShaderFunctions)
 				.replace("#include <denoiseCustomComposeShader>", this.options.denoiseCustomComposeShader)
 				.replace("#include <outputShader>", outputShader)
+				.replace("#include <gbuffer_packing>", gbuffer_packing)
 				.replaceAll("textureCount", this.textures.length)
 				.replaceAll("momentTextureCount", Math.min(this.textures.length, 2))
 
@@ -141,8 +146,9 @@ export class DenoisePass extends Pass {
 			const texture = textures[i]
 			this.fullscreenMaterial.uniforms["inputTexture" + i] = new Uniform(texture)
 
-			if (texture.name.includes("TemporalReprojectPass.accumulatedTexture"))
+			if (texture.name.includes("TemporalReprojectPass.accumulatedTexture")) {
 				this.fullscreenMaterial.defines.useTemporalReprojectTextures = ""
+			}
 		}
 
 		this.fullscreenMaterial.fragmentShader = finalFragmentShader
@@ -161,6 +167,13 @@ export class DenoisePass extends Pass {
 		}
 
 		this.options.depth = true
+	}
+
+	setGBuffersTexture(gBuffersTexture) {
+		this.fullscreenMaterial.uniforms.gBuffersTexture.value = gBuffersTexture
+
+		this.options.normal = true
+		this.options.roughness = true
 	}
 
 	setNormalTexture(normalTexture, { useRoughnessInAlphaChannel = false } = {}) {

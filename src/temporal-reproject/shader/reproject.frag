@@ -323,3 +323,11 @@ vec3 Decode(vec2 f) {
     n.y += n.y >= 0.0 ? -t : t;
     return normalize(n);
 }
+
+float packNormal(vec3 normal) {
+    return uintBitsToFloat(packHalf2x16(Encode(normal)));
+}
+
+vec3 unpackNormal(float packedNormal) {
+    return Decode(unpackHalf2x16(floatBitsToUint(packedNormal)));
+}

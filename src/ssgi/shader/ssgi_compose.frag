@@ -5,13 +5,11 @@ uniform int toneMapping;
 
 #include <tonemapping_pars_fragment>
 
-#pragma tonemapping_pars_fragment
-
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
     vec4 depthTexel = textureLod(depthTexture, uv, 0.);
     vec3 ssgiClr;
 
-    if (dot(depthTexel.rgb, depthTexel.rgb) == 0.) {
+    if (depthTexel.r == 1.0) {
         ssgiClr = textureLod(sceneTexture, uv, 0.).rgb;
     } else {
         ssgiClr = textureLod(inputTexture, uv, 0.).rgb;
