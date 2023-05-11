@@ -20,11 +20,21 @@ A collection of the following effects for three.js:
   [<img src="https://raw.githubusercontent.com/0beqz/realism-effects/main/screenshots/traa_comp.webp">](https://realism-effects.vercel.app?traa_test=true)
   <br></br>
   AA comparison scenes: [Model Comparision](https://realism-effects.vercel.app/?traa_test=true&traa_test_model=true), [General Comparison](https://realism-effects.vercel.app/?traa_test=true)
+- Ambient Occlusion
+  <br>
+  SSAO (left) &nbsp;&nbsp;&nbsp; HBAO (right)
+  <br></br>
+  [<img src="https://raw.githubusercontent.com/0beqz/realism-effects/main/screenshots/ssao_hbao.webp">](https://realism-effects.vercel.app/?ao)
+  Credits go to [N8programs](https://github.com/N8python) for the SSAO effect as well as the denoiser used for both AO effects (namely the `PoissonDenoisePass`)
+  <br></br>
+- SSR (Screen-Space Reflections)
+- SSDGI (Screen-Space Diffuse Global Illumination)
 
-If you only want reflections or diffuse lighting from SSGI, then you can also use these effects too:
+<br>
 
-- SSR
-- SSDGI
+> **ℹ️**: You can explore the demos by clicking on the images
+
+<br>
 
 ## Usage
 
@@ -60,22 +70,20 @@ const traaEffect = new TRAAEffect(scene, camera, velocityDepthNormalPass)
 // Motion Blur
 const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass)
 
-const effectPass = new POSTPROCESSING.EffectPass(camera, ssgiEffect, traaEffect, motionBlur)
+// SSAO
+const ssaoEffect = new SSAOEffect(composer, camera, scene)
+
+// HBAO
+const hbaoEffect = new HBAOEffect(composer, camera, scene)
+
+const effectPass = new POSTPROCESSING.EffectPass(camera, ssgiEffect, hbaoEffect, ssaoEffect, traaEffect, motionBlur)
 
 composer.addPass(effectPass)
-```
-
-If you use SSGI, then you don't have to use the RenderPass anymore as SSGI does the rendering then. You can save performance by leaving it out. Keep in mind that then you need to put TRAA and Motion Blur in a separate pass like so:
-
-```javascript
-const effectPass = new POSTPROCESSING.EffectPass(camera, ssgiEffect)
-const effectPass2 = new POSTPROCESSING.EffectPass(camera, traaEffect, motionBlur)
-
-composer.addPass(effectPass)
-composer.addPass(effectPass2)
 ```
 
 > **NOTE**: `OrthographicCamera` isn't supported yet. Only `PerspectiveCamera` is supported at the moment. It'll be supported in the future.
+
+## SSGI
 
 ### Options
 
@@ -109,9 +117,27 @@ const options = {
 
 </details>
 
+<br>
+
+### Notes
+
+If you use SSGI, then you don't have to use the RenderPass anymore as SSGI does the rendering then. You can save performance by leaving it out. Keep in mind that then you need to put TRAA and Motion Blur in a separate pass like so:
+
+```javascript
+const effectPass = new POSTPROCESSING.EffectPass(camera, ssgiEffect)
+const effectPass2 = new POSTPROCESSING.EffectPass(camera, traaEffect, motionBlur)
+
+composer.addPass(effectPass)
+composer.addPass(effectPass2)
+```
+
+<br>
+
+## Finding the right options through using a GUI
+
 ### ❗ Highly recommended: Use a GUI to tweak the options
 
-Since the right options for an SSGI effect depend a lot on the scene, it can happen that you don't seem to have an effect at all in your scene when you use the SSGI effect for the first time in it without any configuration. This can have multiple causes such as `distance` being way too low for your scene for example. So to find out which SSGI options are right for your scene, you should use a GUI to find the right values easily. The [example](https://github.com/0beqz/realism-effects/tree/main/example) already comes with a simple one-file GUI [`SSGIDebugGUI.js`](https://github.com/0beqz/traa/blob/main/example/SSGIDebugGUI.js) that you can use in your project like so:
+Since the right options for an SSGI effect (or for other effects provided by `realism-effects`) depend a lot on the scene, it can happen that you don't seem to have an effect at all in your scene when you use the SSGI effect for the first time in it without any configuration. This can have multiple causes such as `distance` being way too low for your scene for example. So to find out which SSGI options are right for your scene, you should use a GUI to find the right values easily. The [example](https://github.com/0beqz/realism-effects/tree/main/example) already comes with a simple one-file GUI [`SSGIDebugGUI.js`](https://github.com/0beqz/traa/blob/main/example/SSGIDebugGUI.js) that you can use in your project like so:
 
 - First install the npm package of the module used for the GUI:
 
@@ -128,6 +154,13 @@ const gui = new SSGIDebugGUI(ssgiEffect, options)
 ```
 
 That's it, you should now have the GUI you can see in the example scene. The `options` parameter is optional for the SSGIDebugGUI and will default to the default options if no `options` parameter is given.
+
+Besides for SSGI, there are also debug GUIs for more effects.
+You can copy the following debug GUIs from the repository:
+
+- HBAODebugGUI
+- SSAODebugGUI
+- SSGIDebugGUI
 
 ## Run Locally
 
@@ -163,6 +196,8 @@ If you'd like, you could also buy me a coffee:
 - Edge fade for SSR: [kode80](http://kode80.com/blog/)
 
 - Velocity Shader: [three.js sandbox](https://github.com/gkjohnson/threejs-sandbox)
+
+- SSAO effect and PoissonDenoisePass: [N8programs](https://github.com/N8python) - GitHub Repo: [ssao](https://github.com/N8python/ssao)
 
 ### Demo Scene
 
