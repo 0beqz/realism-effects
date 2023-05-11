@@ -324,7 +324,6 @@ const refreshLighting = () => {
 const initScene = async () => {
 	const gpuTier = await getGPUTier()
 	fps = gpuTier.fps
-	fps = 512
 
 	const options = {
 		distance: 2.7200000000000104,
