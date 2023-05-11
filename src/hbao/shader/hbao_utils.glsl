@@ -44,9 +44,8 @@ vec3 slerp(const vec3 a, const vec3 b, const float t) {
 }
 
 vec3 computeWorldNormal() {
-    vec2 resolution = texSize;
-
-    ivec2 p = ivec2(vUv * resolution);
+    vec2 size = vec2(textureSize(depthTexture, 0));
+    ivec2 p = ivec2(vUv * size);
     float c0 = texelFetch(depthTexture, p, 0).x;
     float l2 = texelFetch(depthTexture, p - ivec2(2, 0), 0).x;
     float l1 = texelFetch(depthTexture, p - ivec2(1, 0), 0).x;
@@ -61,10 +60,10 @@ vec3 computeWorldNormal() {
     float db = abs((2.0 * b1 - b2) - c0);
     float dt = abs((2.0 * t1 - t2) - c0);
     vec3 ce = getWorldPos(c0, vUv).xyz;
-    vec3 dpdx = (dl < dr) ? ce - getWorldPos(l1, (vUv - vec2(1.0 / resolution.x, 0.0))).xyz
-                          : -ce + getWorldPos(r1, (vUv + vec2(1.0 / resolution.x, 0.0))).xyz;
-    vec3 dpdy = (db < dt) ? ce - getWorldPos(b1, (vUv - vec2(0.0, 1.0 / resolution.y))).xyz
-                          : -ce + getWorldPos(t1, (vUv + vec2(0.0, 1.0 / resolution.y))).xyz;
+    vec3 dpdx = (dl < dr) ? ce - getWorldPos(l1, (vUv - vec2(1.0 / size.x, 0.0))).xyz
+                          : -ce + getWorldPos(r1, (vUv + vec2(1.0 / size.x, 0.0))).xyz;
+    vec3 dpdy = (db < dt) ? ce - getWorldPos(b1, (vUv - vec2(0.0, 1.0 / size.y))).xyz
+                          : -ce + getWorldPos(t1, (vUv + vec2(0.0, 1.0 / size.y))).xyz;
     return normalize(cross(dpdx, dpdy));
 }
 

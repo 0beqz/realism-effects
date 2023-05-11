@@ -487,7 +487,7 @@ const initScene = async () => {
 			hbaoText.innerHTML = "HBAO"
 			hbaoText.style.position = "absolute"
 			hbaoText.style.bottom = "128px"
-			hbaoText.style.left = "64px"
+			hbaoText.style.right = "64px"
 			hbaoText.style.color = "#00ff00"
 			hbaoText.style.fontFamily = "monospace"
 			hbaoText.style.fontSize = "48px"
@@ -502,7 +502,7 @@ const initScene = async () => {
 			ssaoText.innerHTML = "SSAO"
 			ssaoText.style.position = "absolute"
 			ssaoText.style.bottom = "128px"
-			ssaoText.style.right = "64px"
+			ssaoText.style.left = "64px"
 			ssaoText.style.color = "#00ff00"
 			ssaoText.style.fontFamily = "monospace"
 			ssaoText.style.fontSize = "48px"
@@ -514,7 +514,7 @@ const initScene = async () => {
 			document.body.appendChild(ssaoText)
 
 			document.querySelector("#info").style.color = "black"
-			document.querySelector("#info").innerHTML = "HBAO & SSAO Comparison<br>Hold <b>SHIFT</b> to move blue line"
+			document.querySelector("#info").innerHTML = "SSAO & HBAO Comparison<br>Hold <b>SHIFT</b> to move blue line"
 
 			const toggle = document.createElement("div")
 			toggle.style.background = "white"
@@ -541,8 +541,8 @@ const initScene = async () => {
 			}
 
 			// gui3.pane.containerElem_.style.visibility = "hidden"
-			gui3.pane.containerElem_.style.left = "8px"
-			gui4.pane.containerElem_.style.right = "8px"
+			gui3.pane.containerElem_.style.right = "8px"
+			gui4.pane.containerElem_.style.left = "8px"
 
 			composer.addPass(hbaoPass)
 			composer.addPass(ssaoPass)
@@ -765,6 +765,7 @@ document.addEventListener("keydown", ev => {
 
 	// if space was pressed
 	if (ev.code === "Space" && isAoDemo) {
+		document.querySelector("#aoToggle").checked = !document.querySelector("#aoToggle").checked
 		hbaoSsaoComparisonEffect.setAlbedo(!hbaoSsaoComparisonEffect.isAlbedo())
 	}
 })

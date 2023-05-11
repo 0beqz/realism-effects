@@ -24,7 +24,7 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
         return;
     }
 
-    float ao = vUv.x > x ? pow(textureLod(ssaoTexture, uv, 0.).a, ssaoPower) : pow(textureLod(hbaoTexture, uv, 0.).a, hbaoPower);
+    float ao = vUv.x < x ? pow(textureLod(ssaoTexture, uv, 0.).a, ssaoPower) : pow(textureLod(hbaoTexture, uv, 0.).a, hbaoPower);
 
     outputColor = vec4(vec3(ao) * (albedo ? inputColor.rgb : vec3(1.)), inputColor.a);
 }
