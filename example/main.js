@@ -276,10 +276,10 @@ if (traaTest) {
 } else {
 	if (isAoDemo) {
 		url = "sponza_no_textures.optimized.glb"
-		loadFiles = 7
+		loadFiles = 4
 	} else {
 		url = "squid_game.optimized.glb"
-		loadFiles = 8
+		loadFiles = 10
 	}
 }
 
