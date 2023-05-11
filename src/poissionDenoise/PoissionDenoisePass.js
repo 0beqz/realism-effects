@@ -1,7 +1,7 @@
 import { Pass } from "postprocessing"
 import {
 	HalfFloatType,
-	LinearEncoding,
+	NoColorSpace,
 	Matrix4,
 	NearestFilter,
 	RepeatWrapping,
@@ -98,7 +98,7 @@ export class PoissionDenoisePass extends Pass {
 			blueNoiseTexture.magFilter = NearestFilter
 			blueNoiseTexture.wrapS = RepeatWrapping
 			blueNoiseTexture.wrapT = RepeatWrapping
-			blueNoiseTexture.encoding = LinearEncoding
+			blueNoiseTexture.colorSpace = NoColorSpace
 
 			this.fullscreenMaterial.uniforms.blueNoiseTexture.value = blueNoiseTexture
 		})

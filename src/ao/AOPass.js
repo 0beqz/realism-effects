@@ -1,7 +1,7 @@
 import { Pass } from "postprocessing"
 import {
 	HalfFloatType,
-	LinearEncoding,
+	NoColorSpace,
 	Matrix4,
 	NearestFilter,
 	NoBlending,
@@ -64,7 +64,7 @@ class AOPass extends Pass {
 			blueNoiseTexture.magFilter = NearestFilter
 			blueNoiseTexture.wrapS = RepeatWrapping
 			blueNoiseTexture.wrapT = RepeatWrapping
-			blueNoiseTexture.encoding = LinearEncoding
+			blueNoiseTexture.colorSpace = NoColorSpace
 
 			this.fullscreenMaterial.uniforms.blueNoiseTexture.value = blueNoiseTexture
 		})
