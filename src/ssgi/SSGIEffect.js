@@ -1,5 +1,6 @@
 ﻿import { Effect, RenderPass, Selection } from "postprocessing"
 import {
+	DepthTexture,
 	LinearMipMapLinearFilter,
 	NoToneMapping,
 	PerspectiveCamera,
@@ -39,7 +40,7 @@ export class SSGIEffect extends Effect {
 	 * @param {velocityDepthNormalPass} velocityDepthNormalPass Required velocity pass
 	 * @param {SSGIOptions} [options] The optional options for the SSGI effect
 	 */
-	constructor(scene, camera, velocityDepthNormalPass, options = defaultSSGIOptions) {
+	constructor(composer, scene, camera, velocityDepthNormalPass, options = defaultSSGIOptions) {
 		options = { ...defaultSSGIOptions, ...options }
 
 		super("SSGIEffect", ssgi_compose, {
@@ -63,6 +64,9 @@ export class SSGIEffect extends Effect {
 
 		this._scene = scene
 		this._camera = camera
+		this.composer = composer
+
+		if (!composer.depthTexture) composer.createDepthTexture()
 
 		let definesName
 
@@ -235,6 +239,7 @@ export class SSGIEffect extends Effect {
 						case "depthPhi":
 						case "normalPhi":
 						case "roughnessPhi":
+						case "diffusePhi":
 							this.svgf.denoisePass.fullscreenMaterial.uniforms[key].value = value
 							break
 

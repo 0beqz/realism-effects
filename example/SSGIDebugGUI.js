@@ -62,6 +62,12 @@ export class SSGIDebugGUI {
 			step: 0.001
 		})
 
+		denoiseFolder.addInput(params, "diffusePhi", {
+			min: 0,
+			max: 100,
+			step: 0.001
+		})
+
 		const definesFolder = pane.addFolder({ title: "Tracing" })
 
 		definesFolder.addInput(params, "steps", { min: 0, max: 256, step: 1 })

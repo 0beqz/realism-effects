@@ -1,7 +1,6 @@
 import { Pass } from "postprocessing"
 import {
 	Color,
-	DepthTexture,
 	FloatType,
 	HalfFloatType,
 	NearestFilter,
@@ -95,11 +94,9 @@ export class SSGIPass extends Pass {
 			type: FloatType
 		})
 
-		this.gBuffersRenderTarget.depthTexture = new DepthTexture(1, 1)
-		this.gBuffersRenderTarget.depthTexture.type = FloatType
-
-		this.depthTexture = this.gBuffersRenderTarget.depthTexture
+		this.depthTexture = this.ssgiEffect.composer.depthTexture
 		this.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
+		this.gBuffersRenderTarget.depthTexture = this.depthTexture
 
 		this.backSideDepthPass = new BackSideDepthPass(this._scene, this._camera)
 

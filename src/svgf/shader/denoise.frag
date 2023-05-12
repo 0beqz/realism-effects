@@ -1,7 +1,6 @@
 ﻿varying vec2 vUv;
 
 uniform sampler2D depthTexture;
-uniform sampler2D normalTexture;
 uniform sampler2D momentTexture;
 uniform sampler2D gBuffersTexture;
 uniform vec2 invTexSize;
@@ -11,6 +10,7 @@ uniform float denoise[textureCount];
 uniform float depthPhi;
 uniform float normalPhi;
 uniform float roughnessPhi;
+uniform float diffusePhi;
 uniform float denoiseKernel;
 uniform float stepSize;
 uniform mat4 projectionMatrixInverse;
@@ -28,6 +28,9 @@ uniform bool isLastIteration;
 
 #include <denoiseCustomComposeShaderFunctions>
 #include <gbuffer_packing>
+
+vec3 diffuse, normal, emissive;
+float roughness, metalness;
 
 vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth, const mat4 curMatrixWorld) {
     vec4 ndc = vec4(
@@ -52,7 +55,7 @@ float distToPlane(const vec3 worldPos, const vec3 neighborWorldPos, const vec3 w
 // returns the variance of the pixel depending on how many frames it has been visible to denoise more aggressively at recently disoccluded pixels
 float getDisocclusionBoostVariance(float visibleFrames) {
 #ifdef useTemporalReprojectTextures
-    return max(0., -pow(visibleFrames, 2.0) + 50.0);
+    return max(0., -pow(visibleFrames, 2.0) + 100.);
 #else
     return 0.;
 #endif
@@ -112,6 +115,11 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec3 normal, 
     float roughnessSimilarity = exp(-roughnessDiff * roughnessPhi);
 
     basicWeight *= roughnessSimilarity;
+
+    float diffuseDiff = length(neighborDiffuse - diffuse);
+    float diffuseSimilarity = exp(-diffuseDiff * diffusePhi);
+
+    basicWeight *= diffuseSimilarity;
 
     vec4 neighborInputTexel[textureCount];
     vec3 neighborColor;
@@ -189,9 +197,6 @@ void main() {
 
     worldPos = screenSpaceToWorldSpace(vUv, depth, cameraMatrixWorld);
 #endif
-
-    vec3 diffuse, normal, emissive;
-    float roughness, metalness;
 
     getGData(gBuffersTexture, vUv, diffuse, normal, roughness, metalness, emissive);
     roughness *= roughness;

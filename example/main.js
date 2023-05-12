@@ -99,6 +99,7 @@ const renderer = new THREE.WebGLRenderer({
 	preserveDrawingBuffer: true
 })
 
+renderer.toneMapping = THREE.ACESFilmicToneMapping
 renderer.autoClear = false
 
 renderer.setSize(window.innerWidth, window.innerHeight)
@@ -237,7 +238,9 @@ const setEnvMesh = envMap => {
 		envMesh.height = 20
 		envMesh.scale.setScalar(100)
 		envMesh.updateMatrixWorld()
-		scene.add(envMesh)
+		// scene.add(envMesh)
+
+		scene.background = new Color("white")
 	}
 }
 
@@ -253,7 +256,7 @@ const environments = [
 	"# cube map test"
 ]
 
-rgbeLoader.load("hdr/chinese_garden_1k.hdr", initEnvMap)
+rgbeLoader.load("hdr/vintage_measuring_lab_1k.hdr", initEnvMap)
 
 const gltflLoader = new GLTFLoader()
 
@@ -431,7 +434,7 @@ const initScene = async () => {
 		offset: 0.3
 	})
 
-	ssgiEffect = new SSGIEffect(scene, camera, velocityDepthNormalPass, options)
+	ssgiEffect = new SSGIEffect(composer, scene, camera, velocityDepthNormalPass, options)
 
 	gui2 = new SSGIDebugGUI(ssgiEffect, options)
 	gui2.pane.containerElem_.style.left = "8px"
@@ -553,7 +556,29 @@ const initScene = async () => {
 		} else {
 			if (!traaTest) {
 				if (fps >= 256) {
-					composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, bloomEffect, vignetteEffect, lutEffect))
+					const ssaoOptions = {
+						resolutionScale: 1,
+						spp: 16,
+						distance: 2,
+						distancePower: 0.125,
+						power: 1,
+						bias: 40,
+						thickness: 0.075,
+						color: 0,
+						useNormalPass: false,
+						velocityDepthNormalPass: null,
+						normalTexture: null,
+						iterations: 1,
+						radius: 8,
+						rings: 5.625,
+						lumaPhi: 10,
+						depthPhi: 2,
+						normalPhi: 3.25,
+						samples: 16
+					}
+
+					const ssaoEffect = new SSAOEffect(composer, camera, scene, ssaoOptions)
+					composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, ssaoEffect, vignetteEffect, lutEffect))
 
 					const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass)
 

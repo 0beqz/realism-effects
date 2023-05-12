@@ -31,19 +31,6 @@ uniform float delta;
 void main() {
     getDepthAndDilatedUVOffset(depthTexture, vUv, depth, dilatedDepth, depthTexel);
 
-    if (dot(depthTexel.rgb, depthTexel.rgb) == 0.0) {
-#ifdef neighborhoodClamp
-    #pragma unroll_loop_start
-        for (int i = 0; i < textureCount; i++) {
-            gOutput[i] = textureLod(inputTexture[i], vUv, 0.0);
-        }
-    #pragma unroll_loop_end
-#else
-        discard;
-#endif
-        return;
-    }
-
     vec2 dilatedUv = vUv + dilatedUvOffset;
     edgeStrength = computeEdgeStrength(depth, invTexSize);
 

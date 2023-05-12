@@ -67,6 +67,7 @@ export class DenoisePass extends Pass {
 				depthPhi: new Uniform(1),
 				normalPhi: new Uniform(1),
 				roughnessPhi: new Uniform(1),
+				diffusePhi: new Uniform(1),
 				stepSize: new Uniform(1),
 				isFirstIteration: new Uniform(false),
 				isLastIteration: new Uniform(false),
