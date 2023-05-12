@@ -90,7 +90,7 @@ class AOEffect extends Effect {
 							break
 
 						case "color":
-							this.uniforms.get("color").value.copy(value)
+							this.uniforms.get("color").value.copy(new Color(value))
 							break
 
 						// denoiser

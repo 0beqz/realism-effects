@@ -11,7 +11,7 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 
     vec3 aoColor = mix(color, vec3(1.), ao);
 
-    // aoColor *= inputColor.rgb;
+    aoColor *= inputColor.rgb;
 
     outputColor = vec4(aoColor, inputColor.a);
 }
