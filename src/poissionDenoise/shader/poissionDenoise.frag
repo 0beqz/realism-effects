@@ -100,7 +100,7 @@ vec3 ToWorld(const vec3 X, const vec3 Y, const vec3 Z, const vec3 V) {
 }
 
 float getDisocclusionWeight(float x) {
-    return (1. / (x + 1.));
+    return 1. / (x + 1.);
 }
 
 void main() {
@@ -154,9 +154,10 @@ void main() {
     mat2 rotationMatrix = mat2(c, -s, s, c);
 
     float disocclusionWeight = getDisocclusionWeight(texel2.a);
+    float radiusShrink = disocclusionWeight > 0.25 ? 1.0 : (1. - (1.0 - disocclusionWeight / 0.25) * 0.75);
 
     for (int i = 0; i < samples; i++) {
-        vec2 offset = rotationMatrix * poissonDisk[i] * roughness;
+        vec2 offset = rotationMatrix * poissonDisk[i] * roughness * (1. + disocclusionWeight * 0.5) * radiusShrink;
         vec2 neighborUv = vUv + offset;
 
         vec4 neighborTexel = textureLod(inputTexture, neighborUv, 0.0);
