@@ -1,3 +1,5 @@
+uniform sampler2D gBuffersTexture;
+
 float color2float(in vec3 c) {
     c *= 255.;
     c = floor(c);  // without this value could be shifted for some intervals
@@ -33,7 +35,7 @@ vec2 OctWrap(vec2 v) {
     return w;
 }
 
-vec2 Encode(vec3 n) {
+vec2 encodeOctWrap(vec3 n) {
     n /= (abs(n.x) + abs(n.y) + abs(n.z));
     n.xy = n.z > 0.0 ? n.xy : OctWrap(n.xy);
     n.xy = n.xy * 0.5 + 0.5;
@@ -41,7 +43,7 @@ vec2 Encode(vec3 n) {
 }
 
 // source: https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/
-vec3 Decode(vec2 f) {
+vec3 decodeOctWrap(vec2 f) {
     f = f * 2.0 - 1.0;
 
     // https://twitter.com/Stubbesaurus/status/937994790553227264
@@ -53,11 +55,11 @@ vec3 Decode(vec2 f) {
 }
 
 float packNormal(vec3 normal) {
-    return uintBitsToFloat(packHalf2x16(Encode(normal)));
+    return uintBitsToFloat(packHalf2x16(encodeOctWrap(normal)));
 }
 
 vec3 unpackNormal(float packedNormal) {
-    return Decode(unpackHalf2x16(floatBitsToUint(packedNormal)));
+    return decodeOctWrap(unpackHalf2x16(floatBitsToUint(packedNormal)));
 }
 
 float packVec2(vec2 value) {
@@ -66,6 +68,24 @@ float packVec2(vec2 value) {
 
 vec2 unpackVec2(float packedValue) {
     return unpackHalf2x16(floatBitsToUint(packedValue));
+}
+
+// source: https://community.khronos.org/t/addition-of-two-hdr-rgbe-values/55669/2
+vec4 encodeRGBE8(vec3 rgb) {
+    vec4 vEncoded;
+    float maxComponent = max(max(rgb.r, rgb.g), rgb.b);
+    float fExp = ceil(log2(maxComponent));
+    vEncoded.rgb = rgb / exp2(fExp);
+    vEncoded.a = (fExp + 128.0) / 255.0;
+    return vEncoded;
+}
+
+// source: https://community.khronos.org/t/addition-of-two-hdr-rgbe-values/55669/2
+vec3 decodeRGBE8(vec4 rgbe) {
+    vec3 vDecoded;
+    float fExp = rgbe.a * 255.0 - 128.0;
+    vDecoded = rgbe.rgb * exp2(fExp);
+    return vDecoded;
 }
 
 void getGDataAndGBuffer(sampler2D gBufferTexture, vec2 uv, out vec3 diffuse, out vec3 normal, out float roughness, out float metalness, out vec4 gBuffer) {

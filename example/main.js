@@ -99,7 +99,6 @@ const renderer = new THREE.WebGLRenderer({
 	preserveDrawingBuffer: true
 })
 
-renderer.toneMapping = THREE.ACESFilmicToneMapping
 renderer.autoClear = false
 
 renderer.setSize(window.innerWidth, window.innerHeight)
@@ -300,7 +299,7 @@ let loadedCount = 0
 THREE.DefaultLoadingManager.onProgress = () => {
 	loadedCount++
 
-	if (loadedCount === loadFiles) {
+	if (loadedCount >= loadFiles) {
 		setTimeout(() => {
 			if (loadingEl) loadingEl.remove()
 		}, 150)
@@ -338,9 +337,14 @@ const initScene = async () => {
 		denoiseKernel: 3,
 		denoiseDiffuse: 25,
 		denoiseSpecular: 25.54,
-		depthPhi: 5,
-		normalPhi: 28,
+		radius: 16,
+		rings: 5.625,
+		samples: 8,
+		lumaPhi: 10,
+		depthPhi: 10.761,
+		normalPhi: 52.174,
 		roughnessPhi: 18.75,
+		diffusePhi: 40,
 		envBlur: 0.5,
 		importanceSampling: true,
 		directLightMultiplier: 1,
@@ -578,7 +582,7 @@ const initScene = async () => {
 					}
 
 					const ssaoEffect = new SSAOEffect(composer, camera, scene, ssaoOptions)
-					composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, ssaoEffect, vignetteEffect, lutEffect))
+					composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, vignetteEffect, lutEffect))
 
 					const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass)
 

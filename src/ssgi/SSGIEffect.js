@@ -68,26 +68,25 @@ export class SSGIEffect extends Effect {
 
 		if (!composer.depthTexture) composer.createDepthTexture()
 
+		window.depthTexture = composer.depthTexture
+
 		let definesName
 
 		if (options.diffuseOnly) {
 			definesName = "ssdgi"
 			options.reprojectSpecular = false
 			options.roughnessDependent = false
-			options.basicVariance = 0.00025
 			options.neighborhoodClamp = false
 		} else if (options.specularOnly) {
 			definesName = "ssr"
 			options.reprojectSpecular = true
 			options.roughnessDependent = true
-			options.basicVariance = 0.00025
 			options.neighborhoodClamp = true
 		} else {
 			definesName = "ssgi"
 			options.reprojectSpecular = [false, true]
 			options.neighborhoodClamp = [false, true]
 			options.roughnessDependent = [false, true]
-			options.basicVariance = [0.00025, 0.00025]
 		}
 
 		options.neighborhoodClampRadius = 2
@@ -228,19 +227,30 @@ export class SSGIEffect extends Effect {
 							break
 
 						case "denoiseDiffuse":
-							this.svgf.denoisePass.fullscreenMaterial.uniforms.denoise.value[0] = value
+							if (this.svgf.denoisePass.fullscreenMaterial.uniforms.denoise)
+								this.svgf.denoisePass.fullscreenMaterial.uniforms.denoise.value[0] = value
 							break
 
 						case "denoiseSpecular":
-							this.svgf.denoisePass.fullscreenMaterial.uniforms.denoise.value[1] = value
+							if (this.svgf.denoisePass.fullscreenMaterial.uniforms.denoise)
+								this.svgf.denoisePass.fullscreenMaterial.uniforms.denoise.value[1] = value
 							break
 
 						case "denoiseKernel":
+						case "lumaPhi":
 						case "depthPhi":
 						case "normalPhi":
 						case "roughnessPhi":
 						case "diffusePhi":
-							this.svgf.denoisePass.fullscreenMaterial.uniforms[key].value = value
+							if (this.svgf.denoisePass.fullscreenMaterial.uniforms[key])
+								this.svgf.denoisePass.fullscreenMaterial.uniforms[key].value = value
+							break
+
+						case "iterations":
+						case "radius":
+						case "rings":
+						case "samples":
+							this.svgf.denoisePass[key] = value
 							break
 
 						// SSGI

@@ -2,7 +2,6 @@
 
 uniform sampler2D depthTexture;
 uniform sampler2D momentTexture;
-uniform sampler2D gBuffersTexture;
 uniform vec2 invTexSize;
 uniform bool horizontal;
 uniform bool blurHorizontal;
@@ -55,7 +54,7 @@ float distToPlane(const vec3 worldPos, const vec3 neighborWorldPos, const vec3 w
 // returns the variance of the pixel depending on how many frames it has been visible to denoise more aggressively at recently disoccluded pixels
 float getDisocclusionBoostVariance(float visibleFrames) {
 #ifdef useTemporalReprojectTextures
-    return max(0., -pow(visibleFrames, 2.0) + 100.);
+    return (1. - 1. / (visibleFrames + 1.)) * 250.;
 #else
     return 0.;
 #endif
@@ -157,11 +156,11 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec3 normal, 
     #if momentTextureCount > 1
         neighborInputTexel[1].a = neighborMoment.a - neighborMoment.b * neighborMoment.b;
     #endif
-#else
+#endif
+
         for (int i = 0; i < textureCount; i++) {
             neighborInputTexel[i].a = getDisocclusionBoostVariance(neighborInputTexel[i].a);
         }
-#endif
     }
 
 #pragma unroll_loop_start
@@ -232,11 +231,11 @@ void main() {
         #if momentTextureCount > 1
         texel[1].a = max(0.0, moment.a - moment.b * moment.b);
         #endif
-    #else
+    #endif
+
         for (int i = 0; i < textureCount; i++) {
             texel[i].a = getDisocclusionBoostVariance(texel[i].a);
         }
-    #endif
     }
 
     #pragma unroll_loop_start

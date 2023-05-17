@@ -54,7 +54,9 @@ class AOEffect extends Effect {
 			this.aoPass.fullscreenMaterial.defines.useNormalTexture = ""
 		}
 
-		this.poissionDenoisePass = new PoissionDenoisePass(camera, this.aoPass.texture, composer.depthTexture)
+		this.poissionDenoisePass = new PoissionDenoisePass(camera, this.aoPass.texture, composer.depthTexture, {
+			normalInRgb: true
+		})
 
 		this.makeOptionsReactive(options)
 	}
@@ -143,6 +145,14 @@ class AOEffect extends Effect {
 		}
 	}
 
+	get texture() {
+		if (this.iterations > 0) {
+			return this.poissionDenoisePass.texture
+		}
+
+		return this.aoPass.texture
+	}
+
 	update(renderer) {
 		// check if TRAA is being used so we can animate the noise
 		const hasTRAA = this.composer.passes.some(pass => {
@@ -158,12 +168,7 @@ class AOEffect extends Effect {
 			this.aoPass.fullscreenMaterial.needsUpdate = true
 		}
 
-		// set input texture
-		if (this.iterations > 0) {
-			this.uniforms.get("inputTexture").value = this.poissionDenoisePass.texture
-		} else {
-			this.uniforms.get("inputTexture").value = this.aoPass.texture
-		}
+		this.uniforms.get("inputTexture").value = this.texture
 
 		this.normalPass?.render(renderer)
 		this.aoPass.render(renderer)

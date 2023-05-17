@@ -12,6 +12,7 @@ import {
 	WebGLMultipleRenderTargets
 } from "three"
 import { unrollLoops } from "../../ssgi/utils/Utils"
+// eslint-disable-next-line camelcase
 import gbuffer_packing from "../../ssgi/shader/gbuffer_packing.glsl"
 import basicVertexShader from "../../utils/shader/basic.vert"
 import fragmentShader from "../shader/denoise.frag"
@@ -27,7 +28,7 @@ const defaultDenoisePassOptions = {
 	roughness: false,
 	diffuse: true,
 	roughnessDependent: false,
-	basicVariance: 0.0005,
+	basicVariance: 0.00025,
 	denoiseCustomComposeShader: "",
 	denoiseCustomComposeShaderFunctions: ""
 }

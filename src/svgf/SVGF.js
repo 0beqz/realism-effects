@@ -1,4 +1,5 @@
-﻿import { DenoisePass } from "./pass/DenoisePass.js"
+﻿import { PoissionDenoisePass } from "../poissionDenoise/PoissionDenoisePass.js"
+import { DenoisePass } from "./pass/DenoisePass.js"
 import { SVGFTemporalReprojectPass } from "./pass/SVGFTemporalReprojectPass.js"
 
 export class SVGF {
@@ -16,6 +17,9 @@ export class SVGF {
 		this.denoisePass = new DenoisePass(camera, textures, options)
 		this.denoisePass.setMomentTexture(this.svgfTemporalReprojectPass.momentTexture)
 
+		this.denoisePass = new PoissionDenoisePass(camera, textures[0], window.depthTexture, options)
+		this.denoisePass.inputTexture2 = textures[1]
+
 		this.setNonJitteredDepthTexture(velocityDepthNormalPass.depthTexture)
 	}
 
@@ -30,8 +34,8 @@ export class SVGF {
 	}
 
 	setJitteredGBuffers(depthTexture, normalTexture, { useRoughnessInAlphaChannel = false } = {}) {
-		this.denoisePass.setDepthTexture(depthTexture)
-		this.denoisePass.setNormalTexture(normalTexture, { useRoughnessInAlphaChannel })
+		// this.denoisePass.setDepthTexture(depthTexture)
+		// this.denoisePass.setNormalTexture(normalTexture, { useRoughnessInAlphaChannel })
 	}
 
 	setNonJitteredDepthTexture(depthTexture) {
