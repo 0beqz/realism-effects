@@ -106,16 +106,10 @@ float getDisocclusionWeight(float x) {
 void evaluateNeighbor(
     const vec3 center, const float centerLum, const vec4 neighborTexel, inout vec3 denoised, const float disocclusionWeight,
     inout float totalWeight, const float basicWeight) {
-    float w = min(1., basicWeight * (0.5 + disocclusionWeight * 100.));
+    float w = min(1., basicWeight * (0.5 + disocclusionWeight * 250.));
+
     denoised += w * neighborTexel.rgb;
     totalWeight += w;
-}
-
-float smootherstep(float edge0, float edge1, float x) {
-    // Scale, and clamp x to 0..1 range
-    x = clamp((x - edge0) / (edge1 - edge0), 0., 1.);
-
-    return x * x * x * (3.0f * x * (2.0f * x - 5.0f) + 10.0f);
 }
 
 void main() {
@@ -128,6 +122,9 @@ void main() {
 
     vec4 texel = textureLod(inputTexture, vUv, 0.0);
     vec4 texel2 = textureLod(inputTexture2, vUv, 0.0);
+
+    texel.rgb = dot(texel.rgb, texel.rgb) > 0.00001 ? log(texel.rgb) : vec3(0.00001);
+    texel2.rgb = dot(texel2.rgb, texel2.rgb) > 0.00001 ? log(texel2.rgb) : vec3(0.00001);
 
     vec3 normal = getNormal(vUv, texel);
 
@@ -173,11 +170,14 @@ void main() {
     float mirror = roughness * roughness > 0.01 ? 1. : roughness * roughness / 0.01;
 
     for (int i = 0; i < samples; i++) {
-        vec2 offset = rotationMatrix * poissonDisk[i] * denoiseOffset * smootherstep(0., 1., float(i) / float(samples));
+        vec2 offset = rotationMatrix * poissonDisk[i] * denoiseOffset * smoothstep(0., 1., float(i) / float(samples));
         vec2 neighborUv = vUv + offset;
 
         vec4 neighborTexel = textureLod(inputTexture, neighborUv, 0.0);
         vec4 neighborTexel2 = textureLod(inputTexture2, neighborUv, 0.0);
+
+        neighborTexel.rgb = dot(neighborTexel.rgb, neighborTexel.rgb) > 0.00001 ? log(neighborTexel.rgb) : vec3(0.00001);
+        neighborTexel2.rgb = dot(neighborTexel2.rgb, neighborTexel2.rgb) > 0.00001 ? log(neighborTexel2.rgb) : vec3(0.00001);
 
         vec3 neighborNormal, neighborDiffuse, neighborEmissive;
         float neighborRoughness, neighborMetalness;
@@ -191,8 +191,7 @@ void main() {
         float normalDiff = 1. - max(dot(normal, neighborNormal), 0.);
         float normalSimilarity = exp(-normalDiff * normalPhi);
 
-        float depthDiff = 1.0 + distToPlane(worldPos, neighborWorldPos, normalize(normal + neighborNormal));
-        depthDiff = depthDiff * depthDiff - 1.;
+        float depthDiff = distToPlane(worldPos, neighborWorldPos, normalize(normal + neighborNormal));
         float depthSimilarity = exp(-depthDiff * depthPhi);
 
         float roughnessDiff = abs(roughness - neighborRoughness);
@@ -202,7 +201,7 @@ void main() {
         float metalnessSimilarity = exp(-metalnessDiff * roughnessPhi);
 
         float bw = max(0.005, depthSimilarity * roughnessSimilarity * metalnessSimilarity);
-        float basicWeight = max(0.001, normalSimilarity) * bw;
+        float basicWeight = normalSimilarity * bw;
 
         evaluateNeighbor(center, centerLum, neighborTexel, denoised, disocclusionWeight, totalWeight, basicWeight);
 
@@ -212,6 +211,9 @@ void main() {
 
     if (totalWeight > 0.) denoised /= totalWeight;
     if (totalWeight2 > 0.) denoised2 /= totalWeight2;
+
+    denoised = exp(denoised);
+    denoised2 = exp(denoised2);
 
 #ifdef NORMAL_IN_RGB
     gDiffuse = vec4(normal, denoised);

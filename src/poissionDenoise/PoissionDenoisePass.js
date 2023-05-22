@@ -147,7 +147,7 @@ export class PoissionDenoisePass extends Pass {
 	}
 
 	render(renderer) {
-		this.iterations = 3
+		this.iterations = 2
 		this.fullscreenMaterial.uniforms.index.value = 0
 
 		const noiseTexture = this.fullscreenMaterial.uniforms.blueNoiseTexture.value
