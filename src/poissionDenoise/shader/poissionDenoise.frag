@@ -103,6 +103,14 @@ float getDisocclusionWeight(float x) {
     return 1. / (x + 1.);
 }
 
+void toLogSpace(inout vec3 color) {
+    color = dot(color, color) > 0.00001 ? log(color) : vec3(0.00001);
+}
+
+void toLinearSpace(inout vec3 color) {
+    color = exp(color);
+}
+
 void evaluateNeighbor(
     const vec3 center, const float centerLum, const vec4 neighborTexel, inout vec3 denoised, const float disocclusionWeight,
     inout float totalWeight, const float basicWeight) {
@@ -123,8 +131,8 @@ void main() {
     vec4 texel = textureLod(inputTexture, vUv, 0.0);
     vec4 texel2 = textureLod(inputTexture2, vUv, 0.0);
 
-    texel.rgb = dot(texel.rgb, texel.rgb) > 0.00001 ? log(texel.rgb) : vec3(0.00001);
-    texel2.rgb = dot(texel2.rgb, texel2.rgb) > 0.00001 ? log(texel2.rgb) : vec3(0.00001);
+    toLogSpace(texel.rgb);
+    toLogSpace(texel2.rgb);
 
     vec3 normal = getNormal(vUv, texel);
 
@@ -176,8 +184,8 @@ void main() {
         vec4 neighborTexel = textureLod(inputTexture, neighborUv, 0.0);
         vec4 neighborTexel2 = textureLod(inputTexture2, neighborUv, 0.0);
 
-        neighborTexel.rgb = dot(neighborTexel.rgb, neighborTexel.rgb) > 0.00001 ? log(neighborTexel.rgb) : vec3(0.00001);
-        neighborTexel2.rgb = dot(neighborTexel2.rgb, neighborTexel2.rgb) > 0.00001 ? log(neighborTexel2.rgb) : vec3(0.00001);
+        toLogSpace(neighborTexel.rgb);
+        toLogSpace(neighborTexel2.rgb);
 
         vec3 neighborNormal, neighborDiffuse, neighborEmissive;
         float neighborRoughness, neighborMetalness;
@@ -212,8 +220,8 @@ void main() {
     if (totalWeight > 0.) denoised /= totalWeight;
     if (totalWeight2 > 0.) denoised2 /= totalWeight2;
 
-    denoised = exp(denoised);
-    denoised2 = exp(denoised2);
+    toLinearSpace(denoised);
+    toLinearSpace(denoised2);
 
 #ifdef NORMAL_IN_RGB
     gDiffuse = vec4(normal, denoised);
