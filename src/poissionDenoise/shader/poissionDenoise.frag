@@ -105,33 +105,17 @@ float getDisocclusionWeight(float x) {
 
 void evaluateNeighbor(
     const vec3 center, const float centerLum, const vec4 neighborTexel, inout vec3 denoised, const float disocclusionWeight,
-    inout float totalWeight, inout float basicWeight) {
-#ifdef NORMAL_IN_RGB
-    float neighborColor = neighborTexel.a;
-    float lumaDiff = abs(neighborColor - center);
-#else
-    vec3 neighborColor = neighborTexel.rgb;
-    float lumaDiff = abs(luminance(neighborColor) - centerLum);
-#endif
-
-    float lumaSimilarity = exp(-lumaDiff * lumaPhi);
-
-    float w = min(1., max(lumaSimilarity * basicWeight, 0.005) * (0.5 + disocclusionWeight * 250.));
-    denoised += w * neighborColor;
+    inout float totalWeight, const float basicWeight) {
+    float w = min(1., basicWeight * (0.5 + disocclusionWeight * 100.));
+    denoised += w * neighborTexel.rgb;
     totalWeight += w;
 }
 
-// source: https://madebyevan.com/shaders/curvature/
-float getCurvature(const vec3 n, const float depth) {
-    vec3 dx = dFdx(n);
-    vec3 dy = dFdy(n);
-    vec3 xneg = n - dx;
-    vec3 xpos = n + dx;
-    vec3 yneg = n - dy;
-    vec3 ypos = n + dy;
-    float curvature = (cross(xneg, xpos).y - cross(yneg, ypos).x) * 4.0 / depth;
+float smootherstep(float edge0, float edge1, float x) {
+    // Scale, and clamp x to 0..1 range
+    x = clamp((x - edge0) / (edge1 - edge0), 0., 1.);
 
-    return curvature;
+    return x * x * x * (3.0f * x * (2.0f * x - 5.0f) + 10.0f);
 }
 
 void main() {
@@ -151,6 +135,7 @@ void main() {
     float roughness, metalness;
 
     getGData(gBuffersTexture, vUv, diffuse, normal, roughness, metalness, emissive);
+    roughness *= roughness;
 
 #ifdef NORMAL_IN_RGB
     float denoised = texel.a;
@@ -185,9 +170,10 @@ void main() {
     float dw = max(disocclusionWeight, disocclusionWeight2);
 
     float denoiseOffset = mix(1., roughness, metalness) * (0.5 + dw * 2.);
+    float mirror = roughness * roughness > 0.01 ? 1. : roughness * roughness / 0.01;
 
     for (int i = 0; i < samples; i++) {
-        vec2 offset = rotationMatrix * poissonDisk[i] * denoiseOffset * float(i) / float(samples);
+        vec2 offset = rotationMatrix * poissonDisk[i] * denoiseOffset * smootherstep(0., 1., float(i) / float(samples));
         vec2 neighborUv = vUv + offset;
 
         vec4 neighborTexel = textureLod(inputTexture, neighborUv, 0.0);
@@ -197,6 +183,7 @@ void main() {
         float neighborRoughness, neighborMetalness;
 
         getGData(gBuffersTexture, neighborUv, neighborDiffuse, neighborNormal, neighborRoughness, neighborMetalness, neighborEmissive);
+        neighborRoughness *= neighborRoughness;
 
         float neighborDepth = textureLod(depthTexture, neighborUv, 0.0).x;
         vec3 neighborWorldPos = getWorldPos(neighborDepth, neighborUv);
@@ -204,26 +191,22 @@ void main() {
         float normalDiff = 1. - max(dot(normal, neighborNormal), 0.);
         float normalSimilarity = exp(-normalDiff * normalPhi);
 
-        float depthDiff = distToPlane(worldPos, neighborWorldPos, normal);
-        depthDiff = pow(depthDiff + 1.0, 4.) - 1.;
+        float depthDiff = 1.0 + distToPlane(worldPos, neighborWorldPos, normalize(normal + neighborNormal));
+        depthDiff = depthDiff * depthDiff - 1.;
         float depthSimilarity = exp(-depthDiff * depthPhi);
 
-        float roughnessDiff = abs(roughness * roughness - neighborRoughness * neighborRoughness);
+        float roughnessDiff = abs(roughness - neighborRoughness);
         float roughnessSimilarity = exp(-roughnessDiff * roughnessPhi);
 
         float metalnessDiff = abs(metalness - neighborMetalness);
         float metalnessSimilarity = exp(-metalnessDiff * roughnessPhi);
 
-        float diffuseDiff = length(neighborDiffuse - diffuse);
-        float diffuseSimilarity = exp(-diffuseDiff * diffusePhi);
-
-        float curvatureDiff = abs(getCurvature(normal, depth) - getCurvature(neighborNormal, neighborDepth));
-        float curvatureSimilarity = exp(-curvatureDiff * diffusePhi);
-        curvatureSimilarity = max(curvatureSimilarity, 0.25);
-
-        float basicWeight = depthSimilarity * normalSimilarity * roughnessSimilarity * metalnessSimilarity * diffuseSimilarity * curvatureSimilarity;
+        float bw = max(0.005, depthSimilarity * roughnessSimilarity * metalnessSimilarity);
+        float basicWeight = max(0.001, normalSimilarity) * bw;
 
         evaluateNeighbor(center, centerLum, neighborTexel, denoised, disocclusionWeight, totalWeight, basicWeight);
+
+        basicWeight = mix(basicWeight, 0., 1. - mirror * mirror);
         evaluateNeighbor(center2, centerLum2, neighborTexel2, denoised2, disocclusionWeight2, totalWeight2, basicWeight);
     }
 
@@ -285,6 +268,7 @@ void main() {
 
         denoised = diffuseComponent + specularComponent;
         // denoised = vec3(totalWeight / float(samples));
+        // denoised = vec3(roughness < 0.025 ? 1. : 0.);
     }
 
     gDiffuse = vec4(denoised, texel.a);
