@@ -21,8 +21,6 @@ uniform bool isLastIteration;
 layout(location = 0) out vec4 gDiffuse;
 layout(location = 1) out vec4 gSpecular;
 
-const float MAX_LUMINANCE = 50.0;
-
 #include <common>
 #include <gbuffer_packing>
 #include <sampleBlueNoise>
@@ -112,15 +110,28 @@ void evaluateNeighbor(
     float neighborColor = neighborTexel.a;
     float lumaDiff = abs(neighborColor - center);
 #else
-    vec3 neighborColor = min(neighborTexel.rgb, MAX_LUMINANCE);
+    vec3 neighborColor = neighborTexel.rgb;
     float lumaDiff = abs(luminance(neighborColor) - centerLum);
 #endif
-    float lumaSimilarity = max(1.0 - lumaDiff / lumaPhi, 0.0);
 
-    float w = min(1., lumaSimilarity * basicWeight * (1. + disocclusionWeight * 100.));
-    w = mix(w, 1., disocclusionWeight);
+    float lumaSimilarity = exp(-lumaDiff * lumaPhi);
+
+    float w = min(1., max(lumaSimilarity * basicWeight, 0.005) * (0.5 + disocclusionWeight * 250.));
     denoised += w * neighborColor;
     totalWeight += w;
+}
+
+// source: https://madebyevan.com/shaders/curvature/
+float getCurvature(const vec3 n, const float depth) {
+    vec3 dx = dFdx(n);
+    vec3 dy = dFdy(n);
+    vec3 xneg = n - dx;
+    vec3 xpos = n + dx;
+    vec3 yneg = n - dy;
+    vec3 ypos = n + dy;
+    float curvature = (cross(xneg, xpos).y - cross(yneg, ypos).x) * 4.0 / depth;
+
+    return curvature;
 }
 
 void main() {
@@ -133,9 +144,6 @@ void main() {
 
     vec4 texel = textureLod(inputTexture, vUv, 0.0);
     vec4 texel2 = textureLod(inputTexture2, vUv, 0.0);
-
-    texel.rgb = min(texel.rgb, MAX_LUMINANCE);
-    texel2.rgb = min(texel2.rgb, MAX_LUMINANCE);
 
     vec3 normal = getNormal(vUv, texel);
 
@@ -190,17 +198,17 @@ void main() {
 
         getGData(gBuffersTexture, neighborUv, neighborDiffuse, neighborNormal, neighborRoughness, neighborMetalness, neighborEmissive);
 
-        float sampleDepth = textureLod(depthTexture, neighborUv, 0.0).x;
+        float neighborDepth = textureLod(depthTexture, neighborUv, 0.0).x;
+        vec3 neighborWorldPos = getWorldPos(neighborDepth, neighborUv);
 
-        vec3 worldPosSample = getWorldPos(sampleDepth, neighborUv);
+        float normalDiff = 1. - max(dot(normal, neighborNormal), 0.);
+        float normalSimilarity = exp(-normalDiff * normalPhi);
 
-        float normalDiff = dot(normal, neighborNormal);
-        float normalSimilarity = pow(max(normalDiff, 0.), normalPhi);
+        float depthDiff = distToPlane(worldPos, neighborWorldPos, normal);
+        depthDiff = pow(depthDiff + 1.0, 4.) - 1.;
+        float depthSimilarity = exp(-depthDiff * depthPhi);
 
-        float depthDiff = 1. - distToPlane(worldPos, worldPosSample, normal);
-        float depthSimilarity = max(depthDiff / depthPhi, 0.);
-
-        float roughnessDiff = abs(roughness - neighborRoughness);
+        float roughnessDiff = abs(roughness * roughness - neighborRoughness * neighborRoughness);
         float roughnessSimilarity = exp(-roughnessDiff * roughnessPhi);
 
         float metalnessDiff = abs(metalness - neighborMetalness);
@@ -209,7 +217,11 @@ void main() {
         float diffuseDiff = length(neighborDiffuse - diffuse);
         float diffuseSimilarity = exp(-diffuseDiff * diffusePhi);
 
-        float basicWeight = depthSimilarity * normalSimilarity * roughnessSimilarity * metalnessSimilarity * diffuseSimilarity;
+        float curvatureDiff = abs(getCurvature(normal, depth) - getCurvature(neighborNormal, neighborDepth));
+        float curvatureSimilarity = exp(-curvatureDiff * diffusePhi);
+        curvatureSimilarity = max(curvatureSimilarity, 0.25);
+
+        float basicWeight = depthSimilarity * normalSimilarity * roughnessSimilarity * metalnessSimilarity * diffuseSimilarity * curvatureSimilarity;
 
         evaluateNeighbor(center, centerLum, neighborTexel, denoised, disocclusionWeight, totalWeight, basicWeight);
         evaluateNeighbor(center2, centerLum2, neighborTexel2, denoised2, disocclusionWeight2, totalWeight2, basicWeight);
@@ -272,6 +284,7 @@ void main() {
         vec3 specularComponent = specularLightingColor * F;
 
         denoised = diffuseComponent + specularComponent;
+        // denoised = vec3(totalWeight / float(samples));
     }
 
     gDiffuse = vec4(denoised, texel.a);

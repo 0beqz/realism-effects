@@ -32,6 +32,7 @@ import { HBAODebugGUI } from "./HBAODebugGUI"
 import { SSAODebugGUI } from "./SSAODebugGUI"
 import { SSAOEffect } from "../src/ssao/SSAOEffect"
 import { HBAOSSAOComparisonEffect } from "./HBAOSSAOComparisonEffect"
+import { SharpnessEffect } from "../src/sharpness/SharpnessEffect"
 
 let traaEffect
 let traaPass
@@ -330,7 +331,6 @@ const initScene = async () => {
 	const options = {
 		distance: 2.7200000000000104,
 		thickness: 1.2999999999999972,
-		autoThickness: false,
 		maxRoughness: 1,
 		blend: 0.95,
 		denoiseIterations: 3,
@@ -340,11 +340,11 @@ const initScene = async () => {
 		radius: 16,
 		rings: 5.625,
 		samples: 8,
-		lumaPhi: 8.152,
-		depthPhi: 2.771999999999999,
+		lumaPhi: 0.5429999999999992,
+		depthPhi: 13.043,
 		normalPhi: 34.783,
 		roughnessPhi: 18.75,
-		diffusePhi: 65.21700000000001,
+		diffusePhi: 29.34800000000001,
 		envBlur: 0.5,
 		importanceSampling: true,
 		directLightMultiplier: 1,
@@ -581,12 +581,14 @@ const initScene = async () => {
 						samples: 16
 					}
 
+					const sharpnessEffect = new SharpnessEffect({ sharpness: 0.75 })
+
 					const ssaoEffect = new SSAOEffect(composer, camera, scene, ssaoOptions)
 					composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, vignetteEffect, lutEffect))
 
 					const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass)
 
-					composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect))
+					composer.addPass(new POSTPROCESSING.EffectPass(camera, sharpnessEffect))
 				} else {
 					composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, vignetteEffect, lutEffect))
 					loadFiles--

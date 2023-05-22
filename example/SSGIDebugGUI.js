@@ -19,7 +19,6 @@ export class SSGIDebugGUI {
 
 		const generalFolder = pane.addFolder({ title: "General" })
 		generalFolder.addInput(params, "distance", { min: 0.001, max: 10, step: 0.01 })
-		generalFolder.addInput(params, "autoThickness")
 		generalFolder.addInput(params, "thickness", {
 			min: 0,
 			max: 5,
@@ -51,12 +50,12 @@ export class SSGIDebugGUI {
 		denoiseFolder.addInput(params, "samples", { min: 0, max: 32, step: 1 })
 		denoiseFolder.addInput(params, "lumaPhi", {
 			min: 0,
-			max: 50,
+			max: 5,
 			step: 0.001
 		})
 		denoiseFolder.addInput(params, "depthPhi", {
 			min: 0,
-			max: 15,
+			max: 50,
 			step: 0.001
 		})
 		denoiseFolder.addInput(params, "normalPhi", {

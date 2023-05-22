@@ -297,7 +297,6 @@ export class SSGIEffect extends Effect {
 
 						case "importanceSampling":
 						case "missedRays":
-						case "autoThickness":
 							if (value) {
 								this.ssgiPass.fullscreenMaterial.defines[key] = ""
 							} else {

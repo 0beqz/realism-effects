@@ -18,8 +18,6 @@ import {
 	isChildMaterialRenderable,
 	keepMaterialMapUpdated
 } from "../utils/Utils"
-import { BackSideDepthPass } from "./BackSideDepthPass"
-
 import { WebGLRenderTarget } from "three"
 import blueNoiseImage from "./../../utils/LDR_RGBA_0.png"
 
@@ -98,16 +96,12 @@ export class SSGIPass extends Pass {
 		this.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
 		this.gBuffersRenderTarget.depthTexture = this.depthTexture
 
-		this.backSideDepthPass = new BackSideDepthPass(this._scene, this._camera)
-
-		this.fullscreenMaterial.uniforms.backSideDepthTexture.value = this.backSideDepthPass.renderTarget.texture
 		this.fullscreenMaterial.uniforms.gBuffersTexture.value = this.gBuffersRenderTarget.texture
 	}
 
 	setSize(width, height) {
 		this.renderTarget.setSize(width * this.ssgiEffect.resolutionScale, height * this.ssgiEffect.resolutionScale)
 		this.gBuffersRenderTarget.setSize(width, height)
-		this.backSideDepthPass.setSize(width, height)
 
 		this.fullscreenMaterial.uniforms.texSize.value.set(this.renderTarget.width, this.renderTarget.height)
 	}
@@ -117,7 +111,6 @@ export class SSGIPass extends Pass {
 
 		this.renderTarget.dispose()
 		this.gBuffersRenderTarget.dispose()
-		this.backSideDepthPass.dispose()
 
 		this.fullscreenMaterial.dispose()
 
@@ -225,8 +218,6 @@ export class SSGIPass extends Pass {
 		renderer.render(this._scene, this._camera)
 
 		this.unsetMRTMaterialInScene()
-
-		if (this.ssgiEffect.autoThickness) this.backSideDepthPass.render(renderer)
 
 		// update uniforms
 		this.fullscreenMaterial.uniforms.frame.value = this.frame
