@@ -45,6 +45,7 @@ export class TemporalReprojectPass extends Pass {
 
 	constructor(scene, camera, velocityDepthNormalPass, textureCount = 1, options = defaultTemporalReprojectPassOptions) {
 		super("TemporalReprojectPass")
+		console.log(options.logTransform)
 
 		this._scene = scene
 		this._camera = camera
@@ -199,8 +200,9 @@ export class TemporalReprojectPass extends Pass {
 
 		const { width, height } = this.renderTarget
 
-		if (this._camera.setViewOffset)
+		if (this._camera.setViewOffset) {
 			this._camera.setViewOffset(width, height, x * jitterScale, y * jitterScale, width, height)
+		}
 	}
 
 	unjitter() {

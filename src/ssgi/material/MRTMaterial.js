@@ -169,7 +169,6 @@ export class MRTMaterial extends ShaderMaterial {
                     vec3 indirectDiffuse;
                 };
 
-
                 void main() {
                     // !todo: properly implement alpha hashing
                     // #ifdef USE_ALPHAMAP

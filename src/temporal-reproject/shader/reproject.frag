@@ -46,7 +46,7 @@ void transformColor(inout vec3 color) {
         return;
     }
 
-    color = log(max(color, vec3(EPSILON)));
+    color = dot(color, color) > 0.00001 ? log(color) : vec3(0.00001);
 }
 
 void undoColorTransform(inout vec3 color) {

@@ -114,7 +114,9 @@ void toLinearSpace(inout vec3 color) {
 void evaluateNeighbor(
     const vec3 center, const float centerLum, const vec4 neighborTexel, inout vec3 denoised, const float disocclusionWeight,
     inout float totalWeight, const float basicWeight) {
-    float w = min(1., basicWeight * (0.5 + disocclusionWeight * 250.));
+    float w = min(1., basicWeight * (0.5 + disocclusionWeight * 500.));
+
+    w = mix(w, 1., disocclusionWeight);
 
     denoised += w * neighborTexel.rgb;
     totalWeight += w;
@@ -131,8 +133,14 @@ void main() {
     vec4 texel = textureLod(inputTexture, vUv, 0.0);
     vec4 texel2 = textureLod(inputTexture2, vUv, 0.0);
 
-    toLogSpace(texel.rgb);
-    toLogSpace(texel2.rgb);
+    float min1 = min(texel.r, min(texel.g, texel.b));
+    float min2 = min(texel2.r, min(texel2.g, texel2.b));
+
+    bool useLogSpace = min1 > 0.001;
+    bool useLogSpace2 = min2 > 0.001;
+
+    if (useLogSpace) toLogSpace(texel.rgb);
+    if (useLogSpace2) toLogSpace(texel2.rgb);
 
     vec3 normal = getNormal(vUv, texel);
 
@@ -140,7 +148,6 @@ void main() {
     float roughness, metalness;
 
     getGData(gBuffersTexture, vUv, diffuse, normal, roughness, metalness, emissive);
-    roughness *= roughness;
 
 #ifdef NORMAL_IN_RGB
     float denoised = texel.a;
@@ -175,7 +182,7 @@ void main() {
     float dw = max(disocclusionWeight, disocclusionWeight2);
 
     float denoiseOffset = mix(1., roughness, metalness) * (0.5 + dw * 2.);
-    float mirror = roughness * roughness > 0.01 ? 1. : roughness * roughness / 0.01;
+    // float mirror = roughness * roughness > 0.01 ? 1. : roughness * roughness / 0.01;
 
     for (int i = 0; i < samples; i++) {
         vec2 offset = rotationMatrix * poissonDisk[i] * denoiseOffset * smoothstep(0., 1., float(i) / float(samples));
@@ -184,14 +191,13 @@ void main() {
         vec4 neighborTexel = textureLod(inputTexture, neighborUv, 0.0);
         vec4 neighborTexel2 = textureLod(inputTexture2, neighborUv, 0.0);
 
-        toLogSpace(neighborTexel.rgb);
-        toLogSpace(neighborTexel2.rgb);
+        if (useLogSpace) toLogSpace(neighborTexel.rgb);
+        if (useLogSpace2) toLogSpace(neighborTexel2.rgb);
 
         vec3 neighborNormal, neighborDiffuse, neighborEmissive;
         float neighborRoughness, neighborMetalness;
 
         getGData(gBuffersTexture, neighborUv, neighborDiffuse, neighborNormal, neighborRoughness, neighborMetalness, neighborEmissive);
-        neighborRoughness *= neighborRoughness;
 
         float neighborDepth = textureLod(depthTexture, neighborUv, 0.0).x;
         vec3 neighborWorldPos = getWorldPos(neighborDepth, neighborUv);
@@ -199,7 +205,8 @@ void main() {
         float normalDiff = 1. - max(dot(normal, neighborNormal), 0.);
         float normalSimilarity = exp(-normalDiff * normalPhi);
 
-        float depthDiff = distToPlane(worldPos, neighborWorldPos, normalize(normal + neighborNormal));
+        float depthDiff = 1. + distToPlane(worldPos, neighborWorldPos, normalize(normal + neighborNormal));
+        depthDiff = depthDiff * depthDiff - 1.;
         float depthSimilarity = exp(-depthDiff * depthPhi);
 
         float roughnessDiff = abs(roughness - neighborRoughness);
@@ -212,16 +219,14 @@ void main() {
         float basicWeight = normalSimilarity * bw;
 
         evaluateNeighbor(center, centerLum, neighborTexel, denoised, disocclusionWeight, totalWeight, basicWeight);
-
-        basicWeight = mix(basicWeight, 0., 1. - mirror * mirror);
         evaluateNeighbor(center2, centerLum2, neighborTexel2, denoised2, disocclusionWeight2, totalWeight2, basicWeight);
     }
 
     if (totalWeight > 0.) denoised /= totalWeight;
     if (totalWeight2 > 0.) denoised2 /= totalWeight2;
 
-    toLinearSpace(denoised);
-    toLinearSpace(denoised2);
+    if (useLogSpace) toLinearSpace(denoised);
+    if (useLogSpace2) toLinearSpace(denoised2);
 
 #ifdef NORMAL_IN_RGB
     gDiffuse = vec4(normal, denoised);
