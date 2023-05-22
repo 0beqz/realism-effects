@@ -173,6 +173,7 @@ export class SSGIPass extends Pass {
 			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "map", "USE_MAP", true)
 			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "emissiveMap", "USE_EMISSIVEMAP", true)
 			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "alphaMap", "USE_ALPHAMAP", true)
+			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "lightMap", "USE_LIGHTMAP", true)
 
 			const noiseTexture = this.fullscreenMaterial.uniforms.blueNoiseTexture.value
 			if (noiseTexture) {

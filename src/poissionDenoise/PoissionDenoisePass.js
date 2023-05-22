@@ -1,23 +1,22 @@
 import { Pass } from "postprocessing"
 import {
+	GLSL3,
 	HalfFloatType,
-	NoColorSpace,
 	Matrix4,
 	NearestFilter,
+	NoColorSpace,
 	RepeatWrapping,
 	ShaderMaterial,
 	TextureLoader,
 	Vector2,
-	WebGLRenderTarget,
-	WebGLMultipleRenderTargets,
-	GLSL3
+	WebGLMultipleRenderTargets
 } from "three"
+import gbuffer_packing from "../ssgi/shader/gbuffer_packing.glsl"
 import blueNoiseImage from "../utils/LDR_RGBA_0.png"
 import vertexShader from "../utils/shader/basic.vert"
 import sampleBlueNoise from "../utils/shader/sampleBlueNoise.glsl"
 import fragmentShader from "./shader/poissionDenoise.frag"
 import { generateDenoiseSamples, generatePoissonDiskConstant } from "./utils/PoissonUtils"
-import gbuffer_packing from "../ssgi/shader/gbuffer_packing.glsl"
 
 const finalFragmentShader = fragmentShader
 	.replace("#include <sampleBlueNoise>", sampleBlueNoise)

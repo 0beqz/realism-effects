@@ -21,6 +21,8 @@ uniform bool isLastIteration;
 layout(location = 0) out vec4 gDiffuse;
 layout(location = 1) out vec4 gSpecular;
 
+const float MAX_LUMINANCE = 50.0;
+
 #include <common>
 #include <gbuffer_packing>
 #include <sampleBlueNoise>
@@ -103,6 +105,24 @@ float getDisocclusionWeight(float x) {
     return 1. / (x + 1.);
 }
 
+void evaluateNeighbor(
+    const vec3 center, const float centerLum, const vec4 neighborTexel, inout vec3 denoised, const float disocclusionWeight,
+    inout float totalWeight, inout float basicWeight) {
+#ifdef NORMAL_IN_RGB
+    float neighborColor = neighborTexel.a;
+    float lumaDiff = abs(neighborColor - center);
+#else
+    vec3 neighborColor = min(neighborTexel.rgb, MAX_LUMINANCE);
+    float lumaDiff = abs(luminance(neighborColor) - centerLum);
+#endif
+    float lumaSimilarity = max(1.0 - lumaDiff / lumaPhi, 0.0);
+
+    float w = min(1., lumaSimilarity * basicWeight * (1. + disocclusionWeight * 100.));
+    w = mix(w, 1., disocclusionWeight);
+    denoised += w * neighborColor;
+    totalWeight += w;
+}
+
 void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.);
 
@@ -114,10 +134,8 @@ void main() {
     vec4 texel = textureLod(inputTexture, vUv, 0.0);
     vec4 texel2 = textureLod(inputTexture2, vUv, 0.0);
 
-    float maxLum = 50.0;
-
-    texel.rgb = min(texel.rgb, maxLum);
-    texel2.rgb = min(texel2.rgb, maxLum);
+    texel.rgb = min(texel.rgb, MAX_LUMINANCE);
+    texel2.rgb = min(texel2.rgb, MAX_LUMINANCE);
 
     vec3 normal = getNormal(vUv, texel);
 
@@ -137,14 +155,14 @@ void main() {
     vec3 center2 = texel2.rgb;
 #endif
 
+    float centerLum = luminance(center);
+    float centerLum2 = luminance(center2);
+
     float depth = depthTexel.x;
     vec3 worldPos = getWorldPos(depth, vUv);
 
     float totalWeight = 1.0;
     float totalWeight2 = 1.0;
-
-    float centerLum = luminance(center);
-    float centerLum2 = luminance(center2);
 
     vec4 blueNoise = sampleBlueNoise(blueNoiseTexture, 0, blueNoiseRepeat, resolution);
     float angle = blueNoise[index];
@@ -153,18 +171,19 @@ void main() {
 
     mat2 rotationMatrix = mat2(c, -s, s, c);
 
-    float disocclusionWeight = getDisocclusionWeight(texel2.a);
-    float radiusShrink = disocclusionWeight > 0.25 ? 1.0 : (1. - (1.0 - disocclusionWeight / 0.25) * 0.75);
+    float disocclusionWeight = getDisocclusionWeight(texel.a);
+    float disocclusionWeight2 = getDisocclusionWeight(texel2.a);
+
+    float dw = max(disocclusionWeight, disocclusionWeight2);
+
+    float denoiseOffset = mix(1., roughness, metalness) * (0.5 + dw * 2.);
 
     for (int i = 0; i < samples; i++) {
-        vec2 offset = rotationMatrix * poissonDisk[i] * roughness * (1. + disocclusionWeight * 0.5) * radiusShrink;
+        vec2 offset = rotationMatrix * poissonDisk[i] * denoiseOffset * float(i) / float(samples);
         vec2 neighborUv = vUv + offset;
 
         vec4 neighborTexel = textureLod(inputTexture, neighborUv, 0.0);
         vec4 neighborTexel2 = textureLod(inputTexture2, neighborUv, 0.0);
-
-        neighborTexel.rgb = min(neighborTexel.rgb, maxLum);
-        neighborTexel2.rgb = min(neighborTexel2.rgb, maxLum);
 
         vec3 neighborNormal, neighborDiffuse, neighborEmissive;
         float neighborRoughness, neighborMetalness;
@@ -178,39 +197,22 @@ void main() {
         float normalDiff = dot(normal, neighborNormal);
         float normalSimilarity = pow(max(normalDiff, 0.), normalPhi);
 
-#ifdef NORMAL_IN_RGB
-        float neighborColor = neighborTexel.a;
-        float lumaDiff = abs(neighborColor - center);
-#else
-        vec3 neighborColor = neighborTexel.rgb;
-        float lumaDiff = abs(luminance(neighborColor) - centerLum);
-
-        vec3 neighborColor2 = neighborTexel2.rgb;
-        float lumaDiff2 = abs(luminance(neighborColor2) - centerLum2);
-#endif
-        float lumaSimilarity = max(1.0 - lumaDiff / lumaPhi, 0.0);
-        float lumaSimilarity2 = max(1.0 - lumaDiff2 / lumaPhi, 0.0);
-
         float depthDiff = 1. - distToPlane(worldPos, worldPosSample, normal);
         float depthSimilarity = max(depthDiff / depthPhi, 0.);
 
         float roughnessDiff = abs(roughness - neighborRoughness);
         float roughnessSimilarity = exp(-roughnessDiff * roughnessPhi);
 
+        float metalnessDiff = abs(metalness - neighborMetalness);
+        float metalnessSimilarity = exp(-metalnessDiff * roughnessPhi);
+
         float diffuseDiff = length(neighborDiffuse - diffuse);
         float diffuseSimilarity = exp(-diffuseDiff * diffusePhi);
 
-        float bw = depthSimilarity * normalSimilarity * roughnessSimilarity * diffuseSimilarity * (1. + disocclusionWeight * 100.);
-        bw = mix(bw, 1., disocclusionWeight * disocclusionWeight);
+        float basicWeight = depthSimilarity * normalSimilarity * roughnessSimilarity * metalnessSimilarity * diffuseSimilarity;
 
-        float w = min(1., lumaSimilarity * bw);
-        float w2 = min(1., lumaSimilarity2 * bw);
-
-        denoised += w * neighborColor;
-        totalWeight += w;
-
-        denoised2 += w * neighborColor2;
-        totalWeight2 += w2;
+        evaluateNeighbor(center, centerLum, neighborTexel, denoised, disocclusionWeight, totalWeight, basicWeight);
+        evaluateNeighbor(center2, centerLum2, neighborTexel2, denoised2, disocclusionWeight2, totalWeight2, basicWeight);
     }
 
     if (totalWeight > 0.) denoised /= totalWeight;
@@ -258,7 +260,6 @@ void main() {
 
         // try to approximate the fresnel term we get when accumulating over multiple frames
         float VoH = max(EPSILON, dot(v, h));
-        VoH = pow(VoH, 0.875);
 
         // fresnel
         vec3 f0 = mix(vec3(0.04), diffuse, metalness);

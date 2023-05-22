@@ -1,4 +1,4 @@
-﻿import { Color, GLSL3, Matrix3, ShaderMaterial, TangentSpaceNormalMap, Uniform, Vector2 } from "three"
+﻿import { Color, Matrix3, ShaderMaterial, TangentSpaceNormalMap, Uniform, Vector2 } from "three"
 import gbuffer_packing from "../shader/gbuffer_packing.glsl"
 
 // will render normals to RGB channel of "gNormal" buffer, roughness to A channel of "gNormal" buffer, depth to RGBA channel of "gDepth" buffer
@@ -32,7 +32,9 @@ export class MRTMaterial extends ShaderMaterial {
 				blueNoiseTexture: new Uniform(null),
 				blueNoiseRepeat: new Uniform(new Vector2(1, 1)),
 				texSize: new Uniform(new Vector2(1, 1)),
-				frame: new Uniform(0)
+				frame: new Uniform(0),
+				lightMap: new Uniform(null),
+				lightMapIntensity: new Uniform(1)
 			},
 			vertexShader: /* glsl */ `
                 varying vec2 vHighPrecisionZW;
@@ -100,6 +102,7 @@ export class MRTMaterial extends ShaderMaterial {
                 #include <clipping_planes_pars_fragment>
                 #include <color_pars_fragment>
                 #include <alphamap_pars_fragment>
+                #include <lightmap_pars_fragment>
 
                 #include <map_pars_fragment>
                 uniform vec3 color;
@@ -162,6 +165,11 @@ export class MRTMaterial extends ShaderMaterial {
 
                 #include <gbuffer_packing>
 
+                struct ReflectedLight {
+                    vec3 indirectDiffuse;
+                };
+
+
                 void main() {
                     // !todo: properly implement alpha hashing
                     // #ifdef USE_ALPHAMAP
@@ -171,15 +179,17 @@ export class MRTMaterial extends ShaderMaterial {
                     // if(alpha < alphaThreshold){
                     //     discard;
                     //     return;
-                    // }metalnessnor
+                    // }
                     // #endif
 
                     //! todo: find better solution
+                    //! todo: also fix texture repeat issue (not being repeated)
                     #define vMapUv vUv
                     #define vMetalnessMapUv vUv
                     #define vRoughnessMapUv vUv
                     #define vNormalMapUv vUv
                     #define vEmissiveMapUv vUv
+                    #define vLightMapUv vUv
 
                     #include <clipping_planes_fragment>
                     #include <logdepthbuf_fragment>
@@ -211,6 +221,14 @@ export class MRTMaterial extends ShaderMaterial {
 
                     #include <map_fragment>
                     #include <color_fragment>
+
+                    ReflectedLight reflectedLight;
+
+                    #include <lightmap_fragment>
+
+                    #ifdef USE_LIGHTMAP
+                        diffuseColor.rgb *= reflectedLight.indirectDiffuse;
+                    #endif
 
                     gl_FragColor.r = color2float(diffuseColor.rgb);
                     gl_FragColor.g = packNormal(worldNormal);

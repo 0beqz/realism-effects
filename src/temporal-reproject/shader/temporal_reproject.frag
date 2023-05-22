@@ -32,7 +32,7 @@ void main() {
     getDepthAndDilatedUVOffset(depthTexture, vUv, depth, dilatedDepth, depthTexel);
 
     vec2 dilatedUv = vUv + dilatedUvOffset;
-    edgeStrength = computeEdgeStrength(depth, invTexSize);
+    edgeStrength = computeEdgeStrengthFast(depth);
 
     vec4 inputTexel[textureCount];
     vec4 accumulatedTexel[textureCount];

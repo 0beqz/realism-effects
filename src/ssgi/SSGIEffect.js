@@ -227,13 +227,15 @@ export class SSGIEffect extends Effect {
 							break
 
 						case "denoiseDiffuse":
-							if (this.svgf.denoisePass.fullscreenMaterial.uniforms.denoise)
+							if (this.svgf.denoisePass.fullscreenMaterial.uniforms.denoise) {
 								this.svgf.denoisePass.fullscreenMaterial.uniforms.denoise.value[0] = value
+							}
 							break
 
 						case "denoiseSpecular":
-							if (this.svgf.denoisePass.fullscreenMaterial.uniforms.denoise)
+							if (this.svgf.denoisePass.fullscreenMaterial.uniforms.denoise) {
 								this.svgf.denoisePass.fullscreenMaterial.uniforms.denoise.value[1] = value
+							}
 							break
 
 						case "denoiseKernel":
@@ -242,8 +244,9 @@ export class SSGIEffect extends Effect {
 						case "normalPhi":
 						case "roughnessPhi":
 						case "diffusePhi":
-							if (this.svgf.denoisePass.fullscreenMaterial.uniforms[key])
+							if (this.svgf.denoisePass.fullscreenMaterial.uniforms[key]) {
 								this.svgf.denoisePass.fullscreenMaterial.uniforms[key].value = value
+							}
 							break
 
 						case "iterations":

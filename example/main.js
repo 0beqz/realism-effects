@@ -340,11 +340,11 @@ const initScene = async () => {
 		radius: 16,
 		rings: 5.625,
 		samples: 8,
-		lumaPhi: 10,
-		depthPhi: 10.761,
-		normalPhi: 52.174,
+		lumaPhi: 8.152,
+		depthPhi: 2.771999999999999,
+		normalPhi: 34.783,
 		roughnessPhi: 18.75,
-		diffusePhi: 40,
+		diffusePhi: 65.21700000000001,
 		envBlur: 0.5,
 		importanceSampling: true,
 		directLightMultiplier: 1,
@@ -395,7 +395,7 @@ const initScene = async () => {
 		"swordsman"
 	]
 
-	const sceneParams = { Environment: "chinese_garden", Model: "squid_game" }
+	const sceneParams = { Environment: "vintage_measuring_lab", Model: "sg_bake" }
 
 	const envObject = {}
 	const modelObject = {}
@@ -912,6 +912,13 @@ const setupAsset = asset => {
 				c.material.map.minFilter = NearestFilter
 				c.material.map.magFilter = NearestFilter
 			}
+
+			const lm = c.material.emissiveMap
+			console.log(lm)
+			c.material.emissiveMap = null
+			c.material.emissive = new Color(0x000000)
+			c.material.emissiveIntensity = 0.0
+			c.material.lightMap = lm
 		}
 
 		c.frustumCulled = false

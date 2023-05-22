@@ -24,7 +24,6 @@ float getViewZ(const float depth) {
 #endif
 }
 
-#ifdef PERSPECTIVE_CAMERA
 // source: https://github.com/mrdoob/three.js/blob/dev/examples/js/shaders/SSAOShader.js
 vec3 getViewPosition(const float depth) {
     float clipW = projectionMatrix[2][3] * depth + projectionMatrix[3][3];
@@ -32,14 +31,6 @@ vec3 getViewPosition(const float depth) {
     clipPosition *= clipW;
     return (inverseProjectionMatrix * clipPosition).xyz;
 }
-#else
-vec3 getViewPosition(const float depth) {
-    float z = getViewZ(depth);
-    vec4 clipPosition = vec4(vUv * 2.0 - 1.0, z, 1.0);
-    clipPosition *= clipPosition.z;
-    return (inverseProjectionMatrix * clipPosition).xyz;
-}
-#endif
 
 vec2 viewSpaceToScreenSpace(const vec3 position) {
     vec4 projectedCoord = projectionMatrix * vec4(position, 1.0);
@@ -258,4 +249,17 @@ float getCurvature(const vec3 n, const float depth) {
     float curvature = (cross(xneg, xpos).y - cross(yneg, ypos).x) * 4.0 / depth;
 
     return curvature;
+}
+
+// this function takes a normal and a direction as input and returns a new direction that is aligned to the normal
+vec3 alignToNormal(const vec3 normal, const vec3 direction) {
+    vec3 tangent;
+    vec3 bitangent;
+    Onb(normal, tangent, bitangent);
+
+    vec3 localDir = ToLocal(tangent, bitangent, normal, direction);
+    vec3 localDirAligned = vec3(localDir.x, localDir.y, abs(localDir.z));
+    vec3 alignedDir = ToWorld(tangent, bitangent, normal, localDirAligned);
+
+    return alignedDir;
 }
