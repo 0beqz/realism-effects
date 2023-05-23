@@ -32,9 +32,8 @@ uniform float delta;
 #include <reproject>
 
 void main() {
-    getDepthAndDilatedUVOffset(depthTexture, vUv, depth, dilatedDepth, depthTexel);
-
-    vec2 dilatedUv = vUv + dilatedUvOffset;
+    vec2 dilatedUv = vUv;
+    getVelocityNormalDepth(dilatedUv, velocity, worldNormal, depth);
 
     vec4 inputTexel[textureCount];
     vec4 accumulatedTexel[textureCount];
@@ -60,16 +59,9 @@ void main() {
 
     texIndex = 0;
 
-    velocityTexel = textureLod(velocityTexture, vUv, 0.0);
-    didMove = dot(velocityTexel.xy, velocityTexel.xy) > 0.000000001;
+    bool didMove = dot(velocity, velocity) > 0.000000001;
 
-#ifdef dilation
-    vec3 worldNormal = unpackNormal(textureLod(velocityTexture, dilatedUv, 0.0).b);
-#else
-    vec3 worldNormal = unpackNormal(velocityTexel.b);
-#endif
-
-    vec3 worldPos = screenSpaceToWorldSpace(vUv, depth, cameraMatrixWorld, projectionMatrixInverse);
+    vec3 worldPos = screenSpaceToWorldSpace(dilatedUv, depth, cameraMatrixWorld, projectionMatrixInverse);
 
     vec2 reprojectedUvDiffuse = vec2(-10.0);
     vec2 reprojectedUvSpecular[textureCount];
@@ -78,11 +70,9 @@ void main() {
 
     float flatness = clamp(getFlatness(worldPos, worldNormal) / 0.025, 0., 1.);
 
-    bool isFlat = flatness > 0.5;
-
 #pragma unroll_loop_start
     for (int i = 0; i < textureCount; i++) {
-        reprojectHitPoint = reprojectSpecular[i] && inputTexel[i].a > 0.0 && isFlat;
+        reprojectHitPoint = reprojectSpecular[i] && inputTexel[i].a > 0.0;
 
         // specular (hit point reprojection)
         if (reprojectHitPoint) {
@@ -135,9 +125,11 @@ void main() {
                 vec4 hitPointTexel = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUvSpecular[i]);
                 vec4 diffuseTexel = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUvDiffuse);
 
-                accumulatedTexel[i] = mix(diffuseTexel, hitPointTexel, flatness * flatness);
+                accumulatedTexel[i] = mix(diffuseTexel, hitPointTexel, flatness);
             } else {
                 accumulatedTexel[i] = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUvDiffuse);
+
+                if (reprojectHitPoint) accumulatedTexel[i] = vec4(inputTexel[i].rgb, 0.0);
             }
 
 #ifdef VISUALIZE_DISOCCLUSIONS
@@ -193,6 +185,11 @@ void main() {
         undoColorTransform(outputColor);
 
         // outputColor = vec3(flatness);
+
+        // if (reprojectHitPoint)
+        //     outputColor = vec3(1.);
+        // else
+        //     outputColor = vec3(0.);
 
         gOutput[i] = vec4(outputColor, accumulatedTexel[i].a);
 

@@ -34,12 +34,6 @@ export class SSGIEffect extends Effect {
 	selection = new Selection()
 	isUsingRenderPass = true
 
-	/**
-	 * @param {THREE.Scene} scene The scene of the SSGI effect
-	 * @param {THREE.Camera} camera The camera with which SSGI is being rendered
-	 * @param {velocityDepthNormalPass} velocityDepthNormalPass Required velocity pass
-	 * @param {SSGIOptions} [options] The optional options for the SSGI effect
-	 */
 	constructor(composer, scene, camera, velocityDepthNormalPass, options = defaultSSGIOptions) {
 		options = { ...defaultSSGIOptions, ...options }
 

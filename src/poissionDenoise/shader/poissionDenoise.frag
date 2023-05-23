@@ -215,7 +215,10 @@ void main() {
         float metalnessDiff = abs(metalness - neighborMetalness);
         float metalnessSimilarity = exp(-metalnessDiff * roughnessPhi);
 
-        float bw = max(0.005, depthSimilarity * roughnessSimilarity * metalnessSimilarity);
+        float diffuseDiff = length(neighborDiffuse - diffuse);
+        float diffuseSimilarity = exp(-diffuseDiff * diffusePhi);
+
+        float bw = max(0.005, depthSimilarity * roughnessSimilarity * metalnessSimilarity * diffuseSimilarity);
         float basicWeight = normalSimilarity * bw;
 
         basicWeight = pow(basicWeight, lumaPhi);

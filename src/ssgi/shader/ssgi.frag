@@ -125,7 +125,7 @@ void main() {
 
     vec4 blueNoise;
     vec3 H, l, h, F, T, B, envMisDir, gi;
-    vec3 diffuseGI, specularGI, brdf, hitPos;
+    vec3 diffuseGI, specularGI, brdf, hitPos, specularHitPos;
 
     Onb(N, T, B);
 
@@ -243,7 +243,7 @@ void main() {
                 gi *= envMisMultiplier;
             }
 
-            if (luminance(gi) > 0.001) {
+            if (luminance(gi) > 0.01) {
                 diffuseSamples++;
                 diffuseGI = mix(diffuseGI, gi, 1. / diffuseSamples);
             }
@@ -263,9 +263,10 @@ void main() {
                 gi *= envMisMultiplier;
             }
 
-            if (luminance(gi) > 0.001) {
-                specularSamples++;
+            specularHitPos = hitPos;
 
+            if (luminance(gi) > 0.01) {
+                specularSamples++;
                 specularGI = mix(specularGI, gi, 1. / specularSamples);
             }
         }
@@ -283,11 +284,11 @@ void main() {
     // calculate world-space ray length used for reprojecting hit points instead of screen-space pixels in the temporal reproject pass
     float rayLength = 0.0;
 
-    if (roughness < 0.375) {
+    if (roughness < 0.375 && dot(specularHitPos, specularHitPos) != 0.) {
         vec3 hitPosWS = (vec4(hitPos, 1.) * viewMatrix).xyz;
         rayLength = distance(worldPos, hitPosWS);
 
-        if (isMissedRay) rayLength = 99999999.;
+        if (isMissedRay) rayLength = 10.0e4;
     }
 
     if (specularSamples == 0.0) specularGI = vec3(-1.0);

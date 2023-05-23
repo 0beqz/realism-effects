@@ -1,12 +1,9 @@
 // #define VISUALIZE_DISOCCLUSIONS
 
-vec4 velocityTexel;
-float dilatedDepth;
-vec2 dilatedUvOffset;
+vec2 dilatedUv;
 int texIndex;
-bool didMove;
-
-vec4 depthTexel;
+vec2 velocity;
+vec3 worldNormal;
 float depth;
 
 #define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
@@ -59,10 +56,6 @@ vec3 decodeOctWrap(vec2 f) {
 
 vec3 unpackNormal(float packedNormal) {
     return decodeOctWrap(unpackHalf2x16(floatBitsToUint(packedNormal)));
-}
-
-float getDepth(vec4 velocityTexel) {
-    return velocityTexel.a;
 }
 
 bool doColorTransform[textureCount];
@@ -118,38 +111,43 @@ void clampNeighborhood(const sampler2D tex, inout vec3 color, const vec3 inputCo
     color = clamp(color, minNeighborColor, maxNeighborColor);
 }
 
+void getVelocityNormalDepth(inout vec2 dilatedUv, out vec2 vel, out vec3 normal, out float depth) {
+    vec2 centerUv = dilatedUv;
+
 #ifdef dilation
-void getDilatedDepthUVOffset(const sampler2D tex, const vec2 centerUv, out float depth, out float dilatedDepth, out vec4 closestDepthTexel) {
     float closestDepth = 0.0;
+    vec4 closestVelocityTexel = vec4(0.0);
 
     for (int x = -1; x <= 1; x++) {
         for (int y = -1; y <= 1; y++) {
             vec2 offset = vec2(x, y) * invTexSize;
             vec2 neighborUv = centerUv + offset;
 
-            vec4 neighborDepthTexel = textureLod(tex, neighborUv, 0.0);
-            float neighborDepth = unpackRGBAToDepth(neighborDepthTexel);
+            vec4 velocityTexel = textureLod(velocityTexture, neighborUv, 0.0);
+            float neighborDepth = velocityTexel.a;
 
-            if (x == 0 && y == 0) depth = neighborDepth;
+            if (x == 0 && y == 0) {
+                vel = velocityTexel.rg;
+            }
 
             if (neighborDepth > closestDepth) {
                 closestDepth = neighborDepth;
-                closestDepthTexel = neighborDepthTexel;
-                dilatedUvOffset = offset;
+                closestVelocityTexel = velocityTexel;
+
+                dilatedUv = neighborUv;
             }
         }
     }
 
-    dilatedDepth = closestDepth;
-}
-#endif
+    normal = unpackNormal(closestVelocityTexel.b);
+    depth = closestDepth;
 
-void getDepthAndDilatedUVOffset(sampler2D depthTex, vec2 uv, out float depth, out float dilatedDepth, out vec4 depthTexel) {
-#ifdef dilation
-    getDilatedDepthUVOffset(depthTex, uv, depth, dilatedDepth, depthTexel);
 #else
-    depth = textureLod(velocityTexture, uv, 0.).a;
-    dilatedDepth = depth;
+    vec4 velocityTexel = textureLod(velocityTexture, centerUv, 0.0);
+
+    vel = velocityTexel.rg;
+    normal = unpackNormal(velocityTexel.b);
+    depth = velocityTexel.a;
 #endif
 }
 
@@ -179,47 +177,27 @@ bool velocityDisocclusionCheck(const vec2 velocity, const vec2 lastVelocity) {
     return length(velocity - lastVelocity) > VELOCITY_DISTANCE;
 }
 
-bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const vec3 worldNormal) {
+bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const vec3 worldNormal, const bool isHitPoint) {
     if (reprojectedUv.x > 1.0 || reprojectedUv.x < 0.0 || reprojectedUv.y > 1.0 || reprojectedUv.y < 0.0) return false;
 
-    vec3 dilatedWorldPos = worldPos;
-    vec3 lastWorldPos;
-    float dilatedLastDepth, lastDepth;
-    vec2 dilatedReprojectedUv;
+    vec2 dilatedReprojectedUv = reprojectedUv;
+    vec2 lastVelocity = vec2(0.0);
+    vec3 lastWorldNormal = vec3(0.0);
+    float lastDepth = 0.0;
 
-#ifdef dilation
-    // by default the worldPos is not dilated as it would otherwise mess up reprojecting hit points in the method "reprojectHitPoint"
-    dilatedWorldPos = screenSpaceToWorldSpace(vUv + dilatedUvOffset, dilatedDepth, cameraMatrixWorld, projectionMatrixInverse);
-
-    getDepthAndDilatedUVOffset(lastDepthTexture, reprojectedUv, lastDepth, dilatedLastDepth, lastDepthTexel);
-
-    dilatedReprojectedUv = reprojectedUv + dilatedUvOffset;
-#else
-
-    vec2 velocity = textureLod(velocityTexture, vUv, 0.).xy;
-
-    vec4 lastVelocityTexel = textureLod(velocityTexture, reprojectedUv, 0.);
-    vec2 lastVelocity = lastVelocityTexel.xy;
+    getVelocityNormalDepth(dilatedReprojectedUv, lastVelocity, lastWorldNormal, lastDepth);
 
     if (velocityDisocclusionCheck(velocity, lastVelocity)) return false;
 
-    vec3 lastWorldNormal = unpackNormal(lastVelocityTexel.b);
-
     if (normalsDisocclusionCheck(worldNormal, lastWorldNormal)) return false;
 
-    lastDepth = lastVelocityTexel.a;
-    dilatedLastDepth = lastDepth;
+    vec3 lastWorldPos = screenSpaceToWorldSpace(dilatedReprojectedUv, lastDepth, prevCameraMatrixWorld, prevProjectionMatrixInverse);
 
-    dilatedReprojectedUv = reprojectedUv;
-#endif
+    float worldDistFactor = clamp((50.0 + distance(worldPos, cameraPos)) / 100., 0.25, 1.);
 
-    lastWorldPos = screenSpaceToWorldSpace(dilatedReprojectedUv, dilatedLastDepth, prevCameraMatrixWorld, prevProjectionMatrixInverse);
+    if (worldDistanceDisocclusionCheck(worldPos, lastWorldPos, worldDistFactor)) return false;
 
-    float worldDistFactor = clamp((50.0 + distance(dilatedWorldPos, cameraPos)) / 100., 0.25, 1.);
-
-    if (worldDistanceDisocclusionCheck(dilatedWorldPos, lastWorldPos, worldDistFactor)) return false;
-
-    if (planeDistanceDisocclusionCheck(dilatedWorldPos, lastWorldPos, worldNormal, worldDistFactor)) {
+    if (planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal, worldDistFactor)) {
         return false;
     }
 
@@ -234,22 +212,44 @@ vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength, const float de
 
     vec3 virtualPoint = viewDir * (cameraRayLength + rayLength);
 
-    vec4 lastVirtualPoint = prevCameraMatrixWorld * vec4(virtualPoint, 1.0);
+    vec4 lastVirtualPoint = cameraMatrixWorld * vec4(virtualPoint, 1.0);
+
+    vec4 virtualPointWS = cameraMatrixWorld * vec4(virtualPoint, 1.0);
+
+    if (rayLength < 10.0e3 && distance(virtualPointWS.xyz, lastVirtualPoint.xyz) > 0.1) {
+        return vec2(-1.0);
+    }
 
     // convert last virtual point to view space
     lastVirtualPoint = prevViewMatrix * vec4(lastVirtualPoint.xyz, 1.0);
 
     vec2 uv = viewSpaceToScreenSpace(lastVirtualPoint.xyz, prevProjectionMatrix);
 
-    return uv;
+    vec2 velocity = texture2D(velocityTexture, uv).rg;
+
+    return rayLength > 10.0e3 ? vUv - velocity : uv;
 }
+
+// vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength, const float depth) {
+//     vec3 cameraRay = normalize(rayOrig - cameraPos);
+//     float cameraRayLength = distance(rayOrig, cameraPos);
+
+//     vec3 parallaxHitPoint = cameraPos + cameraRay * (cameraRayLength + rayLength);
+
+//     vec4 reprojectedParallaxHitPoint = prevViewMatrix * vec4(parallaxHitPoint, 1.0);
+//     vec2 hitPointUv = viewSpaceToScreenSpace(reprojectedParallaxHitPoint.xyz, prevProjectionMatrix);
+
+//     vec2 velocity = texture2D(velocityTexture, hitPointUv).rg;
+
+//     return hitPointUv - velocity;
+// }
 
 vec2 getReprojectedUV(const float depth, const vec3 worldPos, const vec3 worldNormal, const float rayLength) {
     // hit point reprojection
     if (rayLength != 0.0) {
         vec2 reprojectedUv = reprojectHitPoint(worldPos, rayLength, depth);
 
-        if (validateReprojectedUV(reprojectedUv, worldPos, worldNormal)) {
+        if (validateReprojectedUV(reprojectedUv, worldPos, worldNormal, true)) {
             return reprojectedUv;
         }
 
@@ -257,9 +257,9 @@ vec2 getReprojectedUV(const float depth, const vec3 worldPos, const vec3 worldNo
     }
 
     // reprojection using motion vectors
-    vec2 reprojectedUv = vUv - velocityTexel.rg;
+    vec2 reprojectedUv = vUv - velocity;
 
-    if (validateReprojectedUV(reprojectedUv, worldPos, worldNormal)) {
+    if (validateReprojectedUV(reprojectedUv, worldPos, worldNormal, false)) {
         return reprojectedUv;
     }
 
@@ -336,7 +336,7 @@ vec2 sampleBlocky(vec2 p) {
 }
 
 vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv) {
-    vec4 blocky = SampleTextureCatmullRom(tex, sampleBlocky(reprojectedUv), 1. / invTexSize);
+    vec4 blocky = SampleTextureCatmullRom(tex, (reprojectedUv), 1. / invTexSize);
 
     return blocky;
 }
