@@ -72,7 +72,8 @@ export class TemporalReprojectMaterial extends ShaderMaterial {
 				prevCameraMatrixWorld: new Uniform(new Matrix4()),
 				prevProjectionMatrix: new Uniform(new Matrix4()),
 				prevProjectionMatrixInverse: new Uniform(new Matrix4()),
-				cameraPos: new Uniform(new Vector3())
+				cameraPos: new Uniform(new Vector3()),
+				prevCameraPos: new Uniform(new Vector3())
 			},
 			vertexShader,
 			fragmentShader: finalFragmentShader,
@@ -88,7 +89,8 @@ export class TemporalReprojectMaterial extends ShaderMaterial {
 			this.uniforms["accumulatedTexture" + i] = new Uniform(null)
 		}
 
-		if (typeof temporalReprojectCustomComposeShader === "string")
+		if (typeof temporalReprojectCustomComposeShader === "string") {
 			this.defines.useTemporalReprojectCustomComposeShader = ""
+		}
 	}
 }

@@ -104,7 +104,7 @@ float getDisocclusionWeight(float x) {
 }
 
 void toLogSpace(inout vec3 color) {
-    color = dot(color, color) > 0.00001 ? log(color) : vec3(0.00001);
+    color = dot(color, color) > 0.000001 ? log(color) : vec3(0.000001);
 }
 
 void toLinearSpace(inout vec3 color) {
@@ -218,6 +218,8 @@ void main() {
         float bw = max(0.005, depthSimilarity * roughnessSimilarity * metalnessSimilarity);
         float basicWeight = normalSimilarity * bw;
 
+        basicWeight = pow(basicWeight, lumaPhi);
+
         evaluateNeighbor(center, centerLum, neighborTexel, denoised, disocclusionWeight, totalWeight, basicWeight);
         evaluateNeighbor(center2, centerLum2, neighborTexel2, denoised2, disocclusionWeight2, totalWeight2, basicWeight);
     }
@@ -282,6 +284,7 @@ void main() {
         vec3 specularComponent = specularLightingColor * F;
 
         denoised = diffuseComponent + specularComponent;
+        // denoised = denoised2;
         // denoised = vec3(totalWeight / float(samples));
         // denoised = vec3(roughness < 0.025 ? 1. : 0.);
     }

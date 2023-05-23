@@ -188,6 +188,8 @@ If you'd like, you could also buy me a coffee:
 - [ ] Use bent normals and/or calculate them at run-time? https://80.lv/articles/ssrtgi-toughest-challenge-in-real-time-3d/
 - [ ] Proper transparency support
 - [ ] Support OrthographicCameras
+- [ ] Fog support (SSGI)
+- [ ] Background support (SSGI without render pass)
 
 ## Credits
 

@@ -221,7 +221,7 @@ const cubeMapTest = () => {
 		.setPath("cubemap/yokohama_3/")
 		.load(["posx.jpg", "negx.jpg", "posy.jpg", "negy.jpg", "posz.jpg", "negz.jpg"], envMesh => {
 			scene.background = envMesh
-			scene.environment = envMesh
+			// scene.environment = envMesh
 
 			setEnvMesh(envMesh)
 		})
@@ -340,7 +340,7 @@ const initScene = async () => {
 		radius: 16,
 		rings: 5.625,
 		samples: 8,
-		lumaPhi: 0.5429999999999992,
+		lumaPhi: 1,
 		depthPhi: 33.152,
 		normalPhi: 27.173999999999996,
 		roughnessPhi: 8.695999999999998,
@@ -916,7 +916,6 @@ const setupAsset = asset => {
 			}
 
 			const lm = c.material.emissiveMap
-			console.log(lm)
 			c.material.emissiveMap = null
 			c.material.emissive = new Color(0x000000)
 			c.material.emissiveIntensity = 0.0

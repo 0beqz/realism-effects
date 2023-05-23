@@ -15,6 +15,7 @@ uniform mat4 projectionMatrix;
 uniform mat4 projectionMatrixInverse;
 uniform mat4 cameraMatrixWorld;
 uniform vec3 cameraPos;
+uniform vec3 prevCameraPos;
 uniform mat4 prevViewMatrix;
 uniform mat4 prevCameraMatrixWorld;
 uniform mat4 prevProjectionMatrix;

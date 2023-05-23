@@ -45,7 +45,6 @@ export class TemporalReprojectPass extends Pass {
 
 	constructor(scene, camera, velocityDepthNormalPass, textureCount = 1, options = defaultTemporalReprojectPassOptions) {
 		super("TemporalReprojectPass")
-		console.log(options.logTransform)
 
 		this._scene = scene
 		this._camera = camera
@@ -187,6 +186,8 @@ export class TemporalReprojectPass extends Pass {
 		this.fullscreenMaterial.uniforms.prevProjectionMatrixInverse.value.copy(
 			this.fullscreenMaterial.uniforms.projectionMatrixInverse.value
 		)
+
+		this.fullscreenMaterial.uniforms.prevCameraPos.value.copy(this._camera.position)
 	}
 
 	jitter(jitterScale = 1) {

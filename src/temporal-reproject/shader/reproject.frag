@@ -168,15 +168,16 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const 
 }
 
 vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength, const float depth) {
-    vec3 cameraRay = normalize(rayOrig - cameraPos);
     float cameraRayLength = distance(rayOrig, cameraPos);
 
-    vec3 parallaxHitPoint = cameraPos + cameraRay * (cameraRayLength + rayLength);
+    vec4 viewPos = prevViewMatrix * vec4(rayOrig, 1.0);
+    vec3 viewDir = normalize(viewPos.xyz);
 
-    vec4 reprojectedParallaxHitPoint = prevViewMatrix * vec4(parallaxHitPoint, 1.0);
-    vec2 hitPointUv = viewSpaceToScreenSpace(reprojectedParallaxHitPoint.xyz, prevProjectionMatrix);
+    vec3 d = viewDir * (cameraRayLength + rayLength);
 
-    return hitPointUv;
+    vec2 uv = viewSpaceToScreenSpace(d, projectionMatrix);
+
+    return uv;
 }
 
 vec2 getReprojectedUV(const float depth, const vec3 worldPos, const vec3 worldNormal, const float rayLength) {

@@ -18,7 +18,7 @@ export class SSGIDebugGUI {
 		params = { ...SSGIEffect.DefaultOptions, ...params }
 
 		const generalFolder = pane.addFolder({ title: "General" })
-		generalFolder.addInput(params, "distance", { min: 0.001, max: 10, step: 0.01 })
+		generalFolder.addInput(params, "distance", { min: 0.001, max: 25, step: 0.01 })
 		generalFolder.addInput(params, "thickness", {
 			min: 0,
 			max: 5,
