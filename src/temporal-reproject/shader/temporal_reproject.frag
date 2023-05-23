@@ -100,6 +100,31 @@ void main() {
         if (reprojectedUv.x < 0.0) {  // invalid UV
             // reprojection was not successful -> reset to the input texel
             accumulatedTexel[i] = vec4(inputTexel[i].rgb, 0.0);
+
+            // get all the inputTexels in the 1x1 vicinity
+            // vec3 averageColor = vec3(0.0);
+            // float count = 0.0;
+
+            // for (int x = -1; x <= 1; x++) {
+            //     for (int y = -1; y <= 1; y++) {
+            //         if (x != 0 || y != 0) {
+            //             vec2 offset = vec2(x, y) * invTexSize;
+            //             vec4 texel = textureLod(inputTexture[i], vUv + offset, 0.0);
+
+            //             if (luminance(texel.rgb) > 0.0) {
+            //                 transformColor(texel.rgb);
+            //                 averageColor += texel.rgb;
+            //                 count++;
+            //             }
+            //         }
+            //     }
+            // }
+
+            // averageColor /= count > 0.0 ? count : 1.;
+
+            // accumulatedTexel[i] = vec4(averageColor, 0.);
+            // inputTexel[i].rgb = averageColor;
+
         } else {
             accumulatedTexel[i] = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUv);
 
@@ -110,7 +135,9 @@ void main() {
 
                 if (neighborhoodClamp[i]) {
                     vec3 clampedColor = accumulatedTexel[i].rgb;
-                    clampNeighborhood(inputTexture[i], clampedColor, inputTexel[i].rgb);
+
+                    int clampRadius = reprojectedUvSpecular[i].x >= 0.0 ? 1 : neighborhoodClampRadius;
+                    clampNeighborhood(inputTexture[i], clampedColor, inputTexel[i].rgb, clampRadius);
 
                     accumulatedTexel[i].rgb = mix(accumulatedTexel[i].rgb, clampedColor, neighborhoodClampIntensity);
                 }

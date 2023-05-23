@@ -117,12 +117,7 @@ export class PoissionDenoisePass extends Pass {
 		})
 	}
 
-	setSize(width, height) {
-		this.renderTargetA.setSize(width, height)
-		this.renderTargetB.setSize(width, height)
-
-		this.fullscreenMaterial.uniforms.resolution.value.set(width, height)
-
+	#updatePoissionDiskSamples(width, height) {
 		const poissonDisk = generateDenoiseSamples(
 			this.samples,
 			this.rings,
@@ -130,12 +125,20 @@ export class PoissionDenoisePass extends Pass {
 			new Vector2(1 / width, 1 / height)
 		)
 
-		const sampleDefine = `const int samples = ${this.samples};\n`
+		this.fullscreenMaterial.defines.samples = this.samples
 
 		const poissonDiskConstant = generatePoissonDiskConstant(poissonDisk)
-
-		this.fullscreenMaterial.fragmentShader = sampleDefine + poissonDiskConstant + "\n" + finalFragmentShader
+		this.fullscreenMaterial.fragmentShader = poissonDiskConstant + "\n" + finalFragmentShader
 		this.fullscreenMaterial.needsUpdate = true
+	}
+
+	setSize(width, height) {
+		this.renderTargetA.setSize(width, height)
+		this.renderTargetB.setSize(width, height)
+
+		this.fullscreenMaterial.uniforms.resolution.value.set(width, height)
+
+		this.#updatePoissionDiskSamples(width, height)
 	}
 
 	get texture() {

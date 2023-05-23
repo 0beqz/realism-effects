@@ -59,9 +59,9 @@ void undoColorTransform(inout vec3 color) {
     #define undoColorTransform
 #endif
 
-void getNeighborhoodAABB(const sampler2D tex, inout vec3 minNeighborColor, inout vec3 maxNeighborColor) {
-    for (int x = -neighborhoodClampRadius; x <= neighborhoodClampRadius; x++) {
-        for (int y = -neighborhoodClampRadius; y <= neighborhoodClampRadius; y++) {
+void getNeighborhoodAABB(const sampler2D tex, const int clampRadius, inout vec3 minNeighborColor, inout vec3 maxNeighborColor) {
+    for (int x = -clampRadius; x <= clampRadius; x++) {
+        for (int y = -clampRadius; y <= clampRadius; y++) {
             if (x != 0 || y != 0) {
                 vec2 offset = vec2(x, y) * invTexSize;
                 vec2 neighborUv = vUv + offset;
@@ -76,11 +76,11 @@ void getNeighborhoodAABB(const sampler2D tex, inout vec3 minNeighborColor, inout
     }
 }
 
-void clampNeighborhood(const sampler2D tex, inout vec3 color, const vec3 inputColor) {
+void clampNeighborhood(const sampler2D tex, inout vec3 color, const vec3 inputColor, const int clampRadius) {
     vec3 minNeighborColor = inputColor;
     vec3 maxNeighborColor = inputColor;
 
-    getNeighborhoodAABB(tex, minNeighborColor, maxNeighborColor);
+    getNeighborhoodAABB(tex, clampRadius, minNeighborColor, maxNeighborColor);
 
     color = clamp(color, minNeighborColor, maxNeighborColor);
 }
@@ -170,12 +170,17 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const 
 vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength, const float depth) {
     float cameraRayLength = distance(rayOrig, cameraPos);
 
-    vec4 viewPos = prevViewMatrix * vec4(rayOrig, 1.0);
+    vec4 viewPos = viewMatrix * vec4(rayOrig, 1.0);
     vec3 viewDir = normalize(viewPos.xyz);
 
-    vec3 d = viewDir * (cameraRayLength + rayLength);
+    vec3 virtualPoint = viewDir * (cameraRayLength + rayLength);
 
-    vec2 uv = viewSpaceToScreenSpace(d, projectionMatrix);
+    vec4 lastVirtualPoint = prevCameraMatrixWorld * vec4(virtualPoint, 1.0);
+
+    // convert last virtual point to view space
+    lastVirtualPoint = prevViewMatrix * vec4(lastVirtualPoint.xyz, 1.0);
+
+    vec2 uv = viewSpaceToScreenSpace(lastVirtualPoint.xyz, projectionMatrix);
 
     return uv;
 }
@@ -185,9 +190,9 @@ vec2 getReprojectedUV(const float depth, const vec3 worldPos, const vec3 worldNo
     if (rayLength != 0.0) {
         vec2 reprojectedUv = reprojectHitPoint(worldPos, rayLength, depth);
 
-        if (validateReprojectedUV(reprojectedUv, worldPos, worldNormal)) {
-            return reprojectedUv;
-        }
+        // if (validateReprojectedUV(reprojectedUv, worldPos, worldNormal)) {
+        return reprojectedUv;
+        // }
 
         return vec2(-1.);
     }
