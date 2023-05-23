@@ -10,6 +10,8 @@ uniform float neighborhoodClampIntensity;
 uniform bool constantBlend;
 uniform bool fullAccumulate;
 uniform vec2 invTexSize;
+uniform float cameraNear;
+uniform float cameraFar;
 
 uniform mat4 projectionMatrix;
 uniform mat4 projectionMatrixInverse;
@@ -33,7 +35,6 @@ void main() {
     getDepthAndDilatedUVOffset(depthTexture, vUv, depth, dilatedDepth, depthTexel);
 
     vec2 dilatedUv = vUv + dilatedUvOffset;
-    edgeStrength = computeEdgeStrengthFast(depth);
 
     vec4 inputTexel[textureCount];
     vec4 accumulatedTexel[textureCount];
@@ -63,22 +64,25 @@ void main() {
     didMove = dot(velocityTexel.xy, velocityTexel.xy) > 0.000000001;
 
 #ifdef dilation
-    vec2 octahedronEncodedNormal = textureLod(velocityTexture, dilatedUv, 0.0).ba;
+    vec3 worldNormal = unpackNormal(textureLod(velocityTexture, dilatedUv, 0.0).b);
 #else
-    vec2 octahedronEncodedNormal = velocityTexel.ba;
+    vec3 worldNormal = unpackNormal(velocityTexel.b);
 #endif
 
-    vec3 worldNormal = Decode(octahedronEncodedNormal);
     vec3 worldPos = screenSpaceToWorldSpace(vUv, depth, cameraMatrixWorld, projectionMatrixInverse);
 
     vec2 reprojectedUvDiffuse = vec2(-10.0);
     vec2 reprojectedUvSpecular[textureCount];
-    vec2 reprojectedUv;
+    bool didReproject;
     bool reprojectHitPoint;
+
+    float flatness = clamp(getFlatness(worldPos, worldNormal) / 0.025, 0., 1.);
+
+    bool isFlat = flatness > 0.5;
 
 #pragma unroll_loop_start
     for (int i = 0; i < textureCount; i++) {
-        reprojectHitPoint = reprojectSpecular[i] && inputTexel[i].a > 0.0;
+        reprojectHitPoint = reprojectSpecular[i] && inputTexel[i].a > 0.0 && isFlat;
 
         // specular (hit point reprojection)
         if (reprojectHitPoint) {
@@ -88,45 +92,58 @@ void main() {
             reprojectedUvSpecular[i] = vec2(-1.0);
         }
 
-        // diffuse (reprojection using velocity)
-        if (reprojectedUvDiffuse.x == -10.0 && reprojectedUvSpecular[i].x < 0.0) {
-            reprojectedUvDiffuse = getReprojectedUV(depth, worldPos, worldNormal, 0.0);
-        }
+        reprojectedUvDiffuse = getReprojectedUV(depth, worldPos, worldNormal, 0.0);
 
         // choose which UV coordinates to use for reprojecion
-        reprojectedUv = reprojectedUvSpecular[i].x >= 0.0 ? reprojectedUvSpecular[i] : reprojectedUvDiffuse;
+        didReproject = reprojectedUvSpecular[i].x >= 0.0 || reprojectedUvDiffuse.x >= 0.0;
 
         // check if any reprojection was successful
-        if (reprojectedUv.x < 0.0) {  // invalid UV
+        if (!didReproject) {  // invalid UV
             // reprojection was not successful -> reset to the input texel
             accumulatedTexel[i] = vec4(inputTexel[i].rgb, 0.0);
 
-            // get all the inputTexels in the 1x1 vicinity
-            // vec3 averageColor = vec3(0.0);
-            // float count = 0.0;
+            vec3 averageColor = inputTexel[i].rgb;
+            float count = 1.0;
 
-            // for (int x = -1; x <= 1; x++) {
-            //     for (int y = -1; y <= 1; y++) {
-            //         if (x != 0 || y != 0) {
-            //             vec2 offset = vec2(x, y) * invTexSize;
-            //             vec4 texel = textureLod(inputTexture[i], vUv + offset, 0.0);
+            for (int x = -1; x <= 1; x++) {
+                for (int y = -1; y <= 1; y++) {
+                    if (x != 0 || y != 0) {
+                        vec2 offset = vec2(x, y) * invTexSize;
+                        vec4 texel = textureLod(inputTexture[i], vUv + offset, 0.0);
 
-            //             if (luminance(texel.rgb) > 0.0) {
-            //                 transformColor(texel.rgb);
-            //                 averageColor += texel.rgb;
-            //                 count++;
-            //             }
-            //         }
-            //     }
-            // }
+                        if (luminance(texel.rgb) > 0.0) {
+                            transformColor(texel.rgb);
+                            averageColor += texel.rgb;
+                            count++;
+                        }
+                    }
+                }
+            }
 
-            // averageColor /= count > 0.0 ? count : 1.;
+            averageColor /= count > 0.0 ? count : 1.;
 
-            // accumulatedTexel[i] = vec4(averageColor, 0.);
-            // inputTexel[i].rgb = averageColor;
+            accumulatedTexel[i] = vec4(averageColor, 0.);
+            inputTexel[i].rgb = averageColor;
+
+#ifdef VISUALIZE_DISOCCLUSIONS
+            accumulatedTexel[i] = vec4(vec3(0., 1., 0.), 0.0);
+            inputTexel[i].rgb = accumulatedTexel[i].rgb;
+#endif
 
         } else {
-            accumulatedTexel[i] = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUv);
+            if (reprojectedUvSpecular[i].x >= 0.0) {
+                vec4 hitPointTexel = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUvSpecular[i]);
+                vec4 diffuseTexel = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUvDiffuse);
+
+                accumulatedTexel[i] = mix(diffuseTexel, hitPointTexel, flatness * flatness);
+            } else {
+                accumulatedTexel[i] = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUvDiffuse);
+            }
+
+#ifdef VISUALIZE_DISOCCLUSIONS
+            accumulatedTexel[i].rgb = vec3(0.);
+            inputTexel[i].rgb = vec3(0.);
+#endif
 
             transformColor(accumulatedTexel[i].rgb);
 
@@ -174,6 +191,8 @@ void main() {
 
         outputColor = mix(inputTexel[i].rgb, accumulatedTexel[i].rgb, temporalReprojectMix);
         undoColorTransform(outputColor);
+
+        // outputColor = vec3(flatness);
 
         gOutput[i] = vec4(outputColor, accumulatedTexel[i].a);
 

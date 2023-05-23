@@ -22,8 +22,8 @@ export const defaultTemporalReprojectPassOptions = {
 	neighborhoodClampRadius: 1,
 	neighborhoodClampIntensity: 1,
 	logTransform: false,
-	depthDistance: 0.25,
-	worldDistance: 0.375,
+	depthDistance: 2,
+	worldDistance: 4,
 	reprojectSpecular: false,
 	temporalReprojectCustomComposeShader: null,
 	renderTarget: null
@@ -164,6 +164,9 @@ export class TemporalReprojectPass extends Pass {
 		if (this._camera.view) this._camera.view.enabled = true
 		this._camera.projectionMatrix.copy(tmpProjectionMatrix)
 		this._camera.projectionMatrixInverse.copy(tmpProjectionMatrixInverse)
+
+		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
+		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far
 
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)

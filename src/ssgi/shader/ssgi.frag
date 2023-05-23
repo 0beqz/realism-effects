@@ -243,10 +243,10 @@ void main() {
                 gi *= envMisMultiplier;
             }
 
-            diffuseSamples++;
-
-            diffuseGI = mix(diffuseGI, gi, 1. / diffuseSamples);
-
+            if (luminance(gi) > 0.001) {
+                diffuseSamples++;
+                diffuseGI = mix(diffuseGI, gi, 1. / diffuseSamples);
+            }
         } else {
             // isEnvMisSample = isEnvMisSample && roughness >= 0.025;
             gi = doSample(
@@ -263,9 +263,11 @@ void main() {
                 gi *= envMisMultiplier;
             }
 
-            specularSamples++;
+            if (luminance(gi) > 0.001) {
+                specularSamples++;
 
-            specularGI = mix(specularGI, gi, 1. / specularSamples);
+                specularGI = mix(specularGI, gi, 1. / specularSamples);
+            }
         }
     }
 #pragma unroll_loop_end
@@ -281,7 +283,7 @@ void main() {
     // calculate world-space ray length used for reprojecting hit points instead of screen-space pixels in the temporal reproject pass
     float rayLength = 0.0;
 
-    if (roughness < 0.5 && getCurvature(viewNormal, depth) < 0.000001) {
+    if (roughness < 0.375) {
         vec3 hitPosWS = (vec4(hitPos, 1.) * viewMatrix).xyz;
         rayLength = distance(worldPos, hitPosWS);
 

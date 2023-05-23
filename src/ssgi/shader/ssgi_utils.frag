@@ -17,11 +17,7 @@ vec4 getTexel(const sampler2D tex, vec2 p, const float mip) {
 
 // source: https://github.com/mrdoob/three.js/blob/342946c8392639028da439b6dc0597e58209c696/examples/js/shaders/SAOShader.js#L123
 float getViewZ(const float depth) {
-#ifdef PERSPECTIVE_CAMERA
     return perspectiveDepthToViewZ(depth, cameraNear, cameraFar);
-#else
-    return orthographicDepthToViewZ(depth, cameraNear, cameraFar);
-#endif
 }
 
 // source: https://github.com/mrdoob/three.js/blob/dev/examples/js/shaders/SSAOShader.js
@@ -236,19 +232,6 @@ float misHeuristic(float a, float b) {
     float aa = a * a;
     float bb = b * b;
     return aa / (aa + bb);
-}
-
-// source: https://madebyevan.com/shaders/curvature/
-float getCurvature(const vec3 n, const float depth) {
-    vec3 dx = dFdx(n);
-    vec3 dy = dFdy(n);
-    vec3 xneg = n - dx;
-    vec3 xpos = n + dx;
-    vec3 yneg = n - dy;
-    vec3 ypos = n + dy;
-    float curvature = (cross(xneg, xpos).y - cross(yneg, ypos).x) * 4.0 / depth;
-
-    return curvature;
 }
 
 // this function takes a normal and a direction as input and returns a new direction that is aligned to the normal

@@ -1,7 +1,7 @@
 ﻿// this shader is from: https://github.com/gkjohnson/threejs-sandbox
 /* eslint-disable camelcase */
 
-import { GLSL3, Matrix3, Matrix4, ShaderChunk, ShaderMaterial, UniformsUtils, Vector2 } from "three"
+import { Matrix3, Matrix4, ShaderChunk, ShaderMaterial, UniformsUtils, Vector2 } from "three"
 
 // Modified ShaderChunk.skinning_pars_vertex to handle
 // a second set of bone information from the previous frame
@@ -105,7 +105,6 @@ export class VelocityDepthNormalMaterial extends ShaderMaterial {
 	constructor() {
 		super({
 			uniforms: UniformsUtils.clone(velocity_uniforms),
-			glslVersion: GLSL3,
 			vertexShader: /* glsl */ `
 					#include <common>
 					#include <uv_pars_vertex>
@@ -151,13 +150,6 @@ export class VelocityDepthNormalMaterial extends ShaderMaterial {
 						varying vec3 vViewPosition;
 					#endif
 
-					#ifdef renderDepth
-					layout(location = 0) out vec4 gDepth;
-					layout(location = 1) out vec4 gVelocity;
-					#else
-					#define gVelocity gl_FragColor
-					#endif
-
 					${velocity_fragment_pars}
 					#include <packing>
 
@@ -172,24 +164,25 @@ export class VelocityDepthNormalMaterial extends ShaderMaterial {
 						return w;
 					}
 
-					vec2 Encode( vec3 n ) {
-						n /= ( abs( n.x ) + abs( n.y ) + abs( n.z ) );
-						n.xy = n.z > 0.0 ? n.xy : OctWrap( n.xy );
+					vec2 encodeOctWrap(vec3 n) {
+						n /= (abs(n.x) + abs(n.y) + abs(n.z));
+						n.xy = n.z > 0.0 ? n.xy : OctWrap(n.xy);
 						n.xy = n.xy * 0.5 + 0.5;
 						return n.xy;
+					}
+
+					float packNormal(vec3 normal) {
+						return uintBitsToFloat(packHalf2x16(encodeOctWrap(normal)));
 					}
 
                     void main() {
 						#include <normal_fragment_begin>
                     	#include <normal_fragment_maps>
 
-						${velocity_fragment_main.replaceAll("gl_FragColor", "gVelocity")}
+						${velocity_fragment_main}
 						vec3 worldNormal = normalize((vec4(normal, 0.) * viewMatrix).xyz);
-						gVelocity.ba = Encode(worldNormal);
-
-						#ifdef renderDepth
-						gDepth = packDepthToRGBA(fragCoordZ);
-						#endif
+						gl_FragColor.b = packNormal(worldNormal);
+						gl_FragColor.a = fragCoordZ;
                     }`
 		})
 

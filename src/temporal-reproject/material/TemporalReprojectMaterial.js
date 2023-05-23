@@ -73,7 +73,9 @@ export class TemporalReprojectMaterial extends ShaderMaterial {
 				prevProjectionMatrix: new Uniform(new Matrix4()),
 				prevProjectionMatrixInverse: new Uniform(new Matrix4()),
 				cameraPos: new Uniform(new Vector3()),
-				prevCameraPos: new Uniform(new Vector3())
+				prevCameraPos: new Uniform(new Vector3()),
+				cameraNear: new Uniform(0),
+				cameraFar: new Uniform(0)
 			},
 			vertexShader,
 			fragmentShader: finalFragmentShader,

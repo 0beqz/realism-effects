@@ -608,7 +608,7 @@ const initScene = async () => {
 
 		if (!isAoDemo) {
 			if (fps >= 256) {
-				setAA("TRAA")
+				setAA("FXAA")
 
 				resize()
 			} else {

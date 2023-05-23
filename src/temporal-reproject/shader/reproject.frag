@@ -1,3 +1,5 @@
+// #define VISUALIZE_DISOCCLUSIONS
+
 vec4 velocityTexel;
 float dilatedDepth;
 vec2 dilatedUvOffset;
@@ -6,9 +8,12 @@ bool didMove;
 
 vec4 depthTexel;
 float depth;
-float edgeStrength;
 
 #define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
+
+float getViewZ(const float depth) {
+    return perspectiveDepthToViewZ(depth, cameraNear, cameraFar);
+}
 
 vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth, mat4 curMatrixWorld, const mat4 projMatrixInverse) {
     vec4 ndc = vec4(
@@ -30,6 +35,34 @@ vec2 viewSpaceToScreenSpace(const vec3 position, const mat4 projMatrix) {
     projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;
 
     return projectedCoord.xy;
+}
+
+// source: https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/
+vec2 OctWrap(vec2 v) {
+    vec2 w = 1.0 - abs(v.yx);
+    if (v.x < 0.0) w.x = -w.x;
+    if (v.y < 0.0) w.y = -w.y;
+    return w;
+}
+
+// source: https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/
+vec3 decodeOctWrap(vec2 f) {
+    f = f * 2.0 - 1.0;
+
+    // https://twitter.com/Stubbesaurus/status/937994790553227264
+    vec3 n = vec3(f.x, f.y, 1.0 - abs(f.x) - abs(f.y));
+    float t = max(-n.z, 0.0);
+    n.x += n.x >= 0.0 ? -t : t;
+    n.y += n.y >= 0.0 ? -t : t;
+    return normalize(n);
+}
+
+vec3 unpackNormal(float packedNormal) {
+    return decodeOctWrap(unpackHalf2x16(floatBitsToUint(packedNormal)));
+}
+
+float getDepth(vec4 velocityTexel) {
+    return velocityTexel.a;
 }
 
 bool doColorTransform[textureCount];
@@ -115,11 +148,15 @@ void getDepthAndDilatedUVOffset(sampler2D depthTex, vec2 uv, out float depth, ou
 #ifdef dilation
     getDilatedDepthUVOffset(depthTex, uv, depth, dilatedDepth, depthTexel);
 #else
-    depthTexel = textureLod(depthTex, uv, 0.);
-    depth = unpackRGBAToDepth(depthTexel);
+    depth = textureLod(velocityTexture, uv, 0.).a;
     dilatedDepth = depth;
 #endif
 }
+
+#define DEPTH_DISTANCE    5.0
+#define WORLD_DISTANCE    2.0
+#define NORMAL_DISTANCE   0.1
+#define VELOCITY_DISTANCE 0.0025
 
 bool planeDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos, const vec3 worldNormal, const float worldDistFactor) {
     if (abs(dot(worldNormal, worldPos)) == 0.0) return false;
@@ -134,13 +171,20 @@ bool worldDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos
     return distance(worldPos, lastWorldPos) > worldDistance * worldDistFactor;
 }
 
+bool normalsDisocclusionCheck(vec3 worldNormal, vec3 lastWorldNormal) {
+    return pow(abs(dot(worldNormal, lastWorldNormal)), 2.0) < NORMAL_DISTANCE;
+}
+
+bool velocityDisocclusionCheck(const vec2 velocity, const vec2 lastVelocity) {
+    return length(velocity - lastVelocity) > VELOCITY_DISTANCE;
+}
+
 bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const vec3 worldNormal) {
     if (reprojectedUv.x > 1.0 || reprojectedUv.x < 0.0 || reprojectedUv.y > 1.0 || reprojectedUv.y < 0.0) return false;
 
     vec3 dilatedWorldPos = worldPos;
     vec3 lastWorldPos;
     float dilatedLastDepth, lastDepth;
-    vec4 lastDepthTexel;
     vec2 dilatedReprojectedUv;
 
 #ifdef dilation
@@ -151,8 +195,19 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const 
 
     dilatedReprojectedUv = reprojectedUv + dilatedUvOffset;
 #else
-    lastDepthTexel = textureLod(lastDepthTexture, reprojectedUv, 0.);
-    lastDepth = unpackRGBAToDepth(lastDepthTexel);
+
+    vec2 velocity = textureLod(velocityTexture, vUv, 0.).xy;
+
+    vec4 lastVelocityTexel = textureLod(velocityTexture, reprojectedUv, 0.);
+    vec2 lastVelocity = lastVelocityTexel.xy;
+
+    if (velocityDisocclusionCheck(velocity, lastVelocity)) return false;
+
+    vec3 lastWorldNormal = unpackNormal(lastVelocityTexel.b);
+
+    if (normalsDisocclusionCheck(worldNormal, lastWorldNormal)) return false;
+
+    lastDepth = lastVelocityTexel.a;
     dilatedLastDepth = lastDepth;
 
     dilatedReprojectedUv = reprojectedUv;
@@ -164,7 +219,11 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const 
 
     if (worldDistanceDisocclusionCheck(dilatedWorldPos, lastWorldPos, worldDistFactor)) return false;
 
-    return !planeDistanceDisocclusionCheck(dilatedWorldPos, lastWorldPos, worldNormal, worldDistFactor);
+    if (planeDistanceDisocclusionCheck(dilatedWorldPos, lastWorldPos, worldNormal, worldDistFactor)) {
+        return false;
+    }
+
+    return true;
 }
 
 vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength, const float depth) {
@@ -180,7 +239,7 @@ vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength, const float de
     // convert last virtual point to view space
     lastVirtualPoint = prevViewMatrix * vec4(lastVirtualPoint.xyz, 1.0);
 
-    vec2 uv = viewSpaceToScreenSpace(lastVirtualPoint.xyz, projectionMatrix);
+    vec2 uv = viewSpaceToScreenSpace(lastVirtualPoint.xyz, prevProjectionMatrix);
 
     return uv;
 }
@@ -190,9 +249,9 @@ vec2 getReprojectedUV(const float depth, const vec3 worldPos, const vec3 worldNo
     if (rayLength != 0.0) {
         vec2 reprojectedUv = reprojectHitPoint(worldPos, rayLength, depth);
 
-        // if (validateReprojectedUV(reprojectedUv, worldPos, worldNormal)) {
-        return reprojectedUv;
-        // }
+        if (validateReprojectedUV(reprojectedUv, worldPos, worldNormal)) {
+            return reprojectedUv;
+        }
 
         return vec2(-1.);
     }
@@ -257,14 +316,15 @@ vec4 SampleTextureCatmullRom(const sampler2D tex, const vec2 uv, const vec2 texS
     return result;
 }
 
-float computeEdgeStrengthFast(float unpackedDepth) {
-    float depthX = dFdx(unpackedDepth);
-    float depthY = dFdy(unpackedDepth);
+// source: http://rodolphe-vaillant.fr/entry/118/curvature-of-a-distance-field-implicit-surface
+float getFlatness(vec3 g, vec3 rp) {
+    vec3 gw = fwidth(g);
+    vec3 pw = fwidth(rp);
 
-    // Compute the edge strength as the magnitude of the gradient
-    float edgeStrength = depthX * depthX + depthY * depthY;
+    float wfcurvature = length(gw) / length(pw);
+    wfcurvature = smoothstep(0.0, 30., wfcurvature);
 
-    return min(1., pow(pow(edgeStrength, 0.25) * 500., 4.));
+    return wfcurvature;
 }
 
 // source: https://www.shadertoy.com/view/stSfW1
@@ -279,39 +339,4 @@ vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv) {
     vec4 blocky = SampleTextureCatmullRom(tex, sampleBlocky(reprojectedUv), 1. / invTexSize);
 
     return blocky;
-}
-
-// source: https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/
-vec2 OctWrap(vec2 v) {
-    vec2 w = 1.0 - abs(v.yx);
-    if (v.x < 0.0) w.x = -w.x;
-    if (v.y < 0.0) w.y = -w.y;
-    return w;
-}
-
-vec2 Encode(vec3 n) {
-    n /= (abs(n.x) + abs(n.y) + abs(n.z));
-    n.xy = n.z > 0.0 ? n.xy : OctWrap(n.xy);
-    n.xy = n.xy * 0.5 + 0.5;
-    return n.xy;
-}
-
-// source: https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/
-vec3 Decode(vec2 f) {
-    f = f * 2.0 - 1.0;
-
-    // https://twitter.com/Stubbesaurus/status/937994790553227264
-    vec3 n = vec3(f.x, f.y, 1.0 - abs(f.x) - abs(f.y));
-    float t = max(-n.z, 0.0);
-    n.x += n.x >= 0.0 ? -t : t;
-    n.y += n.y >= 0.0 ? -t : t;
-    return normalize(n);
-}
-
-float packNormal(vec3 normal) {
-    return uintBitsToFloat(packHalf2x16(Encode(normal)));
-}
-
-vec3 unpackNormal(float packedNormal) {
-    return Decode(unpackHalf2x16(floatBitsToUint(packedNormal)));
 }
