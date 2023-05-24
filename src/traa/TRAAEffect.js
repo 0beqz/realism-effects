@@ -11,8 +11,6 @@ const defaultTRAAOptions = {
 	dilation: true,
 	logTransform: false, // ! todo: check if can use logTransform without artifacts
 	neighborhoodClampRadius: 2,
-	depthDistance: 10,
-	worldDistance: 5,
 	neighborhoodClamp: true
 }
 

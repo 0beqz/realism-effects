@@ -3,7 +3,7 @@
 uniform sampler2D velocityTexture;
 
 uniform sampler2D depthTexture;
-uniform sampler2D lastDepthTexture;
+uniform sampler2D lastVelocityTexture;
 
 uniform float blend;
 uniform float neighborhoodClampIntensity;
@@ -34,6 +34,12 @@ uniform float delta;
 void main() {
     vec2 dilatedUv = vUv;
     getVelocityNormalDepth(dilatedUv, velocity, worldNormal, depth);
+
+    // ! todo: find better solution
+    if (textureCount > 1 && depth == 1.0) {
+        discard;
+        return;
+    }
 
     vec4 inputTexel[textureCount];
     vec4 accumulatedTexel[textureCount];
@@ -92,29 +98,6 @@ void main() {
             // reprojection was not successful -> reset to the input texel
             accumulatedTexel[i] = vec4(inputTexel[i].rgb, 0.0);
 
-            vec3 averageColor = inputTexel[i].rgb;
-            float count = 1.0;
-
-            for (int x = -1; x <= 1; x++) {
-                for (int y = -1; y <= 1; y++) {
-                    if (x != 0 || y != 0) {
-                        vec2 offset = vec2(x, y) * invTexSize;
-                        vec4 texel = textureLod(inputTexture[i], vUv + offset, 0.0);
-
-                        if (luminance(texel.rgb) > 0.0) {
-                            transformColor(texel.rgb);
-                            averageColor += texel.rgb;
-                            count++;
-                        }
-                    }
-                }
-            }
-
-            averageColor /= count > 0.0 ? count : 1.;
-
-            accumulatedTexel[i] = vec4(averageColor, 0.);
-            inputTexel[i].rgb = averageColor;
-
 #ifdef VISUALIZE_DISOCCLUSIONS
             accumulatedTexel[i] = vec4(vec3(0., 1., 0.), 0.0);
             inputTexel[i].rgb = accumulatedTexel[i].rgb;
@@ -127,9 +110,11 @@ void main() {
 
                 accumulatedTexel[i] = mix(diffuseTexel, hitPointTexel, flatness);
             } else {
-                accumulatedTexel[i] = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUvDiffuse);
-
-                if (reprojectHitPoint) accumulatedTexel[i] = vec4(inputTexel[i].rgb, 0.0);
+                if (reprojectHitPoint) {
+                    accumulatedTexel[i] = vec4(inputTexel[i].rgb, 0.0);
+                } else {
+                    accumulatedTexel[i] = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUvDiffuse);
+                }
             }
 
 #ifdef VISUALIZE_DISOCCLUSIONS

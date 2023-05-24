@@ -180,6 +180,9 @@ bool velocityDisocclusionCheck(const vec2 velocity, const vec2 lastVelocity) {
 bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const vec3 worldNormal, const bool isHitPoint) {
     if (reprojectedUv.x > 1.0 || reprojectedUv.x < 0.0 || reprojectedUv.y > 1.0 || reprojectedUv.y < 0.0) return false;
 
+    // ! todo: make hit point check more robust but less restrictive
+    if (isHitPoint) return true;
+
     vec2 dilatedReprojectedUv = reprojectedUv;
     vec2 lastVelocity = vec2(0.0);
     vec3 lastWorldNormal = vec3(0.0);
@@ -216,9 +219,9 @@ vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength, const float de
 
     vec4 virtualPointWS = cameraMatrixWorld * vec4(virtualPoint, 1.0);
 
-    if (rayLength < 10.0e3 && distance(virtualPointWS.xyz, lastVirtualPoint.xyz) > 0.1) {
-        return vec2(-1.0);
-    }
+    // if (rayLength < 10.0e3 && distance(virtualPointWS.xyz, lastVirtualPoint.xyz) > 0.1) {
+    //     return vec2(-1.0);
+    // }
 
     // convert last virtual point to view space
     lastVirtualPoint = prevViewMatrix * vec4(lastVirtualPoint.xyz, 1.0);
@@ -229,20 +232,6 @@ vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength, const float de
 
     return rayLength > 10.0e3 ? vUv - velocity : uv;
 }
-
-// vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength, const float depth) {
-//     vec3 cameraRay = normalize(rayOrig - cameraPos);
-//     float cameraRayLength = distance(rayOrig, cameraPos);
-
-//     vec3 parallaxHitPoint = cameraPos + cameraRay * (cameraRayLength + rayLength);
-
-//     vec4 reprojectedParallaxHitPoint = prevViewMatrix * vec4(parallaxHitPoint, 1.0);
-//     vec2 hitPointUv = viewSpaceToScreenSpace(reprojectedParallaxHitPoint.xyz, prevProjectionMatrix);
-
-//     vec2 velocity = texture2D(velocityTexture, hitPointUv).rg;
-
-//     return hitPointUv - velocity;
-// }
 
 vec2 getReprojectedUV(const float depth, const vec3 worldPos, const vec3 worldNormal, const float rayLength) {
     // hit point reprojection
@@ -336,7 +325,8 @@ vec2 sampleBlocky(vec2 p) {
 }
 
 vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv) {
-    vec4 blocky = SampleTextureCatmullRom(tex, (reprojectedUv), 1. / invTexSize);
+    // ! todo: investigate using sampleBlocky
+    vec4 blocky = SampleTextureCatmullRom(tex, reprojectedUv, 1. / invTexSize);
 
     return blocky;
 }

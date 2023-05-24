@@ -159,7 +159,7 @@ export class TemporalReprojectPass extends Pass {
 
 		this.fullscreenMaterial.uniforms.projectionMatrix.value.copy(this._camera.projectionMatrix)
 		this.fullscreenMaterial.uniforms.projectionMatrixInverse.value.copy(this._camera.projectionMatrixInverse)
-		this.fullscreenMaterial.uniforms.lastDepthTexture.value = this.velocityDepthNormalPass.lastDepthTexture
+		this.fullscreenMaterial.uniforms.lastVelocityTexture.value = this.velocityDepthNormalPass.lastVelocityTexture
 
 		if (this._camera.view) this._camera.view.enabled = true
 		this._camera.projectionMatrix.copy(tmpProjectionMatrix)

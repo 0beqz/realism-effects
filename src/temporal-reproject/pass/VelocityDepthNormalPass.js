@@ -109,12 +109,12 @@ export class VelocityDepthNormalPass extends Pass {
 	setSize(width, height) {
 		this.renderTarget.setSize(width, height)
 
-		this.lastDepthTexture?.dispose()
+		this.lastVelocityTexture?.dispose()
 
-		this.lastDepthTexture = new FramebufferTexture(width, height, RGBAFormat)
-		this.lastDepthTexture.type = FloatType
-		this.lastDepthTexture.minFilter = NearestFilter
-		this.lastDepthTexture.magFilter = NearestFilter
+		this.lastVelocityTexture = new FramebufferTexture(width, height, RGBAFormat)
+		this.lastVelocityTexture.type = FloatType
+		this.lastVelocityTexture.minFilter = NearestFilter
+		this.lastVelocityTexture.magFilter = NearestFilter
 	}
 
 	dispose() {
@@ -148,7 +148,7 @@ export class VelocityDepthNormalPass extends Pass {
 		this._scene.background = backgroundColor
 
 		renderer.setRenderTarget(this.renderTarget)
-		renderer.copyFramebufferToTexture(zeroVec2, this.lastDepthTexture)
+		renderer.copyFramebufferToTexture(zeroVec2, this.lastVelocityTexture)
 
 		renderer.render(this._scene, this._camera)
 

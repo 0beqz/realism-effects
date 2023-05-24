@@ -582,10 +582,10 @@ const initScene = async () => {
 
 					const sharpnessEffect = new SharpnessEffect({ sharpness: 0.75 })
 
-					const ssaoEffect = new SSAOEffect(composer, camera, scene, ssaoOptions)
+					// const ssaoEffect = new SSAOEffect(composer, camera, scene, ssaoOptions)
 					composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, vignetteEffect, lutEffect))
 
-					const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass)
+					// const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass)
 
 					composer.addPass(new POSTPROCESSING.EffectPass(camera, sharpnessEffect))
 				} else {

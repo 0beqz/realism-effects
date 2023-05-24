@@ -190,6 +190,8 @@ If you'd like, you could also buy me a coffee:
 - [ ] Support OrthographicCameras
 - [ ] Fog support (SSGI)
 - [ ] Background support (SSGI without render pass)
+- [ ] Fix TRAA dilation issue
+- [ ] Test Log Transform with TRAA
 
 ## Credits
 
