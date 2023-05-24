@@ -7,7 +7,7 @@ export class SVGF {
 	constructor(scene, camera, velocityDepthNormalPass, textureCount = 1, options = {}) {
 		this.svgfTemporalReprojectPass = new TemporalReprojectPass(scene, camera, velocityDepthNormalPass, textureCount, {
 			...options,
-			fullAccumulate: true
+			fullAccumulate: false
 		})
 
 		const textures = this.svgfTemporalReprojectPass.renderTarget.texture.slice(0, textureCount)

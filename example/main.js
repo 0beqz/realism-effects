@@ -171,14 +171,13 @@ if (traaTest || true) {
 const lightParams = {
 	yaw: 55,
 	pitch: 27,
-	intensity: 0
+	intensity: 5
 }
 
-const light = new DirectionalLight(0xffffff, lightParams.intensity)
-light.position.set(217, 43, 76)
+const light = new DirectionalLight(0xfdfbd3, lightParams.intensity)
 light.updateMatrixWorld()
 light.castShadow = true
-scene.add(light)
+// scene.add(light)
 
 renderer.shadowMap.enabled = true
 renderer.shadowMap.autoUpdate = false
@@ -221,7 +220,7 @@ const cubeMapTest = () => {
 		.setPath("cubemap/yokohama_3/")
 		.load(["posx.jpg", "negx.jpg", "posy.jpg", "negy.jpg", "posz.jpg", "negz.jpg"], envMesh => {
 			scene.background = envMesh
-			// scene.environment = envMesh
+			scene.environment = envMesh
 
 			setEnvMesh(envMesh)
 		})
@@ -341,10 +340,10 @@ const initScene = async () => {
 		rings: 5.625,
 		samples: 8,
 		lumaPhi: 1,
-		depthPhi: 33.152,
-		normalPhi: 27.173999999999996,
-		roughnessPhi: 8.695999999999998,
-		diffusePhi: 0,
+		depthPhi: 19.565,
+		normalPhi: 51.086999999999996,
+		roughnessPhi: 39.129999999999995,
+		diffusePhi: 32.609,
 		envBlur: 0.5,
 		importanceSampling: true,
 		directLightMultiplier: 1,
@@ -608,7 +607,7 @@ const initScene = async () => {
 
 		if (!isAoDemo) {
 			if (fps >= 256) {
-				setAA("FXAA")
+				setAA("TRAA")
 
 				resize()
 			} else {
@@ -690,6 +689,11 @@ const loop = () => {
 		lastScene.updateMatrixWorld()
 		refreshLighting()
 	}
+
+	// light.color.setHSL(Math.sin(performance.now() / 5000), 1, 0.6)
+	// lightParams.yaw = (lightParams.yaw + 40 * dt) % 360
+
+	// refreshLighting()
 
 	if (controls.enableDamping) controls.dampingFactor = 0.075 * 120 * Math.max(1 / 1000, dt)
 
@@ -920,6 +924,8 @@ const setupAsset = asset => {
 			c.material.emissive = new Color(0x000000)
 			c.material.emissiveIntensity = 0.0
 			c.material.lightMap = lm
+
+			c.material.transparent = false
 		}
 
 		c.frustumCulled = false

@@ -284,7 +284,7 @@ void main() {
     // calculate world-space ray length used for reprojecting hit points instead of screen-space pixels in the temporal reproject pass
     float rayLength = 0.0;
 
-    if (roughness < 0.375 && dot(specularHitPos, specularHitPos) != 0.) {
+    if (dot(specularHitPos, specularHitPos) != 0.) {
         vec3 hitPosWS = (vec4(hitPos, 1.) * viewMatrix).xyz;
         rayLength = distance(worldPos, hitPosWS);
 
@@ -292,7 +292,9 @@ void main() {
     }
 
     if (specularSamples == 0.0) specularGI = vec3(-1.0);
+
     gSpecular = vec4(specularGI, rayLength);
+
 #endif
 }
 
@@ -375,9 +377,9 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
 
     vec3 SSGI = reprojectedGI + emissiveColor;
 
-#ifdef useDirectLight
-    SSGI += textureLod(directLightTexture, coords.xy, 0.).rgb * directLightMultiplier;
-#endif
+    // #ifdef useDirectLight
+    //     SSGI += textureLod(directLightTexture, coords.xy, 0.).rgb * directLightMultiplier;
+    // #endif
 
     if (allowMissedRays) {
         float ssgiLum = luminance(SSGI);

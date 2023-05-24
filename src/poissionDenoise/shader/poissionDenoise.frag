@@ -3,6 +3,7 @@ varying vec2 vUv;
 uniform sampler2D inputTexture;
 uniform sampler2D inputTexture2;
 uniform sampler2D depthTexture;
+uniform sampler2D directLightTexture;
 uniform mat4 projectionMatrixInverse;
 uniform mat4 projectionMatrix;
 uniform mat4 cameraMatrixWorld;
@@ -182,7 +183,7 @@ void main() {
     float dw = max(disocclusionWeight, disocclusionWeight2);
 
     float denoiseOffset = mix(1., roughness, metalness) * (0.5 + dw * 2.);
-    // float mirror = roughness * roughness > 0.01 ? 1. : roughness * roughness / 0.01;
+    float mirror = roughness * roughness > 0.01 ? 1. : roughness * roughness / 0.01;
 
     for (int i = 0; i < samples; i++) {
         vec2 offset = rotationMatrix * poissonDisk[i] * denoiseOffset * smoothstep(0., 1., float(i) / float(samples));
@@ -218,7 +219,7 @@ void main() {
         float diffuseDiff = length(neighborDiffuse - diffuse);
         float diffuseSimilarity = exp(-diffuseDiff * diffusePhi);
 
-        float bw = max(0.005, depthSimilarity * roughnessSimilarity * metalnessSimilarity * diffuseSimilarity);
+        float bw = max(0.001, depthSimilarity * roughnessSimilarity * metalnessSimilarity * diffuseSimilarity);
         float basicWeight = normalSimilarity * bw;
 
         basicWeight = pow(basicWeight, lumaPhi);
@@ -286,7 +287,9 @@ void main() {
         vec3 specularLightingColor = denoised2;
         vec3 specularComponent = specularLightingColor * F;
 
-        denoised = diffuseComponent + specularComponent;
+        vec3 directLight = textureLod(directLightTexture, vUv, 0.).rgb;
+
+        denoised = diffuseComponent + specularComponent + directLight;
         // denoised = denoised2;
         // denoised = vec3(totalWeight / float(samples));
         // denoised = vec3(roughness < 0.025 ? 1. : 0.);

@@ -11,6 +11,7 @@ import {
 	Vector2,
 	WebGLMultipleRenderTargets
 } from "three"
+// eslint-disable-next-line camelcase
 import gbuffer_packing from "../ssgi/shader/gbuffer_packing.glsl"
 import blueNoiseImage from "../utils/LDR_RGBA_0.png"
 import vertexShader from "../utils/shader/basic.vert"
@@ -49,6 +50,7 @@ export class PoissionDenoisePass extends Pass {
 			vertexShader,
 			uniforms: {
 				depthTexture: { value: null },
+				directLightTexture: { value: null },
 				inputTexture: { value: null },
 				inputTexture2: { value: null },
 				gBuffersTexture: { value: null },

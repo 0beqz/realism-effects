@@ -42,7 +42,7 @@ export const defaultSSGIOptions = {
 	depthPhi: 2,
 	normalPhi: 50,
 	roughnessPhi: 50,
-	diffusePhi: 40,
+	diffusePhi: 0,
 	envBlur: 0.5,
 	importanceSampling: true,
 	directLightMultiplier: 1,
