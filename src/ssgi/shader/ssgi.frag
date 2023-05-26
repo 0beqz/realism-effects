@@ -95,6 +95,8 @@ void main() {
 
     invTexSize = 1. / texSize;
 
+    bool isMirror = roughness * roughness < 0.1;
+
     roughness = clamp(roughness * roughness, 0.0001, 1.0);
 
     // pre-calculated variables for the "fastGetViewZ" function
@@ -179,6 +181,8 @@ void main() {
             l = (vec4(l, 0.) * cameraMatrixWorld).xyz;
             l = normalize(l);
         }
+
+        if (isMirror) l = reflect(viewDir, viewNormal);
 
         h = normalize(v + l);  // half vector
 
@@ -284,12 +288,16 @@ void main() {
     // calculate world-space ray length used for reprojecting hit points instead of screen-space pixels in the temporal reproject pass
     float rayLength = 0.0;
 
-    if (dot(specularHitPos, specularHitPos) != 0.) {
-        vec3 hitPosWS = (vec4(hitPos, 1.) * viewMatrix).xyz;
-        rayLength = distance(worldPos, hitPosWS);
+    vec4 hitPosWS;
 
-        if (isMissedRay) rayLength = 10.0e4;
+    // if (dot(specularHitPos, specularHitPos) != 0.) {
+    if (isMissedRay) {
+        rayLength = 10.0e4;
+    } else {
+        hitPosWS = vec4(specularHitPos, 1.) * viewMatrix;
+        rayLength = distance(worldPos, hitPosWS.xyz);
     }
+    // }
 
     if (specularSamples == 0.0) specularGI = vec3(-1.0);
 

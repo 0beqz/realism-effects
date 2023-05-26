@@ -58,7 +58,7 @@ export class TemporalReprojectPass extends Pass {
 			depthBuffer: false
 		})
 
-		this.renderTarget.texture.map(
+		this.renderTarget.texture.forEach(
 			(texture, index) => (texture.name = "TemporalReprojectPass.accumulatedTexture" + index)
 		)
 

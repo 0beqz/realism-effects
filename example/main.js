@@ -237,7 +237,7 @@ const setEnvMesh = envMap => {
 		envMesh.height = 20
 		envMesh.scale.setScalar(100)
 		envMesh.updateMatrixWorld()
-		// scene.add(envMesh)
+		scene.add(envMesh)
 
 		scene.background = new Color("white")
 	}
@@ -607,7 +607,7 @@ const initScene = async () => {
 
 		if (!isAoDemo) {
 			if (fps >= 256) {
-				setAA("TRAA")
+				setAA("FXAA")
 
 				resize()
 			} else {

@@ -37,6 +37,11 @@ vec2 viewSpaceToScreenSpace(const vec3 position) {
     return projectedCoord.xy;
 }
 
+vec3 worldSpaceToViewSpace(vec3 worldPosition) {
+    vec4 viewPosition = viewMatrix * vec4(worldPosition, 1.0);
+    return viewPosition.xyz / viewPosition.w;
+}
+
 #ifdef BOX_PROJECTED_ENV_MAP
 uniform vec3 envMapSize;
 uniform vec3 envMapPosition;

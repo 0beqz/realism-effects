@@ -224,6 +224,9 @@ void main() {
 
         basicWeight = pow(basicWeight, lumaPhi);
 
+        // ! todo: account for roughness
+        // basicWeight = pow(basicWeight, 1. + (1. - mirror) * 100.);
+
         evaluateNeighbor(center, centerLum, neighborTexel, denoised, disocclusionWeight, totalWeight, basicWeight);
         evaluateNeighbor(center2, centerLum2, neighborTexel2, denoised2, disocclusionWeight2, totalWeight2, basicWeight);
     }

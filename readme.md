@@ -220,6 +220,12 @@ If you'd like, you could also buy me a coffee:
 
 ## Resources
 
+## Raytracing
+
+- [EXPLORING RAYTRACED FUTURE IN METRO EXODUS](https://developer.download.nvidia.com/video/gputechconf/gtc/2019/presentation/s9985-exploring-ray-traced-future-in-metro-exodus.pdf)
+
+- [Adventures in Hybrid Rendering](https://diharaw.github.io/post/adventures_in_hybrid_rendering/)
+
 ### Tracing in screen-space
 
 - [Rendering view dependent reflections using the graphics card](https://kola.opus.hbz-nrw.de/opus45-kola/frontdoor/deliver/index/docId/908/file/BA_GuidoSchmidt.pdf)
@@ -257,6 +263,8 @@ If you'd like, you could also buy me a coffee:
 - [Temporal Anti Aliasing – Step by Step](https://ziyadbarakat.wordpress.com/2020/07/28/temporal-anti-aliasing-step-by-step/)
 
 - [Filmic SMAA: Sharp Morphological and Temporal Antialiasing](https://research.activision.com/publications/archives/filmic-smaasharp-morphological-and-temporal-antialiasing)
+
+- [Reprojecting Reflections](http://bitsquid.blogspot.com/2017/06/reprojecting-reflections_22.html)
 
 ### HBAO
 
