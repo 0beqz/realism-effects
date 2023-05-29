@@ -80,14 +80,14 @@ if (traaTest && !window.location.search.includes("traa_test_model=true")) {
 	traaModelBtn.remove()
 }
 
-let rendererCanvas = canvas
+const rendererCanvas = canvas
 
 // use an offscreen canvas if available
-if (window.OffscreenCanvas && !navigator.userAgent.toLowerCase().includes("firefox")) {
-	rendererCanvas = canvas.transferControlToOffscreen()
-	rendererCanvas.style = canvas.style
-	rendererCanvas.toDataURL = canvas.toDataURL.bind(canvas)
-}
+// if (window.OffscreenCanvas && !navigator.userAgent.toLowerCase().includes("firefox")) {
+// 	rendererCanvas = canvas.transferControlToOffscreen()
+// 	rendererCanvas.style = canvas.style
+// 	rendererCanvas.toDataURL = canvas.toDataURL.bind(canvas)
+// }
 
 // Renderer
 const renderer = new THREE.WebGLRenderer({
@@ -163,7 +163,7 @@ if (isAoDemo) {
 }
 
 const composer = new POSTPROCESSING.EffectComposer(renderer)
-if (traaTest || true) {
+if (traaTest) {
 	const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
 	composer.addPass(renderPass)
 }
@@ -328,8 +328,8 @@ const initScene = async () => {
 	fps = gpuTier.fps
 
 	const options = {
-		distance: 2.7200000000000104,
-		thickness: 1.2999999999999972,
+		distance: 8.700000000000012,
+		thickness: 4.999999999999997,
 		maxRoughness: 1,
 		blend: 0.95,
 		denoiseIterations: 3,
@@ -339,12 +339,12 @@ const initScene = async () => {
 		radius: 16,
 		rings: 5.625,
 		samples: 8,
-		lumaPhi: 1,
-		depthPhi: 19.565,
-		normalPhi: 51.086999999999996,
+		lumaPhi: 0.3,
+		depthPhi: 21.739,
+		normalPhi: 94.565,
 		roughnessPhi: 39.129999999999995,
-		diffusePhi: 32.609,
-		envBlur: 0.5,
+		diffusePhi: 71.739,
+		envBlur: 0.55,
 		importanceSampling: true,
 		directLightMultiplier: 1,
 		steps: 20,
@@ -607,7 +607,7 @@ const initScene = async () => {
 
 		if (!isAoDemo) {
 			if (fps >= 256) {
-				setAA("FXAA")
+				setAA("TRAA")
 
 				resize()
 			} else {

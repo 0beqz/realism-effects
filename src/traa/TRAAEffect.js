@@ -7,7 +7,6 @@ import traa_compose from "./shader/traa_compose.frag"
 
 const defaultTRAAOptions = {
 	blend: 0.8,
-	constantBlend: true,
 	dilation: true,
 	logTransform: false, // ! todo: check if can use logTransform without artifacts
 	neighborhoodClampRadius: 2,

@@ -183,7 +183,7 @@ void main() {
     float dw = max(disocclusionWeight, disocclusionWeight2);
 
     float denoiseOffset = mix(1., roughness, metalness) * (0.5 + dw * 2.);
-    float mirror = roughness * roughness > 0.01 ? 1. : roughness * roughness / 0.01;
+    float mirror = roughness * roughness > 0.1 ? 1. : roughness * roughness / 0.1;
 
     for (int i = 0; i < samples; i++) {
         vec2 offset = rotationMatrix * poissonDisk[i] * denoiseOffset * smoothstep(0., 1., float(i) / float(samples));
@@ -224,10 +224,10 @@ void main() {
 
         basicWeight = pow(basicWeight, lumaPhi);
 
-        // ! todo: account for roughness
-        // basicWeight = pow(basicWeight, 1. + (1. - mirror) * 100.);
-
         evaluateNeighbor(center, centerLum, neighborTexel, denoised, disocclusionWeight, totalWeight, basicWeight);
+
+        // ! todo: account for roughness
+        basicWeight = pow(basicWeight, 1. + (1. - mirror) * 100.);
         evaluateNeighbor(center2, centerLum2, neighborTexel2, denoised2, disocclusionWeight2, totalWeight2, basicWeight);
     }
 
@@ -290,9 +290,9 @@ void main() {
         vec3 specularLightingColor = denoised2;
         vec3 specularComponent = specularLightingColor * F;
 
-        vec3 directLight = textureLod(directLightTexture, vUv, 0.).rgb;
+        // vec3 directLight = textureLod(directLightTexture, vUv, 0.).rgb;
 
-        denoised = diffuseComponent + specularComponent + directLight;
+        denoised = diffuseComponent + specularComponent;
         // denoised = denoised2;
         // denoised = vec3(totalWeight / float(samples));
         // denoised = vec3(roughness < 0.025 ? 1. : 0.);

@@ -362,7 +362,7 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
         // we won't deal with calculating direct sun light from the env map as it is too noisy
         float envLum = luminance(envMapSample);
 
-        const float maxEnvLum = 50.0;
+        const float maxEnvLum = 10.0;
 
         if (envLum > maxEnvLum) {
             envMapSample *= maxEnvLum / envLum;
