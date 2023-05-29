@@ -214,6 +214,7 @@ If you'd like, you could also buy me a coffee:
 - Squid Game PinkSoldier: [Jaeysart](https://sketchfab.com/jaeysart)
 - Berserk Guts Black Swordsman: [gimora](https://sketchfab.com/gimora)
 - Time Machine (from TRAA demo scene): [vertexmonster](https://sketchfab.com/vertexmonster)
+- Golden Knight: [FrancisLam](https://sketchfab.com/francislam)
 
 ## Resources
 
