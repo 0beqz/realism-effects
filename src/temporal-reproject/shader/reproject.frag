@@ -181,7 +181,7 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const 
     if (reprojectedUv.x > 1.0 || reprojectedUv.x < 0.0 || reprojectedUv.y > 1.0 || reprojectedUv.y < 0.0) return false;
 
     // ! todo: make hit point check more robust but less restrictive
-    if (isHitPoint) return true;
+    // if (isHitPoint) return true;
 
     vec2 dilatedReprojectedUv = reprojectedUv;
     vec2 lastVelocity = vec2(0.0);
@@ -207,7 +207,7 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const 
     return true;
 }
 
-vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength, const float depth) {
+vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength) {
     float cameraRayLength = distance(rayOrig, cameraPos);
 
     vec4 viewPos = viewMatrix * vec4(rayOrig, 1.0);
@@ -217,7 +217,7 @@ vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength, const float de
 
     vec4 lastVirtualPoint = cameraMatrixWorld * vec4(virtualPoint, 1.0);
 
-    vec4 virtualPointWS = cameraMatrixWorld * vec4(virtualPoint, 1.0);
+    // vec4 virtualPointWS = cameraMatrixWorld * vec4(virtualPoint, 1.0);
 
     // if (rayLength < 10.0e3 && distance(virtualPointWS.xyz, lastVirtualPoint.xyz) > 0.1) {
     //     return vec2(-1.0);
@@ -228,15 +228,13 @@ vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength, const float de
 
     vec2 uv = viewSpaceToScreenSpace(lastVirtualPoint.xyz, prevProjectionMatrix);
 
-    vec2 velocity = texture2D(velocityTexture, uv).rg;
-
-    return rayLength > 10.0e3 ? vUv - velocity : uv;
+    return uv;
 }
 
 vec2 getReprojectedUV(const float depth, const vec3 worldPos, const vec3 worldNormal, const float rayLength) {
     // hit point reprojection
     if (rayLength != 0.0) {
-        vec2 reprojectedUv = reprojectHitPoint(worldPos, rayLength, depth);
+        vec2 reprojectedUv = reprojectHitPoint(worldPos, rayLength);
 
         if (validateReprojectedUV(reprojectedUv, worldPos, worldNormal, true)) {
             return reprojectedUv;

@@ -105,11 +105,11 @@ float getDisocclusionWeight(float x) {
 }
 
 void toLogSpace(inout vec3 color) {
-    color = dot(color, color) > 0.000001 ? log(color) : vec3(0.000001);
+    // color = dot(color, color) > 0.000001 ? log(color) : vec3(0.000001);
 }
 
 void toLinearSpace(inout vec3 color) {
-    color = exp(color);
+    // color = exp(color);
 }
 
 void evaluateNeighbor(
@@ -178,7 +178,7 @@ void main() {
     mat2 rotationMatrix = mat2(c, -s, s, c);
 
     float disocclusionWeight = getDisocclusionWeight(texel.a);
-    float disocclusionWeight2 = getDisocclusionWeight(texel2.a);
+    float disocclusionWeight2 = mix(getDisocclusionWeight(texel2.a), 0., max((0.25 - roughness) / 0.25, 0.));
 
     float dw = max(disocclusionWeight, disocclusionWeight2);
 
