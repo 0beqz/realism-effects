@@ -45,6 +45,9 @@ void main() {
     vec4 accumulatedTexel[textureCount];
     bool textureSampledThisFrame[textureCount];
 
+    float glossiness = 1.0;
+    int cnt = 0;
+
 #pragma unroll_loop_start
     for (int i = 0; i < textureCount; i++) {
         inputTexel[i] = textureLod(inputTexture[i], vUv, 0.0);
@@ -59,6 +62,8 @@ void main() {
             inputTexel[i].rgb = vec3(0.0);
         }
 
+        if (cnt++ == 0) glossiness = max(0., 1. - inputTexel[i].a);
+
         texIndex++;
     }
 #pragma unroll_loop_end
@@ -68,13 +73,20 @@ void main() {
     bool didMove = dot(velocity, velocity) > 0.000000001;
 
     vec3 worldPos = screenSpaceToWorldSpace(dilatedUv, depth, cameraMatrixWorld, projectionMatrixInverse);
+    vec3 viewPos = (viewMatrix * vec4(worldPos, 1.0)).xyz;
+
+    vec3 viewDir = normalize(viewPos);
+    vec3 viewNormal = (viewMatrix * vec4(worldNormal, 0.0)).xyz;
+
+    // get the angle between the view direction and the normal
+    viewAngle = dot(-viewDir, viewNormal);
 
     vec2 reprojectedUvDiffuse = vec2(-10.0);
     vec2 reprojectedUvSpecular[textureCount];
     bool didReproject;
     bool reprojectHitPoint;
 
-    float flatness = clamp(getFlatness(worldPos, worldNormal) / 0.025, 0., 1.);
+    flatness = getFlatness(worldPos, worldNormal);
 
 #pragma unroll_loop_start
     for (int i = 0; i < textureCount; i++) {
@@ -108,13 +120,11 @@ void main() {
                 vec4 hitPointTexel = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUvSpecular[i]);
                 vec4 diffuseTexel = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUvDiffuse);
 
-                accumulatedTexel[i] = mix(diffuseTexel, hitPointTexel, flatness);
+                accumulatedTexel[i] = mix(diffuseTexel, hitPointTexel, sqrt(flatness));
+
+                accumulatedTexel[i] = hitPointTexel;
             } else {
-                if (reprojectHitPoint) {
-                    accumulatedTexel[i] = vec4(inputTexel[i].rgb, 0.0);
-                } else {
-                    accumulatedTexel[i] = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUvDiffuse);
-                }
+                accumulatedTexel[i] = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUvDiffuse);
             }
 
 #ifdef VISUALIZE_DISOCCLUSIONS
@@ -133,7 +143,7 @@ void main() {
                     int clampRadius = reprojectedUvSpecular[i].x >= 0.0 ? 1 : neighborhoodClampRadius;
                     clampNeighborhood(inputTexture[i], clampedColor, inputTexel[i].rgb, clampRadius);
 
-                    accumulatedTexel[i].rgb = mix(accumulatedTexel[i].rgb, clampedColor, neighborhoodClampIntensity);
+                    accumulatedTexel[i].rgb = mix(accumulatedTexel[i].rgb, clampedColor, 0.5 + glossiness * 0.5);
                 }
             } else {
                 inputTexel[i].rgb = accumulatedTexel[i].rgb;
@@ -170,6 +180,8 @@ void main() {
         undoColorTransform(outputColor);
 
         // outputColor = vec3(flatness);
+
+        // outputColor = debugVec3;
 
         // if (reprojectHitPoint)
         //     outputColor = vec3(1.);

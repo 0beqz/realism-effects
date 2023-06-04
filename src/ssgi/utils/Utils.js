@@ -51,10 +51,6 @@ export const keepMaterialMapUpdated = (mrtMaterial, originalMaterial, prop, defi
 
 			if (originalMaterial[prop]) {
 				mrtMaterial.defines[define] = ""
-
-				if (define === "USE_NORMALMAP") {
-					mrtMaterial.defines.TANGENTSPACE_NORMALMAP = ""
-				}
 			} else {
 				delete mrtMaterial.defines[define]
 			}
@@ -165,8 +161,9 @@ export const createGlobalDisableIblIradianceUniform = () => {
 		)
 	}
 
-	if ("iblIrradianceDisabled" in ShaderLib.physical.uniforms)
+	if ("iblIrradianceDisabled" in ShaderLib.physical.uniforms) {
 		return ShaderLib.physical.uniforms["iblIrradianceDisabled"]
+	}
 
 	const globalIblIrradianceDisabledUniform = {
 		value: false

@@ -290,14 +290,12 @@ void main() {
 
     vec4 hitPosWS;
 
-    // if (dot(specularHitPos, specularHitPos) != 0.) {
     if (isMissedRay) {
         rayLength = 10.0e4;
     } else {
         hitPosWS = vec4(specularHitPos, 1.) * viewMatrix;
         rayLength = distance(worldPos, hitPosWS.xyz);
     }
-    // }
 
     if (specularSamples == 0.0) specularGI = vec3(-1.0);
 

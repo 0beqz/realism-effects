@@ -1,7 +1,5 @@
 ﻿import { PoissionDenoisePass } from "../poissionDenoise/PoissionDenoisePass.js"
 import { TemporalReprojectPass } from "../temporal-reproject/TemporalReprojectPass.js"
-import { DenoisePass } from "./pass/DenoisePass.js"
-import { SVGFTemporalReprojectPass } from "./pass/SVGFTemporalReprojectPass.js"
 
 export class SVGF {
 	constructor(scene, camera, velocityDepthNormalPass, textureCount = 1, options = {}) {

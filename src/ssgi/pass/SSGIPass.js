@@ -160,7 +160,7 @@ export class SSGIPass extends Pass {
 			if (originalMaterial.color) mrtMaterial.uniforms.color.value = originalMaterial.color
 
 			// update the child's MRT material
-			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "normalMap", "USE_NORMALMAP", true)
+			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "normalMap", "USE_NORMALMAP_TANGENTSPACE", true) // todo: object space normals support
 			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "roughnessMap", "USE_ROUGHNESSMAP", true)
 			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "metalnessMap", "USE_	METALNESSMAP", true)
 			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "map", "USE_MAP", true)

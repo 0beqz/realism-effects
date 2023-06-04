@@ -105,23 +105,25 @@ float getDisocclusionWeight(float x) {
 }
 
 void toLogSpace(inout vec3 color) {
-    // color = dot(color, color) > 0.000001 ? log(color) : vec3(0.000001);
+    color = dot(color, color) > 0.000001 ? log(color) : vec3(0.000001);
 }
 
 void toLinearSpace(inout vec3 color) {
-    // color = exp(color);
+    color = exp(color);
 }
 
 void evaluateNeighbor(
     const vec3 center, const float centerLum, const vec4 neighborTexel, inout vec3 denoised, const float disocclusionWeight,
     inout float totalWeight, const float basicWeight) {
-    float w = min(1., basicWeight * (0.5 + disocclusionWeight * 500.));
+    float w = mix(basicWeight, 1., disocclusionWeight);
 
-    w = mix(w, 1., disocclusionWeight);
+    w = min(w, 1.);
 
     denoised += w * neighborTexel.rgb;
     totalWeight += w;
 }
+
+const float samplesFloat = float(samples);
 
 void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.);
@@ -180,13 +182,14 @@ void main() {
     float disocclusionWeight = getDisocclusionWeight(texel.a);
     float disocclusionWeight2 = mix(getDisocclusionWeight(texel2.a), 0., max((0.25 - roughness) / 0.25, 0.));
 
-    float dw = max(disocclusionWeight, disocclusionWeight2);
+    // float denoiseOffset = mix(0.5, 1.0, roughness);
 
-    float denoiseOffset = mix(1., roughness, metalness) * (0.5 + dw * 2.);
-    float mirror = roughness * roughness > 0.1 ? 1. : roughness * roughness / 0.1;
+    float mirror = roughness * roughness > 0.25 ? 0. : roughness * roughness / 0.25;
+    float w = exp(-mirror * 100.);
 
     for (int i = 0; i < samples; i++) {
-        vec2 offset = rotationMatrix * poissonDisk[i] * denoiseOffset * smoothstep(0., 1., float(i) / float(samples));
+        float n = pow(2., 4. * float(i) / float(samples));
+        vec2 offset = rotationMatrix * poissonDisk[i] * smoothstep(0., 1., float(i) / samplesFloat);
         vec2 neighborUv = vUv + offset;
 
         vec4 neighborTexel = textureLod(inputTexture, neighborUv, 0.0);
@@ -219,16 +222,15 @@ void main() {
         float diffuseDiff = length(neighborDiffuse - diffuse);
         float diffuseSimilarity = exp(-diffuseDiff * diffusePhi);
 
-        float bw = max(0.001, depthSimilarity * roughnessSimilarity * metalnessSimilarity * diffuseSimilarity);
-        float basicWeight = normalSimilarity * bw;
+        float lumaDiff = abs(centerLum - luminance(neighborTexel.rgb));
+        float lumaSimilarity = exp(-lumaDiff * lumaPhi);
 
-        basicWeight = pow(basicWeight, lumaPhi);
+        float basicWeight = normalSimilarity * depthSimilarity * roughnessSimilarity * metalnessSimilarity * diffuseSimilarity * lumaSimilarity;
 
         evaluateNeighbor(center, centerLum, neighborTexel, denoised, disocclusionWeight, totalWeight, basicWeight);
 
-        // ! todo: account for roughness
-        basicWeight = pow(basicWeight, 1. + (1. - mirror) * 100.);
-        evaluateNeighbor(center2, centerLum2, neighborTexel2, denoised2, disocclusionWeight2, totalWeight2, basicWeight);
+        float basicWeight2 = basicWeight * w;
+        evaluateNeighbor(center2, centerLum2, neighborTexel2, denoised2, disocclusionWeight2, totalWeight2, basicWeight2);
     }
 
     if (totalWeight > 0.) denoised /= totalWeight;

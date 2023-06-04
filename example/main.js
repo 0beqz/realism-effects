@@ -237,7 +237,7 @@ const setEnvMesh = envMap => {
 		envMesh.height = 20
 		envMesh.scale.setScalar(100)
 		envMesh.updateMatrixWorld()
-		scene.add(envMesh)
+		// scene.add(envMesh)
 
 		scene.background = new Color("white")
 	}
@@ -255,7 +255,7 @@ const environments = [
 	"# cube map test"
 ]
 
-rgbeLoader.load("hdr/vintage_measuring_lab_1k.hdr", initEnvMap)
+rgbeLoader.load("hdr/garden_nook_1k.hdr", initEnvMap)
 
 const gltflLoader = new GLTFLoader()
 
@@ -328,7 +328,7 @@ const initScene = async () => {
 	fps = gpuTier.fps
 
 	const options = {
-		distance: 8.700000000000012,
+		distance: 11.41000000000001,
 		thickness: 4.999999999999997,
 		maxRoughness: 1,
 		blend: 0.95,
@@ -339,12 +339,12 @@ const initScene = async () => {
 		radius: 16,
 		rings: 5.625,
 		samples: 8,
-		lumaPhi: 0.3,
-		depthPhi: 21.739,
-		normalPhi: 94.565,
-		roughnessPhi: 39.129999999999995,
-		diffusePhi: 71.739,
-		envBlur: 0.55,
+		lumaPhi: 9.540979117872439e-18,
+		depthPhi: 0,
+		normalPhi: 40.217,
+		roughnessPhi: 13.042999999999997,
+		diffusePhi: 10.870000000000005,
+		envBlur: 3.2959746043559335e-17,
 		importanceSampling: true,
 		directLightMultiplier: 1,
 		steps: 20,
@@ -608,7 +608,6 @@ const initScene = async () => {
 		if (!isAoDemo) {
 			if (fps >= 256) {
 				setAA("FXAA")
-
 				resize()
 			} else {
 				setAA("FXAA")

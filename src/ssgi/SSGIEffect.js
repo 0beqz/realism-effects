@@ -83,7 +83,7 @@ export class SSGIEffect extends Effect {
 			options.roughnessDependent = [false, true]
 		}
 
-		options.neighborhoodClampRadius = 1
+		options.neighborhoodClampRadius = 2
 		options.neighborhoodClampIntensity = 0.75
 
 		const textureCount = options.diffuseOnly || options.specularOnly ? 1 : 2

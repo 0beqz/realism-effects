@@ -15,6 +15,7 @@ import {
 	copyNecessaryProps,
 	getVisibleChildren,
 	isChildMaterialRenderable,
+	keepMaterialMapUpdated,
 	saveBoneTexture,
 	updateVelocityDepthNormalMaterialAfterRender,
 	updateVelocityDepthNormalMaterialBeforeRender
@@ -83,6 +84,15 @@ export class VelocityDepthNormalPass extends Pass {
 			c.visible = isChildMaterialRenderable(c, originalMaterial)
 
 			if (this.renderDepth) velocityDepthNormalMaterial.defines.renderDepth = ""
+
+			keepMaterialMapUpdated(
+				velocityDepthNormalMaterial,
+				originalMaterial,
+				"normalMap",
+				"USE_NORMALMAP_TANGENTSPACE",
+				true
+			)
+			velocityDepthNormalMaterial.uniforms.normalMap.value = originalMaterial.normalMap
 
 			const map =
 				originalMaterial.map ||

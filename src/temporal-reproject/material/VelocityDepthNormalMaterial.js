@@ -97,7 +97,7 @@ export const velocity_uniforms = {
 	prevBoneTexture: { value: null },
 	boneTexture: { value: null },
 	normalMap: { value: null },
-	normalScale: { value: new Vector2() },
+	normalScale: { value: new Vector2(1, 1) },
 	uvTransform: { value: new Matrix3() }
 }
 
@@ -113,6 +113,8 @@ export class VelocityDepthNormalMaterial extends ShaderMaterial {
 					#include <morphtarget_pars_vertex>
 					#include <logdepthbuf_pars_vertex>
 					#include <clipping_planes_pars_vertex>
+
+					varying vec2 vUv;
 
 					#if defined( FLAT_SHADED ) || defined( USE_BUMPMAP ) || defined( TANGENTSPACE_NORMALMAP )
 						varying vec3 vViewPosition;
@@ -144,6 +146,8 @@ export class VelocityDepthNormalMaterial extends ShaderMaterial {
 							vViewPosition = - mvPosition.xyz;
 						#endif
 
+						vUv = uv;
+
                     }`,
 			fragmentShader: /* glsl */ `
 					#if defined( FLAT_SHADED ) || defined( USE_BUMPMAP ) || defined( TANGENTSPACE_NORMALMAP )
@@ -155,6 +159,9 @@ export class VelocityDepthNormalMaterial extends ShaderMaterial {
 
 					#include <uv_pars_fragment>
 					#include <normal_pars_fragment>
+					#include <normalmap_pars_fragment>
+
+					varying vec2 vUv;
 
 					// source: https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/
 					vec2 OctWrap( vec2 v ) {
@@ -176,8 +183,10 @@ export class VelocityDepthNormalMaterial extends ShaderMaterial {
 					}
 
                     void main() {
+						#define vNormalMapUv vUv
+
 						#include <normal_fragment_begin>
-                    	#include <normal_fragment_maps>
+                    	// #include <normal_fragment_maps>
 
 						${velocity_fragment_main}
 						vec3 worldNormal = normalize((vec4(normal, 0.) * viewMatrix).xyz);
