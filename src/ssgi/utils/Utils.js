@@ -81,6 +81,7 @@ export const saveBoneTexture = object => {
 	if (boneTexture && boneTexture.image.width === object.skeleton.boneTexture.image.width) {
 		boneTexture = object.material.uniforms.prevBoneTexture.value
 		boneTexture.image.data.set(object.skeleton.boneTexture.image.data)
+		boneTexture.needsUpdate = true
 	} else {
 		boneTexture?.dispose()
 
