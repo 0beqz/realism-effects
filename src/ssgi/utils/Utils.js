@@ -78,7 +78,7 @@ export const getMaxMipLevel = texture => {
 export const saveBoneTexture = object => {
 	let boneTexture = object.material.uniforms.prevBoneTexture.value
 
-	if (boneTexture && boneTexture.image.width === object.skeleton.boneTexture.width) {
+	if (boneTexture && boneTexture.image.width === object.skeleton.boneTexture.image.width) {
 		boneTexture = object.material.uniforms.prevBoneTexture.value
 		boneTexture.image.data.set(object.skeleton.boneTexture.image.data)
 	} else {
