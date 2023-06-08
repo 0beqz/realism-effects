@@ -85,16 +85,18 @@ void main() {
     vec2 reprojectedUvSpecular[textureCount];
     bool didReproject;
     bool reprojectHitPoint;
+    float rayLength;
 
     flatness = getFlatness(worldPos, worldNormal);
 
 #pragma unroll_loop_start
     for (int i = 0; i < textureCount; i++) {
-        reprojectHitPoint = reprojectSpecular[i] && inputTexel[i].a > 0.0;
+        rayLength = inputTexel[i].a;
+        reprojectHitPoint = reprojectSpecular[i] && rayLength > 0.0;
 
         // specular (hit point reprojection)
         if (reprojectHitPoint) {
-            reprojectedUvSpecular[i] = getReprojectedUV(depth, worldPos, worldNormal, inputTexel[i].a);
+            reprojectedUvSpecular[i] = getReprojectedUV(depth, worldPos, worldNormal, rayLength);
         } else {
             // init to -1 to signify that reprojection failed
             reprojectedUvSpecular[i] = vec2(-1.0);
@@ -120,9 +122,7 @@ void main() {
                 vec4 hitPointTexel = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUvSpecular[i]);
                 vec4 diffuseTexel = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUvDiffuse);
 
-                accumulatedTexel[i] = mix(diffuseTexel, hitPointTexel, sqrt(flatness));
-
-                accumulatedTexel[i] = hitPointTexel;
+                accumulatedTexel[i] = mix(diffuseTexel, hitPointTexel, rayLength > 10.0e3 ? 1. : flatness);
             } else {
                 accumulatedTexel[i] = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUvDiffuse);
             }
@@ -140,10 +140,9 @@ void main() {
                 if (neighborhoodClamp[i]) {
                     vec3 clampedColor = accumulatedTexel[i].rgb;
 
-                    int clampRadius = reprojectedUvSpecular[i].x >= 0.0 ? 1 : neighborhoodClampRadius;
-                    clampNeighborhood(inputTexture[i], clampedColor, inputTexel[i].rgb, clampRadius);
+                    clampNeighborhood(inputTexture[i], clampedColor, inputTexel[i].rgb, neighborhoodClampRadius);
 
-                    accumulatedTexel[i].rgb = mix(accumulatedTexel[i].rgb, clampedColor, 0.5 + glossiness * 0.5);
+                    accumulatedTexel[i].rgb = mix(accumulatedTexel[i].rgb, clampedColor, 0.25 + glossiness * 0.5);
                 }
             } else {
                 inputTexel[i].rgb = accumulatedTexel[i].rgb;
@@ -163,6 +162,7 @@ void main() {
 
     vec3 outputColor;
     float temporalReprojectMix;
+    float angleMix = angleDiff * (1. - viewAngle);
 
 #pragma unroll_loop_start
     for (int i = 0; i < textureCount; i++) {
@@ -174,12 +174,13 @@ void main() {
             if (reset) accumulatedTexel[i].a = 0.0;
 
             temporalReprojectMix = min(1. - 1. / (accumulatedTexel[i].a + 1.0), maxValue);
+            if (temporalReprojectMix > 0.5) temporalReprojectMix = mix(temporalReprojectMix, 0.5, angleMix);
+
+            accumulatedTexel[i].a = 1. / (1. - temporalReprojectMix) - 1.;
         }
 
         outputColor = mix(inputTexel[i].rgb, accumulatedTexel[i].rgb, temporalReprojectMix);
         undoColorTransform(outputColor);
-
-        // outputColor = vec3(flatness);
 
         // outputColor = debugVec3;
 

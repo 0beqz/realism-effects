@@ -356,16 +356,18 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
 
         envMapSample = sampleEquirectEnvMapColor(reflectedWS, envMapInfo.map, mip);
 
-        // if (!isEnvMisSample) {
         // we won't deal with calculating direct sun light from the env map as it is too noisy
-        float envLum = luminance(envMapSample);
 
-        const float maxEnvLum = 10.0;
+        float maxEnvLum = isEnvMisSample ? 50.0 : 5.0;
 
-        if (envLum > maxEnvLum) {
-            envMapSample *= maxEnvLum / envLum;
+        if (maxEnvLum != 0.0) {
+            // we won't deal with calculating direct sun light from the env map as it is too noisy
+            float envLum = luminance(envMapSample);
+
+            if (envLum > maxEnvLum) {
+                envMapSample *= maxEnvLum / envLum;
+            }
         }
-        // }
 
         return envMapSample;
 #else

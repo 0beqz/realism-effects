@@ -185,10 +185,9 @@ void main() {
     // float denoiseOffset = mix(0.5, 1.0, roughness);
 
     float mirror = roughness * roughness > 0.25 ? 0. : roughness * roughness / 0.25;
-    float w = exp(-mirror * 100.);
+    float w = exp(-mirror * 1000.);
 
     for (int i = 0; i < samples; i++) {
-        float n = pow(2., 4. * float(i) / float(samples));
         vec2 offset = rotationMatrix * poissonDisk[i] * smoothstep(0., 1., float(i) / samplesFloat);
         vec2 neighborUv = vUv + offset;
 

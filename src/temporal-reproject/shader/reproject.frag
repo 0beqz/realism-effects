@@ -8,6 +8,7 @@ float depth;
 float flatness;
 vec3 debugVec3;
 float viewAngle;
+float angleDiff;
 
 #define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
 
@@ -155,7 +156,7 @@ void getVelocityNormalDepth(inout vec2 dilatedUv, out vec2 vel, out vec3 normal,
 }
 
 #define DEPTH_DISTANCE    1.0
-#define NORMAL_DISTANCE   0.05
+#define NORMAL_DISTANCE   0.1
 #define VELOCITY_DISTANCE 0.005
 
 bool planeDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos, const vec3 worldNormal, const float distFactor) {
@@ -168,7 +169,7 @@ bool planeDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos
 }
 
 bool normalsDisocclusionCheck(vec3 worldNormal, vec3 lastWorldNormal, const float distFactor) {
-    return 1. - dot(worldNormal, lastWorldNormal) > NORMAL_DISTANCE * distFactor;
+    return pow(abs(dot(worldNormal, lastWorldNormal)), 2.) < NORMAL_DISTANCE * distFactor;
 }
 
 bool velocityDisocclusionCheck(const vec2 velocity, const vec2 lastVelocity, const float distFactor) {
@@ -187,17 +188,25 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const 
     float lastDepth = 0.0;
 
     getVelocityNormalDepth(dilatedReprojectedUv, lastVelocity, lastWorldNormal, lastDepth);
+    vec3 lastWorldPos = screenSpaceToWorldSpace(dilatedReprojectedUv, lastDepth, prevCameraMatrixWorld, prevProjectionMatrixInverse);
+
+    vec3 lastViewPos = (viewMatrix * vec4(lastWorldPos, 1.0)).xyz;
+
+    vec3 lastViewDir = normalize(lastViewPos);
+    vec3 lastViewNormal = (viewMatrix * vec4(lastWorldNormal, 0.0)).xyz;
+
+    // get the angle between the view direction and the normal
+    float lastViewAngle = dot(-lastViewDir, lastViewNormal);
+
+    angleDiff = min(1., abs(lastViewAngle - viewAngle) * 4.);
 
     float viewZ = abs(getViewZ(depth));
     float distFactor = 1. + 1. / (viewZ + 1.0);
-    distFactor *= viewAngle * viewAngle;
-    distFactor *= 2.;
+    distFactor *= viewAngle;
 
     if (velocityDisocclusionCheck(velocity, lastVelocity, distFactor)) return false;
 
     if (normalsDisocclusionCheck(worldNormal, lastWorldNormal, distFactor)) return false;
-
-    vec3 lastWorldPos = screenSpaceToWorldSpace(dilatedReprojectedUv, lastDepth, prevCameraMatrixWorld, prevProjectionMatrixInverse);
 
     if (planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal, distFactor))
         return false;
@@ -381,12 +390,12 @@ float getFlatness(vec3 g, vec3 rp) {
 }
 
 // source: https://www.shadertoy.com/view/stSfW1
-vec2 sampleBlocky(vec2 p) {
-    p /= invTexSize;
-    vec2 seam = floor(p + 0.5);
-    p = seam + clamp((p - seam) / fwidth(p), -0.5, 0.5);
-    return p * invTexSize;
-}
+// vec2 sampleBlocky(vec2 p) {
+//     p /= invTexSize;
+//     vec2 seam = floor(p + 0.5);
+//     p = seam + clamp((p - seam) / fwidth(p), -0.5, 0.5);
+//     return p * invTexSize;
+// }
 
 vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv) {
     // ! todo: investigate using sampleBlocky

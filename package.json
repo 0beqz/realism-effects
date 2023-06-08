@@ -7,7 +7,7 @@
 	"sideEffects": false,
 	"scripts": {
 		"build": "rollup -c",
-		"dev": "echo no tests yet",
+		"dev": "cd example && npm run dev",
 		"prepare": "husky install"
 	},
 	"keywords": [
