@@ -104,6 +104,7 @@ float getDisocclusionWeight(float x) {
     return 1. / (x + 1.);
 }
 
+// ! TODO: fix log space issue with certain models (NaN pixels) for example: see seiko-watch 3D model
 void toLogSpace(inout vec3 color) {
     color = dot(color, color) > 0.000001 ? log(color) : vec3(0.000001);
 }
@@ -184,8 +185,8 @@ void main() {
 
     // float denoiseOffset = mix(0.5, 1.0, roughness);
 
-    float mirror = roughness * roughness > 0.25 ? 0. : roughness * roughness / 0.25;
-    float w = exp(-mirror * 1000.);
+    float specularWeight = roughness * roughness > 0.25 ? 1. : roughness * roughness / 0.25;
+    specularWeight = pow(specularWeight, 10.0);
 
     for (int i = 0; i < samples; i++) {
         vec2 offset = rotationMatrix * poissonDisk[i] * smoothstep(0., 1., float(i) / samplesFloat);
@@ -221,14 +222,14 @@ void main() {
         float diffuseDiff = length(neighborDiffuse - diffuse);
         float diffuseSimilarity = exp(-diffuseDiff * diffusePhi);
 
-        float lumaDiff = abs(centerLum - luminance(neighborTexel.rgb));
-        float lumaSimilarity = exp(-lumaDiff * lumaPhi);
+        // float lumaDiff = abs(centerLum - luminance(neighborTexel.rgb));
+        // float lumaSimilarity = exp(-lumaDiff * lumaPhi);
 
-        float basicWeight = normalSimilarity * depthSimilarity * roughnessSimilarity * metalnessSimilarity * diffuseSimilarity * lumaSimilarity;
+        float basicWeight = normalSimilarity * depthSimilarity * roughnessSimilarity * metalnessSimilarity * diffuseSimilarity;
 
         evaluateNeighbor(center, centerLum, neighborTexel, denoised, disocclusionWeight, totalWeight, basicWeight);
 
-        float basicWeight2 = basicWeight * w;
+        float basicWeight2 = basicWeight * specularWeight;
         evaluateNeighbor(center2, centerLum2, neighborTexel2, denoised2, disocclusionWeight2, totalWeight2, basicWeight2);
     }
 
