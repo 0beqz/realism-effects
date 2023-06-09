@@ -8,6 +8,7 @@
 	"scripts": {
 		"build": "rollup -c",
 		"dev": "cd example && npm run dev",
+		"start": "npm run dev",
 		"prepare": "husky install"
 	},
 	"keywords": [
