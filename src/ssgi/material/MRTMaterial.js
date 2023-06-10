@@ -189,6 +189,7 @@ export class MRTMaterial extends ShaderMaterial {
                     #define vNormalMapUv vUv
                     #define vEmissiveMapUv vUv
                     #define vLightMapUv vUv
+                    #define vEmissiveMapUv vUv
 
                     #include <clipping_planes_fragment>
                     #include <logdepthbuf_fragment>
@@ -221,6 +222,9 @@ export class MRTMaterial extends ShaderMaterial {
                     #include <map_fragment>
                     #include <color_fragment>
 
+                    vec3 totalEmissiveRadiance = vec3( emissive * emissiveIntensity );
+                    #include <emissivemap_fragment>
+
                     ReflectedLight reflectedLight;
 
                     #include <lightmap_fragment>
@@ -229,10 +233,7 @@ export class MRTMaterial extends ShaderMaterial {
                         diffuseColor.rgb *= reflectedLight.indirectDiffuse;
                     #endif
 
-                    gl_FragColor.r = color2float(diffuseColor.rgb);
-                    gl_FragColor.g = packNormal(worldNormal);
-                    gl_FragColor.b = packVec2(vec2(roughnessFactor, metalnessFactor));
-                    gl_FragColor.a = color2float(emissive);
+                    gl_FragColor = packGBuffer(diffuseColor.rgb, worldNormal, roughnessFactor, metalnessFactor, totalEmissiveRadiance);
                 }
             `.replace("#include <gbuffer_packing>", gbuffer_packing),
 			toneMapped: false,

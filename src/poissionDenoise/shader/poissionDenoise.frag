@@ -107,11 +107,11 @@ float getDisocclusionWeight(float x) {
 
 // ! TODO: fix log space issue with certain models (NaN pixels) for example: see seiko-watch 3D model
 void toLogSpace(inout vec3 color) {
-    // color = dot(color, color) > 0.000001 ? log(color) : vec3(0.000001);
+    color = dot(color, color) > 0.000000001 ? log(color) : vec3(0.000000001);
 }
 
 void toLinearSpace(inout vec3 color) {
-    // color = exp(color);
+    color = exp(color);
 }
 
 void evaluateNeighbor(const vec4 neighborTexel, inout vec3 denoised, const float disocclusionWeight,
@@ -140,8 +140,8 @@ void main() {
     float min1 = min(texel.r, min(texel.g, texel.b));
     float min2 = min(texel2.r, min(texel2.g, texel2.b));
 
-    bool useLogSpace = min1 > 0.001;
-    bool useLogSpace2 = min2 > 0.001;
+    bool useLogSpace = min1 > 0.000000001;
+    bool useLogSpace2 = min2 > 0.000000001;
 
     if (useLogSpace) toLogSpace(texel.rgb);
     if (useLogSpace2) toLogSpace(texel2.rgb);
@@ -205,34 +205,35 @@ void main() {
 
         float neighborDepth = textureLod(depthTexture, neighborUv, 0.0).x;
 
-        if (neighborDepth == 1.0) continue;
-        vec3 neighborWorldPos = getWorldPos(neighborDepth, neighborUv);
+        if (neighborDepth != 1.0) {
+            vec3 neighborWorldPos = getWorldPos(neighborDepth, neighborUv);
 
-        float normalDiff = 1. - max(dot(normal, neighborNormal), 0.);
-        float normalSimilarity = exp(-normalDiff * normalPhi);
+            float normalDiff = 1. - max(dot(normal, neighborNormal), 0.);
+            float normalSimilarity = exp(-normalDiff * normalPhi);
 
-        float depthDiff = 1. + distToPlane(worldPos, neighborWorldPos, normalize(normal + neighborNormal));
-        depthDiff = depthDiff * depthDiff - 1.;
-        float depthSimilarity = exp(-depthDiff * depthPhi);
+            float depthDiff = 1. + distToPlane(worldPos, neighborWorldPos, normalize(normal + neighborNormal));
+            depthDiff = depthDiff * depthDiff - 1.;
+            float depthSimilarity = exp(-depthDiff * depthPhi);
 
-        float roughnessDiff = abs(roughness - neighborRoughness);
-        float roughnessSimilarity = exp(-roughnessDiff * roughnessPhi);
+            float roughnessDiff = abs(roughness - neighborRoughness);
+            float roughnessSimilarity = exp(-roughnessDiff * roughnessPhi);
 
-        float metalnessDiff = abs(metalness - neighborMetalness);
-        float metalnessSimilarity = exp(-metalnessDiff * roughnessPhi);
+            float metalnessDiff = abs(metalness - neighborMetalness);
+            float metalnessSimilarity = exp(-metalnessDiff * roughnessPhi);
 
-        float diffuseDiff = length(neighborDiffuse - diffuse);
-        float diffuseSimilarity = exp(-diffuseDiff * diffusePhi);
+            float diffuseDiff = length(neighborDiffuse - diffuse);
+            float diffuseSimilarity = exp(-diffuseDiff * diffusePhi);
 
-        float lumaDiff = abs(centerLum - luminance(neighborTexel.rgb));
-        float lumaSimilarity = exp(-lumaDiff * lumaPhi);
+            float lumaDiff = abs(centerLum - luminance(neighborTexel.rgb));
+            float lumaSimilarity = exp(-lumaDiff * lumaPhi);
 
-        float basicWeight = normalSimilarity * depthSimilarity * roughnessSimilarity * metalnessSimilarity * diffuseSimilarity;
+            float basicWeight = normalSimilarity * depthSimilarity * roughnessSimilarity * metalnessSimilarity * diffuseSimilarity * lumaSimilarity;
 
-        evaluateNeighbor(neighborTexel, denoised, disocclusionWeight, totalWeight, basicWeight);
+            evaluateNeighbor(neighborTexel, denoised, disocclusionWeight, totalWeight, basicWeight);
 
-        float basicWeight2 = basicWeight * specularWeight;
-        evaluateNeighbor(neighborTexel2, denoised2, disocclusionWeight2, totalWeight2, basicWeight2);
+            float basicWeight2 = basicWeight * specularWeight;
+            evaluateNeighbor(neighborTexel2, denoised2, disocclusionWeight2, totalWeight2, basicWeight2);
+        }
     }
 
     if (totalWeight > 0.) denoised /= totalWeight;
@@ -302,7 +303,7 @@ void main() {
         // denoised = vec3(roughness < 0.025 ? 1. : 0.);
     }
 
-    gDiffuse = vec4(denoised, texel.a);
+    gDiffuse = vec4(emissive, texel.a);
     gSpecular = vec4(denoised2, texel2.a);
 #endif
 }

@@ -1,7 +1,7 @@
 import { getGPUTier } from "detect-gpu"
 import dragDrop from "drag-drop"
 import * as POSTPROCESSING from "postprocessing"
-import { MotionBlurEffect, SSGIEffect, TRAAEffect } from "realism-effects"
+import { SSGIEffect, TRAAEffect } from "realism-effects"
 import Stats from "stats.js"
 import * as THREE from "three"
 import {
@@ -24,15 +24,15 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader"
 import { GroundProjectedSkybox } from "three/examples/jsm/objects/GroundProjectedSkybox"
 import { Pane } from "tweakpane"
+import { HBAOEffect } from "../src/hbao/HBAOEffect"
+import { SharpnessEffect } from "../src/sharpness/SharpnessEffect"
+import { SSAOEffect } from "../src/ssao/SSAOEffect"
 import { VelocityDepthNormalPass } from "../src/temporal-reproject/pass/VelocityDepthNormalPass"
+import { HBAODebugGUI } from "./HBAODebugGUI"
+import { HBAOSSAOComparisonEffect } from "./HBAOSSAOComparisonEffect"
+import { SSAODebugGUI } from "./SSAODebugGUI"
 import { SSGIDebugGUI } from "./SSGIDebugGUI"
 import "./style.css"
-import { HBAOEffect } from "../src/hbao/HBAOEffect"
-import { HBAODebugGUI } from "./HBAODebugGUI"
-import { SSAODebugGUI } from "./SSAODebugGUI"
-import { SSAOEffect } from "../src/ssao/SSAOEffect"
-import { HBAOSSAOComparisonEffect } from "./HBAOSSAOComparisonEffect"
-import { SharpnessEffect } from "../src/sharpness/SharpnessEffect"
 
 let traaEffect
 let traaPass
@@ -340,10 +340,10 @@ const initScene = async () => {
 		rings: 5.625,
 		samples: 8,
 		lumaPhi: 9.540979117872439e-18,
-		depthPhi: 7.065,
-		normalPhi: 55.435,
+		depthPhi: 14.13,
+		normalPhi: 70.652,
 		roughnessPhi: 13.042999999999997,
-		diffusePhi: 7.609000000000004,
+		diffusePhi: 15.217000000000004,
 		envBlur: 0,
 		importanceSampling: true,
 		directLightMultiplier: 1,
@@ -918,11 +918,11 @@ const setupAsset = asset => {
 				c.material.map.magFilter = NearestFilter
 			}
 
-			const lm = c.material.emissiveMap
-			c.material.emissiveMap = null
-			c.material.emissive = new Color(0x000000)
-			c.material.emissiveIntensity = 0.0
-			c.material.lightMap = lm
+			// const lm = c.material.emissiveMap
+			// c.material.emissiveMap = null
+			// c.material.emissive = new Color(0x000000)
+			// c.material.emissiveIntensity = 0.0
+			// c.material.lightMap = lm
 
 			c.material.transparent = false
 		}

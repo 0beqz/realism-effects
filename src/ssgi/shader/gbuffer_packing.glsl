@@ -109,6 +109,10 @@ void getGData(sampler2D gBufferTexture, vec2 uv, out vec3 diffuse, out vec3 norm
     getGDataAndGBuffer(gBufferTexture, uv, diffuse, normal, roughness, metalness, gBuffer);
 }
 
+float vec4tofloat(vec4 v) {
+    uint a = packSnorm1x8(v.x);
+}
+
 vec4 packGBuffer(vec3 diffuse, vec3 normal, float roughness, float metalness, vec3 emissive) {
     vec4 gBuffer;
 

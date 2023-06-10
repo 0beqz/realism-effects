@@ -45,7 +45,6 @@ void main() {
     vec4 accumulatedTexel[textureCount];
     bool textureSampledThisFrame[textureCount];
 
-    float glossiness = 1.0;
     int cnt = 0;
 
 #pragma unroll_loop_start
@@ -62,7 +61,7 @@ void main() {
             inputTexel[i].rgb = vec3(0.0);
         }
 
-        if (cnt++ == 0) glossiness = max(0., 1. - inputTexel[i].a);
+        if (cnt++ == 0) roughness = max(0., inputTexel[i].a);
 
         texIndex++;
     }
@@ -142,7 +141,7 @@ void main() {
 
                     clampNeighborhood(inputTexture[i], clampedColor, inputTexel[i].rgb, neighborhoodClampRadius);
 
-                    accumulatedTexel[i].rgb = mix(accumulatedTexel[i].rgb, clampedColor, 0.25 + glossiness * 0.5);
+                    accumulatedTexel[i].rgb = mix(accumulatedTexel[i].rgb, clampedColor, 1.);
                 }
             } else {
                 inputTexel[i].rgb = accumulatedTexel[i].rgb;
@@ -182,12 +181,7 @@ void main() {
         outputColor = mix(inputTexel[i].rgb, accumulatedTexel[i].rgb, temporalReprojectMix);
         undoColorTransform(outputColor);
 
-        // outputColor = debugVec3;
-
-        // if (reprojectHitPoint)
-        //     outputColor = vec3(1.);
-        // else
-        //     outputColor = vec3(0.);
+        // outputColor = vec3(flatness);
 
         gOutput[i] = vec4(outputColor, accumulatedTexel[i].a);
 

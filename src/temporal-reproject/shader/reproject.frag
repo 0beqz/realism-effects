@@ -9,6 +9,7 @@ float flatness;
 vec3 debugVec3;
 float viewAngle;
 float angleDiff;
+float roughness = 1.0;
 
 #define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
 
@@ -179,9 +180,6 @@ bool velocityDisocclusionCheck(const vec2 velocity, const vec2 lastVelocity, con
 bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const vec3 worldNormal, const bool isHitPoint) {
     if (reprojectedUv.x > 1.0 || reprojectedUv.x < 0.0 || reprojectedUv.y > 1.0 || reprojectedUv.y < 0.0) return false;
 
-    // ! todo: make hit point check more robust but less restrictive
-    // if (isHitPoint) return true;
-
     vec2 dilatedReprojectedUv = reprojectedUv;
     vec2 lastVelocity = vec2(0.0);
     vec3 lastWorldNormal = vec3(0.0);
@@ -214,77 +212,8 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const 
     return true;
 }
 
-vec3 worldSpaceToViewSpace(vec3 worldPosition) {
-    vec4 viewPosition = viewMatrix * vec4(worldPosition, 1.0);
-    return viewPosition.xyz / viewPosition.w;
-}
-
-vec3 world_to_prev_view(vec3 world_position, float w) {
-    vec4 prev_view_position = prevViewMatrix * vec4(world_position, w);
-    return prev_view_position.xyz / (prev_view_position.w == 0.0 ? 1.0 : prev_view_position.w);
-}
-
-vec3 view_to_ss(vec3 view_position, float w) {
-    vec4 projectedCoord = projectionMatrix * vec4(view_position, w);
-    projectedCoord.xy /= projectedCoord.w;
-    // [-1, 1] --> [0, 1] (NDC to screen position)
-    projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;
-
-    return projectedCoord.xyz;
-}
-
-vec3 proj_point_in_plane(vec3 p, vec3 v0, vec3 n, out float d) {
-    d = dot(n, p - v0);
-    return p - (n * d);
-}
-
-vec3 ss_to_view(const vec3 uvd, float w) {
-    vec3 worldSpace = screenSpaceToWorldSpace(uvd.xy, uvd.z, cameraMatrixWorld, projectionMatrixInverse);
-
-    vec3 viewSpace = worldSpaceToViewSpace(worldSpace);
-
-    return viewSpace;
-}
-
-vec3 find_reflection_incident_point(vec3 p0, vec3 p1, vec3 v0, vec3 n) {
-    float d0 = 0.0;
-    float d1 = 0.0;
-    vec3 proj_p0 = proj_point_in_plane(p0, v0, n, d0);
-    vec3 proj_p1 = proj_point_in_plane(p1, v0, n, d1);
-
-    if (d1 < d0)
-        return (proj_p0 - proj_p1) * d1 / (d0 + d1) + proj_p1;
-    else
-        return (proj_p1 - proj_p0) * d0 / (d0 + d1) + proj_p0;
-}
-
-vec2 find_previous_reflection_position(
-    vec3 ss_pos, vec3 ss_ray,
-    vec2 surface_motion_vector, vec2 reflection_motion_vector,
-    vec3 world_normal) {
-    vec3 ss_p0 = vec3(0.0, 0.0, 0.0);
-    ss_p0.xy = ss_pos.xy - surface_motion_vector;
-    ss_p0.z = texture(velocityTexture, ss_p0.xy).a;
-
-    vec3 ss_p1 = vec3(0.0, 0.0, 0.0);
-    ss_p1.xy = ss_ray.xy - reflection_motion_vector;
-    ss_p1.z = texture(velocityTexture, ss_p1.xy).a;
-
-    vec3 view_n = normalize(world_to_prev_view(world_normal, 0.0));
-    vec3 view_p0 = vec3(0.0, 0.0, 0.0);
-    vec3 view_v0 = ss_to_view(ss_p0, 1.0);
-    vec3 view_p1 = ss_to_view(ss_p1, 1.0);
-
-    vec3 view_intersection =
-        find_reflection_incident_point(view_p0, view_p1, view_v0, view_n);
-    vec2 ss_intersection = viewSpaceToScreenSpace(view_intersection, projectionMatrix);
-    // debugVec3 = ss_intersection.xyy;
-
-    return ss_intersection.xy;
-}
-
 vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength) {
-    if (rayLength > 10.0e3) {
+    if (roughness > 0.375 || (rayLength > 10.0e3 && flatness < 0.95)) {
         vec2 velocity = textureLod(velocityTexture, vUv, 0.).xy;
 
         return vUv - velocity;
