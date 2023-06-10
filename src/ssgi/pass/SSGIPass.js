@@ -176,7 +176,7 @@ export class SSGIPass extends Pass {
 
 				const textureKey = Object.keys(originalMaterial).find(key => {
 					const value = originalMaterial[key]
-					return value instanceof Texture && value.matrix
+					return value?.isTexture && value.matrix
 				})
 
 				if (textureKey) mrtMaterial.uniforms.uvTransform.value = originalMaterial[textureKey].matrix
