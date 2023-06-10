@@ -204,7 +204,8 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const 
 
     if (velocityDisocclusionCheck(velocity, lastVelocity, distFactor)) return false;
 
-    if (normalsDisocclusionCheck(worldNormal, lastWorldNormal, distFactor)) return false;
+    // ! todo: investigate normal disocclusion check
+    // if (normalsDisocclusionCheck(worldNormal, lastWorldNormal, distFactor)) return false;
 
     if (planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal, distFactor))
         return false;
@@ -213,7 +214,7 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const 
 }
 
 vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength) {
-    if (roughness > 0.375 || (rayLength > 10.0e3 && flatness < 0.95)) {
+    if (roughness > 0.375 || (flatness < 1. && rayLength > 10.0e3)) {
         vec2 velocity = textureLod(velocityTexture, vUv, 0.).xy;
 
         return vUv - velocity;

@@ -186,7 +186,7 @@ void main() {
     // float denoiseOffset = mix(0.5, 1.0, roughness);
 
     float specularWeight = roughness * roughness > 0.25 ? 1. : roughness * roughness / 0.25;
-    specularWeight = pow(specularWeight, 10.0);
+    specularWeight = pow(specularWeight * specularWeight, 10.0);
 
     for (int i = 0; i < samples; i++) {
         vec2 offset = rotationMatrix * poissonDisk[i] * smoothstep(0., 1., float(i) / samplesFloat);
@@ -297,13 +297,10 @@ void main() {
 
         // vec3 directLight = textureLod(directLightTexture, vUv, 0.).rgb;
 
-        denoised = diffuseComponent + specularComponent;
-        // denoised = denoised2;
-        // denoised = vec3(totalWeight / float(samples));
-        // denoised = vec3(roughness < 0.025 ? 1. : 0.);
+        denoised = diffuseComponent + specularComponent + emissive;
     }
 
-    gDiffuse = vec4(emissive, texel.a);
+    gDiffuse = vec4(denoised, texel.a);
     gSpecular = vec4(denoised2, texel2.a);
 #endif
 }

@@ -16,7 +16,6 @@ uniform sampler2D accumulatedTexture;
 uniform sampler2D normalTexture;
 uniform sampler2D depthTexture;
 uniform sampler2D diffuseTexture;
-uniform sampler2D emissiveTexture;
 uniform sampler2D blueNoiseTexture;
 uniform sampler2D velocityTexture;
 
@@ -378,16 +377,7 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
 
     // reproject the coords from the last frame
     vec2 reprojectedUv = coords.xy - textureLod(velocityTexture, coords.xy, 0.0).xy;
-
-    vec3 emissiveColor = textureLod(emissiveTexture, coords.xy, 0.).rgb * 10.;
-
-    vec3 reprojectedGI = textureLod(accumulatedTexture, reprojectedUv, 0.).rgb;
-
-    vec3 SSGI = reprojectedGI + emissiveColor;
-
-    // #ifdef useDirectLight
-    //     SSGI += textureLod(directLightTexture, coords.xy, 0.).rgb * directLightMultiplier;
-    // #endif
+    vec3 SSGI = textureLod(accumulatedTexture, reprojectedUv, 0.).rgb;
 
     if (allowMissedRays) {
         float ssgiLum = luminance(SSGI);
