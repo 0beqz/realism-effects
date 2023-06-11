@@ -34,25 +34,10 @@ export class SSGIDebugGUI {
 		temporalReprojectionFolder.addInput(params, "blend", { min: 0, max: 1, step: 0.001 })
 		const denoiseFolder = pane.addFolder({ title: "Denoise" })
 		denoiseFolder.addInput(params, "denoiseIterations", { min: 0, max: 5, step: 1 })
-		denoiseFolder.addInput(params, "denoiseKernel", { min: 1, max: 5, step: 1 })
-		denoiseFolder.addInput(params, "denoiseDiffuse", {
-			min: 0,
-			max: 50,
-			step: 0.01
-		})
-		denoiseFolder.addInput(params, "denoiseSpecular", {
-			min: 0,
-			max: 50,
-			step: 0.01
-		})
 		denoiseFolder.addInput(params, "radius", { min: 0, max: 32, step: 1 })
 		denoiseFolder.addInput(params, "rings", { min: 0, max: 16, step: 0.125 })
 		denoiseFolder.addInput(params, "samples", { min: 0, max: 32, step: 1 })
-		denoiseFolder.addInput(params, "lumaPhi", {
-			min: 0,
-			max: 100,
-			step: 0.001
-		})
+
 		denoiseFolder.addInput(params, "depthPhi", {
 			min: 0,
 			max: 50,

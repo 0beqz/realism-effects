@@ -25,20 +25,18 @@ export function generateDenoiseSamples(numSamples, numRings, r, texelSize) {
 export function generatePoissonDiskConstant(poissonDisk) {
 	const samples = poissonDisk.length
 
-	let glslCode = "const vec2 poissonDisk[samples] = vec2[samples](\n"
+	let glslCode = "vec2[" + samples + "]("
 
 	for (let i = 0; i < samples; i++) {
 		const sample = poissonDisk[i]
-		glslCode += `    vec2(${sample.x}, ${sample.y})`
+		glslCode += `vec2(${sample.x}, ${sample.y})`
 
 		if (i < samples - 1) {
 			glslCode += ","
 		}
-
-		glslCode += "\n"
 	}
 
-	glslCode += ");"
+	glslCode += ")"
 
 	return glslCode
 }

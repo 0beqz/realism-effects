@@ -100,7 +100,7 @@ export class TemporalReprojectPass extends Pass {
 			accumulatedTexture.needsUpdate = true
 		}
 
-		this.fullscreenMaterial.uniforms.velocityTexture.value = velocityDepthNormalPass.texture
+		this.fullscreenMaterial.uniforms.velocityTexture.value = velocityDepthNormalPass.renderTarget.texture
 		this.fullscreenMaterial.uniforms.depthTexture.value = velocityDepthNormalPass.depthTexture
 
 		for (const opt of ["reprojectSpecular", "neighborhoodClamp"]) {

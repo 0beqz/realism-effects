@@ -92,10 +92,6 @@ export class PoissionDenoisePass extends Pass {
 		uniforms["depthPhi"].value = options.depthPhi
 		uniforms["normalPhi"].value = options.normalPhi
 
-		if (options.normalInRgb) {
-			this.fullscreenMaterial.defines.NORMAL_IN_RGB = ""
-		}
-
 		// these properties need the shader to be recompiled
 		for (const prop of ["radius", "rings", "samples"]) {
 			Object.defineProperty(this, prop, {
@@ -130,7 +126,7 @@ export class PoissionDenoisePass extends Pass {
 		this.fullscreenMaterial.defines.samples = this.samples
 
 		const poissonDiskConstant = generatePoissonDiskConstant(poissonDisk)
-		this.fullscreenMaterial.fragmentShader = poissonDiskConstant + "\n" + finalFragmentShader
+		this.fullscreenMaterial.defines.POISSON_DISK_SAMPLES = poissonDiskConstant
 		this.fullscreenMaterial.needsUpdate = true
 	}
 
@@ -152,7 +148,6 @@ export class PoissionDenoisePass extends Pass {
 	}
 
 	render(renderer) {
-		this.iterations = 2
 		this.fullscreenMaterial.uniforms.index.value = 0
 
 		const noiseTexture = this.fullscreenMaterial.uniforms.blueNoiseTexture.value
@@ -182,7 +177,7 @@ export class PoissionDenoisePass extends Pass {
 			renderer.setRenderTarget(renderTarget)
 			renderer.render(this.scene, this.camera)
 
-			this.fullscreenMaterial.uniforms.index.value = (this.fullscreenMaterial.uniforms.index.value + 1) % 4
+			this.fullscreenMaterial.uniforms.index.value = this.fullscreenMaterial.uniforms.index.value + 1
 		}
 	}
 }

@@ -8,8 +8,8 @@ float depth;
 float flatness;
 vec3 debugVec3;
 float viewAngle;
-float angleDiff;
-float roughness = 1.0;
+float angleMix;
+float roughness = 0.0;
 
 #define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
 
@@ -156,7 +156,7 @@ void getVelocityNormalDepth(inout vec2 dilatedUv, out vec2 vel, out vec3 normal,
 #endif
 }
 
-#define DEPTH_DISTANCE    1.0
+#define PLANE_DISTANCE    5.0
 #define NORMAL_DISTANCE   0.1
 #define VELOCITY_DISTANCE 0.005
 
@@ -166,7 +166,7 @@ bool planeDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos
     vec3 toCurrent = worldPos - lastWorldPos;
     float distToPlane = abs(dot(toCurrent, worldNormal));
 
-    return distToPlane > DEPTH_DISTANCE * distFactor;
+    return distToPlane > PLANE_DISTANCE * distFactor;
 }
 
 bool normalsDisocclusionCheck(vec3 worldNormal, vec3 lastWorldNormal, const float distFactor) {
@@ -196,16 +196,17 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const 
     // get the angle between the view direction and the normal
     float lastViewAngle = dot(-lastViewDir, lastViewNormal);
 
-    angleDiff = min(1., abs(lastViewAngle - viewAngle) * 4.);
+    float angleDiff = min(1., abs(lastViewAngle - viewAngle) * 4.);
+    angleMix = angleDiff * (1. - viewAngle);
 
     float viewZ = abs(getViewZ(depth));
     float distFactor = 1. + 1. / (viewZ + 1.0);
-    distFactor *= viewAngle;
+    // distFactor *= 1. - angleMix;
 
     if (velocityDisocclusionCheck(velocity, lastVelocity, distFactor)) return false;
 
     // ! todo: investigate normal disocclusion check
-    // if (normalsDisocclusionCheck(worldNormal, lastWorldNormal, distFactor)) return false;
+    if (normalsDisocclusionCheck(worldNormal, lastWorldNormal, distFactor)) return false;
 
     if (planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal, distFactor))
         return false;
@@ -214,9 +215,10 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const 
 }
 
 vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength) {
-    if (roughness > 0.375 || (flatness < 1. && rayLength > 10.0e3)) {
-        vec2 velocity = textureLod(velocityTexture, vUv, 0.).xy;
+    // ! todo: investigate using motion reprojection for reflections when there is no
+    // camera position change (only rotation change) as it barely causes any smearing for reflections
 
+    if (roughness > 0.375 || (flatness < 1. && rayLength > 10.0e3)) {
         return vUv - velocity;
     }
 
@@ -233,7 +235,7 @@ vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength) {
     reprojectedHitPoint.xyz /= reprojectedHitPoint.w;
     reprojectedHitPoint.xy = reprojectedHitPoint.xy * 0.5 + 0.5;
 
-    return reprojectedHitPoint.xy;
+    return mix(reprojectedHitPoint.xy, vUv - velocity, roughness / 0.375);
 }
 
 vec2 getReprojectedUV(const float depth, const vec3 worldPos, const vec3 worldNormal, const float rayLength) {
@@ -320,16 +322,16 @@ float getFlatness(vec3 g, vec3 rp) {
 }
 
 // source: https://www.shadertoy.com/view/stSfW1
-// vec2 sampleBlocky(vec2 p) {
-//     p /= invTexSize;
-//     vec2 seam = floor(p + 0.5);
-//     p = seam + clamp((p - seam) / fwidth(p), -0.5, 0.5);
-//     return p * invTexSize;
-// }
+vec2 sampleBlocky(vec2 p) {
+    p /= invTexSize;
+    vec2 seam = floor(p + 0.5);
+    p = seam + clamp((p - seam) / fwidth(p), -0.5, 0.5);
+    return p * invTexSize;
+}
 
 vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv) {
     // ! todo: investigate using sampleBlocky
-    vec4 blocky = SampleTextureCatmullRom(tex, reprojectedUv, 1. / invTexSize);
+    vec4 blocky = SampleTextureCatmullRom(tex, sampleBlocky(reprojectedUv), 1. / invTexSize);
 
     return blocky;
 }

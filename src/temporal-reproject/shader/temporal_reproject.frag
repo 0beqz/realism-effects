@@ -141,7 +141,7 @@ void main() {
 
                     clampNeighborhood(inputTexture[i], clampedColor, inputTexel[i].rgb, neighborhoodClampRadius);
 
-                    accumulatedTexel[i].rgb = mix(accumulatedTexel[i].rgb, clampedColor, 1.);
+                    accumulatedTexel[i].rgb = mix(accumulatedTexel[i].rgb, clampedColor, 0.25 + roughness * 0.5);
                 }
             } else {
                 inputTexel[i].rgb = accumulatedTexel[i].rgb;
@@ -161,7 +161,6 @@ void main() {
 
     vec3 outputColor;
     float temporalReprojectMix;
-    float angleMix = angleDiff * (1. - viewAngle);
 
 #pragma unroll_loop_start
     for (int i = 0; i < textureCount; i++) {
@@ -181,7 +180,7 @@ void main() {
         outputColor = mix(inputTexel[i].rgb, accumulatedTexel[i].rgb, temporalReprojectMix);
         undoColorTransform(outputColor);
 
-        // outputColor = vec3(flatness);
+        // outputColor = vec3(worldNormal);
 
         gOutput[i] = vec4(outputColor, accumulatedTexel[i].a);
 

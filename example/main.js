@@ -1,7 +1,7 @@
 import { getGPUTier } from "detect-gpu"
 import dragDrop from "drag-drop"
 import * as POSTPROCESSING from "postprocessing"
-import { SSGIEffect, TRAAEffect } from "realism-effects"
+import { SSGIEffect, SSREffect, TRAAEffect } from "realism-effects"
 import Stats from "stats.js"
 import * as THREE from "three"
 import {
@@ -332,18 +332,18 @@ const initScene = async () => {
 		thickness: 4.999999999999997,
 		maxRoughness: 1,
 		blend: 0.95,
-		denoiseIterations: 3,
+		denoiseIterations: 2,
 		denoiseKernel: 3,
 		denoiseDiffuse: 25,
 		denoiseSpecular: 25.54,
-		radius: 16,
+		radius: 12,
 		rings: 5.625,
-		samples: 8,
+		samples: 16,
 		lumaPhi: 9.540979117872439e-18,
-		depthPhi: 14.13,
-		normalPhi: 70.652,
-		roughnessPhi: 13.042999999999997,
-		diffusePhi: 15.217000000000004,
+		depthPhi: 26.087,
+		normalPhi: 71.739,
+		roughnessPhi: 33.696,
+		diffusePhi: 13.043000000000006,
 		envBlur: 0,
 		importanceSampling: true,
 		directLightMultiplier: 1,

@@ -214,7 +214,7 @@ export class MRTMaterial extends ShaderMaterial {
                         discard;
                         return;
                     }
-                    
+
                     #include <metalnessmap_fragment>
 
                     vec4 diffuseColor = vec4(color, metalnessFactor);

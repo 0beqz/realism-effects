@@ -13,6 +13,9 @@ import { CubeToEquirectEnvPass } from "./pass/CubeToEquirectEnvPass.js"
 import { SSGIPass } from "./pass/SSGIPass.js"
 /* eslint-disable camelcase */
 import ssgi_compose from "./shader/ssgi_compose.frag"
+import ssgi_poisson_compose_functions from "./shader/ssgi_poisson_compose_functions.glsl"
+import ssgi_poisson_compose from "./shader/ssgi_poisson_compose.frag"
+
 import denoise_compose from "./shader/denoise_compose.frag"
 import denoise_compose_functions from "./shader/denoise_compose_functions.frag"
 import { defaultSSGIOptions } from "./SSGIOptions"
@@ -34,7 +37,7 @@ export class SSGIEffect extends Effect {
 	selection = new Selection()
 	isUsingRenderPass = true
 
-	constructor(composer, scene, camera, velocityDepthNormalPass, options = defaultSSGIOptions) {
+	constructor(composer, scene, camera, velocityDepthNormalPass, options) {
 		options = { ...defaultSSGIOptions, ...options }
 
 		super("SSGIEffect", ssgi_compose, {
@@ -98,24 +101,30 @@ export class SSGIEffect extends Effect {
 
 		this.svgf = new SVGF(scene, camera, velocityDepthNormalPass, textureCount, options)
 
-		if (definesName === "ssgi") {
-			this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.fragmentShader =
-				this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.fragmentShader.replace(
-					"accumulatedTexel[ 1 ].rgb = clampedColor;",
-					`
-						float roughness = inputTexel[ 0 ].a;
-						accumulatedTexel[ 1 ].rgb = mix(accumulatedTexel[ 1 ].rgb, clampedColor, 1. - sqrt(roughness));
-						`
-				)
-		} else if (definesName === "ssr") {
-			this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.fragmentShader =
-				this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.fragmentShader.replace(
-					"accumulatedTexel[ 0 ].rgb = clampedColor;",
-					`
-					accumulatedTexel[ 0 ].rgb = mix(accumulatedTexel[ 0 ].rgb, clampedColor, 0.5);
-					`
-				)
-		}
+		this.svgf.denoisePass.fullscreenMaterial.fragmentShader = this.svgf.denoisePass.fullscreenMaterial.fragmentShader
+			.replace("void main() {", ssgi_poisson_compose_functions + "\nvoid main() {")
+			.replace("#define FINAL_OUTPUT", "#define FINAL_OUTPUT\n" + ssgi_poisson_compose)
+
+		this.svgf.denoisePass.fullscreenMaterial.needsUpdate = true
+
+		// if (definesName === "ssgi") {
+		// 	this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.fragmentShader =
+		// 		this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.fragmentShader.replace(
+		// 			"accumulatedTexel[ 1 ].rgb = clampedColor;",
+		// 			`
+		// 				float roughness = inputTexel[ 0 ].a;
+		// 				accumulatedTexel[ 1 ].rgb = mix(accumulatedTexel[ 1 ].rgb, clampedColor, 1. - sqrt(roughness));
+		// 				`
+		// 		)
+		// } else if (definesName === "ssr") {
+		// 	this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.fragmentShader =
+		// 		this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.fragmentShader.replace(
+		// 			"accumulatedTexel[ 0 ].rgb = clampedColor;",
+		// 			`
+		// 			accumulatedTexel[ 0 ].rgb = mix(accumulatedTexel[ 0 ].rgb, clampedColor, 0.5);
+		// 			`
+		// 		)
+		// }
 
 		this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.needsUpdate = true
 

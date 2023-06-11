@@ -133,14 +133,6 @@ export class VelocityDepthNormalPass extends Pass {
 		this.renderTarget.dispose()
 	}
 
-	get texture() {
-		return Array.isArray(this.renderTarget.texture) ? this.renderTarget.texture[1] : this.renderTarget.texture
-	}
-
-	get depthTexture() {
-		return this.renderTarget.texture[0]
-	}
-
 	render(renderer) {
 		tmpProjectionMatrix.copy(this._camera.projectionMatrix)
 		tmpProjectionMatrixInverse.copy(this._camera.projectionMatrixInverse)
