@@ -148,17 +148,20 @@ void main() {
 
 #ifdef importanceSampling
         envPdf = sampleEquirectProbability(envMapInfo, blueNoise.rg, envMisDir);
-        envMisDir = normalize((vec4(envMisDir, 0.) * cameraMatrixWorld).xyz);
 
-        envMisProbability = 0.99;
+        // convert envMisDir to world-space
+        // envMisDir = (vec4(envMisDir, 0.) * viewMatrix).xyz;
+
+        envMisProbability = 1.;
         isEnvMisSample = blueNoise.a < envMisProbability;
 
-        envMisMultiplier = 1. / (1. - envMisProbability);
+        envMisMultiplier = 1.;
 
         if (isEnvMisSample) {
-            envPdf /= 1. - envMisProbability;
+            envPdf /= 1.;
+            envPdf = 1.;
         } else {
-            envPdf = 0.;
+            envPdf = 1.;
         }
 #else
         envPdf = 0.0;
@@ -208,7 +211,7 @@ void main() {
         specW *= invW;
 
         // if diffuse lighting should be sampled
-        isDiffuseSample = blueNoise.b < diffW;
+        isDiffuseSample = true;
 #else
     #ifdef diffuseOnly
         isDiffuseSample = true;
@@ -216,8 +219,6 @@ void main() {
         isDiffuseSample = false;
     #endif
 #endif
-        envMisDir = vec3(0.0);
-
         if (isDiffuseSample) {
             if (isEnvMisSample) {
                 l = envMisDir;
@@ -236,11 +237,11 @@ void main() {
                 viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, isEnvMisSample, NoV, NoL, NoH, LoH, VoH, blueNoise.rg,
                 l, hitPos, isMissedRay, brdf, pdf);
 
-            gi *= brdf;
+            // gi *= brdf;
 
             if (isEnvMisSample) {
-                gi *= misHeuristic(envPdf, pdf);
-                gi /= envPdf;
+                // gi *= misHeuristic(envPdf, pdf);
+                // gi /= envPdf;
             } else {
                 gi /= pdf;
                 gi *= envMisMultiplier;
@@ -280,7 +281,7 @@ void main() {
 
 #ifndef specularOnly
     if (diffuseSamples == 0.0) diffuseGI = vec3(-1.0);
-    gDiffuse = vec4(diffuseGI, roughness);
+    gDiffuse = vec4(l, roughness);
 #endif
 
 #ifndef diffuseOnly
@@ -312,6 +313,7 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
     vec3 sampleDir = l;
 
     hitPos = viewPos;
+    hitPos = viewPos + l * 10000.;
     vec2 coords = RayMarch(sampleDir, hitPos);
 
     bool allowMissedRays = false;
@@ -320,6 +322,11 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
 #endif
 
     isMissedRay = coords.x == -1.0;
+
+    if (isMissedRay)
+        return vec3(1., 0., 0.);
+    else
+        return vec3(0., 1., 0.);
 
     if (isDiffuseSample) {
         vec3 diffuseBrdf = vec3(evalDisneyDiffuse(NoL, NoV, LoH, roughness, metalness));
