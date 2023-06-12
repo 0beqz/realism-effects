@@ -233,11 +233,11 @@ void main() {
                 viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, isEnvMisSample, NoV, NoL, NoH, LoH, VoH, blueNoise.rg,
                 l, hitPos, isMissedRay, brdf, pdf);
 
-            gi *= brdf;
+            // gi *= brdf;
 
             if (isEnvMisSample) {
-                gi *= misHeuristic(envPdf, pdf);
-                gi /= envPdf;
+                // gi *= misHeuristic(envPdf, pdf);
+                // gi /= envPdf;
             } else {
                 gi /= pdf;
                 gi *= envMisMultiplier;
