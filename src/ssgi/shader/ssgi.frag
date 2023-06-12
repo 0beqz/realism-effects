@@ -413,6 +413,10 @@ vec2 RayMarch(inout vec3 dir, inout vec3 hitPos) {
 
         uv = viewSpaceToScreenSpace(hitPos);
 
+#ifndef missedRays
+        if (uv.x < 0. || uv.y < 0. || uv.x > 1. || uv.y > 1.) return INVALID_RAY_COORDS;
+#endif
+
         float unpackedDepth = textureLod(depthTexture, uv, 0.0).r;
         float depth = fastGetViewZ(unpackedDepth);
 
