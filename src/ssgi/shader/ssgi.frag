@@ -148,9 +148,7 @@ void main() {
 
 #ifdef importanceSampling
         envPdf = sampleEquirectProbability(envMapInfo, blueNoise.rg, envMisDir);
-
-        // convert envMisDir to world-space
-        // envMisDir = (vec4(envMisDir, 0.) * viewMatrix).xyz;
+        envMisDir = (vec4(envMisDir, 0.) * cameraMatrixWorld).xyz;
 
         envMisProbability = 1.;
         isEnvMisSample = blueNoise.a < envMisProbability;
@@ -233,9 +231,9 @@ void main() {
                 VoH = clamp(dot(v, h), EPSILON, ONE_MINUS_EPSILON);
             }
 
-            gi = doSample(
-                viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, isEnvMisSample, NoV, NoL, NoH, LoH, VoH, blueNoise.rg,
-                l, hitPos, isMissedRay, brdf, pdf);
+            // gi = doSample(
+            //     viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, isEnvMisSample, NoV, NoL, NoH, LoH, VoH, blueNoise.rg,
+            //     l, hitPos, isMissedRay, brdf, pdf);
 
             // gi *= brdf;
 
