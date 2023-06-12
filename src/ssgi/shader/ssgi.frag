@@ -69,7 +69,7 @@ float fastGetViewZ(const float depth);
 
 vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, const vec3 worldPosition, const float metalness,
               const float roughness, const bool isDiffuseSample, const bool isEnvMisSample,
-              float NoV, float NoL, float NoH, float LoH, float VoH, const vec2 random, inout vec3 l,
+              const float NoV, const float NoL, const float NoH, const float LoH, const float VoH, const vec2 random, inout vec3 l,
               inout vec3 hitPos, out bool isMissedRay, out vec3 brdf, out float pdf);
 
 void main() {
@@ -231,9 +231,9 @@ void main() {
                 VoH = clamp(dot(v, h), EPSILON, ONE_MINUS_EPSILON);
             }
 
-            // gi = doSample(
-            //     viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, isEnvMisSample, NoV, NoL, NoH, LoH, VoH, blueNoise.rg,
-            //     l, hitPos, isMissedRay, brdf, pdf);
+            gi = doSample(
+                viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, isEnvMisSample, NoV, NoL, NoH, LoH, VoH, blueNoise.rg,
+                l, hitPos, isMissedRay, brdf, pdf);
 
             // gi *= brdf;
 
@@ -304,27 +304,9 @@ void main() {
 
 vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, const vec3 worldPosition, const float metalness,
               const float roughness, const bool isDiffuseSample, const bool isEnvMisSample,
-              float NoV, float NoL, float NoH, float LoH, float VoH, const vec2 random, inout vec3 l,
+              const float NoV, const float NoL, const float NoH, const float LoH, const float VoH, const vec2 random, inout vec3 l,
               inout vec3 hitPos, out bool isMissedRay, out vec3 brdf, out float pdf) {
     float cosTheta = max(0.0, dot(viewNormal, l));
-
-    vec3 sampleDir = l;
-
-    hitPos = viewPos;
-    hitPos = viewPos + l * 10000.;
-    vec2 coords = RayMarch(sampleDir, hitPos);
-
-    bool allowMissedRays = false;
-#ifdef missedRays
-    allowMissedRays = true;
-#endif
-
-    isMissedRay = coords.x == -1.0;
-
-    if (isMissedRay)
-        return vec3(1., 0., 0.);
-    else
-        return vec3(0., 1., 0.);
 
     if (isDiffuseSample) {
         vec3 diffuseBrdf = vec3(evalDisneyDiffuse(NoL, NoV, LoH, roughness, metalness));
@@ -342,8 +324,26 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
 
     brdf *= cosTheta;
 
+    hitPos = viewPos;
+
+#if steps == 0
+    hitPos += l;
+
+    vec2 coords = viewSpaceToScreenSpace(hitPos);
+#else
+    vec2 coords = RayMarch(l, hitPos);
+#endif
+
+    bool allowMissedRays = false;
+#ifdef missedRays
+    allowMissedRays = true;
+#endif
+
+    isMissedRay = coords.x == -1.0;
+
     vec3 envMapSample = vec3(0.);
 
+    // inisEnvMisSample ray, use environment lighting as fallback
     if (isMissedRay || allowMissedRays) {
 #ifdef USE_ENVMAP
         // world-space reflected ray
@@ -359,8 +359,6 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
         if (!isDiffuseSample && roughness < 0.15) mip *= roughness / 0.15;
 
         envMapSample = sampleEquirectEnvMapColor(reflectedWS, envMapInfo.map, mip);
-
-        // we won't deal with calculating direct sun light from the env map as it is too noisy
 
         float maxEnvLum = isEnvMisSample ? 50.0 : 5.0;
 
@@ -381,8 +379,18 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
     }
 
     // reproject the coords from the last frame
-    vec2 reprojectedUv = coords.xy - textureLod(velocityTexture, coords.xy, 0.0).xy;
-    vec3 SSGI = textureLod(accumulatedTexture, reprojectedUv, 0.).rgb;
+    vec4 velocity = textureLod(velocityTexture, coords.xy, 0.0);
+
+    vec2 reprojectedUv = coords.xy - velocity.xy;
+
+    vec3 SSGI;
+
+    // check if the reprojected coordinates are within the screen
+    if (reprojectedUv.x >= 0.0 && reprojectedUv.x <= 1.0 && reprojectedUv.y >= 0.0 && reprojectedUv.y <= 1.0) {
+        vec3 reprojectedGI = getTexel(accumulatedTexture, reprojectedUv, 0.).rgb;
+
+        SSGI = reprojectedGI;
+    }
 
     if (allowMissedRays) {
         float ssgiLum = luminance(SSGI);
