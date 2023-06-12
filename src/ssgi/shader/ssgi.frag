@@ -150,7 +150,7 @@ void main() {
         envPdf = sampleEquirectProbability(envMapInfo, blueNoise.rg, envMisDir);
         envMisDir = normalize((vec4(envMisDir, 0.) * cameraMatrixWorld).xyz);
 
-        envMisProbability = 0.25 + dot(envMisDir, viewNormal) * 0.5;
+        envMisProbability = 0.99;
         isEnvMisSample = blueNoise.a < envMisProbability;
 
         envMisMultiplier = 1. / (1. - envMisProbability);

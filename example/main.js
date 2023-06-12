@@ -328,23 +328,19 @@ const initScene = async () => {
 	fps = gpuTier.fps
 
 	const options = {
-		distance: 5.440000000000011,
-		thickness: 4.999999999999997,
+		distance: 2.7200000000000104,
+		thickness: 1.2999999999999972,
+		autoThickness: false,
 		maxRoughness: 1,
 		blend: 0.95,
-		denoiseIterations: 2,
+		denoiseIterations: 3,
 		denoiseKernel: 3,
 		denoiseDiffuse: 25,
 		denoiseSpecular: 25.54,
-		radius: 12,
-		rings: 5.625,
-		samples: 16,
-		lumaPhi: 9.540979117872439e-18,
-		depthPhi: 26.087,
-		normalPhi: 71.739,
-		roughnessPhi: 33.696,
-		diffusePhi: 13.043000000000006,
-		envBlur: 0,
+		depthPhi: 5,
+		normalPhi: 28,
+		roughnessPhi: 18.75,
+		envBlur: 0.5,
 		importanceSampling: true,
 		directLightMultiplier: 1,
 		steps: 20,
@@ -583,7 +579,7 @@ const initScene = async () => {
 					const sharpnessEffect = new SharpnessEffect({ sharpness: 0.75 })
 
 					// const ssaoEffect = new SSAOEffect(composer, camera, scene, ssaoOptions)
-					composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, vignetteEffect, lutEffect))
+					composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect))
 
 					// const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass)
 
