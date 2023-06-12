@@ -148,18 +148,17 @@ void main() {
 
 #ifdef importanceSampling
         envPdf = sampleEquirectProbability(envMapInfo, blueNoise.rg, envMisDir);
-        envMisDir = (vec4(envMisDir, 0.) * cameraMatrixWorld).xyz;
+        envMisDir = normalize((vec4(envMisDir, 0.) * cameraMatrixWorld).xyz);
 
-        envMisProbability = 1.;
+        envMisProbability = 0.25 + dot(envMisDir, viewNormal) * 0.5;
         isEnvMisSample = blueNoise.a < envMisProbability;
 
-        envMisMultiplier = 1.;
+        envMisMultiplier = 1. / (1. - envMisProbability);
 
         if (isEnvMisSample) {
-            envPdf /= 1.;
-            envPdf = 1.;
+            envPdf /= 1. - envMisProbability;
         } else {
-            envPdf = 1.;
+            envPdf = 0.;
         }
 #else
         envPdf = 0.0;
@@ -209,7 +208,7 @@ void main() {
         specW *= invW;
 
         // if diffuse lighting should be sampled
-        isDiffuseSample = true;
+        isDiffuseSample = blueNoise.b < diffW;
 #else
     #ifdef diffuseOnly
         isDiffuseSample = true;
@@ -217,6 +216,7 @@ void main() {
         isDiffuseSample = false;
     #endif
 #endif
+
         if (isDiffuseSample) {
             if (isEnvMisSample) {
                 l = envMisDir;
@@ -235,11 +235,11 @@ void main() {
                 viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, isEnvMisSample, NoV, NoL, NoH, LoH, VoH, blueNoise.rg,
                 l, hitPos, isMissedRay, brdf, pdf);
 
-            // gi *= brdf;
+            gi *= brdf;
 
             if (isEnvMisSample) {
-                // gi *= misHeuristic(envPdf, pdf);
-                // gi /= envPdf;
+                gi *= misHeuristic(envPdf, pdf);
+                gi /= envPdf;
             } else {
                 gi /= pdf;
                 gi *= envMisMultiplier;
@@ -279,7 +279,7 @@ void main() {
 
 #ifndef specularOnly
     if (diffuseSamples == 0.0) diffuseGI = vec3(-1.0);
-    gDiffuse = vec4(l, roughness);
+    gDiffuse = vec4(diffuseGI, roughness);
 #endif
 
 #ifndef diffuseOnly
