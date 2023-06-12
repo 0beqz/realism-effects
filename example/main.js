@@ -553,14 +553,14 @@ const initScene = async () => {
 		} else {
 			if (!traaTest) {
 				if (fps >= 256) {
-					composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, bloomEffect, vignetteEffect, lutEffect))
+					composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, vignetteEffect, lutEffect))
 
 					const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass)
 
-					composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect))
+					// composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect))
+					loadFiles--
 				} else {
 					composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, vignetteEffect, lutEffect))
-					loadFiles--
 				}
 			}
 		}
@@ -577,7 +577,7 @@ const initScene = async () => {
 
 		if (!isAoDemo) {
 			if (fps >= 256) {
-				setAA("TRAA")
+				setAA("FXAA")
 
 				resize()
 			} else {

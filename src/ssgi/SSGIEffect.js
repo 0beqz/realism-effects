@@ -438,7 +438,7 @@ export class SSGIEffect extends Effect {
 		this.ssgiPass.render(renderer)
 		this.svgf.render(renderer)
 
-		this.uniforms.get("inputTexture").value = this.svgf.texture
+		this.uniforms.get("inputTexture").value = this.ssgiPass.renderTarget.texture[0]
 		this.uniforms.get("sceneTexture").value = sceneBuffer.texture
 		this.uniforms.get("depthTexture").value = this.ssgiPass.depthTexture
 		this.uniforms.get("toneMapping").value = renderer.toneMapping
