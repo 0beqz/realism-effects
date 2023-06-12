@@ -553,7 +553,7 @@ const initScene = async () => {
 		} else {
 			if (!traaTest) {
 				if (fps >= 256) {
-					composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, vignetteEffect, lutEffect))
+					composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect))
 
 					const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass)
 
