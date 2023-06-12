@@ -146,42 +146,17 @@ void main() {
     for (int i = 0; i < spp; i++) {
         blueNoise = sampleBlueNoise(blueNoiseTexture, frame + sampleCounter++, blueNoiseRepeat, texSize);
 
-#ifdef importanceSampling
-        envPdf = sampleEquirectProbability(envMapInfo, blueNoise.rg, envMisDir);
-        envMisDir = normalize((vec4(envMisDir, 0.) * cameraMatrixWorld).xyz);
-
-        envMisProbability = 0.25 + dot(envMisDir, viewNormal) * 0.5;
-        isEnvMisSample = blueNoise.a < envMisProbability;
-
-        envMisMultiplier = 1. / (1. - envMisProbability);
-
-        if (isEnvMisSample) {
-            envPdf /= 1. - envMisProbability;
-        } else {
-            envPdf = 0.;
-        }
-#else
-        envPdf = 0.0;
-        envMisMultiplier = 1.;
-#endif
-
         // Disney BRDF and sampling source: https://www.shadertoy.com/view/cll3R4
         // calculate GGX reflection ray
         H = SampleGGXVNDF(V, roughness, roughness, blueNoise.r, blueNoise.g);
         if (H.z < 0.0) H = -H;
 
-        if (isEnvMisSample) {
-            l = envMisDir;
-        } else {
-            l = normalize(reflect(-V, H));
-            l = ToWorld(T, B, N, l);
+        l = normalize(reflect(-V, H));
+        l = ToWorld(T, B, N, l);
 
-            // convert reflected vector back to view-space
-            l = (vec4(l, 0.) * cameraMatrixWorld).xyz;
-            l = normalize(l);
-        }
-
-        if (isMirror) l = reflect(viewDir, viewNormal);
+        // convert reflected vector back to view-space
+        l = (vec4(l, 0.) * cameraMatrixWorld).xyz;
+        l = normalize(l);
 
         h = normalize(v + l);  // half vector
 
@@ -216,12 +191,63 @@ void main() {
         isDiffuseSample = false;
     #endif
 #endif
+        envMisDir = vec3(0.0);
+
+#ifdef importanceSampling
+        envPdf = sampleEquirectProbability(envMapInfo, blueNoise.rg, envMisDir);
+        envMisDir = normalize((vec4(envMisDir, 0.) * cameraMatrixWorld).xyz);
+
+        envMisProbability = 0.25 + dot(envMisDir, viewNormal) * 0.5;
+        isEnvMisSample = blueNoise.a < envMisProbability;
+
+        envMisMultiplier = 1. / (1. - envMisProbability);
+
+        if (isEnvMisSample) {
+            envPdf /= 1. - envMisProbability;
+        } else {
+            envPdf = 0.0001;
+        }
+#else
+        envPdf = 0.0;
+        envMisMultiplier = 1.;
+#endif
 
         if (isDiffuseSample) {
             if (isEnvMisSample) {
                 l = envMisDir;
             } else {
                 l = cosineSampleHemisphere(viewNormal, blueNoise.rg);
+            }
+
+            h = normalize(v + l);  // half vector
+
+            NoL = clamp(dot(n, l), EPSILON, ONE_MINUS_EPSILON);
+            NoH = clamp(dot(n, h), EPSILON, ONE_MINUS_EPSILON);
+            LoH = clamp(dot(l, h), EPSILON, ONE_MINUS_EPSILON);
+            VoH = clamp(dot(v, h), EPSILON, ONE_MINUS_EPSILON);
+
+            gi = doSample(
+                viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, isEnvMisSample, NoV, NoL, NoH, LoH, VoH, blueNoise.rg,
+                l, hitPos, isMissedRay, brdf, pdf);
+
+            gi *= brdf;
+
+            if (isEnvMisSample) {
+                gi *= misHeuristic(envPdf, pdf);
+                gi /= envPdf;
+            } else {
+                gi /= pdf;
+                gi *= envMisMultiplier;
+            }
+
+            diffuseSamples++;
+
+            diffuseGI = mix(diffuseGI, gi, 1. / diffuseSamples);
+
+        } else {
+            isEnvMisSample = isEnvMisSample && roughness >= 0.025;
+            if (isEnvMisSample) {
+                l = envMisDir;
 
                 h = normalize(v + l);  // half vector
 
@@ -245,32 +271,9 @@ void main() {
                 gi *= envMisMultiplier;
             }
 
-            if (luminance(gi) > 0.01) {
-                diffuseSamples++;
-                diffuseGI = mix(diffuseGI, gi, 1. / diffuseSamples);
-            }
-        } else {
-            // isEnvMisSample = isEnvMisSample && roughness >= 0.025;
-            gi = doSample(
-                viewPos, viewDir, viewNormal, worldPos, metalness, roughness, isDiffuseSample, isEnvMisSample, NoV, NoL, NoH, LoH, VoH, blueNoise.rg,
-                l, hitPos, isMissedRay, brdf, pdf);
+            specularSamples++;
 
-            gi *= brdf;
-
-            if (isEnvMisSample) {
-                gi *= misHeuristic(envPdf, pdf);
-                gi /= envPdf;
-            } else {
-                gi /= pdf;
-                gi *= envMisMultiplier;
-            }
-
-            specularHitPos = hitPos;
-
-            if (luminance(gi) > 0.01) {
-                specularSamples++;
-                specularGI = mix(specularGI, gi, 1. / specularSamples);
-            }
+            specularGI = mix(specularGI, gi, 1. / specularSamples);
         }
     }
 #pragma unroll_loop_end
@@ -286,19 +289,13 @@ void main() {
     // calculate world-space ray length used for reprojecting hit points instead of screen-space pixels in the temporal reproject pass
     float rayLength = 0.0;
 
-    vec4 hitPosWS;
-
-    if (isMissedRay) {
-        rayLength = 10.0e4;
-    } else {
-        hitPosWS = vec4(specularHitPos, 1.) * viewMatrix;
-        rayLength = distance(worldPos, hitPosWS.xyz);
+    if (!isMissedRay && roughness < 0.375) {
+        vec3 hitPosWS = (vec4(hitPos, 1.) * viewMatrix).xyz;
+        rayLength = distance(worldPos, hitPosWS);
     }
 
     if (specularSamples == 0.0) specularGI = vec3(-1.0);
-
     gSpecular = vec4(specularGI, rayLength);
-
 #endif
 }
 
