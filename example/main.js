@@ -162,10 +162,10 @@ if (isAoDemo) {
 }
 
 const composer = new POSTPROCESSING.EffectComposer(renderer)
-if (traaTest || true) {
-	const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
-	composer.addPass(renderPass)
-}
+// if (traaTest || true) {
+// 	const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
+// 	composer.addPass(renderPass)
+// }
 
 const lightParams = {
 	yaw: 55,
