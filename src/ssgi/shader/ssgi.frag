@@ -66,7 +66,6 @@ vec2 invTexSize;
 vec2 RayMarch(inout vec3 dir, inout vec3 hitPos);
 vec2 BinarySearch(inout vec3 dir, inout vec3 hitPos);
 float fastGetViewZ(const float depth);
-
 vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, const vec3 worldPosition, const float metalness,
               const float roughness, const bool isDiffuseSample, const bool isEnvMisSample,
               const float NoV, const float NoL, const float NoH, const float LoH, const float VoH, const vec2 random, inout vec3 l,
@@ -384,6 +383,9 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
 
     // check if the reprojected coordinates are within the screen
     if (reprojectedUv.x >= 0.0 && reprojectedUv.x <= 1.0 && reprojectedUv.y >= 0.0 && reprojectedUv.y <= 1.0) {
+        // vec4 emissiveTexel = textureLod(emissiveTexture, coords.xy, 0.);
+        // vec3 emissiveColor = emissiveTexel.rgb * 10.;
+
         vec3 reprojectedGI = getTexel(accumulatedTexture, reprojectedUv, 0.).rgb;
 
         SSGI = reprojectedGI;
@@ -410,6 +412,8 @@ vec2 RayMarch(inout vec3 dir, inout vec3 hitPos) {
         // use slower increments for the first few steps to sharpen contact shadows
         float m = exp(pow(float(i) / 4.0, 0.05)) - 2.0;
         hitPos += dir * min(m, 1.);
+
+        if (hitPos.z > 0.0) return INVALID_RAY_COORDS;
 
         uv = viewSpaceToScreenSpace(hitPos);
 
@@ -448,7 +452,7 @@ vec2 BinarySearch(inout vec3 dir, inout vec3 hitPos) {
     for (int i = 0; i < refineSteps; i++) {
         uv = viewSpaceToScreenSpace(hitPos);
 
-        float unpackedDepth = textureLod(depthTexture, uv, 0.0).r;
+        float unpackedDepth = unpackRGBAToDepth(textureLod(depthTexture, uv, 0.0));
         float depth = fastGetViewZ(unpackedDepth);
 
         rayHitDepthDifference = depth - hitPos.z;
