@@ -127,7 +127,9 @@ void main() {
 
     // float denoiseOffset = mix(0.5, 1.0, roughness);
 
-    float specularWeight = roughness * roughness > 0.25 ? 1. : roughness * roughness / 0.25;
+    float roughnessPow = roughness * roughness;
+
+    float specularWeight = roughnessPow > 0.25 ? 1. : roughnessPow / 0.25;
     specularWeight = pow(specularWeight * specularWeight, 10.0);
 
     for (int i = 0; i < samples; i++) {

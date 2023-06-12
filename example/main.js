@@ -237,7 +237,7 @@ const setEnvMesh = envMap => {
 		envMesh.height = 20
 		envMesh.scale.setScalar(100)
 		envMesh.updateMatrixWorld()
-		// scene.add(envMesh)
+		scene.add(envMesh)
 
 		scene.background = new Color("white")
 	}
@@ -255,7 +255,7 @@ const environments = [
 	"# cube map test"
 ]
 
-rgbeLoader.load("hdr/garden_nook_1k.hdr", initEnvMap)
+rgbeLoader.load("hdr/chinese_garden_1k.hdr", initEnvMap)
 
 const gltflLoader = new GLTFLoader()
 
