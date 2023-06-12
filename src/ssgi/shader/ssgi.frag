@@ -186,7 +186,7 @@ void main() {
         specW *= invW;
 
         // if diffuse lighting should be sampled
-        isDiffuseSample = blueNoise.b < diffW;
+        isDiffuseSample = true;
 #else
     #ifdef diffuseOnly
         isDiffuseSample = true;
@@ -200,13 +200,13 @@ void main() {
         envPdf = sampleEquirectProbability(envMapInfo, blueNoise.rg, envMisDir);
         envMisDir = normalize((vec4(envMisDir, 0.) * cameraMatrixWorld).xyz);
 
-        envMisProbability = 0.25 + dot(envMisDir, viewNormal) * 0.5;
+        envMisProbability = 1.;
         isEnvMisSample = blueNoise.a < envMisProbability;
 
-        envMisMultiplier = 1. / (1. - envMisProbability);
+        envMisMultiplier = 1.;
 
         if (isEnvMisSample) {
-            envPdf /= 1. - envMisProbability;
+            envPdf /= 1.;
         } else {
             envPdf = 0.0001;
         }
@@ -285,7 +285,7 @@ void main() {
 
 #ifndef specularOnly
     if (diffuseSamples == 0.0) diffuseGI = vec3(-1.0);
-    gDiffuse = vec4(textureLod(envMapInfo.conditionalWeights, vUv, 0.).xxx, roughness);
+    gDiffuse = vec4(l, roughness);
 #endif
 
 #ifndef diffuseOnly
