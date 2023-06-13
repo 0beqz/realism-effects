@@ -24,7 +24,7 @@
 		"postprocessing": "^6.31.0",
 		"realism-effects": "^1.0.2",
 		"stats.js": "^0.17.0",
-		"three": "^0.152.2",
+		"three": "^0.152.0",
 		"tweakpane": "^3.1.0"
 	}
 }

@@ -74,10 +74,7 @@ export class SSGIPass extends Pass {
 			blueNoiseTexture.wrapS = RepeatWrapping
 			blueNoiseTexture.wrapT = RepeatWrapping
 			blueNoiseTexture.colorSpace = THREE.NoColorSpace
-			blueNoiseTexture.format = THREE.RGBAFormat
-			blueNoiseTexture.unpackAlignment = 8
-
-			blueNoiseTexture.generateMipmaps = false
+			blueNoiseTexture.encoding = THREE.LinearEncoding
 
 			blueNoiseTexture.needsUpdate = true
 

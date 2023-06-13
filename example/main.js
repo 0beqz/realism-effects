@@ -22,7 +22,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader"
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader"
-import { GroundProjectedSkybox } from "three/examples/jsm/objects/GroundProjectedSkybox"
+// import { GroundProjectedSkybox } from "three/examples/jsm/objects/GroundProjectedSkybox"
 import { Pane } from "tweakpane"
 import { HBAOEffect } from "../src/hbao/HBAOEffect"
 import { SharpnessEffect } from "../src/sharpness/SharpnessEffect"
@@ -101,6 +101,7 @@ const renderer = new THREE.WebGLRenderer({
 })
 
 renderer.autoClear = false
+renderer.outputEncoding = THREE.sRGBEncoding
 
 renderer.setSize(window.innerWidth, window.innerHeight)
 
@@ -232,12 +233,12 @@ const setEnvMesh = envMap => {
 		envMesh?.material.dispose()
 		envMesh?.geometry.dispose()
 
-		envMesh = new GroundProjectedSkybox(envMap)
-		envMesh.radius = 100
-		envMesh.height = 20
-		envMesh.scale.setScalar(100)
-		envMesh.updateMatrixWorld()
-		scene.add(envMesh)
+		// envMesh = new GroundProjectedSkybox(envMap)
+		// envMesh.radius = 100
+		// envMesh.height = 20
+		// envMesh.scale.setScalar(100)
+		// envMesh.updateMatrixWorld()
+		// scene.add(envMesh)
 
 		scene.background = new Color("white")
 	}
