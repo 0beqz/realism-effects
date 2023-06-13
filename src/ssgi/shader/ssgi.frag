@@ -79,19 +79,19 @@ void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.0);
 
     // filter out background
-    if (dot(depthTexel.rgb, depthTexel.rgb) == 0.) {
-        discard;
-        return;
-    }
+    // if (dot(depthTexel.rgb, depthTexel.rgb) == 0.) {
+    //     discard;
+    //     return;
+    // }
 
     vec4 normalTexel = textureLod(normalTexture, vUv, 0.0);
     float roughness = normalTexel.a;
 
     // a roughness of 1 is only being used for deselected meshes
-    if (roughness == 1.0 || roughness > maxRoughness) {
-        discard;
-        return;
-    }
+    // if (roughness == 1.0 || roughness > maxRoughness) {
+    //     discard;
+    //     return;
+    // }
 
     invTexSize = 1. / texSize;
 
