@@ -75,10 +75,10 @@ void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.0);
 
     // filter out background
-    // if (depthTexel.r == 1.0) {
-    //     discard;
-    //     return;
-    // }
+    if (depthTexel.r == 1.0) {
+        discard;
+        return;
+    }
 
     vec3 diffuse, normal, emissive;
     float roughness, metalness;
@@ -143,7 +143,7 @@ void main() {
 
 #pragma unroll_loop_start
     for (int i = 0; i < spp; i++) {
-        blueNoise = sampleBlueNoise(blueNoiseTexture, 0, blueNoiseRepeat, texSize);
+        blueNoise = sampleBlueNoise(blueNoiseTexture, frame + sampleCounter++, blueNoiseRepeat, texSize);
 
         // Disney BRDF and sampling source: https://www.shadertoy.com/view/cll3R4
         // calculate GGX reflection ray
@@ -281,7 +281,7 @@ void main() {
 
 #ifndef specularOnly
     if (diffuseSamples == 0.0) diffuseGI = vec3(-1.0);
-    gDiffuse = vec4(vec3(blueNoise.xxx), roughness);
+    gDiffuse = vec4(brdf, roughness);
 #endif
 
 #ifndef diffuseOnly
