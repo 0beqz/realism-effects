@@ -1,14 +1,17 @@
 import { Pass } from "postprocessing"
+import * as THREE from "three"
 import {
 	Color,
 	FloatType,
 	HalfFloatType,
 	NearestFilter,
-	NoColorSpace,
+	SRGBColorSpace,
 	RepeatWrapping,
 	Texture,
 	TextureLoader,
-	WebGLMultipleRenderTargets
+	WebGLMultipleRenderTargets,
+	ColorManagement,
+	NoColorSpace
 } from "three"
 import { MRTMaterial } from "../material/MRTMaterial.js"
 import { SSGIMaterial } from "../material/SSGIMaterial.js"
@@ -70,7 +73,12 @@ export class SSGIPass extends Pass {
 			blueNoiseTexture.magFilter = NearestFilter
 			blueNoiseTexture.wrapS = RepeatWrapping
 			blueNoiseTexture.wrapT = RepeatWrapping
-			blueNoiseTexture.colorSpace = NoColorSpace
+			blueNoiseTexture.colorSpace = THREE.NoColorSpace
+			blueNoiseTexture.format = THREE.RGBAFormat
+
+			blueNoiseTexture.generateMipmaps = false
+
+			blueNoiseTexture.needsUpdate = true
 
 			this.fullscreenMaterial.uniforms.blueNoiseTexture.value = blueNoiseTexture
 		})

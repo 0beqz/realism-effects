@@ -143,7 +143,7 @@ void main() {
 
 #pragma unroll_loop_start
     for (int i = 0; i < spp; i++) {
-        blueNoise = sampleBlueNoise(blueNoiseTexture, frame + sampleCounter++, blueNoiseRepeat, texSize);
+        blueNoise = sampleBlueNoise(blueNoiseTexture, 0, blueNoiseRepeat, texSize);
 
         // Disney BRDF and sampling source: https://www.shadertoy.com/view/cll3R4
         // calculate GGX reflection ray
@@ -281,7 +281,7 @@ void main() {
 
 #ifndef specularOnly
     if (diffuseSamples == 0.0) diffuseGI = vec3(-1.0);
-    gDiffuse = vec4(vec3(brdf), roughness);
+    gDiffuse = vec4(vec3(blueNoise.xxx), roughness);
 #endif
 
 #ifndef diffuseOnly

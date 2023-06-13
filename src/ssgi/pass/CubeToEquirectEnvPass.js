@@ -8,7 +8,8 @@ import {
 	NoBlending,
 	RGBAFormat,
 	ShaderMaterial,
-	WebGLRenderTarget
+	WebGLRenderTarget,
+	LinearFilter
 } from "three"
 import basicVertexShader from "../../utils/shader/basic.vert"
 
@@ -90,7 +91,7 @@ export class CubeToEquirectEnvPass extends Pass {
 		equirectEnvMap.wrapS = ClampToEdgeWrapping
 		equirectEnvMap.wrapT = ClampToEdgeWrapping
 		equirectEnvMap.minFilter = LinearMipMapLinearFilter
-		equirectEnvMap.magFilter = LinearMipMapLinearFilter
+		equirectEnvMap.magFilter = LinearFilter
 		equirectEnvMap.needsUpdate = true
 
 		equirectEnvMap.mapping = EquirectangularReflectionMapping
