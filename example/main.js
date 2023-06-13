@@ -164,10 +164,10 @@ if (isAoDemo) {
 }
 
 const composer = new POSTPROCESSING.EffectComposer(renderer)
-if (traaTest) {
-	const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
-	composer.addPass(renderPass)
-}
+// if (traaTest || true) {
+// 	const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
+// 	composer.addPass(renderPass)
+// }
 
 const lightParams = {
 	yaw: 55,
@@ -556,38 +556,14 @@ const initScene = async () => {
 		} else {
 			if (!traaTest) {
 				if (fps >= 256) {
-					const ssaoOptions = {
-						resolutionScale: 1,
-						spp: 16,
-						distance: 2,
-						distancePower: 0.125,
-						power: 1,
-						bias: 40,
-						thickness: 0.075,
-						color: 0,
-						useNormalPass: false,
-						velocityDepthNormalPass: null,
-						normalTexture: null,
-						iterations: 1,
-						radius: 8,
-						rings: 5.625,
-						lumaPhi: 10,
-						depthPhi: 2,
-						normalPhi: 3.25,
-						samples: 16
-					}
-
-					const sharpnessEffect = new SharpnessEffect({ sharpness: 0.75 })
-
-					// const ssaoEffect = new SSAOEffect(composer, camera, scene, ssaoOptions)
 					composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect))
 
 					// const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass)
 
-					composer.addPass(new POSTPROCESSING.EffectPass(camera, sharpnessEffect))
+					// composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect))
+					loadFiles--
 				} else {
 					composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, vignetteEffect, lutEffect))
-					loadFiles--
 				}
 			}
 		}

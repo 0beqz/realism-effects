@@ -86,10 +86,10 @@ void main() {
     getGData(gBuffersTexture, vUv, diffuse, normal, roughness, metalness, emissive);
 
     // a roughness of 1 is only being used for deselected meshes
-    if (roughness == 1.0 || roughness > maxRoughness) {
-        discard;
-        return;
-    }
+    // if (roughness == 1.0 || roughness > maxRoughness) {
+    //     discard;
+    //     return;
+    // }
 
     invTexSize = 1. / texSize;
 
@@ -281,7 +281,7 @@ void main() {
 
 #ifndef specularOnly
     if (diffuseSamples == 0.0) diffuseGI = vec3(-1.0);
-    gDiffuse = vec4(vec3(blueNoise.aaa), roughness);
+    gDiffuse = vec4(vec3(blueNoise.xxx), roughness);
 #endif
 
 #ifndef diffuseOnly
