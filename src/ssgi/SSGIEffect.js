@@ -6,7 +6,8 @@ import {
 	PerspectiveCamera,
 	SRGBColorSpace,
 	Uniform,
-	WebGLRenderTarget
+	WebGLRenderTarget,
+	LinearFilter
 } from "three"
 import { SVGF } from "../svgf/SVGF.js"
 import { CubeToEquirectEnvPass } from "./pass/CubeToEquirectEnvPass.js"
@@ -91,13 +92,13 @@ export class SSGIEffect extends Effect {
 
 		const textureCount = options.diffuseOnly || options.specularOnly ? 1 : 2
 
-		options = {
-			...options,
-			...{
-				denoiseCustomComposeShader: denoise_compose,
-				denoiseCustomComposeShaderFunctions: denoise_compose_functions
-			}
-		}
+		// options = {
+		// 	...options,
+		// 	...{
+		// 		denoiseCustomComposeShader: denoise_compose,
+		// 		denoiseCustomComposeShaderFunctions: denoise_compose_functions
+		// 	}
+		// }
 
 		this.svgf = new SVGF(scene, camera, velocityDepthNormalPass, textureCount, options)
 
@@ -395,7 +396,7 @@ export class SSGIEffect extends Effect {
 				if (!environment.generateMipmaps) {
 					environment.generateMipmaps = true
 					environment.minFilter = LinearMipMapLinearFilter
-					environment.magFilter = LinearMipMapLinearFilter
+					environment.magFilter = LinearFilter
 					environment.needsUpdate = true
 				}
 

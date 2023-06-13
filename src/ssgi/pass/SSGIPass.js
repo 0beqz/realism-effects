@@ -8,7 +8,8 @@ import {
 	RepeatWrapping,
 	Texture,
 	TextureLoader,
-	WebGLMultipleRenderTargets
+	WebGLMultipleRenderTargets,
+	WebGLRenderTarget
 } from "three"
 import { MRTMaterial } from "../material/MRTMaterial.js"
 import { SSGIMaterial } from "../material/SSGIMaterial.js"
@@ -18,7 +19,6 @@ import {
 	isChildMaterialRenderable,
 	keepMaterialMapUpdated
 } from "../utils/Utils"
-import { WebGLRenderTarget } from "three"
 import blueNoiseImage from "./../../utils/LDR_RGBA_0.png"
 
 const backgroundColor = new Color(0)
@@ -71,6 +71,8 @@ export class SSGIPass extends Pass {
 			blueNoiseTexture.wrapS = RepeatWrapping
 			blueNoiseTexture.wrapT = RepeatWrapping
 			blueNoiseTexture.colorSpace = NoColorSpace
+
+			blueNoiseTexture.needsUpdate = true
 
 			this.fullscreenMaterial.uniforms.blueNoiseTexture.value = blueNoiseTexture
 		})
