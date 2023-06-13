@@ -75,10 +75,10 @@ void main() {
     vec4 depthTexel = textureLod(depthTexture, vUv, 0.0);
 
     // filter out background
-    if (depthTexel.r == 1.0) {
-        discard;
-        return;
-    }
+    // if (depthTexel.r == 1.0) {
+    //     discard;
+    //     return;
+    // }
 
     vec3 diffuse, normal, emissive;
     float roughness, metalness;

@@ -68,13 +68,14 @@ export class SSGIPass extends Pass {
 	initialize(renderer, ...args) {
 		super.initialize(renderer, ...args)
 
-		new TextureLoader().load(blueNoiseImage, blueNoiseTexture => {
+		new TextureLoader().load("./LDR_RGBA_0.png", blueNoiseTexture => {
 			blueNoiseTexture.minFilter = NearestFilter
 			blueNoiseTexture.magFilter = NearestFilter
 			blueNoiseTexture.wrapS = RepeatWrapping
 			blueNoiseTexture.wrapT = RepeatWrapping
 			blueNoiseTexture.colorSpace = THREE.NoColorSpace
 			blueNoiseTexture.format = THREE.RGBAFormat
+			blueNoiseTexture.unpackAlignment = 8
 
 			blueNoiseTexture.generateMipmaps = false
 
