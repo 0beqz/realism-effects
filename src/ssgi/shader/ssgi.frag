@@ -281,7 +281,7 @@ void main() {
 
 #ifndef specularOnly
     if (diffuseSamples == 0.0) diffuseGI = vec3(-1.0);
-    gDiffuse = vec4(vec3(blueNoise.xxx), roughness);
+    gDiffuse = vec4(vec3(blueNoise.aaa), roughness);
 #endif
 
 #ifndef diffuseOnly
