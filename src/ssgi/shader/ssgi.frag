@@ -288,9 +288,13 @@ void main() {
     // calculate world-space ray length used for reprojecting hit points instead of screen-space pixels in the temporal reproject pass
     float rayLength = 0.0;
 
-    if (!isMissedRay && roughness < 0.375) {
-        vec3 hitPosWS = (vec4(hitPos, 1.) * viewMatrix).xyz;
-        rayLength = distance(worldPos, hitPosWS);
+    vec4 hitPosWS;
+
+    if (isMissedRay) {
+        rayLength = 10.0e4;
+    } else {
+        hitPosWS = vec4(specularHitPos, 1.) * viewMatrix;
+        rayLength = distance(worldPos, hitPosWS.xyz);
     }
 
     if (specularSamples == 0.0) specularGI = vec3(-1.0);

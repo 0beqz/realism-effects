@@ -117,15 +117,11 @@ void main() {
     float totalWeight2 = 1.0;
 
     // float angle = sampleBlueNoise(blueNoiseTexture, index, blueNoiseRepeat, resolution).r;
-
     // float s = sin(angle), c = cos(angle);
-
     // mat2 rotationMatrix = mat2(c, -s, s, c);
 
     float disocclusionWeight = getDisocclusionWeight(texel.a);
     float disocclusionWeight2 = getDisocclusionWeight(texel2.a);
-
-    // float denoiseOffset = mix(0.5, 1.0, roughness);
 
     float specularWeight = roughness * roughness > 0.25 ? 1. : roughness * roughness / 0.25;
     specularWeight = pow(specularWeight * specularWeight, 10.0);
@@ -155,8 +151,10 @@ void main() {
         float roughnessDiff = abs(roughness - neighborRoughness);
         float diffuseDiff = length(neighborDiffuse - diffuse);
 
+        float lumaDiff = abs(luminance(neighborTexel.rgb) - luminance(neighborTexel2.rgb));
+
         float similarity = float(neighborDepth != 1.0) *
-                           exp(-normalDiff * normalPhi - depthDiff * depthPhi - roughnessDiff * roughnessPhi - diffuseDiff * diffusePhi);
+                           exp(-normalDiff * normalPhi - depthDiff * depthPhi - roughnessDiff * roughnessPhi - diffuseDiff * diffusePhi - lumaDiff * lumaPhi);
 
         evaluateNeighbor(neighborTexel, denoised, disocclusionWeight, totalWeight, similarity);
         evaluateNeighbor(neighborTexel2, denoised2, disocclusionWeight2, totalWeight2, similarity * specularWeight);

@@ -107,7 +107,7 @@ void main() {
         didReproject = reprojectedUvSpecular[i].x >= 0.0 || reprojectedUvDiffuse.x >= 0.0;
 
         // check if any reprojection was successful
-        if (!didReproject) {  // invalid UV
+        if (!didReproject || (reprojectHitPoint && reprojectedUvSpecular[i].x < 0.0)) {  // invalid UV
             // reprojection was not successful -> reset to the input texel
             accumulatedTexel[i] = vec4(inputTexel[i].rgb, 0.0);
 
@@ -117,11 +117,8 @@ void main() {
 #endif
 
         } else {
-            if (reprojectedUvSpecular[i].x >= 0.0) {
-                vec4 hitPointTexel = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUvSpecular[i]);
-                vec4 diffuseTexel = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUvDiffuse);
-
-                accumulatedTexel[i] = mix(diffuseTexel, hitPointTexel, rayLength > 10.0e3 ? 1. : flatness);
+            if (reprojectHitPoint) {
+                accumulatedTexel[i] = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUvSpecular[i]);
             } else {
                 accumulatedTexel[i] = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUvDiffuse);
             }
