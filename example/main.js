@@ -332,20 +332,20 @@ const initScene = async () => {
 		thickness: 4.999999999999997,
 		maxRoughness: 1,
 		blend: 0.95,
-		denoiseIterations: 2,
+		denoiseIterations: 1,
 		denoiseKernel: 3,
 		denoiseDiffuse: 25,
 		denoiseSpecular: 25.54,
 		radius: 12,
-		rings: 5.625,
+		rings: 2,
 		samples: 16,
-		lumaPhi: 9.540979117872439e-18,
-		depthPhi: 26.087,
-		normalPhi: 71.739,
-		roughnessPhi: 33.696,
-		diffusePhi: 13.043000000000006,
+		lumaPhi: 1.087,
+		depthPhi: 27.174,
+		normalPhi: 72.82600000000001,
+		roughnessPhi: 0,
+		diffusePhi: 6.094950932844512e-15,
 		envBlur: 0,
-		importanceSampling: true,
+		importanceSampling: false,
 		directLightMultiplier: 1,
 		steps: 20,
 		refineSteps: 4,
@@ -438,6 +438,7 @@ const initScene = async () => {
 	})
 
 	ssgiEffect = new SSGIEffect(composer, scene, camera, velocityDepthNormalPass, options)
+	window.ssgiEffect = ssgiEffect
 
 	gui2 = new SSGIDebugGUI(ssgiEffect, options)
 	gui2.pane.containerElem_.style.left = "8px"
@@ -607,7 +608,7 @@ const initScene = async () => {
 
 		if (!isAoDemo) {
 			if (fps >= 256) {
-				setAA("TRAA")
+				setAA("FXAA")
 				resize()
 			} else {
 				setAA("FXAA")

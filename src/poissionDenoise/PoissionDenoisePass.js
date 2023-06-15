@@ -1,7 +1,7 @@
 import { Pass } from "postprocessing"
 import {
+	FloatType,
 	GLSL3,
-	HalfFloatType,
 	Matrix4,
 	NearestFilter,
 	NoColorSpace,
@@ -74,7 +74,7 @@ export class PoissionDenoisePass extends Pass {
 		})
 
 		const renderTargetOptions = {
-			type: HalfFloatType,
+			type: FloatType,
 			depthBuffer: false
 		}
 

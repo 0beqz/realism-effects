@@ -173,11 +173,13 @@ export class TemporalReprojectPass extends Pass {
 		this.fullscreenMaterial.uniforms.reset.value = false
 
 		for (let i = 0; i < this.textureCount; i++) {
-			this.copyPass.fullscreenMaterial.uniforms["inputTexture" + i].value = this.renderTarget.texture[i]
-			this.fullscreenMaterial.uniforms["accumulatedTexture" + i].value = this.copyPass.renderTarget.texture[i]
+			this.copyPass.fullscreenMaterial.uniforms["inputTexture" + i].value =
+				window.ssgiEffect.svgf.denoisePass.renderTargetB.texture[i]
+			this.fullscreenMaterial.uniforms["accumulatedTexture" + i].value =
+				window.ssgiEffect.svgf.denoisePass.renderTargetB.texture[i]
 		}
 
-		this.copyPass.render(renderer)
+		// this.copyPass.render(renderer)
 
 		// save last transformations
 		this.fullscreenMaterial.uniforms.prevCameraMatrixWorld.value.copy(this._camera.matrixWorld)

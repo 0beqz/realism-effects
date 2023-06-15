@@ -1,6 +1,8 @@
 import { Vector2 } from "three"
 
 export function generateDenoiseSamples(numSamples, numRings, r, texelSize) {
+	numRings = 2
+	r = 1
 	const angleStep = (2 * Math.PI * numRings) / numSamples
 	const invNumSamples = 1.0 / numSamples
 	const radiusStep = invNumSamples

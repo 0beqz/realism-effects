@@ -116,9 +116,9 @@ void main() {
     float totalWeight = 1.0;
     float totalWeight2 = 1.0;
 
-    // float angle = sampleBlueNoise(blueNoiseTexture, index, blueNoiseRepeat, resolution).r;
-    // float s = sin(angle), c = cos(angle);
-    // mat2 rotationMatrix = mat2(c, -s, s, c);
+    float angle = sampleBlueNoise(blueNoiseTexture, index, blueNoiseRepeat, resolution).r;
+    float s = sin(angle), c = cos(angle);
+    mat2 rotationMatrix = mat2(c, -s, s, c);
 
     float disocclusionWeight = getDisocclusionWeight(texel.a);
     float disocclusionWeight2 = getDisocclusionWeight(texel2.a);
@@ -126,8 +126,12 @@ void main() {
     float specularWeight = roughness * roughness > 0.25 ? 1. : roughness * roughness / 0.25;
     specularWeight = pow(specularWeight * specularWeight, 10.0);
 
+    float a = min(texel.a, texel2.a);
+    a = sqrt(a);
+    float r = 32. / (a + 1.);
+
     for (int i = 0; i < samples; i++) {
-        vec2 offset = poissonDisk[i] * smoothstep(0., 1., float(i) / samplesFloat);
+        vec2 offset = r * poissonDisk[i] * smoothstep(0., 1., float(i) / samplesFloat);
         vec2 neighborUv = vUv + offset;
 
         vec4 neighborTexel = textureLod(inputTexture, neighborUv, 0.0);
@@ -154,7 +158,15 @@ void main() {
         float lumaDiff = abs(luminance(neighborTexel.rgb) - luminance(neighborTexel2.rgb));
 
         float similarity = float(neighborDepth != 1.0) *
-                           exp(-normalDiff * normalPhi - depthDiff * depthPhi - roughnessDiff * roughnessPhi - diffuseDiff * diffusePhi - lumaDiff * lumaPhi);
+                           exp(-normalDiff * normalPhi - depthDiff * depthPhi - roughnessDiff * roughnessPhi - diffuseDiff * diffusePhi - lumaDiff * 0.);
+
+        if (similarity > 1.) similarity = 1.;
+        float w = disocclusionWeight2;
+        w = pow(w, 4.);
+
+        similarity *= w;
+
+        similarity = pow(similarity, lumaPhi + 1.);
 
         evaluateNeighbor(neighborTexel, denoised, disocclusionWeight, totalWeight, similarity);
         evaluateNeighbor(neighborTexel2, denoised2, disocclusionWeight2, totalWeight2, similarity * specularWeight);
