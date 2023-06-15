@@ -30,8 +30,7 @@ const defaultPoissonBlurOptions = {
 	lumaPhi: 10,
 	depthPhi: 2,
 	normalPhi: 3.25,
-	samples: 8,
-	normalInRgb: false
+	samples: 8
 }
 
 export class PoissionDenoisePass extends Pass {

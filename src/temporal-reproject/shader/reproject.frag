@@ -156,9 +156,9 @@ void getVelocityNormalDepth(inout vec2 dilatedUv, out vec2 vel, out vec3 normal,
 #endif
 }
 
-#define PLANE_DISTANCE    5.0
-#define NORMAL_DISTANCE   0.1
-#define VELOCITY_DISTANCE 0.005
+#define PLANE_DISTANCE    0.5
+#define NORMAL_DISTANCE   0.25
+#define VELOCITY_DISTANCE 0.001
 
 bool planeDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos, const vec3 worldNormal, const float distFactor) {
     if (abs(dot(worldNormal, worldPos)) == 0.0) return false;
@@ -208,7 +208,7 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const 
     if (velocityDisocclusionCheck(velocity, lastVelocity, distFactor)) return false;
 
     // ! todo: investigate normal disocclusion check
-    if (normalsDisocclusionCheck(worldNormal, lastWorldNormal, distFactor)) return false;
+    // if (normalsDisocclusionCheck(worldNormal, lastWorldNormal, distFactor)) return false;
 
     if (planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal, distFactor))
         return false;

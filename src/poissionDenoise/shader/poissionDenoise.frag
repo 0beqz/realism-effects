@@ -53,18 +53,18 @@ float getDisocclusionWeight(float x) {
 // ! TODO: fix log space issue with certain models (NaN pixels) for example: see seiko-watch 3D model
 void toLogSpace(inout vec3 color) {
     // color = dot(color, color) > 0.000000001 ? log(color) : vec3(0.000000001);
-    color = pow(color, vec3(1. / 8.));
+    // color = pow(color, vec3(1. / 8.));
 }
 
 void toLinearSpace(inout vec3 color) {
     // color = exp(color);
-    color = pow(color, vec3(8.));
+    // color = pow(color, vec3(8.));
 }
 
 void evaluateNeighbor(const vec4 neighborTexel, inout vec3 denoised, const float disocclusionWeight,
                       inout float totalWeight, const float basicWeight) {
-    float w = pow(basicWeight, 1. / (1. + disocclusionWeight * 10.0));
-
+    float w = pow(basicWeight, 1. / (1. + pow(disocclusionWeight, 4.) * 100.0));
+    w *= luminance(neighborTexel.rgb);
     w = min(w, 1.);
 
     denoised += w * neighborTexel.rgb;
@@ -116,19 +116,21 @@ void main() {
     float totalWeight = 1.0;
     float totalWeight2 = 1.0;
 
-    float angle = sampleBlueNoise(blueNoiseTexture, index, blueNoiseRepeat, resolution).r;
-    float s = sin(angle), c = cos(angle);
-    mat2 rotationMatrix = mat2(c, -s, s, c);
+    // float angle = sampleBlueNoise(blueNoiseTexture, index, blueNoiseRepeat, resolution).r;
+    // float s = sin(angle), c = cos(angle);
+    // mat2 rotationMatrix = mat2(c, -s, s, c);
 
     float disocclusionWeight = getDisocclusionWeight(texel.a);
     float disocclusionWeight2 = getDisocclusionWeight(texel2.a);
 
-    float specularWeight = roughness * roughness > 0.25 ? 1. : roughness * roughness / 0.25;
-    specularWeight = pow(specularWeight * specularWeight, 10.0);
+    float specularWeight = roughness * roughness > 0.15 ? 1. : roughness * roughness / 0.15;
+    specularWeight = pow(specularWeight * specularWeight, 8.0);
+    // specularWeight = 1.;
 
     float a = min(texel.a, texel2.a);
     a = sqrt(a);
     float r = 32. / (a + 1.);
+    r = 16.;
 
     for (int i = 0; i < samples; i++) {
         vec2 offset = r * poissonDisk[i] * smoothstep(0., 1., float(i) / samplesFloat);
@@ -161,12 +163,14 @@ void main() {
                            exp(-normalDiff * normalPhi - depthDiff * depthPhi - roughnessDiff * roughnessPhi - diffuseDiff * diffusePhi - lumaDiff * 0.);
 
         if (similarity > 1.) similarity = 1.;
-        float w = disocclusionWeight2;
-        w = pow(w, 4.);
+        float s = 60.;
+        float w = sqrt(1. / (texel2.a - s + 1.));
+        if (texel2.a < 60.) w = 1.;
 
-        similarity *= w;
+        similarity *= pow(w, 0.1);
 
         similarity = pow(similarity, lumaPhi + 1.);
+        // similarity = 1.;
 
         evaluateNeighbor(neighborTexel, denoised, disocclusionWeight, totalWeight, similarity);
         evaluateNeighbor(neighborTexel2, denoised2, disocclusionWeight2, totalWeight2, similarity * specularWeight);
