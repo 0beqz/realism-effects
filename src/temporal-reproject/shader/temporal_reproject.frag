@@ -179,6 +179,8 @@ void main() {
 
         // outputColor = vec3(worldNormal);
 
+        // outputColor = vec3(inputTexel[i].rgb);
+
         gOutput[i] = vec4(outputColor, accumulatedTexel[i].a);
 
         texIndex++;

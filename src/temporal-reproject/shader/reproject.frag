@@ -226,18 +226,16 @@ vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength) {
 
     vec3 cameraRay = rayOrig - cameraPos;
 
-    float cameraRayLength = length(cameraRay);
-
     cameraRay = normalize(cameraRay);
 
-    vec3 parallaxHitPoint = cameraPos + cameraRay * (cameraRayLength + rayLength);
+    vec3 parallaxHitPoint = cameraPos + cameraRay * rayLength;
 
     vec4 reprojectedHitPoint = prevProjectionMatrix * prevViewMatrix * vec4(parallaxHitPoint, 1.0);
 
     reprojectedHitPoint.xyz /= reprojectedHitPoint.w;
     reprojectedHitPoint.xy = reprojectedHitPoint.xy * 0.5 + 0.5;
 
-    return mix(reprojectedHitPoint.xy, vUv - velocity, roughness / 0.4);
+    return mix(reprojectedHitPoint.xy, vUv - velocity, 0.);
 }
 
 vec2 getReprojectedUV(const float depth, const vec3 worldPos, const vec3 worldNormal, const float rayLength) {

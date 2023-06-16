@@ -270,6 +270,8 @@ void main() {
                 gi *= envMisMultiplier;
             }
 
+            specularHitPos = hitPos;
+
             specularSamples++;
 
             specularGI = mix(specularGI, gi, 1. / specularSamples);
@@ -293,8 +295,13 @@ void main() {
     if (isMissedRay) {
         rayLength = 10.0e4;
     } else {
-        hitPosWS = vec4(specularHitPos, 1.) * viewMatrix;
-        rayLength = distance(worldPos, hitPosWS.xyz);
+        // convert hitPos from view- to world-space
+        hitPosWS = cameraMatrixWorld * vec4(specularHitPos, 1.0);
+
+        // get the camera position in world-space from the camera matrix
+        vec3 cameraPosWS = cameraMatrixWorld[3].xyz;
+
+        rayLength = distance(cameraPosWS, hitPosWS.xyz);
     }
 
     if (specularSamples == 0.0) specularGI = vec3(-1.0);
