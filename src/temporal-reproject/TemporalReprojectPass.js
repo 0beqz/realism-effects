@@ -174,7 +174,7 @@ export class TemporalReprojectPass extends Pass {
 		this.fullscreenMaterial.uniforms.reset.value = false
 
 		for (let i = 0; i < this.textureCount; i++) {
-			this.copyPass.fullscreenMaterial.uniforms["inputTexture" + i].value = this.renderTarget.texture[i]
+			// this.copyPass.fullscreenMaterial.uniforms["inputTexture" + i].value = this.renderTarget.texture[i]
 
 			const accumulatedTexture =
 				this.overrideAccumulatedTextures.length === 0
