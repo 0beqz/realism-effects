@@ -126,7 +126,7 @@ void main() {
     float specularWeight = roughness * roughness > 0.15 ? 1. : roughness * roughness / 0.15;
     specularWeight *= specularWeight;
 
-    float a = min(texel.a, texel2.a);
+    float a = min(texel.a, texel2.a) + 1.;
     float r = 32. * pow(8., -0.1 * a) + 4.;
     float w = 1. / pow(texel.a + 1., 1. / 3.);
     float w2 = 1. / pow(texel2.a + 1., 1. / 3.);
@@ -137,15 +137,15 @@ void main() {
         vec2(0.5, -0.5),
         vec2(-0.5, -0.5));
 
+    float angle = mod(random.r * float(1), hn.r) * 2. * PI;
     for (int i = 0; i < samples; i++) {
-        float angle = mod(random.r * float(i + 1), hn.r) * 2. * PI;
         float s = sin(angle), c = cos(angle);
         mat2 rotationMatrix = mat2(c, -s, s, c);
 
-        vec2 offset = r * rotationMatrix * poissonDisk[i] * mod(random.g * float(i + 1), hn.g);
+        vec2 offset = r * rotationMatrix * poissonDisk[i] * 0.2;
 
-        float randomZ = mod(random.b * float(i + 1), hn.b);
-        vec2 neighborUv = vUv + offset + bilinearOffsets[int(randomZ * 4.)] / resolution;
+        // float randomZ = mod(random.b * float(i + 1), hn.b);
+        vec2 neighborUv = vUv + offset;  // + bilinearOffsets[int(round(randomZ * 4.))] / resolution;
 
         vec4 neighborTexel = textureLod(inputTexture, neighborUv, 0.);
         vec4 neighborTexel2 = textureLod(inputTexture2, neighborUv, 0.);
@@ -170,8 +170,10 @@ void main() {
 
         float lumaDiff = abs(luminance(neighborTexel.rgb) - luminance(neighborTexel2.rgb));
 
+        float normalFac = mix(-normalDiff * normalPhi, 0., 1. / a);
+
         float similarity = float(neighborDepth != 1.0) *
-                           exp(-normalDiff * normalPhi - depthDiff * depthPhi - roughnessDiff * roughnessPhi - diffuseDiff * diffusePhi);
+                           exp(normalFac - depthDiff * depthPhi - roughnessDiff * roughnessPhi - diffuseDiff * diffusePhi);
 
         float simW = lumaPhi;
         float similarity2 = w2 * pow(similarity, 2. * simW / w2) * specularWeight;

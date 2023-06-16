@@ -49,7 +49,7 @@ export class SSGIComposePass extends Pass {
 
                 vec3 gi = constructGlobalIllumination(diffuseGi, specularGi, viewDir, viewNormal, diffuse, emissive, roughness, metalness);
 
-				gl_FragColor = vec4(diffuseGi, 1.);
+				gl_FragColor = vec4(gi, 1.);
             }
             `,
 			vertexShader: basicVertexShader,
