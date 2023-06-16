@@ -16,6 +16,8 @@ export class SVGF {
 		this.denoisePass = new PoissionDenoisePass(camera, textures[0], window.depthTexture, options)
 		this.denoisePass.inputTexture2 = textures[1]
 
+		this.svgfTemporalReprojectPass.overrideAccumulatedTextures = this.denoisePass.renderTargetB.texture
+
 		this.setNonJitteredDepthTexture(velocityDepthNormalPass.depthTexture)
 	}
 

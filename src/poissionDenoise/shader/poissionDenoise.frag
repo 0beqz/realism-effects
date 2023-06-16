@@ -63,10 +63,9 @@ void toLinearSpace(inout vec3 color) {
 
 void evaluateNeighbor(const vec4 neighborTexel, inout vec3 denoised, const float disocclusionWeight,
                       inout float totalWeight, const float basicWeight) {
-    // float w = pow(basicWeight, 1. / (1. + pow(disocclusionWeight, 4.) * 1000.0));
     float w = basicWeight;
     // w *= luminance(neighborTexel.rgb);
-    // w = min(w, 1.);
+    w = min(w, 1.);
 
     denoised += w * neighborTexel.rgb;
     totalWeight += w;
@@ -125,18 +124,19 @@ void main() {
     float disocclusionWeight2 = getDisocclusionWeight(texel2.a);
 
     float specularWeight = roughness * roughness > 0.15 ? 1. : roughness * roughness / 0.15;
-    specularWeight = pow(specularWeight * specularWeight, 8.0);
-    // specularWeight = 1.;
+    specularWeight *= specularWeight;
 
     float a = min(texel.a, texel2.a);
-    float r = 28. * pow(8., -0.1 * a) + 4.;
+    float r = 32. * pow(8., -0.1 * a) + 4.;
+    float w = 1. / sqrt(texel.a + 1.);
+    float w2 = 1. / sqrt(texel2.a + 1.);
 
     for (int i = 0; i < samples; i++) {
         vec2 offset = r * rotationMatrix * poissonDisk[i] * smoothstep(0., 1., float(i) / samplesFloat);
         vec2 neighborUv = vUv + offset;
 
-        vec4 neighborTexel = textureLod(inputTexture, neighborUv, 0.0);
-        vec4 neighborTexel2 = textureLod(inputTexture2, neighborUv, 0.0);
+        vec4 neighborTexel = textureLod(inputTexture, neighborUv, 0.);
+        vec4 neighborTexel2 = textureLod(inputTexture2, neighborUv, 0.);
 
         if (useLogSpace) toLogSpace(neighborTexel.rgb);
         if (useLogSpace2) toLogSpace(neighborTexel2.rgb);
@@ -159,16 +159,15 @@ void main() {
         float lumaDiff = abs(luminance(neighborTexel.rgb) - luminance(neighborTexel2.rgb));
 
         float similarity = float(neighborDepth != 1.0) *
-                           exp(-normalDiff * normalPhi);
+                           exp(-normalDiff * normalPhi - depthDiff * depthPhi - roughnessDiff * roughnessPhi - diffuseDiff * diffusePhi - lumaDiff * lumaPhi);
 
-        // if (similarity > 1.) similarity = 1.;
-        float w = 1. / sqrt(texel2.a + 1.);
+        float similarity2 = w2 * pow(similarity, lumaPhi / w2) * specularWeight;
 
         similarity *= w;
         similarity = pow(similarity, lumaPhi / w);
 
         evaluateNeighbor(neighborTexel, denoised, disocclusionWeight, totalWeight, similarity);
-        evaluateNeighbor(neighborTexel2, denoised2, disocclusionWeight2, totalWeight2, similarity * specularWeight);
+        evaluateNeighbor(neighborTexel2, denoised2, disocclusionWeight2, totalWeight2, similarity2);
     }
 
     denoised /= totalWeight;

@@ -251,3 +251,14 @@ vec3 alignToNormal(const vec3 normal, const vec3 direction) {
 
     return alignedDir;
 }
+
+// source: http://rodolphe-vaillant.fr/entry/118/curvature-of-a-distance-field-implicit-surface
+float getFlatness(vec3 g, vec3 rp) {
+    vec3 gw = fwidth(g);
+    vec3 pw = fwidth(rp);
+
+    float wfcurvature = length(gw) / length(pw);
+    wfcurvature = smoothstep(0.0, 30., wfcurvature);
+
+    return clamp(wfcurvature, 0., 1.);
+}

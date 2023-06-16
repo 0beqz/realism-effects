@@ -35,6 +35,7 @@ const tmpProjectionMatrixInverse = new Matrix4()
 export class TemporalReprojectPass extends Pass {
 	needsSwap = false
 
+	overrideAccumulatedTextures = []
 	clock = new Clock()
 	r2Sequence = []
 	pointsIndex = 0
@@ -173,10 +174,13 @@ export class TemporalReprojectPass extends Pass {
 		this.fullscreenMaterial.uniforms.reset.value = false
 
 		for (let i = 0; i < this.textureCount; i++) {
-			this.copyPass.fullscreenMaterial.uniforms["inputTexture" + i].value =
-				window.ssgiEffect.svgf.denoisePass.renderTargetB.texture[i]
-			this.fullscreenMaterial.uniforms["accumulatedTexture" + i].value =
-				window.ssgiEffect.svgf.denoisePass.renderTargetB.texture[i]
+			this.copyPass.fullscreenMaterial.uniforms["inputTexture" + i].value = this.renderTarget.texture[i]
+
+			const accumulatedTexture =
+				this.overrideAccumulatedTextures.length === 0
+					? this.copyPass.renderTarget.texture[i]
+					: this.overrideAccumulatedTextures[i]
+			this.fullscreenMaterial.uniforms["accumulatedTexture" + i].value = accumulatedTexture
 		}
 
 		// this.copyPass.render(renderer)

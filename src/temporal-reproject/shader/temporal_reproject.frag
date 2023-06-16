@@ -72,6 +72,7 @@ void main() {
     bool didMove = dot(velocity, velocity) > 0.000000001;
 
     vec3 worldPos = screenSpaceToWorldSpace(dilatedUv, depth, cameraMatrixWorld, projectionMatrixInverse);
+    flatness = getFlatness(worldPos, worldNormal);
     vec3 viewPos = (viewMatrix * vec4(worldPos, 1.0)).xyz;
 
     vec3 viewDir = normalize(viewPos);
@@ -85,8 +86,6 @@ void main() {
     bool didReproject;
     bool reprojectHitPoint;
     float rayLength;
-
-    flatness = getFlatness(worldPos, worldNormal);
 
 #pragma unroll_loop_start
     for (int i = 0; i < textureCount; i++) {
@@ -107,7 +106,7 @@ void main() {
         didReproject = reprojectedUvSpecular[i].x >= 0.0 || reprojectedUvDiffuse.x >= 0.0;
 
         // check if any reprojection was successful
-        if (!didReproject || (reprojectHitPoint && reprojectedUvSpecular[i].x < 0.0)) {  // invalid UV
+        if (!didReproject) {  // invalid UV
             // reprojection was not successful -> reset to the input texel
             accumulatedTexel[i] = vec4(inputTexel[i].rgb, 0.0);
 
@@ -117,7 +116,7 @@ void main() {
 #endif
 
         } else {
-            if (reprojectHitPoint) {
+            if (reprojectHitPoint && reprojectedUvSpecular[i].x >= 0.0) {
                 accumulatedTexel[i] = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUvSpecular[i]);
             } else {
                 accumulatedTexel[i] = sampleReprojectedTexture(accumulatedTexture[i], reprojectedUvDiffuse);
@@ -138,6 +137,7 @@ void main() {
 
                     clampNeighborhood(inputTexture[i], clampedColor, inputTexel[i].rgb, neighborhoodClampRadius);
 
+                    // ! todo: find good neighborhood clamp intensity
                     accumulatedTexel[i].rgb = mix(accumulatedTexel[i].rgb, clampedColor, 0.);
                 }
             } else {
@@ -177,7 +177,7 @@ void main() {
         outputColor = mix(inputTexel[i].rgb, accumulatedTexel[i].rgb, temporalReprojectMix);
         undoColorTransform(outputColor);
 
-        // outputColor = vec3(worldNormal);
+        // outputColor = vec3(rayLength);
 
         // outputColor = vec3(inputTexel[i].rgb);
 
