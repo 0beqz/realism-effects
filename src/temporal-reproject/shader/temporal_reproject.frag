@@ -169,9 +169,9 @@ void main() {
             if (reset) accumulatedTexel[i].a = 0.0;
 
             temporalReprojectMix = min(1. - 1. / (accumulatedTexel[i].a + 1.0), maxValue);
-            // if (temporalReprojectMix > 0.5) temporalReprojectMix = mix(temporalReprojectMix, 0.5, angleMix);
+            if (temporalReprojectMix > 0.5) temporalReprojectMix = mix(temporalReprojectMix, 0.75, angleMix);
 
-            // accumulatedTexel[i].a = 1. / (1. - temporalReprojectMix) - 1.;
+            accumulatedTexel[i].a = 1. / (1. - temporalReprojectMix) - 1.;
         }
 
         outputColor = mix(inputTexel[i].rgb, accumulatedTexel[i].rgb, temporalReprojectMix);

@@ -250,6 +250,7 @@ export class SSGIEffect extends Effect {
 						case "diffusePhi":
 							if (this.svgf.denoisePass.fullscreenMaterial.uniforms[key]) {
 								this.svgf.denoisePass.fullscreenMaterial.uniforms[key].value = value
+								temporalReprojectPass.reset()
 							}
 							break
 

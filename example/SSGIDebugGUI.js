@@ -62,7 +62,7 @@ export class SSGIDebugGUI {
 
 		denoiseFolder.addInput(params, "lumaPhi", {
 			min: 0,
-			max: 50,
+			max: 5,
 			step: 0.001
 		})
 
