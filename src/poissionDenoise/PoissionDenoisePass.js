@@ -149,8 +149,6 @@ export class PoissionDenoisePass extends Pass {
 	}
 
 	render(renderer) {
-		this.fullscreenMaterial.uniforms.index.value = 0
-
 		const noiseTexture = this.fullscreenMaterial.uniforms.blueNoiseTexture.value
 		if (noiseTexture) {
 			const { width, height } = noiseTexture.source.data
@@ -178,7 +176,8 @@ export class PoissionDenoisePass extends Pass {
 			renderer.setRenderTarget(renderTarget)
 			renderer.render(this.scene, this.camera)
 
-			this.fullscreenMaterial.uniforms.index.value = this.fullscreenMaterial.uniforms.index.value + 1
+			this.fullscreenMaterial.uniforms.index.value = this.fullscreenMaterial.uniforms.index.value + this.samples
+			this.fullscreenMaterial.uniforms.index.value %= 65536
 		}
 	}
 }

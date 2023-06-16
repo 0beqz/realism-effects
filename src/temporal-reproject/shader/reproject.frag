@@ -178,6 +178,8 @@ bool velocityDisocclusionCheck(const vec2 velocity, const vec2 lastVelocity, con
 }
 
 bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const vec3 worldNormal, const bool isHitPoint) {
+    return false;
+
     if (reprojectedUv.x > 1.0 || reprojectedUv.x < 0.0 || reprojectedUv.y > 1.0 || reprojectedUv.y < 0.0) return false;
 
     vec2 dilatedReprojectedUv = reprojectedUv;
@@ -208,7 +210,7 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const 
     if (velocityDisocclusionCheck(velocity, lastVelocity, distFactor)) return false;
 
     // ! todo: investigate normal disocclusion check
-    // if (normalsDisocclusionCheck(worldNormal, lastWorldNormal, distFactor)) return false;
+    if (normalsDisocclusionCheck(worldNormal, lastWorldNormal, distFactor)) return false;
 
     if (planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal, distFactor))
         return false;

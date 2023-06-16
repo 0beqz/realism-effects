@@ -226,7 +226,7 @@ export class SSGIPass extends Pass {
 		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
 		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far
 		this.fullscreenMaterial.uniforms.viewMatrix.value.copy(this._camera.matrixWorldInverse)
-		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.ssgiEffect.svgf.denoisePass.texture
+		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.ssgiEffect.ssgiComposePass.renderTarget.texture
 
 		const noiseTexture = this.fullscreenMaterial.uniforms.blueNoiseTexture.value
 		if (noiseTexture) {

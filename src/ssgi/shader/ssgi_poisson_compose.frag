@@ -8,5 +8,5 @@ if (isLastIteration) {
     vec3 diffuseGi = denoised;
     vec3 specularGi = denoised2;
 
-    denoised = constructGlobalIllumination(diffuseGi, specularGi, viewDir, viewNormal, diffuse, emissive, roughness, metalness);
+    // denoised = constructGlobalIllumination(diffuseGi, specularGi, viewDir, viewNormal, diffuse, emissive, roughness, metalness);
 }

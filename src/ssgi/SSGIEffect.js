@@ -28,6 +28,7 @@ import {
 	isChildMaterialRenderable,
 	unrollLoops
 } from "./utils/Utils.js"
+import { SSGIComposePass } from "./pass/SSGIComposePass.js"
 
 const { render } = RenderPass.prototype
 
@@ -190,6 +191,8 @@ export class SSGIEffect extends Effect {
 
 			render.call(this, ...args)
 		}
+
+		this.ssgiComposePass = new SSGIComposePass(camera)
 
 		this.makeOptionsReactive(options)
 	}
@@ -359,6 +362,7 @@ export class SSGIEffect extends Effect {
 
 		this.ssgiPass.setSize(width, height)
 		this.svgf.setSize(width, height)
+		this.ssgiComposePass.setSize(width, height)
 		this.sceneRenderTarget.setSize(width, height)
 		this.cubeToEquirectEnvPass?.setSize(width, height)
 
@@ -459,10 +463,17 @@ export class SSGIEffect extends Effect {
 		this.ssgiPass.fullscreenMaterial.uniforms.directLightTexture.value = sceneBuffer.texture
 		this.svgf.denoisePass.fullscreenMaterial.uniforms.directLightTexture.value = sceneBuffer.texture
 
+		const ssgiComposePassUniforms = this.ssgiComposePass.fullscreenMaterial.uniforms
+		ssgiComposePassUniforms.gBuffersTexture.value = this.ssgiPass.gBuffersRenderTarget.texture
+		ssgiComposePassUniforms.depthTexture.value = this.ssgiPass.depthTexture
+		ssgiComposePassUniforms.diffuseGiTexture.value = this.svgf.denoisePass.renderTargetB.texture[0]
+		ssgiComposePassUniforms.specularGiTexture.value = this.svgf.denoisePass.renderTargetB.texture[1]
+
 		this.ssgiPass.render(renderer)
 		this.svgf.render(renderer)
+		this.ssgiComposePass.render(renderer)
 
-		this.uniforms.get("inputTexture").value = this.svgf.texture
+		this.uniforms.get("inputTexture").value = this.ssgiComposePass.renderTarget.texture
 		this.uniforms.get("sceneTexture").value = sceneBuffer.texture
 		this.uniforms.get("depthTexture").value = this.ssgiPass.depthTexture
 		this.uniforms.get("toneMapping").value = renderer.toneMapping
