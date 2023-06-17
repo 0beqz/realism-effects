@@ -198,8 +198,10 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const 
     // get the angle between the view direction and the normal
     float lastViewAngle = dot(-lastViewDir, lastViewNormal);
 
-    float angleDiff = min(1., abs(lastViewAngle - viewAngle) * 4.);
-    angleMix = angleDiff * (1. - viewAngle);
+    // angleDiff will be higher, the more we try to reproject pixels from a steep angle onto a surface with a low angle
+    // which results in undesired stretching
+    float angleDiff = max(0., lastViewAngle - viewAngle);
+    angleMix = 8. * angleDiff;
 
     float viewZ = abs(getViewZ(depth));
     float distFactor = 1. + 1. / (viewZ + 1.0);
@@ -210,7 +212,7 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const 
     if (velocityDisocclusionCheck(velocity, lastVelocity, distFactor)) return false;
 
     // ! todo: investigate normal disocclusion check
-    if (normalsDisocclusionCheck(worldNormal, lastWorldNormal, distFactor)) return false;
+    // if (normalsDisocclusionCheck(worldNormal, lastWorldNormal, distFactor)) return false;
 
     if (planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal, distFactor))
         return false;

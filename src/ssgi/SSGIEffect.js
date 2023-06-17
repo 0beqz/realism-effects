@@ -84,7 +84,7 @@ export class SSGIEffect extends Effect {
 		} else {
 			definesName = "ssgi"
 			options.reprojectSpecular = [false, true]
-			options.neighborhoodClamp = [false, true]
+			options.neighborhoodClamp = [true, true]
 			options.roughnessDependent = [false, true]
 		}
 

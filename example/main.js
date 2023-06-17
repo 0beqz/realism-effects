@@ -328,10 +328,10 @@ const initScene = async () => {
 	fps = gpuTier.fps
 
 	const options = {
-		distance: 5.440000000000011,
+		distance: 2.170000000000011,
 		thickness: 4.999999999999997,
 		maxRoughness: 1,
-		blend: 0.9999999999999999,
+		blend: 0.95,
 		denoiseIterations: 1,
 		denoiseKernel: 3,
 		denoiseDiffuse: 25,
@@ -339,7 +339,7 @@ const initScene = async () => {
 		radius: 12,
 		rings: 5,
 		samples: 8,
-		lumaPhi: 0.42400000000000004,
+		lumaPhi: 0.3040000000000001,
 		depthPhi: 50,
 		normalPhi: 100,
 		roughnessPhi: 10.870000000000001,
