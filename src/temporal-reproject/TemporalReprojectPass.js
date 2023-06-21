@@ -1,11 +1,14 @@
 ﻿import { Pass } from "postprocessing"
 import {
 	Clock,
+	FramebufferTexture,
 	HalfFloatType,
 	LinearFilter,
 	Matrix4,
 	Quaternion,
+	RGBAFormat,
 	Uniform,
+	Vector2,
 	Vector3,
 	WebGLMultipleRenderTargets
 } from "three"
@@ -31,6 +34,7 @@ export const defaultTemporalReprojectPassOptions = {
 
 const tmpProjectionMatrix = new Matrix4()
 const tmpProjectionMatrixInverse = new Matrix4()
+const tmpVec2 = new Vector2()
 
 export class TemporalReprojectPass extends Pass {
 	needsSwap = false
@@ -138,6 +142,14 @@ export class TemporalReprojectPass extends Pass {
 		this.copyPass.setSize(width, height)
 
 		this.fullscreenMaterial.uniforms.invTexSize.value.set(1 / width, 1 / height)
+
+		this.framebufferTexture?.dispose()
+
+		this.framebufferTexture = new FramebufferTexture(width, height, RGBAFormat)
+		this.framebufferTexture.type = HalfFloatType
+		this.framebufferTexture.minFilter = LinearFilter
+		this.framebufferTexture.magFilter = LinearFilter
+		this.framebufferTexture.needsUpdate = true
 	}
 
 	get texture() {
@@ -174,16 +186,21 @@ export class TemporalReprojectPass extends Pass {
 		this.fullscreenMaterial.uniforms.reset.value = false
 
 		for (let i = 0; i < this.textureCount; i++) {
-			// this.copyPass.fullscreenMaterial.uniforms["inputTexture" + i].value = this.renderTarget.texture[i]
+			this.copyPass.fullscreenMaterial.uniforms["inputTexture" + i].value = this.renderTarget.texture[i]
+
+			const copyAccumulatedTexture =
+				this.renderTarget.texture.length > 1 ? this.copyPass.renderTarget.texture[i] : this.framebufferTexture
 
 			const accumulatedTexture =
-				this.overrideAccumulatedTextures.length === 0
-					? this.copyPass.renderTarget.texture[i]
-					: this.overrideAccumulatedTextures[i]
+				this.overrideAccumulatedTextures.length === 0 ? copyAccumulatedTexture : this.overrideAccumulatedTextures[i]
 			this.fullscreenMaterial.uniforms["accumulatedTexture" + i].value = accumulatedTexture
 		}
 
-		// this.copyPass.render(renderer)
+		if (this.renderTarget.texture.length > 1) {
+			this.copyPass.render(renderer)
+		} else {
+			renderer.copyFramebufferToTexture(tmpVec2, this.framebufferTexture)
+		}
 
 		// save last transformations
 		this.fullscreenMaterial.uniforms.prevCameraMatrixWorld.value.copy(this._camera.matrixWorld)

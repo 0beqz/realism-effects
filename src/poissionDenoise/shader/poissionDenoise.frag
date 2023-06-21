@@ -116,11 +116,15 @@ void main() {
     mat2 rotationMatrix = mat2(c, -s, s, c);
 
     float specularWeight = roughness * roughness > 0.15 ? 1. : roughness * roughness / 0.15;
-    specularWeight *= specularWeight;
+    specularWeight = pow(specularWeight * specularWeight, 4.);
+
+    texel.a = min(texel.a, 120.0);
+    texel2.a = min(texel2.a, 120.0);
 
     float w = 1. / pow(texel.a + 1., 1. / 2.333);
     float w2 = 1. / pow(texel2.a + 1., 1. / 2.333);
-    float r = 64.;
+
+    float r = max(w, w2) * 16. + 4.;
 
     // const vec2 bilinearOffsets[4] = vec2[](
     //     vec2(0.5, 0.5),
@@ -129,7 +133,7 @@ void main() {
     //     vec2(-0.5, -0.5));
 
     for (int i = 0; i < samples; i++) {
-        vec2 offset = r * rotationMatrix * poissonDisk[i] * 0.2;
+        vec2 offset = r * rotationMatrix * poissonDisk[i] * 0.5;
 
         vec2 neighborUv = vUv + offset;
 

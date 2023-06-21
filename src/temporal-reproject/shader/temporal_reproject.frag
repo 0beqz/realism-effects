@@ -137,8 +137,7 @@ void main() {
 
                     clampNeighborhood(inputTexture[i], clampedColor, inputTexel[i].rgb, neighborhoodClampRadius);
 
-                    // ! todo: find good neighborhood clamp intensity
-                    accumulatedTexel[i].rgb = mix(accumulatedTexel[i].rgb, clampedColor, 0.);
+                    accumulatedTexel[i].rgb = mix(accumulatedTexel[i].rgb, clampedColor, neighborhoodClampIntensity);
                 }
             } else {
                 inputTexel[i].rgb = accumulatedTexel[i].rgb;
@@ -169,9 +168,9 @@ void main() {
             if (reset) accumulatedTexel[i].a = 0.0;
 
             temporalReprojectMix = min(1. - 1. / (accumulatedTexel[i].a + 1.0), maxValue);
-            // if (temporalReprojectMix > 0.8) temporalReprojectMix = mix(temporalReprojectMix, 0.8, angleMix);
+            if (temporalReprojectMix > 0.8) temporalReprojectMix = mix(temporalReprojectMix, 0.8, angleMix);
 
-            // accumulatedTexel[i].a = 1. / (1. - temporalReprojectMix) - 1.;
+            accumulatedTexel[i].a = 1. / (1. - temporalReprojectMix) - 1.;
         }
 
         outputColor = mix(inputTexel[i].rgb, accumulatedTexel[i].rgb, temporalReprojectMix);
