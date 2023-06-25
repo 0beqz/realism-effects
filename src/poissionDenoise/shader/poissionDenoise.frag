@@ -45,19 +45,18 @@ float distToPlane(const vec3 worldPos, const vec3 neighborWorldPos, const vec3 w
     return distToPlane;
 }
 
-// ! TODO: fix log space issue with certain models (NaN pixels) for example: see seiko-watch 3D model
-void toLogSpace(inout vec3 color) {
-    // color = dot(color, color) > 0.000000001 ? log(color) : vec3(0.000000001);
-    color = pow(color, vec3(1. / 8.));
+const float denoiseSpaceExponent = 16.;
+
+void toDenoiseSpace(inout vec3 color) {
+    color = pow(color, vec3(1. / denoiseSpaceExponent));
 }
 
 void toLinearSpace(inout vec3 color) {
-    // color = exp(color);
-    color = pow(color, vec3(8.));
+    color = pow(color, vec3(denoiseSpaceExponent));
 }
 
 float getLuminanceWeight(float luminance) {
-    return index % 2 == 0 ? luminance + 0.01 : 1. / (luminance + 0.01);
+    return index % 2 == 0 ? luminance : 1. / (luminance + 0.00001);
 }
 
 void evaluateNeighbor(const vec4 neighborTexel, const float neighborLuminance, inout vec3 denoised,
@@ -85,19 +84,16 @@ void main() {
     float totalWeight = getLuminanceWeight(luminance(texel.rgb));
     float totalWeight2 = getLuminanceWeight(luminance(texel2.rgb));
 
-    toLogSpace(texel.rgb);
-    toLogSpace(texel2.rgb);
+    toDenoiseSpace(texel.rgb);
+    toDenoiseSpace(texel2.rgb);
+
+    vec3 denoised = texel.rgb * totalWeight;
+    vec3 denoised2 = texel2.rgb * totalWeight2;
 
     vec3 diffuse, normal, emissive;
     float roughness, metalness;
 
     getGData(gBuffersTexture, vUv, diffuse, normal, roughness, metalness, emissive);
-
-    vec3 denoised = texel.rgb * totalWeight;
-    vec3 center = denoised;
-
-    vec3 denoised2 = texel2.rgb * totalWeight2;
-    vec3 center2 = denoised2;
 
     float depth = depthTexel.x;
     vec3 worldPos = getWorldPos(depth, vUv);
@@ -110,11 +106,11 @@ void main() {
     float specularWeight = roughness * roughness > 0.15 ? 1. : roughness * roughness / 0.15;
     specularWeight = pow(specularWeight * specularWeight, 4.);
 
-    texel.a = min(texel.a, 120.0);
-    texel2.a = min(texel2.a, 120.0);
+    texel.a = min(texel.a, 60.0);
+    texel2.a = min(texel2.a, 60.0);
 
-    float w = 1. / pow(texel.a + 1., 1. / 2.333);
-    float w2 = 1. / pow(texel2.a + 1., 1. / 2.333);
+    float w = 1. / pow(texel.a + 1., 1. / 2.333) + 0.01;
+    float w2 = 1. / pow(texel2.a + 1., 1. / 2.333) + 0.01;
 
     float r = max(w, w2) * 12. + 4.;
 
@@ -138,8 +134,8 @@ void main() {
         float neighborLuminance = luminance(neighborTexel.rgb);
         float neighborLuminance2 = luminance(neighborTexel2.rgb);
 
-        toLogSpace(neighborTexel.rgb);
-        toLogSpace(neighborTexel2.rgb);
+        toDenoiseSpace(neighborTexel.rgb);
+        toDenoiseSpace(neighborTexel2.rgb);
 
         vec3 neighborNormal, neighborDiffuse;
         float neighborRoughness, neighborMetalness;
@@ -171,8 +167,8 @@ void main() {
         evaluateNeighbor(neighborTexel2, neighborLuminance2, denoised2, totalWeight2, similarity2);
     }
 
-    denoised /= totalWeight;
-    denoised2 /= totalWeight2;
+    denoised = totalWeight > 0. ? denoised / totalWeight : texel.rgb;
+    denoised2 = totalWeight2 > 0. ? denoised2 / totalWeight2 : texel2.rgb;
 
     toLinearSpace(denoised);
     toLinearSpace(denoised2);

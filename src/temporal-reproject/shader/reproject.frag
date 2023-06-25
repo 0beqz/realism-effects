@@ -201,18 +201,17 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const 
     // angleDiff will be higher, the more we try to reproject pixels from a steep angle onto a surface with a low angle
     // which results in undesired stretching
     float angleDiff = max(0., lastViewAngle - viewAngle);
-    angleMix = 4. * angleDiff;
+    angleMix = min(1., 4. * angleDiff);
 
     float viewZ = abs(getViewZ(depth));
     float distFactor = 1. + 1. / (viewZ + 1.0);
-    // distFactor *= 1. - angleMix;
 
     //! todo: take view angle into account
 
     if (velocityDisocclusionCheck(velocity, lastVelocity, distFactor)) return false;
 
     // ! todo: investigate normal disocclusion check
-    // if (normalsDisocclusionCheck(worldNormal, lastWorldNormal, distFactor)) return false;
+    if (normalsDisocclusionCheck(worldNormal, lastWorldNormal, distFactor)) return false;
 
     if (planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal, distFactor))
         return false;
@@ -224,7 +223,7 @@ vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength) {
     // ! todo: investigate using motion reprojection for reflections when there is no
     // camera position change (only rotation change) as it barely causes any smearing for reflections
 
-    if (roughness > 0.4 || (flatness < 1. && rayLength > 10.0e3)) {
+    if (roughness > 0.4 || rayLength > 10.0e3) {
         return vUv - velocity;
     }
 
@@ -239,9 +238,7 @@ vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength) {
     reprojectedHitPoint.xyz /= reprojectedHitPoint.w;
     reprojectedHitPoint.xy = reprojectedHitPoint.xy * 0.5 + 0.5;
 
-    float f = roughness / 0.4;
-
-    return mix(reprojectedHitPoint.xy, vUv - velocity, f);
+    return reprojectedHitPoint.xy;
 }
 
 vec2 getReprojectedUV(const float depth, const vec3 worldPos, const vec3 worldNormal, const float rayLength) {
@@ -328,16 +325,16 @@ float getFlatness(vec3 g, vec3 rp) {
 }
 
 // source: https://www.shadertoy.com/view/stSfW1
-vec2 sampleBlocky(vec2 p) {
-    p /= invTexSize;
-    vec2 seam = floor(p + 0.5);
-    p = seam + clamp((p - seam) / fwidth(p), -0.5, 0.5);
-    return p * invTexSize;
-}
+// vec2 sampleBlocky(vec2 p) {
+//     p /= invTexSize;
+//     vec2 seam = floor(p + 0.5);
+//     p = seam + clamp((p - seam) / fwidth(p), -0.5, 0.5);
+//     return p * invTexSize;
+// }
 
 vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv) {
     // ! todo: investigate using sampleBlocky
-    vec4 blocky = SampleTextureCatmullRom(tex, sampleBlocky(reprojectedUv), 1. / invTexSize);
+    vec4 blocky = SampleTextureCatmullRom(tex, reprojectedUv, 1. / invTexSize);
 
     return blocky;
 }
