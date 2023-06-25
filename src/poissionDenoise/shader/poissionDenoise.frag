@@ -56,11 +56,10 @@ void toLinearSpace(inout vec3 color) {
     // color = pow(color, vec3(8.));
 }
 
-void evaluateNeighbor(const vec4 neighborTexel, inout vec3 denoised,
+void evaluateNeighbor(const vec4 neighborTexel, const float neighborLuminance, inout vec3 denoised,
                       inout float totalWeight, const float basicWeight) {
     float w = basicWeight;
-    w /= luminance(neighborTexel.rgb) + 0.01;
-    // w = min(w, 1.);
+    w /= neighborLuminance + 0.01;
 
     denoised += w * neighborTexel.rgb;
     totalWeight += w;
@@ -79,14 +78,8 @@ void main() {
     vec4 texel = textureLod(inputTexture, vUv, 0.0);
     vec4 texel2 = textureLod(inputTexture2, vUv, 0.0);
 
-    float min1 = min(texel.r, min(texel.g, texel.b));
-    float min2 = min(texel2.r, min(texel2.g, texel2.b));
-
-    bool useLogSpace = min1 > 0.000000001;
-    bool useLogSpace2 = min2 > 0.000000001;
-
-    if (useLogSpace) toLogSpace(texel.rgb);
-    if (useLogSpace2) toLogSpace(texel2.rgb);
+    toLogSpace(texel.rgb);
+    toLogSpace(texel2.rgb);
 
     vec3 diffuse, normal, emissive;
     float roughness, metalness;
@@ -143,8 +136,11 @@ void main() {
         vec4 neighborTexel = textureLod(inputTexture, neighborUv, 0.);
         vec4 neighborTexel2 = textureLod(inputTexture2, neighborUv, 0.);
 
-        if (useLogSpace) toLogSpace(neighborTexel.rgb);
-        if (useLogSpace2) toLogSpace(neighborTexel2.rgb);
+        float neighborLuminance = luminance(neighborTexel.rgb);
+        float neighborLuminance2 = luminance(neighborTexel2.rgb);
+
+        toLogSpace(neighborTexel.rgb);
+        toLogSpace(neighborTexel2.rgb);
 
         vec3 neighborNormal, neighborDiffuse;
         float neighborRoughness, neighborMetalness;
@@ -172,15 +168,15 @@ void main() {
         similarity *= w;
         similarity = pow(similarity, simW / w);
 
-        evaluateNeighbor(neighborTexel, denoised, totalWeight, similarity);
-        evaluateNeighbor(neighborTexel2, denoised2, totalWeight2, similarity2);
+        evaluateNeighbor(neighborTexel, neighborLuminance, denoised, totalWeight, similarity);
+        evaluateNeighbor(neighborTexel2, neighborLuminance2, denoised2, totalWeight2, similarity2);
     }
 
     denoised /= totalWeight;
     denoised2 /= totalWeight2;
 
-    if (useLogSpace) toLinearSpace(denoised);
-    if (useLogSpace2) toLinearSpace(denoised2);
+    toLinearSpace(denoised);
+    toLinearSpace(denoised2);
 
 #define FINAL_OUTPUT
 

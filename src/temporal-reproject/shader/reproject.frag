@@ -201,7 +201,7 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const 
     // angleDiff will be higher, the more we try to reproject pixels from a steep angle onto a surface with a low angle
     // which results in undesired stretching
     float angleDiff = max(0., lastViewAngle - viewAngle);
-    angleMix = 8. * angleDiff;
+    angleMix = 4. * angleDiff;
 
     float viewZ = abs(getViewZ(depth));
     float distFactor = 1. + 1. / (viewZ + 1.0);
