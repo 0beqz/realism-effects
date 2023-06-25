@@ -48,18 +48,18 @@ float distToPlane(const vec3 worldPos, const vec3 neighborWorldPos, const vec3 w
 // ! TODO: fix log space issue with certain models (NaN pixels) for example: see seiko-watch 3D model
 void toLogSpace(inout vec3 color) {
     // color = dot(color, color) > 0.000000001 ? log(color) : vec3(0.000000001);
-    // color = pow(color, vec3(1. / 8.));
+    color = pow(color, vec3(1. / 8.));
 }
 
 void toLinearSpace(inout vec3 color) {
     // color = exp(color);
-    // color = pow(color, vec3(8.));
+    color = pow(color, vec3(8.));
 }
 
 void evaluateNeighbor(const vec4 neighborTexel, const float neighborLuminance, inout vec3 denoised,
                       inout float totalWeight, const float basicWeight) {
     float w = basicWeight;
-    w /= neighborLuminance + 0.01;
+    w *= index % 2 == 0 ? neighborLuminance + 0.01 : 1. / (neighborLuminance + 0.01);
 
     denoised += w * neighborTexel.rgb;
     totalWeight += w;

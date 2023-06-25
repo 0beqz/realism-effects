@@ -176,7 +176,7 @@ export class PoissionDenoisePass extends Pass {
 			renderer.setRenderTarget(renderTarget)
 			renderer.render(this.scene, this.camera)
 
-			this.fullscreenMaterial.uniforms.index.value = this.fullscreenMaterial.uniforms.index.value + 1
+			this.fullscreenMaterial.uniforms.index.value++
 			this.fullscreenMaterial.uniforms.index.value %= 65536
 		}
 	}
