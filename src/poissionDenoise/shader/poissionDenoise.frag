@@ -56,10 +56,14 @@ void toLinearSpace(inout vec3 color) {
     color = pow(color, vec3(8.));
 }
 
+float getLuminanceWeight(float luminance) {
+    return index % 2 == 0 ? luminance + 0.01 : 1. / (luminance + 0.01);
+}
+
 void evaluateNeighbor(const vec4 neighborTexel, const float neighborLuminance, inout vec3 denoised,
                       inout float totalWeight, const float basicWeight) {
     float w = basicWeight;
-    w *= index % 2 == 0 ? neighborLuminance + 0.01 : 1. / (neighborLuminance + 0.01);
+    w *= getLuminanceWeight(neighborLuminance);
 
     denoised += w * neighborTexel.rgb;
     totalWeight += w;
@@ -78,6 +82,9 @@ void main() {
     vec4 texel = textureLod(inputTexture, vUv, 0.0);
     vec4 texel2 = textureLod(inputTexture2, vUv, 0.0);
 
+    float totalWeight = getLuminanceWeight(luminance(texel.rgb));
+    float totalWeight2 = getLuminanceWeight(luminance(texel2.rgb));
+
     toLogSpace(texel.rgb);
     toLogSpace(texel2.rgb);
 
@@ -86,22 +93,14 @@ void main() {
 
     getGData(gBuffersTexture, vUv, diffuse, normal, roughness, metalness, emissive);
 
-#ifdef NORMAL_IN_RGB
-    float denoised = texel.a;
-    float center = texel.a;
-#else
-    vec3 denoised = texel.rgb;
-    vec3 center = texel.rgb;
+    vec3 denoised = texel.rgb * totalWeight;
+    vec3 center = denoised;
 
-    vec3 denoised2 = texel2.rgb;
-    vec3 center2 = texel2.rgb;
-#endif
+    vec3 denoised2 = texel2.rgb * totalWeight2;
+    vec3 center2 = denoised2;
 
     float depth = depthTexel.x;
     vec3 worldPos = getWorldPos(depth, vUv);
-
-    float totalWeight = 1.0;
-    float totalWeight2 = 1.0;
 
     vec3 random = sampleBlueNoise(blueNoiseTexture, index, blueNoiseRepeat, resolution).rgb;
     float angle = mod(random.r * float(1), hn.r) * 2. * PI;

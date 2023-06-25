@@ -339,7 +339,7 @@ const initScene = async () => {
 		radius: 12,
 		rings: 5,
 		samples: 8,
-		lumaPhi: 0.2390000000000001,
+		lumaPhi: 0.34800000000000014,
 		depthPhi: 50,
 		normalPhi: 100,
 		roughnessPhi: 10.870000000000001,
