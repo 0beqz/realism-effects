@@ -59,8 +59,8 @@ void toLinearSpace(inout vec3 color) {
 void evaluateNeighbor(const vec4 neighborTexel, inout vec3 denoised,
                       inout float totalWeight, const float basicWeight) {
     float w = basicWeight;
-    // w *= luminance(neighborTexel.rgb);
-    w = min(w, 1.);
+    w /= luminance(neighborTexel.rgb) + 0.01;
+    // w = min(w, 1.);
 
     denoised += w * neighborTexel.rgb;
     totalWeight += w;
@@ -124,18 +124,21 @@ void main() {
     float w = 1. / pow(texel.a + 1., 1. / 2.333);
     float w2 = 1. / pow(texel2.a + 1., 1. / 2.333);
 
-    float r = max(w, w2) * 16. + 4.;
+    float r = max(w, w2) * 12. + 4.;
 
-    // const vec2 bilinearOffsets[4] = vec2[](
-    //     vec2(0.5, 0.5),
-    //     vec2(-0.5, 0.5),
-    //     vec2(0.5, -0.5),
-    //     vec2(-0.5, -0.5));
+    const vec2 bilinearOffsets[4] = vec2[](
+        vec2(0.5, 0.5),
+        vec2(-0.5, 0.5),
+        vec2(0.5, -0.5),
+        vec2(-0.5, -0.5));
 
     for (int i = 0; i < samples; i++) {
         vec2 offset = r * rotationMatrix * poissonDisk[i] * 0.5;
 
-        vec2 neighborUv = vUv + offset;
+        // get random bilinear offset
+        vec2 bilinearOffset = bilinearOffsets[i % 4];
+
+        vec2 neighborUv = vUv + offset + bilinearOffset / resolution;
 
         vec4 neighborTexel = textureLod(inputTexture, neighborUv, 0.);
         vec4 neighborTexel2 = textureLod(inputTexture2, neighborUv, 0.);
@@ -161,7 +164,7 @@ void main() {
         float lumaDiff = abs(luminance(neighborTexel.rgb) - luminance(neighborTexel2.rgb));
 
         float similarity = float(neighborDepth != 1.0) *
-                           exp(-normalDiff * normalPhi - depthDiff * depthPhi - roughnessDiff * roughnessPhi - diffuseDiff * diffusePhi);
+                           exp(-normalDiff * normalPhi - depthDiff * depthPhi - roughnessDiff * roughnessPhi - diffuseDiff * diffusePhi - lumaDiff * 5.);
 
         float simW = lumaPhi;
         float similarity2 = w2 * pow(similarity, simW / w2) * specularWeight;

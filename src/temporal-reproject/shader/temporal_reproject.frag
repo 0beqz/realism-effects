@@ -137,7 +137,8 @@ void main() {
 
                     clampNeighborhood(inputTexture[i], clampedColor, inputTexel[i].rgb, neighborhoodClampRadius);
 
-                    accumulatedTexel[i].rgb = mix(accumulatedTexel[i].rgb, clampedColor, neighborhoodClampIntensity);
+                    // ! todo: find good neighborhood clamp intensity
+                    accumulatedTexel[i].rgb = mix(accumulatedTexel[i].rgb, clampedColor, 0.25 + 0.5 * roughness);
                 }
             } else {
                 inputTexel[i].rgb = accumulatedTexel[i].rgb;

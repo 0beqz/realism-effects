@@ -211,6 +211,8 @@ void main() {
         envMisMultiplier = 1.;
 #endif
 
+        envPdf = clamp(envPdf, 0.01, 4.0);
+
         if (isDiffuseSample) {
             if (isEnvMisSample) {
                 l = envMisDir;
@@ -293,7 +295,7 @@ void main() {
     vec4 hitPosWS;
 
     if (isMissedRay) {
-        if (getFlatness(worldPos, worldNormal) > 0.) rayLength = 10.0e4;
+        if (getFlatness(worldPos, worldNormal) > 0.001) rayLength = 10.0e4;
     } else {
         // convert hitPos from view- to world-space
         hitPosWS = cameraMatrixWorld * vec4(specularHitPos, 1.0);
@@ -394,9 +396,6 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
 
     // check if the reprojected coordinates are within the screen
     if (reprojectedUv.x >= 0.0 && reprojectedUv.x <= 1.0 && reprojectedUv.y >= 0.0 && reprojectedUv.y <= 1.0) {
-        // vec4 emissiveTexel = textureLod(emissiveTexture, coords.xy, 0.);
-        // vec3 emissiveColor = emissiveTexel.rgb * 10.;
-
         vec3 reprojectedGI = getTexel(accumulatedTexture, reprojectedUv, 0.).rgb;
 
         SSGI = reprojectedGI;
