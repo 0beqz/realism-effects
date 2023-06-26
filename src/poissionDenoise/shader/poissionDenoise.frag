@@ -7,6 +7,7 @@ uniform sampler2D directLightTexture;
 uniform mat4 projectionMatrixInverse;
 uniform mat4 projectionMatrix;
 uniform mat4 cameraMatrixWorld;
+uniform float radius;
 uniform float lumaPhi;
 uniform float depthPhi;
 uniform float normalPhi;
@@ -45,24 +46,35 @@ float distToPlane(const vec3 worldPos, const vec3 neighborWorldPos, const vec3 w
     return distToPlane;
 }
 
-const float denoiseSpaceExponent = 16.;
-
 void toDenoiseSpace(inout vec3 color) {
-    color = pow(color, vec3(1. / denoiseSpaceExponent));
+    color = log(color + 1.);
 }
 
 void toLinearSpace(inout vec3 color) {
-    color = pow(color, vec3(denoiseSpaceExponent));
+    color = exp(color) - 1.;
 }
 
-float getLuminanceWeight(float luminance) {
-    return index % 2 == 0 ? luminance : 1. / (luminance + 0.00001);
+float getLuminanceWeight(float luminance, float a) {
+    return index % 2 == 0 ? luminance : 1. / (luminance + 0.01);
+    // return mix(1. / (luminance + 0.1), 1., pow(1. / (a + 5.), 1. / 2.333));
+}
+
+float getCurvature(vec3 n, float depth) {
+    vec3 dx = dFdx(n);
+    vec3 dy = dFdy(n);
+    vec3 xneg = n - dx;
+    vec3 xpos = n + dx;
+    vec3 yneg = n - dy;
+    vec3 ypos = n + dy;
+    float curvature = (cross(xneg, xpos).y - cross(yneg, ypos).x) * 4.0 / depth;
+
+    return curvature;
 }
 
 void evaluateNeighbor(const vec4 neighborTexel, const float neighborLuminance, inout vec3 denoised,
                       inout float totalWeight, const float basicWeight) {
     float w = basicWeight;
-    w *= getLuminanceWeight(neighborLuminance);
+    w *= getLuminanceWeight(neighborLuminance, neighborTexel.a);
 
     denoised += w * neighborTexel.rgb;
     totalWeight += w;
@@ -81,8 +93,15 @@ void main() {
     vec4 texel = textureLod(inputTexture, vUv, 0.0);
     vec4 texel2 = textureLod(inputTexture2, vUv, 0.0);
 
-    float totalWeight = getLuminanceWeight(luminance(texel.rgb));
-    float totalWeight2 = getLuminanceWeight(luminance(texel2.rgb));
+    // if (vUv.x > 0.5) {
+    //     gOutput0 = texel;
+    //     gOutput1 = texel2;
+
+    //     return;
+    // }
+
+    float totalWeight = getLuminanceWeight(luminance(texel.rgb), texel.a);
+    float totalWeight2 = getLuminanceWeight(luminance(texel2.rgb), texel2.a);
 
     toDenoiseSpace(texel.rgb);
     toDenoiseSpace(texel2.rgb);
@@ -98,8 +117,8 @@ void main() {
     float depth = depthTexel.x;
     vec3 worldPos = getWorldPos(depth, vUv);
 
-    vec3 random = sampleBlueNoise(blueNoiseTexture, index, blueNoiseRepeat, resolution).rgb;
-    float angle = mod(random.r * float(1), hn.r) * 2. * PI;
+    vec4 random = sampleBlueNoise(blueNoiseTexture, index, blueNoiseRepeat, resolution);
+    float angle = random.r * 2. * PI;
     float s = sin(angle), c = cos(angle);
     mat2 rotationMatrix = mat2(c, -s, s, c);
 
@@ -112,21 +131,14 @@ void main() {
     float w = 1. / pow(texel.a + 1., 1. / 2.333) + 0.01;
     float w2 = 1. / pow(texel2.a + 1., 1. / 2.333) + 0.01;
 
-    float r = max(w, w2) * 12. + 4.;
-
-    const vec2 bilinearOffsets[4] = vec2[](
-        vec2(0.5, 0.5),
-        vec2(-0.5, 0.5),
-        vec2(0.5, -0.5),
-        vec2(-0.5, -0.5));
+    float r = max(w, w2) * radius;
+    float curvature = getCurvature(normal, depth);
+    curvature = mix(curvature, 0., random.a);
+    r *= pow(1. - curvature, 2.);
 
     for (int i = 0; i < samples; i++) {
-        vec2 offset = r * rotationMatrix * poissonDisk[i] * 0.5;
-
-        // get random bilinear offset
-        vec2 bilinearOffset = bilinearOffsets[i % 4];
-
-        vec2 neighborUv = vUv + offset + bilinearOffset / resolution;
+        vec2 offset = radius * rotationMatrix * poissonDisk[i];
+        vec2 neighborUv = vUv + offset;
 
         vec4 neighborTexel = textureLod(inputTexture, neighborUv, 0.);
         vec4 neighborTexel2 = textureLod(inputTexture2, neighborUv, 0.);

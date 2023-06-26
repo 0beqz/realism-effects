@@ -336,9 +336,9 @@ const initScene = async () => {
 		denoiseKernel: 3,
 		denoiseDiffuse: 25,
 		denoiseSpecular: 25.54,
-		radius: 12,
 		rings: 5,
 		samples: 8,
+		radius: 7,
 		lumaPhi: 0.34800000000000014,
 		depthPhi: 50,
 		normalPhi: 100,
@@ -356,6 +356,8 @@ const initScene = async () => {
 
 	const velocityDepthNormalPass = new VelocityDepthNormalPass(scene, camera)
 	composer.addPass(velocityDepthNormalPass)
+	renderer.toneMapping = THREE.ACESFilmicToneMapping
+	renderer.toneMappingExposure = 1.3
 
 	traaEffect = new TRAAEffect(scene, camera, velocityDepthNormalPass)
 

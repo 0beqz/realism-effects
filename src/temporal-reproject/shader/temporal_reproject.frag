@@ -51,8 +51,6 @@ void main() {
     for (int i = 0; i < textureCount; i++) {
         inputTexel[i] = textureLod(inputTexture[i], vUv, 0.0);
 
-        doColorTransform[i] = luminance(inputTexel[i].rgb) > 0.0;
-
         textureSampledThisFrame[i] = inputTexel[i].r >= 0.;
 
         if (textureSampledThisFrame[i]) {
@@ -74,7 +72,6 @@ void main() {
     vec3 worldPos = screenSpaceToWorldSpace(dilatedUv, depth, cameraMatrixWorld, projectionMatrixInverse);
     flatness = getFlatness(worldPos, worldNormal);
     vec3 viewPos = (viewMatrix * vec4(worldPos, 1.0)).xyz;
-
     vec3 viewDir = normalize(viewPos);
     vec3 viewNormal = (viewMatrix * vec4(worldNormal, 0.0)).xyz;
 
@@ -138,7 +135,7 @@ void main() {
                     clampNeighborhood(inputTexture[i], clampedColor, inputTexel[i].rgb, neighborhoodClampRadius);
 
                     // ! todo: find good neighborhood clamp intensity
-                    accumulatedTexel[i].rgb = mix(accumulatedTexel[i].rgb, clampedColor, 1. - roughness);
+                    accumulatedTexel[i].rgb = mix(accumulatedTexel[i].rgb, clampedColor, neighborhoodClampIntensity);
                 }
             } else {
                 inputTexel[i].rgb = accumulatedTexel[i].rgb;

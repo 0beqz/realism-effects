@@ -1,25 +1,20 @@
 ﻿import { Effect, RenderPass, Selection } from "postprocessing"
 import {
-	DepthTexture,
+	LinearFilter,
 	LinearMipMapLinearFilter,
 	NoToneMapping,
 	PerspectiveCamera,
 	SRGBColorSpace,
 	Uniform,
-	WebGLRenderTarget,
-	LinearFilter
+	WebGLRenderTarget
 } from "three"
 import { SVGF } from "../svgf/SVGF.js"
 import { CubeToEquirectEnvPass } from "./pass/CubeToEquirectEnvPass.js"
 import { SSGIPass } from "./pass/SSGIPass.js"
 /* eslint-disable camelcase */
-import ssgi_compose from "./shader/ssgi_compose.frag"
-import ssgi_poisson_compose_functions from "./shader/ssgi_poisson_compose_functions.glsl"
-import ssgi_poisson_compose from "./shader/ssgi_poisson_compose.frag"
-
-import denoise_compose from "./shader/denoise_compose.frag"
-import denoise_compose_functions from "./shader/denoise_compose_functions.frag"
 import { defaultSSGIOptions } from "./SSGIOptions"
+import { SSGIComposePass } from "./pass/SSGIComposePass.js"
+import ssgi_compose from "./shader/ssgi_compose.frag"
 import {
 	createGlobalDisableIblIradianceUniform,
 	createGlobalDisableIblRadianceUniform,
@@ -28,7 +23,6 @@ import {
 	isChildMaterialRenderable,
 	unrollLoops
 } from "./utils/Utils.js"
-import { SSGIComposePass } from "./pass/SSGIComposePass.js"
 
 const { render } = RenderPass.prototype
 
@@ -102,12 +96,6 @@ export class SSGIEffect extends Effect {
 		// }
 
 		this.svgf = new SVGF(scene, camera, velocityDepthNormalPass, textureCount, options)
-
-		this.svgf.denoisePass.fullscreenMaterial.fragmentShader = this.svgf.denoisePass.fullscreenMaterial.fragmentShader
-			.replace("void main() {", ssgi_poisson_compose_functions + "\nvoid main() {")
-			.replace("#define FINAL_OUTPUT", "#define FINAL_OUTPUT\n" + ssgi_poisson_compose)
-
-		this.svgf.denoisePass.fullscreenMaterial.needsUpdate = true
 
 		// if (definesName === "ssgi") {
 		// 	this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.fragmentShader =
@@ -233,19 +221,7 @@ export class SSGIEffect extends Effect {
 							this.svgf.denoisePass.iterations = value
 							break
 
-						case "denoiseDiffuse":
-							if (this.svgf.denoisePass.fullscreenMaterial.uniforms.denoise) {
-								this.svgf.denoisePass.fullscreenMaterial.uniforms.denoise.value[0] = value
-							}
-							break
-
-						case "denoiseSpecular":
-							if (this.svgf.denoisePass.fullscreenMaterial.uniforms.denoise) {
-								this.svgf.denoisePass.fullscreenMaterial.uniforms.denoise.value[1] = value
-							}
-							break
-
-						case "denoiseKernel":
+						case "radius":
 						case "lumaPhi":
 						case "depthPhi":
 						case "normalPhi":

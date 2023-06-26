@@ -63,27 +63,14 @@ vec3 unpackNormal(float packedNormal) {
     return decodeOctWrap(unpackHalf2x16(floatBitsToUint(packedNormal)));
 }
 
-bool doColorTransform[textureCount];
-
 #ifdef logTransform
 // idea from: https://www.elopezr.com/temporal-aa-and-the-quest-for-the-holy-trail/
 void transformColor(inout vec3 color) {
-    if (!doColorTransform[texIndex]) return;
-    float lum = luminance(color);
-
-    float diff = min(1.0, lum - 0.99);
-    if (diff > 0.0) {
-        color = vec3(diff * 0.1);
-        return;
-    }
-
-    color = dot(color, color) > 0.00001 ? log(color) : vec3(0.00001);
+    color = log(color + 1.);
 }
 
 void undoColorTransform(inout vec3 color) {
-    if (!doColorTransform[texIndex]) return;
-
-    color = exp(color);
+    color = exp(color) - 1.;
 }
 #else
     #define transformColor
@@ -211,7 +198,7 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const 
     if (velocityDisocclusionCheck(velocity, lastVelocity, distFactor)) return false;
 
     // ! todo: investigate normal disocclusion check
-    if (normalsDisocclusionCheck(worldNormal, lastWorldNormal, distFactor)) return false;
+    // if (normalsDisocclusionCheck(worldNormal, lastWorldNormal, distFactor)) return false;
 
     if (planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal, distFactor))
         return false;
@@ -325,16 +312,16 @@ float getFlatness(vec3 g, vec3 rp) {
 }
 
 // source: https://www.shadertoy.com/view/stSfW1
-// vec2 sampleBlocky(vec2 p) {
-//     p /= invTexSize;
-//     vec2 seam = floor(p + 0.5);
-//     p = seam + clamp((p - seam) / fwidth(p), -0.5, 0.5);
-//     return p * invTexSize;
-// }
+vec2 sampleBlocky(vec2 p) {
+    p /= invTexSize;
+    vec2 seam = floor(p + 0.5);
+    p = seam + clamp((p - seam) / fwidth(p), -0.5, 0.5);
+    return p * invTexSize;
+}
 
 vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv) {
     // ! todo: investigate using sampleBlocky
-    vec4 blocky = SampleTextureCatmullRom(tex, reprojectedUv, 1. / invTexSize);
+    vec4 blocky = SampleTextureCatmullRom(tex, sampleBlocky(reprojectedUv), 1. / invTexSize);
 
     return blocky;
 }
