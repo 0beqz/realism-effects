@@ -205,14 +205,15 @@ document.body.appendChild(stats.dom)
 const rgbeLoader = new RGBELoader().setDataType(FloatType)
 
 const initEnvMap = async envMap => {
-	scene.environment?.dispose()
-
-	envMap.mapping = EquirectangularReflectionMapping
-
-	scene.environment = envMap
-	scene.background = traaTest ? new Color(0x4c7fe5) : null
-
-	setEnvMesh(envMap)
+	console.log(envMap)
+	if (envMap.source.data.width > 2048) {
+		setEnvMesh(envMap)
+	} else {
+		scene.environment?.dispose()
+		envMap.mapping = EquirectangularReflectionMapping
+		scene.environment = envMap
+		scene.background = traaTest ? new Color(0x4c7fe5) : null
+	}
 }
 
 const cubeMapTest = () => {
@@ -237,7 +238,7 @@ const setEnvMesh = envMap => {
 		envMesh.height = 20
 		envMesh.scale.setScalar(100)
 		envMesh.updateMatrixWorld()
-		// scene.add(envMesh)
+		scene.add(envMesh)
 
 		scene.background = new Color("white")
 	}
@@ -356,8 +357,8 @@ const initScene = async () => {
 
 	const velocityDepthNormalPass = new VelocityDepthNormalPass(scene, camera)
 	composer.addPass(velocityDepthNormalPass)
-	// renderer.toneMapping = THREE.ACESFilmicToneMapping
-	// renderer.toneMappingExposure = 1.3
+	renderer.toneMapping = THREE.ACESFilmicToneMapping
+	renderer.toneMappingExposure = 1.3
 
 	traaEffect = new TRAAEffect(scene, camera, velocityDepthNormalPass)
 
@@ -415,6 +416,7 @@ const initScene = async () => {
 				return
 			}
 
+			rgbeLoader.load("hdr/8k/" + ev.value + "_8k.hdr", initEnvMap)
 			rgbeLoader.load("hdr/" + ev.value + "_1k.hdr", initEnvMap)
 		})
 
@@ -610,7 +612,7 @@ const initScene = async () => {
 
 		if (!isAoDemo) {
 			if (fps >= 256) {
-				setAA("FXAA")
+				setAA("TRAA")
 				resize()
 			} else {
 				setAA("FXAA")

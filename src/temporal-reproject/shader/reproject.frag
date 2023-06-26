@@ -165,7 +165,7 @@ bool velocityDisocclusionCheck(const vec2 velocity, const vec2 lastVelocity, con
 }
 
 bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const vec3 worldNormal, const bool isHitPoint) {
-    return false;
+    // return false;
 
     if (reprojectedUv.x > 1.0 || reprojectedUv.x < 0.0 || reprojectedUv.y > 1.0 || reprojectedUv.y < 0.0) return false;
 
@@ -321,7 +321,7 @@ vec2 sampleBlocky(vec2 p) {
 
 vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv) {
     // ! todo: investigate using sampleBlocky
-    vec4 blocky = SampleTextureCatmullRom(tex, sampleBlocky(reprojectedUv), 1. / invTexSize);
+    vec4 blocky = SampleTextureCatmullRom(tex, (reprojectedUv), 1. / invTexSize);
 
     return blocky;
 }

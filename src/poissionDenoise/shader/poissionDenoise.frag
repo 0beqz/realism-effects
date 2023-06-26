@@ -39,6 +39,18 @@ vec3 getWorldPos(float depth, vec2 coord) {
     return worldSpacePosition.xyz;
 }
 
+float getCurvature(vec3 n, float depth) {
+    vec3 dx = dFdx(n);
+    vec3 dy = dFdy(n);
+    vec3 xneg = n - dx;
+    vec3 xpos = n + dx;
+    vec3 yneg = n - dy;
+    vec3 ypos = n + dy;
+    float curvature = (cross(xneg, xpos).y - cross(yneg, ypos).x) * 4.0 / depth;
+
+    return curvature;
+}
+
 float distToPlane(const vec3 worldPos, const vec3 neighborWorldPos, const vec3 worldNormal) {
     vec3 toCurrent = worldPos - neighborWorldPos;
     float distToPlane = abs(dot(toCurrent, worldNormal));
@@ -59,22 +71,10 @@ float getLuminanceWeight(float luminance, float a) {
     // return mix(1. / (luminance + 0.1), 1., pow(1. / (a + 5.), 1. / 2.333));
 }
 
-float getCurvature(vec3 n, float depth) {
-    vec3 dx = dFdx(n);
-    vec3 dy = dFdy(n);
-    vec3 xneg = n - dx;
-    vec3 xpos = n + dx;
-    vec3 yneg = n - dy;
-    vec3 ypos = n + dy;
-    float curvature = (cross(xneg, xpos).y - cross(yneg, ypos).x) * 4.0 / depth;
-
-    return curvature;
-}
-
 void evaluateNeighbor(const vec4 neighborTexel, const float neighborLuminance, inout vec3 denoised,
                       inout float totalWeight, const float basicWeight) {
     float w = basicWeight;
-    w *= getLuminanceWeight(neighborLuminance, neighborTexel.a);
+    // w *= getLuminanceWeight(neighborLuminance, neighborTexel.a);
 
     denoised += w * neighborTexel.rgb;
     totalWeight += w;
@@ -124,7 +124,6 @@ void main() {
 
     float specularWeight = roughness * roughness > 0.15 ? 1. : roughness * roughness / 0.15;
     specularWeight = pow(specularWeight * specularWeight, 4.);
-    specularWeight = 1.;
 
     texel.a = min(texel.a, 60.0);
     texel2.a = min(texel2.a, 60.0);
@@ -133,9 +132,8 @@ void main() {
     float w2 = 1. / pow(texel2.a + 1., 1. / 2.333) + 0.01;
 
     float r = max(w, w2) * radius;
-    float curvature = getCurvature(normal, depth);
-    curvature = mix(curvature, 0., random.a);
-    r = mix(r, 2., min(1., pow(curvature, 2.) * 4.));
+    // float curvature = getCurvature(normal, depth);
+    // r = mix(r, 2., min(1., pow(curvature, 2.) * 4.));
 
     for (int i = 0; i < samples; i++) {
         vec2 offset = r * rotationMatrix * poissonDisk[i];
