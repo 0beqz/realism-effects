@@ -356,8 +356,8 @@ const initScene = async () => {
 
 	const velocityDepthNormalPass = new VelocityDepthNormalPass(scene, camera)
 	composer.addPass(velocityDepthNormalPass)
-	renderer.toneMapping = THREE.ACESFilmicToneMapping
-	renderer.toneMappingExposure = 1.3
+	// renderer.toneMapping = THREE.ACESFilmicToneMapping
+	// renderer.toneMappingExposure = 1.3
 
 	traaEffect = new TRAAEffect(scene, camera, velocityDepthNormalPass)
 

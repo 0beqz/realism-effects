@@ -124,6 +124,7 @@ void main() {
 
     float specularWeight = roughness * roughness > 0.15 ? 1. : roughness * roughness / 0.15;
     specularWeight = pow(specularWeight * specularWeight, 4.);
+    specularWeight = 1.;
 
     texel.a = min(texel.a, 60.0);
     texel2.a = min(texel2.a, 60.0);
@@ -134,10 +135,10 @@ void main() {
     float r = max(w, w2) * radius;
     float curvature = getCurvature(normal, depth);
     curvature = mix(curvature, 0., random.a);
-    r *= pow(1. - curvature, 2.);
+    r = mix(r, 2., min(1., pow(curvature, 2.) * 4.));
 
     for (int i = 0; i < samples; i++) {
-        vec2 offset = radius * rotationMatrix * poissonDisk[i];
+        vec2 offset = r * rotationMatrix * poissonDisk[i];
         vec2 neighborUv = vUv + offset;
 
         vec4 neighborTexel = textureLod(inputTexture, neighborUv, 0.);
@@ -164,10 +165,8 @@ void main() {
         float roughnessDiff = abs(roughness - neighborRoughness);
         float diffuseDiff = length(neighborDiffuse - diffuse);
 
-        float lumaDiff = abs(luminance(neighborTexel.rgb) - luminance(neighborTexel2.rgb));
-
         float similarity = float(neighborDepth != 1.0) *
-                           exp(-normalDiff * normalPhi - depthDiff * depthPhi - roughnessDiff * roughnessPhi - diffuseDiff * diffusePhi - lumaDiff * 5.);
+                           exp(-normalDiff * normalPhi - depthDiff * depthPhi - roughnessDiff * roughnessPhi - diffuseDiff * diffusePhi);
 
         float simW = lumaPhi;
         float similarity2 = w2 * pow(similarity, simW / w2) * specularWeight;
@@ -186,6 +185,8 @@ void main() {
     toLinearSpace(denoised2);
 
 #define FINAL_OUTPUT
+
+    // denoised = vec3(r < 2. ? 1. : 0.);
 
     gOutput0 = vec4(denoised, texel.a);
     gOutput1 = vec4(denoised2, texel2.a);
