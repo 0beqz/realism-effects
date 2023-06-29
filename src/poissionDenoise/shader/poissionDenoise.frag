@@ -67,8 +67,10 @@ void toLinearSpace(inout vec3 color) {
 }
 
 float getLuminanceWeight(float luminance, float a) {
-    return index % 2 == 0 ? luminance : 1. / (luminance + 0.01);
-    // return mix(1. / (luminance + 0.1), 1., pow(1. / (a + 5.), 1. / 2.333));
+    return mix(
+        1. / (luminance + 0.01),
+        1.,
+        1. / pow(a + 1., 2.333));
 }
 
 void evaluateNeighbor(const vec4 neighborTexel, const float neighborLuminance, inout vec3 denoised,
@@ -131,9 +133,9 @@ void main() {
     float w = 1. / pow(texel.a + 1., 1. / 2.333) + 0.01;
     float w2 = 1. / pow(texel2.a + 1., 1. / 2.333) + 0.01;
 
-    float r = max(w, w2) * radius;
-    // float curvature = getCurvature(normal, depth);
-    // r = mix(r, 2., min(1., pow(curvature, 2.) * 4.));
+    float r = radius;
+    float curvature = getCurvature(normal, depth);
+    r = mix(r, 4., min(1., curvature * curvature));
 
     for (int i = 0; i < samples; i++) {
         vec2 offset = r * rotationMatrix * poissonDisk[i];

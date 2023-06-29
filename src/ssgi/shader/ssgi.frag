@@ -294,9 +294,7 @@ void main() {
 
     vec4 hitPosWS;
 
-    if (isMissedRay) {
-        if (getFlatness(worldPos, worldNormal) > 0.001) rayLength = 10.0e4;
-    } else {
+    if (!isMissedRay) {
         // convert hitPos from view- to world-space
         hitPosWS = cameraMatrixWorld * vec4(specularHitPos, 1.0);
 

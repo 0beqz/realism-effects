@@ -173,7 +173,7 @@ void main() {
         outputColor = mix(inputTexel[i].rgb, accumulatedTexel[i].rgb, temporalReprojectMix);
         undoColorTransform(outputColor);
 
-        // outputColor = vec3(rayLength);
+        // outputColor = vec3(fwidth(rayLength) > 0.0 ? 0.0 : 1.0);
 
         // outputColor = vec3(inputTexel[i].rgb);
         // outputColor = vec3(angleMix);
