@@ -78,7 +78,7 @@ export class SSGIEffect extends Effect {
 		} else {
 			definesName = "ssgi"
 			options.reprojectSpecular = [false, true]
-			options.neighborhoodClamp = [true, true]
+			options.neighborhoodClamp = [false, true]
 			options.roughnessDependent = [false, true]
 		}
 
@@ -271,12 +271,6 @@ export class SSGIEffect extends Effect {
 							this.ssgiPass.fullscreenMaterial.needsUpdate = needsUpdate
 							temporalReprojectPass.reset()
 
-							break
-
-						case "directLightMultiplier":
-							this.ssgiPass.fullscreenMaterial.defines[key] = value.toPrecision(5)
-							this.ssgiPass.fullscreenMaterial.needsUpdate = needsUpdate
-							temporalReprojectPass.reset()
 							break
 
 						case "importanceSampling":

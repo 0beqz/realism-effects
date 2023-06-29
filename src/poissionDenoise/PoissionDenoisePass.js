@@ -1,5 +1,6 @@
 import { Pass } from "postprocessing"
 import {
+	FloatType,
 	GLSL3,
 	HalfFloatType,
 	Matrix4,
@@ -50,12 +51,10 @@ export class PoissionDenoisePass extends Pass {
 			vertexShader,
 			uniforms: {
 				depthTexture: { value: null },
-				directLightTexture: { value: null },
 				inputTexture: { value: null },
 				inputTexture2: { value: null },
 				gBuffersTexture: { value: null },
 				projectionMatrixInverse: { value: new Matrix4() },
-				projectionMatrix: { value: new Matrix4() },
 				cameraMatrixWorld: { value: new Matrix4() },
 				viewMatrix: { value: new Matrix4() },
 				radius: { value: defaultPoissonBlurOptions.radius },
@@ -67,15 +66,13 @@ export class PoissionDenoisePass extends Pass {
 				resolution: { value: new Vector2() },
 				blueNoiseTexture: { value: null },
 				index: { value: 0 },
-				isFirstIteration: { value: false },
-				isLastIteration: { value: false },
 				blueNoiseRepeat: { value: new Vector2() }
 			},
 			glslVersion: GLSL3
 		})
 
 		const renderTargetOptions = {
-			type: HalfFloatType,
+			type: FloatType,
 			colorSpace: SRGBColorSpace,
 			depthBuffer: false
 		}
@@ -88,7 +85,6 @@ export class PoissionDenoisePass extends Pass {
 		uniforms["inputTexture"].value = this.inputTexture
 		uniforms["depthTexture"].value = depthTexture
 		uniforms["projectionMatrixInverse"].value = camera.projectionMatrixInverse
-		uniforms["projectionMatrix"].value = camera.projectionMatrix
 		uniforms["cameraMatrixWorld"].value = camera.matrixWorld
 		uniforms["viewMatrix"].value = camera.matrixWorldInverse
 		uniforms["depthPhi"].value = options.depthPhi
@@ -162,9 +158,6 @@ export class PoissionDenoisePass extends Pass {
 
 		for (let i = 0; i < 2 * this.iterations; i++) {
 			const horizontal = i % 2 === 0
-			this.fullscreenMaterial.uniforms.isFirstIteration.value = i === 0
-			this.fullscreenMaterial.uniforms.isLastIteration.value = i === 2 * this.iterations - 1
-
 			const inputRenderTarget = horizontal ? this.renderTargetB : this.renderTargetA
 
 			this.fullscreenMaterial.uniforms["inputTexture"].value =

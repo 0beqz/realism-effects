@@ -106,7 +106,6 @@ const options = {
 	roughnessPhi: 1,
 	envBlur: 0.5,
 	importanceSampling: true,
-	directLightMultiplier: 1,
 	steps: 20,
 	refineSteps: 5,
 	spp: 1,

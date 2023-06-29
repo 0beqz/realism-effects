@@ -47,7 +47,6 @@ export class SSGIMaterial extends ShaderMaterial {
 				steps: 20,
 				refineSteps: 5,
 				spp: 1,
-				directLightMultiplier: 1,
 				CUBEUV_TEXEL_WIDTH: 0,
 				CUBEUV_TEXEL_HEIGHT: 0,
 				CUBEUV_MAX_MIP: 0,

@@ -3,9 +3,7 @@ varying vec2 vUv;
 uniform sampler2D inputTexture;
 uniform sampler2D inputTexture2;
 uniform sampler2D depthTexture;
-uniform sampler2D directLightTexture;
 uniform mat4 projectionMatrixInverse;
-uniform mat4 projectionMatrix;
 uniform mat4 cameraMatrixWorld;
 uniform float radius;
 uniform float lumaPhi;
@@ -17,7 +15,6 @@ uniform sampler2D blueNoiseTexture;
 uniform vec2 blueNoiseRepeat;
 uniform int index;
 uniform vec2 resolution;
-uniform bool isLastIteration;
 
 layout(location = 0) out vec4 gOutput0;
 layout(location = 1) out vec4 gOutput1;
@@ -70,7 +67,7 @@ float getLuminanceWeight(float luminance, float a) {
     return mix(
         1. / (luminance + 0.01),
         1.,
-        1. / pow(a + 1., 2.333));
+        1. / pow(a + 1., 4.));
 }
 
 void evaluateNeighbor(const vec4 neighborTexel, const float neighborLuminance, inout vec3 denoised,
@@ -94,6 +91,9 @@ void main() {
 
     vec4 texel = textureLod(inputTexture, vUv, 0.0);
     vec4 texel2 = textureLod(inputTexture2, vUv, 0.0);
+
+    float lum = luminance(texel.rgb);
+    float lum2 = luminance(texel2.rgb);
 
     // if (vUv.x > 0.5) {
     //     gOutput0 = texel;
@@ -127,15 +127,14 @@ void main() {
     float specularWeight = roughness * roughness > 0.15 ? 1. : roughness * roughness / 0.15;
     specularWeight = pow(specularWeight * specularWeight, 4.);
 
-    texel.a = min(texel.a, 60.0);
-    texel2.a = min(texel2.a, 60.0);
+    float a = texel.a;
+    float a2 = texel2.a;
 
-    float w = 1. / pow(texel.a + 1., 1. / 2.333) + 0.01;
-    float w2 = 1. / pow(texel2.a + 1., 1. / 2.333) + 0.01;
+    float w = smoothstep(0., 1., 1. / pow(a + 1., 1. / 3.));
+    float w2 = smoothstep(0., 1., 1. / pow(a2 + 1., 1. / 3.));
 
-    float r = radius;
     float curvature = getCurvature(normal, depth);
-    r = mix(r, 4., min(1., curvature * curvature));
+    float r = mix(radius, 4., min(1., curvature * curvature));
 
     for (int i = 0; i < samples; i++) {
         vec2 offset = r * rotationMatrix * poissonDisk[i];
@@ -165,14 +164,16 @@ void main() {
         float roughnessDiff = abs(roughness - neighborRoughness);
         float diffuseDiff = length(neighborDiffuse - diffuse);
 
+        float lumaDiff = mix(abs(lum - neighborLuminance), 0., w);
+        float lumaDiff2 = mix(abs(lum2 - neighborLuminance2), 0., w2);
+
         float similarity = float(neighborDepth != 1.0) *
                            exp(-normalDiff * normalPhi - depthDiff * depthPhi - roughnessDiff * roughnessPhi - diffuseDiff * diffusePhi);
 
-        float simW = lumaPhi;
-        float similarity2 = w2 * pow(similarity, simW / w2) * specularWeight;
+        float similarity2 = w2 * pow(similarity, lumaPhi / w2) * specularWeight * exp(-lumaDiff2 * 5.);
 
         similarity *= w;
-        similarity = pow(similarity, simW / w);
+        similarity = pow(similarity, lumaPhi / w) * exp(-lumaDiff * 5.);
 
         evaluateNeighbor(neighborTexel, neighborLuminance, denoised, totalWeight, similarity);
         evaluateNeighbor(neighborTexel2, neighborLuminance2, denoised2, totalWeight2, similarity2);

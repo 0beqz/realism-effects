@@ -93,8 +93,6 @@ void main() {
 
     invTexSize = 1. / texSize;
 
-    bool isMirror = roughness * roughness < 0.1;
-
     roughness = clamp(roughness * roughness, 0.0001, 1.0);
 
     // pre-calculated variables for the "fastGetViewZ" function

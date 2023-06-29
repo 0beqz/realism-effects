@@ -196,7 +196,7 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const 
     if (velocityDisocclusionCheck(velocity, lastVelocity, distFactor)) return false;
 
     // ! todo: investigate normal disocclusion check
-    if (normalDisocclusionCheck(worldNormal, lastWorldNormal, distFactor)) return false;
+    // if (normalDisocclusionCheck(worldNormal, lastWorldNormal, distFactor)) return false;
 
     if (planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal, distFactor))
         return false;
