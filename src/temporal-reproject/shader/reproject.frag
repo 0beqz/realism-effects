@@ -156,7 +156,7 @@ bool planeDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos
     return distToPlane > PLANE_DISTANCE * distFactor;
 }
 
-bool normalsDisocclusionCheck(vec3 worldNormal, vec3 lastWorldNormal, const float distFactor) {
+bool normalDisocclusionCheck(vec3 worldNormal, vec3 lastWorldNormal, const float distFactor) {
     return pow(abs(dot(worldNormal, lastWorldNormal)), 2.) < NORMAL_DISTANCE * distFactor;
 }
 
@@ -193,12 +193,10 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const 
     float viewZ = abs(getViewZ(depth));
     float distFactor = 1. + 1. / (viewZ + 1.0);
 
-    //! todo: take view angle into account
-
     if (velocityDisocclusionCheck(velocity, lastVelocity, distFactor)) return false;
 
     // ! todo: investigate normal disocclusion check
-    // if (normalsDisocclusionCheck(worldNormal, lastWorldNormal, distFactor)) return false;
+    if (normalDisocclusionCheck(worldNormal, lastWorldNormal, distFactor)) return false;
 
     if (planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal, distFactor))
         return false;
