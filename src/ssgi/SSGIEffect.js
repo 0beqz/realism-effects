@@ -78,7 +78,7 @@ export class SSGIEffect extends Effect {
 		} else {
 			definesName = "ssgi"
 			options.reprojectSpecular = [false, true]
-			options.neighborhoodClamp = [false, true]
+			options.neighborhoodClamp = [true, true]
 			options.roughnessDependent = [false, true]
 		}
 
@@ -436,8 +436,8 @@ export class SSGIEffect extends Effect {
 		const ssgiComposePassUniforms = this.ssgiComposePass.fullscreenMaterial.uniforms
 		ssgiComposePassUniforms.gBuffersTexture.value = this.ssgiPass.gBuffersRenderTarget.texture
 		ssgiComposePassUniforms.depthTexture.value = this.ssgiPass.depthTexture
-		ssgiComposePassUniforms.diffuseGiTexture.value = this.svgf.denoisePass.renderTargetB.texture[0]
-		ssgiComposePassUniforms.specularGiTexture.value = this.svgf.denoisePass.renderTargetB.texture[1]
+		ssgiComposePassUniforms.diffuseGiTexture.value = this.svgf.denoisePass.texture[0]
+		ssgiComposePassUniforms.specularGiTexture.value = this.svgf.denoisePass.texture[1]
 
 		this.ssgiPass.render(renderer)
 		this.svgf.render(renderer)

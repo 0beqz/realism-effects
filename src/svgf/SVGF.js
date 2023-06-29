@@ -5,7 +5,7 @@ export class SVGF {
 	constructor(scene, camera, velocityDepthNormalPass, textureCount = 1, options = {}) {
 		this.svgfTemporalReprojectPass = new TemporalReprojectPass(scene, camera, velocityDepthNormalPass, textureCount, {
 			...options,
-			fullAccumulate: true,
+			fullAccumulate: false,
 			logTransform: true
 		})
 

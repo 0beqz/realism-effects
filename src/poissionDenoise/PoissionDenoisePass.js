@@ -72,7 +72,7 @@ export class PoissionDenoisePass extends Pass {
 		})
 
 		const renderTargetOptions = {
-			type: FloatType,
+			type: HalfFloatType,
 			colorSpace: SRGBColorSpace,
 			depthBuffer: false
 		}
@@ -138,7 +138,7 @@ export class PoissionDenoisePass extends Pass {
 	}
 
 	get texture() {
-		return this.renderTargetB.texture[0]
+		return this.renderTargetB.texture
 	}
 
 	setGBuffersTexture(texture) {

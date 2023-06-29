@@ -148,10 +148,10 @@ void main() {
 
     texIndex = 0;
 
-    float m = 1. - delta / (1. / 60.);
-    float fpsAdjustedBlend = blend + max(0., (1. - blend) * m);
+    // float m = 1. - delta / (1. / 60.);
+    // float fpsAdjustedBlend = blend + max(0., (1. - blend) * m);
 
-    float maxValue = (fullAccumulate && !didMove) ? 1.0 : fpsAdjustedBlend;
+    float maxValue = (fullAccumulate && !didMove) ? 1.0 : blend;
 
     vec3 outputColor;
     float temporalReprojectMix;
@@ -159,9 +159,9 @@ void main() {
 #pragma unroll_loop_start
     for (int i = 0; i < textureCount; i++) {
         if (constantBlend) {
-            temporalReprojectMix = accumulatedTexel[i].a == 0.0 ? 0.0 : fpsAdjustedBlend;
+            temporalReprojectMix = accumulatedTexel[i].a == 0.0 ? 0.0 : blend;
         } else {
-            temporalReprojectMix = fpsAdjustedBlend;
+            temporalReprojectMix = blend;
 
             if (accumulatedTexel[i].a > 5.) accumulatedTexel[i].a = mix(accumulatedTexel[i].a, 5., angleMix);
 
@@ -171,12 +171,11 @@ void main() {
         }
 
         outputColor = mix(inputTexel[i].rgb, accumulatedTexel[i].rgb, temporalReprojectMix);
+
+        // calculate the alpha from temporalReprojectMix
+        accumulatedTexel[i].a = 1. / (1. - temporalReprojectMix) - 1.;
+
         undoColorTransform(outputColor);
-
-        // outputColor = vec3(fwidth(rayLength) > 0.0 ? 0.0 : 1.0);
-
-        // outputColor = vec3(inputTexel[i].rgb);
-        // outputColor = vec3(angleMix);
 
         gOutput[i] = vec4(outputColor, accumulatedTexel[i].a);
 

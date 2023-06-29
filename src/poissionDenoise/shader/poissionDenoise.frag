@@ -130,8 +130,8 @@ void main() {
     float a = texel.a;
     float a2 = texel2.a;
 
-    float w = smoothstep(0., 1., 1. / pow(a + 1., 1. / 3.));
-    float w2 = smoothstep(0., 1., 1. / pow(a2 + 1., 1. / 3.));
+    float w = smoothstep(0., 1., 1. / pow(a + 1., 1. / 2.5));
+    float w2 = smoothstep(0., 1., 1. / pow(a2 + 1., 1. / 2.5));
 
     float curvature = getCurvature(normal, depth);
     float r = mix(radius, 4., min(1., curvature * curvature));
@@ -158,8 +158,7 @@ void main() {
         vec3 neighborWorldPos = getWorldPos(neighborDepth, neighborUv);
 
         float normalDiff = 1. - max(dot(normal, neighborNormal), 0.);
-        float depthDiff = 1. + distToPlane(worldPos, neighborWorldPos, normal);
-        depthDiff = depthDiff * depthDiff - 1.;
+        float depthDiff = 10. * distToPlane(worldPos, neighborWorldPos, normal);
 
         float roughnessDiff = abs(roughness - neighborRoughness);
         float diffuseDiff = length(neighborDiffuse - diffuse);
@@ -167,13 +166,11 @@ void main() {
         float lumaDiff = mix(abs(lum - neighborLuminance), 0., w);
         float lumaDiff2 = mix(abs(lum2 - neighborLuminance2), 0., w2);
 
-        float similarity = float(neighborDepth != 1.0) *
-                           exp(-normalDiff * normalPhi - depthDiff * depthPhi - roughnessDiff * roughnessPhi - diffuseDiff * diffusePhi);
+        float basicWeight = float(neighborDepth != 1.0) *
+                            exp(-normalDiff * normalPhi - depthDiff * depthPhi - roughnessDiff * roughnessPhi - diffuseDiff * diffusePhi);
 
-        float similarity2 = w2 * pow(similarity, lumaPhi / w2) * specularWeight * exp(-lumaDiff2 * 5.);
-
-        similarity *= w;
-        similarity = pow(similarity, lumaPhi / w) * exp(-lumaDiff * 5.);
+        float similarity = w * pow(basicWeight, lumaPhi / w) * exp(-lumaDiff);
+        float similarity2 = w2 * pow(basicWeight, lumaPhi / w2) * specularWeight * exp(-lumaDiff2);
 
         evaluateNeighbor(neighborTexel, neighborLuminance, denoised, totalWeight, similarity);
         evaluateNeighbor(neighborTexel2, neighborLuminance2, denoised2, totalWeight2, similarity2);
@@ -188,6 +185,7 @@ void main() {
 #define FINAL_OUTPUT
 
     // denoised = vec3(r < 2. ? 1. : 0.);
+    // denoised = vec3(texel.a / 100.);
 
     gOutput0 = vec4(denoised, texel.a);
     gOutput1 = vec4(denoised2, texel2.a);
