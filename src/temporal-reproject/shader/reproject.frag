@@ -193,12 +193,10 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const 
     float viewZ = abs(getViewZ(depth));
     float distFactor = 1. + 1. / (viewZ + 1.0);
 
-    //! todo: take view angle into account
-
     if (velocityDisocclusionCheck(velocity, lastVelocity, distFactor)) return false;
 
     // ! todo: investigate normal disocclusion check
-    // if (normalDisocclusionCheck(worldNormal, lastWorldNormal, distFactor)) return false;
+    if (normalDisocclusionCheck(worldNormal, lastWorldNormal, distFactor)) return false;
 
     if (planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal, distFactor))
         return false;

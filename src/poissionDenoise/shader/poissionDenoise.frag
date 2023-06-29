@@ -76,7 +76,7 @@ float getLuminanceWeight(float luminance, float a) {
 void evaluateNeighbor(const vec4 neighborTexel, const float neighborLuminance, inout vec3 denoised,
                       inout float totalWeight, const float basicWeight) {
     float w = basicWeight;
-    // w *= getLuminanceWeight(neighborLuminance, neighborTexel.a);
+    w *= getLuminanceWeight(neighborLuminance, neighborTexel.a);
 
     denoised += w * neighborTexel.rgb;
     totalWeight += w;
