@@ -205,15 +205,11 @@ document.body.appendChild(stats.dom)
 const rgbeLoader = new RGBELoader().setDataType(FloatType)
 
 const initEnvMap = async envMap => {
-	console.log(envMap)
-	if (envMap.source.data.width > 2048) {
-		setEnvMesh(envMap)
-	} else {
-		scene.environment?.dispose()
-		envMap.mapping = EquirectangularReflectionMapping
-		scene.environment = envMap
-		scene.background = traaTest ? new Color(0x4c7fe5) : null
-	}
+	scene.environment?.dispose()
+	envMap.mapping = EquirectangularReflectionMapping
+	scene.environment = envMap
+	scene.background = traaTest ? new Color(0x4c7fe5) : null
+	setEnvMesh(envMap)
 }
 
 const cubeMapTest = () => {
@@ -416,7 +412,7 @@ const initScene = async () => {
 				return
 			}
 
-			rgbeLoader.load("hdr/8k/" + ev.value + "_8k.hdr", initEnvMap)
+			// rgbeLoader.load("hdr/8k/" + ev.value + "_8k.hdr", initEnvMap)
 			rgbeLoader.load("hdr/" + ev.value + "_1k.hdr", initEnvMap)
 		})
 
@@ -612,7 +608,7 @@ const initScene = async () => {
 
 		if (!isAoDemo) {
 			if (fps >= 256) {
-				setAA("TRAA")
+				setAA("FXAA")
 				resize()
 			} else {
 				setAA("FXAA")
