@@ -169,8 +169,8 @@ void main() {
         float basicWeight = float(neighborDepth != 1.0) *
                             exp(-normalDiff * normalPhi - depthDiff * depthPhi - roughnessDiff * roughnessPhi - diffuseDiff * diffusePhi);
 
-        float similarity = w * pow(basicWeight, lumaPhi / w) * exp(-lumaDiff);
-        float similarity2 = w2 * pow(basicWeight, lumaPhi / w2) * specularWeight * exp(-lumaDiff2);
+        float similarity = w * pow(basicWeight, lumaPhi / w) * exp(-lumaDiff * 10.);
+        float similarity2 = w2 * pow(basicWeight, lumaPhi / w2) * specularWeight * exp(-lumaDiff2 * 10.);
 
         evaluateNeighbor(neighborTexel, neighborLuminance, denoised, totalWeight, similarity);
         evaluateNeighbor(neighborTexel2, neighborLuminance2, denoised2, totalWeight2, similarity2);
