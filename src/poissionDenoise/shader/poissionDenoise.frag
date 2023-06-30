@@ -102,8 +102,8 @@ void main() {
     //     return;
     // }
 
-    float totalWeight = getLuminanceWeight(luminance(texel.rgb), texel.a);
-    float totalWeight2 = getLuminanceWeight(luminance(texel2.rgb), texel2.a);
+    float totalWeight = getLuminanceWeight(lum, texel.a);
+    float totalWeight2 = getLuminanceWeight(lum2, texel2.a);
 
     toDenoiseSpace(texel.rgb);
     toDenoiseSpace(texel2.rgb);
