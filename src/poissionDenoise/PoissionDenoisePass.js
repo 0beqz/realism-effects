@@ -29,7 +29,8 @@ const defaultPoissonBlurOptions = {
 	iterations: 1,
 	radius: 3,
 	rings: 3,
-	lumaPhi: 10,
+	phi: 0.5,
+	lumaPhi: 5,
 	depthPhi: 2,
 	normalPhi: 3.25,
 	samples: 8
@@ -58,6 +59,7 @@ export class PoissionDenoisePass extends Pass {
 				cameraMatrixWorld: { value: new Matrix4() },
 				viewMatrix: { value: new Matrix4() },
 				radius: { value: defaultPoissonBlurOptions.radius },
+				phi: { value: defaultPoissonBlurOptions.lumaPhi },
 				lumaPhi: { value: defaultPoissonBlurOptions.lumaPhi },
 				depthPhi: { value: defaultPoissonBlurOptions.depthPhi },
 				normalPhi: { value: defaultPoissonBlurOptions.normalPhi },
@@ -73,7 +75,6 @@ export class PoissionDenoisePass extends Pass {
 
 		const renderTargetOptions = {
 			type: HalfFloatType,
-			colorSpace: SRGBColorSpace,
 			depthBuffer: false
 		}
 

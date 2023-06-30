@@ -222,6 +222,7 @@ export class SSGIEffect extends Effect {
 							break
 
 						case "radius":
+						case "phi":
 						case "lumaPhi":
 						case "depthPhi":
 						case "normalPhi":

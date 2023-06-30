@@ -38,16 +38,24 @@ export class SSGIDebugGUI {
 		denoiseFolder.addInput(params, "rings", { min: 0, max: 16, step: 0.125 })
 		denoiseFolder.addInput(params, "samples", { min: 0, max: 32, step: 1 })
 
+		denoiseFolder.addInput(params, "phi", {
+			min: 0,
+			max: 1,
+			step: 0.001
+		})
+
 		denoiseFolder.addInput(params, "depthPhi", {
 			min: 0,
 			max: 50,
 			step: 0.001
 		})
+
 		denoiseFolder.addInput(params, "normalPhi", {
 			min: 0,
 			max: 100,
 			step: 0.001
 		})
+
 		denoiseFolder.addInput(params, "roughnessPhi", {
 			min: 0,
 			max: 100,
@@ -62,7 +70,7 @@ export class SSGIDebugGUI {
 
 		denoiseFolder.addInput(params, "lumaPhi", {
 			min: 0,
-			max: 1,
+			max: 10,
 			step: 0.001
 		})
 

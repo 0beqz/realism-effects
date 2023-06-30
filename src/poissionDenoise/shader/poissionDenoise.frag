@@ -6,6 +6,7 @@ uniform sampler2D depthTexture;
 uniform mat4 projectionMatrixInverse;
 uniform mat4 cameraMatrixWorld;
 uniform float radius;
+uniform float phi;
 uniform float lumaPhi;
 uniform float depthPhi;
 uniform float normalPhi;
@@ -169,8 +170,8 @@ void main() {
         float basicWeight = float(neighborDepth != 1.0) *
                             exp(-normalDiff * normalPhi - depthDiff * depthPhi - roughnessDiff * roughnessPhi - diffuseDiff * diffusePhi);
 
-        float similarity = w * pow(basicWeight, lumaPhi / w) * exp(-lumaDiff * 10.);
-        float similarity2 = w2 * pow(basicWeight, lumaPhi / w2) * specularWeight * exp(-lumaDiff2 * 10.);
+        float similarity = w * pow(basicWeight, phi / w) * exp(-lumaDiff * lumaPhi);
+        float similarity2 = w2 * pow(basicWeight, phi / w2) * specularWeight * exp(-lumaDiff2 * lumaPhi);
 
         evaluateNeighbor(neighborTexel, neighborLuminance, denoised, totalWeight, similarity);
         evaluateNeighbor(neighborTexel2, neighborLuminance2, denoised2, totalWeight2, similarity2);
