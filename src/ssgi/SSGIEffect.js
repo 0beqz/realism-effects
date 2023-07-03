@@ -142,8 +142,7 @@ export class SSGIEffect extends Effect {
 		this.svgf.denoisePass.fullscreenMaterial.uniforms = {
 			...this.svgf.denoisePass.fullscreenMaterial.uniforms,
 			...{
-				diffuseTexture: new Uniform(null),
-				directLightTexture: new Uniform(null)
+				diffuseTexture: new Uniform(null)
 			}
 		}
 
@@ -187,15 +186,12 @@ export class SSGIEffect extends Effect {
 
 	updateUsingRenderPass() {
 		if (this.isUsingRenderPass) {
-			this.ssgiPass.fullscreenMaterial.defines.useDirectLight = ""
-			this.svgf.denoisePass.fullscreenMaterial.defines.useDirectLight = ""
+			this.ssgiComposePass.fullscreenMaterial.defines.useDirectLight = ""
 		} else {
-			delete this.ssgiPass.fullscreenMaterial.defines.useDirectLight
-			delete this.svgf.denoisePass.fullscreenMaterial.defines.useDirectLight
+			delete this.ssgiComposePass.fullscreenMaterial.defines.useDirectLight
 		}
 
-		this.ssgiPass.fullscreenMaterial.needsUpdate = true
-		this.svgf.denoisePass.fullscreenMaterial.needsUpdate = true
+		this.ssgiComposePass.fullscreenMaterial.needsUpdate = true
 	}
 
 	makeOptionsReactive(options) {
@@ -431,8 +427,7 @@ export class SSGIEffect extends Effect {
 			for (const c of hideMeshes) c.visible = false
 		}
 
-		this.ssgiPass.fullscreenMaterial.uniforms.directLightTexture.value = sceneBuffer.texture
-		this.svgf.denoisePass.fullscreenMaterial.uniforms.directLightTexture.value = sceneBuffer.texture
+		this.ssgiComposePass.fullscreenMaterial.uniforms.directLightTexture.value = sceneBuffer.texture
 
 		const ssgiComposePassUniforms = this.ssgiComposePass.fullscreenMaterial.uniforms
 		ssgiComposePassUniforms.gBuffersTexture.value = this.ssgiPass.gBuffersRenderTarget.texture

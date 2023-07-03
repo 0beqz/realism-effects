@@ -127,6 +127,7 @@ void main() {
 
     float specularWeight = roughness * roughness > 0.15 ? 1. : roughness * roughness / 0.15;
     specularWeight = pow(specularWeight * specularWeight, 4.);
+    specularWeight = 1.;
 
     float a = texel.a;
     float a2 = texel2.a;

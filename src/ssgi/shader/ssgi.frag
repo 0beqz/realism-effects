@@ -11,11 +11,8 @@ layout(location = 0) out vec4 gSpecular;
 
 varying vec2 vUv;
 
-uniform sampler2D directLightTexture;
 uniform sampler2D accumulatedTexture;
-uniform sampler2D normalTexture;
 uniform sampler2D depthTexture;
-uniform sampler2D diffuseTexture;
 uniform sampler2D blueNoiseTexture;
 uniform sampler2D velocityTexture;
 

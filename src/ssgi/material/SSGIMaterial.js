@@ -14,16 +14,11 @@ export class SSGIMaterial extends ShaderMaterial {
 			type: "SSGIMaterial",
 
 			uniforms: {
-				directLightTexture: new Uniform(null),
 				accumulatedTexture: new Uniform(null),
 				gBuffersTexture: new Uniform(null),
-				normalTexture: new Uniform(null),
 				depthTexture: new Uniform(null),
-				diffuseTexture: new Uniform(null),
-				emissiveTexture: new Uniform(null),
 				velocityTexture: new Uniform(null),
 				blueNoiseTexture: new Uniform(null),
-				backSideDepthTexture: new Uniform(null),
 				projectionMatrix: new Uniform(new Matrix4()),
 				inverseProjectionMatrix: new Uniform(new Matrix4()),
 				cameraMatrixWorld: new Uniform(new Matrix4()),

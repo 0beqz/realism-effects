@@ -1,13 +1,11 @@
 import { Pass } from "postprocessing"
 import {
-	FloatType,
 	GLSL3,
 	HalfFloatType,
 	Matrix4,
 	NearestFilter,
 	NoColorSpace,
 	RepeatWrapping,
-	SRGBColorSpace,
 	ShaderMaterial,
 	TextureLoader,
 	Vector2,

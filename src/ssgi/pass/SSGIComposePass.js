@@ -20,6 +20,7 @@ export class SSGIComposePass extends Pass {
             uniform sampler2D depthTexture;
             uniform sampler2D diffuseGiTexture;
             uniform sampler2D specularGiTexture;
+            uniform sampler2D directLightTexture;
             uniform mat4 cameraMatrixWorld;
             uniform mat4 projectionMatrix;
             uniform mat4 projectionMatrixInverse;
@@ -51,6 +52,10 @@ export class SSGIComposePass extends Pass {
 
 				// gi = diffuseGi;
 
+				#ifdef useDirectLight
+				gi += textureLod(directLightTexture, vUv, 0.).rgb;
+				#endif
+
 				gl_FragColor = vec4(gi, 1.);
             }
             `,
@@ -63,7 +68,8 @@ export class SSGIComposePass extends Pass {
 				gBuffersTexture: { value: null },
 				depthTexture: { value: null },
 				diffuseGiTexture: { value: null },
-				specularGiTexture: { value: null }
+				specularGiTexture: { value: null },
+				directLightTexture: { value: null }
 			},
 			blending: NoBlending,
 			depthWrite: false,

@@ -177,7 +177,7 @@ const lightParams = {
 const light = new DirectionalLight(0xfdfbd3, lightParams.intensity)
 light.updateMatrixWorld()
 light.castShadow = true
-// scene.add(light)
+scene.add(light)
 
 renderer.shadowMap.enabled = true
 renderer.shadowMap.autoUpdate = false
