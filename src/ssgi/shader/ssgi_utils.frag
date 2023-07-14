@@ -2,19 +2,6 @@
 
 #define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
 
-// source: https://iquilezles.org/articles/texture/
-vec4 getTexel(const sampler2D tex, vec2 p, const float mip) {
-    p = p / invTexSize + 0.5;
-
-    vec2 i = floor(p);
-    vec2 f = p - i;
-    f = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
-    p = i + f;
-
-    p = (p - 0.5) * invTexSize;
-    return textureLod(tex, p, mip);
-}
-
 // source: https://github.com/mrdoob/three.js/blob/342946c8392639028da439b6dc0597e58209c696/examples/js/shaders/SAOShader.js#L123
 float getViewZ(const float depth) {
     return perspectiveDepthToViewZ(depth, cameraNear, cameraFar);
@@ -91,7 +78,7 @@ vec3 equirectUvToDirection(vec2 uv) {
 
 // source: https://github.com/gkjohnson/three-gpu-pathtracer/blob/3340cc19c796a01abe0ec121930154ec3301e4f2/src/shader/shaderEnvMapSampling.js#L3
 vec3 sampleEquirectEnvMapColor(const vec3 direction, const sampler2D map, const float lod) {
-    return getTexel(map, equirectDirectionToUv(direction), lod).rgb;
+    return textureLod(map, equirectDirectionToUv(direction), lod).rgb;
 }
 
 // source of the following functions: https://www.shadertoy.com/view/cll3R4

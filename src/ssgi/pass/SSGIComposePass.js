@@ -20,7 +20,6 @@ export class SSGIComposePass extends Pass {
             uniform sampler2D depthTexture;
             uniform sampler2D diffuseGiTexture;
             uniform sampler2D specularGiTexture;
-            uniform sampler2D directLightTexture;
             uniform mat4 cameraMatrixWorld;
             uniform mat4 projectionMatrix;
             uniform mat4 projectionMatrixInverse;
@@ -39,24 +38,25 @@ export class SSGIComposePass extends Pass {
 
                 float depth = textureLod(depthTexture, vUv, 0.).r;
 
+				if(depth == 1.){
+					gl_FragColor = vec4(0.);
+					return;
+				}
+
                 vec3 viewNormal = (vec4(normal, 0.) * cameraMatrixWorld).xyz;
 
                 // view-space position of the current texel
                 vec3 viewPos = getViewPosition(depth);
                 vec3 viewDir = normalize(viewPos);
 
-                vec3 diffuseGi = textureLod(diffuseGiTexture, vUv, 0.).rgb;
-                vec3 specularGi = textureLod(specularGiTexture, vUv, 0.).rgb;
+                vec4 diffuseGi = textureLod(diffuseGiTexture, vUv, 0.);
+                vec4 specularGi = textureLod(specularGiTexture, vUv, 0.);
 
-                vec3 gi = constructGlobalIllumination(diffuseGi, specularGi, viewDir, viewNormal, diffuse, emissive, roughness, metalness);
+                vec3 gi = constructGlobalIllumination(diffuseGi.rgb, specularGi.rgb, viewDir, viewNormal, diffuse, emissive, roughness, metalness);
 
 				// gi = diffuseGi;
 
-				#ifdef useDirectLight
-				gi += textureLod(directLightTexture, vUv, 0.).rgb;
-				#endif
-
-				gl_FragColor = vec4(gi, 1.);
+				gl_FragColor = vec4(gi, diffuseGi.a + specularGi.a);
             }
             `,
 			vertexShader: basicVertexShader,
@@ -68,8 +68,7 @@ export class SSGIComposePass extends Pass {
 				gBuffersTexture: { value: null },
 				depthTexture: { value: null },
 				diffuseGiTexture: { value: null },
-				specularGiTexture: { value: null },
-				directLightTexture: { value: null }
+				specularGiTexture: { value: null }
 			},
 			blending: NoBlending,
 			depthWrite: false,

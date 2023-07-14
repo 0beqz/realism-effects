@@ -27,7 +27,7 @@ export class SSGIPass extends Pass {
 	needsSwap = false
 	defaultFragmentShader = ""
 
-	frame = 0
+	frame = 21483
 	cachedMaterials = new WeakMap()
 	visibleMeshes = []
 
@@ -167,7 +167,7 @@ export class SSGIPass extends Pass {
 			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "metalnessMap", "USE_	METALNESSMAP", true)
 			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "map", "USE_MAP", true)
 			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "emissiveMap", "USE_EMISSIVEMAP", true)
-			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "alphaMap", "USE_ALPHAMAP", true)
+			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "alphaMap", "USE_ALPHAMAP", originalMaterial.transparent)
 			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "lightMap", "USE_LIGHTMAP", true)
 
 			const noiseTexture = this.fullscreenMaterial.uniforms.blueNoiseTexture.value
@@ -191,6 +191,7 @@ export class SSGIPass extends Pass {
 
 			mrtMaterial.uniforms.metalness.value = c.material.metalness ?? 0
 			mrtMaterial.uniforms.emissiveIntensity.value = c.material.emissiveIntensity ?? 0
+			mrtMaterial.uniforms.opacity.value = originalMaterial.opacity
 
 			c.material = mrtMaterial
 		}

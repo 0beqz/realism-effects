@@ -163,7 +163,7 @@ if (isAoDemo) {
 }
 
 const composer = new POSTPROCESSING.EffectComposer(renderer)
-if (traaTest) {
+if (false) {
 	const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
 	composer.addPass(renderPass)
 }
@@ -171,13 +171,13 @@ if (traaTest) {
 const lightParams = {
 	yaw: 55,
 	pitch: 27,
-	intensity: 5
+	intensity: 1
 }
 
 const light = new DirectionalLight(0xfdfbd3, lightParams.intensity)
 light.updateMatrixWorld()
 light.castShadow = true
-scene.add(light)
+// scene.add(light)
 
 renderer.shadowMap.enabled = true
 renderer.shadowMap.autoUpdate = false
@@ -906,8 +906,6 @@ const setupAsset = asset => {
 			c.castShadow = c.receiveShadow = true
 			c.material.depthWrite = true
 
-			if (c.material.transparent) c.material.alphaMap = c.material.roughnessMap
-
 			if (traaTest && c.name === "shader") c.material = planeShaderMaterial
 
 			if (traaTest && c.name === "Cube") c.material = new MeshNormalMaterial()
@@ -924,8 +922,6 @@ const setupAsset = asset => {
 			// c.material.emissive = new Color(0x000000)
 			// c.material.emissiveIntensity = 0.0
 			// c.material.lightMap = lm
-
-			c.material.transparent = false
 		}
 
 		c.frustumCulled = false

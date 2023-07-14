@@ -84,6 +84,7 @@ export class SSGIEffect extends Effect {
 
 		options.neighborhoodClampRadius = 2
 		options.neighborhoodClampIntensity = 0.75
+		options.neighborhoodClamp = false
 
 		const textureCount = options.diffuseOnly || options.specularOnly ? 1 : 2
 
@@ -186,12 +187,12 @@ export class SSGIEffect extends Effect {
 
 	updateUsingRenderPass() {
 		if (this.isUsingRenderPass) {
-			this.ssgiComposePass.fullscreenMaterial.defines.useDirectLight = ""
+			this.ssgiPass.fullscreenMaterial.defines.useDirectLight = ""
 		} else {
-			delete this.ssgiComposePass.fullscreenMaterial.defines.useDirectLight
+			delete this.ssgiPass.fullscreenMaterial.defines.useDirectLight
 		}
 
-		this.ssgiComposePass.fullscreenMaterial.needsUpdate = true
+		this.ssgiPass.fullscreenMaterial.needsUpdate = true
 	}
 
 	makeOptionsReactive(options) {
@@ -427,7 +428,7 @@ export class SSGIEffect extends Effect {
 			for (const c of hideMeshes) c.visible = false
 		}
 
-		this.ssgiComposePass.fullscreenMaterial.uniforms.directLightTexture.value = sceneBuffer.texture
+		this.ssgiPass.fullscreenMaterial.uniforms.directLightTexture.value = sceneBuffer.texture
 
 		const ssgiComposePassUniforms = this.ssgiComposePass.fullscreenMaterial.uniforms
 		ssgiComposePassUniforms.gBuffersTexture.value = this.ssgiPass.gBuffersRenderTarget.texture

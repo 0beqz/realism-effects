@@ -1,4 +1,5 @@
 ﻿import { Color, Matrix3, ShaderMaterial, TangentSpaceNormalMap, Uniform, Vector2 } from "three"
+import sampleBlueNoise from "../../utils/shader/sampleBlueNoise.glsl"
 import gbuffer_packing from "../shader/gbuffer_packing.glsl"
 
 // will render normals to RGB channel of "gNormal" buffer, roughness to A channel of "gNormal" buffer, depth to RGBA channel of "gDepth" buffer
@@ -34,7 +35,8 @@ export class MRTMaterial extends ShaderMaterial {
 				texSize: new Uniform(new Vector2(1, 1)),
 				frame: new Uniform(0),
 				lightMap: new Uniform(null),
-				lightMapIntensity: new Uniform(1)
+				lightMapIntensity: new Uniform(1),
+				opacity: new Uniform(1)
 			},
 			vertexShader: /* glsl */ `
                 varying vec2 vHighPrecisionZW;
@@ -119,7 +121,8 @@ export class MRTMaterial extends ShaderMaterial {
                 uniform vec3 emissive;
                 uniform float emissiveIntensity;
 
-            #ifdef USE_ALPHAMAP
+                uniform float opacity;
+
                 uniform sampler2D blueNoiseTexture;
                 uniform vec2 blueNoiseRepeat;
                 uniform vec2 texSize;
@@ -127,41 +130,7 @@ export class MRTMaterial extends ShaderMaterial {
 
                 varying vec2 screenUv;
 
-                const float g = 1.6180339887498948482;
-                const float a1 = 1.0 / g;
-
-                // reference: https://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/
-                float r1(float n) {
-                    // 7th harmonious number
-                    return fract(1.1127756842787055 + a1 * n);
-                }
-
-                const vec4 hn = vec4(0.618033988749895, 0.3247179572447458, 0.2207440846057596, 0.1673039782614187);
-
-                vec4 sampleBlueNoise(vec2 uv, int seed) {
-                    vec2 size = uv * texSize;
-                    vec2 blueNoiseSize = texSize / blueNoiseRepeat;
-                    float blueNoiseIndex = floor(floor(size.y / blueNoiseSize.y) * blueNoiseRepeat.x) + floor(size.x / blueNoiseSize.x);
-
-                    // get the offset of this pixel's blue noise tile
-                    int blueNoiseTileOffset = int(r1(blueNoiseIndex + 1.0) * 65536.);
-
-                    vec2 blueNoiseUv = uv * blueNoiseRepeat;
-
-                    // fetch blue noise for this pixel
-                    vec4 blueNoise = textureLod(blueNoiseTexture, blueNoiseUv, 0.);
-
-                    // animate blue noise
-                    blueNoise = fract(blueNoise + hn * float(seed + blueNoiseTileOffset));
-
-                    blueNoise.r = (blueNoise.r > 0.5 ? 1.0 - blueNoise.r : blueNoise.r) * 2.0;
-                    blueNoise.g = (blueNoise.g > 0.5 ? 1.0 - blueNoise.g : blueNoise.g) * 2.0;
-                    blueNoise.b = (blueNoise.b > 0.5 ? 1.0 - blueNoise.b : blueNoise.b) * 2.0;
-                    blueNoise.a = (blueNoise.a > 0.5 ? 1.0 - blueNoise.a : blueNoise.a) * 2.0;
-
-                    return blueNoise;
-                }
-            #endif
+                ${sampleBlueNoise}
 
                 #include <gbuffer_packing>
 
@@ -171,15 +140,27 @@ export class MRTMaterial extends ShaderMaterial {
 
                 void main() {
                     // !todo: properly implement alpha hashing
-                    // #ifdef USE_ALPHAMAP
-                    // float alpha = textureLod( alphaMap, vUv, 0. ).g;
+                    float alpha = opacity;
 
-                    // float alphaThreshold = sampleBlueNoise(screenUv, frame).a;
-                    // if(alpha < alphaThreshold){
-                    //     discard;
-                    //     return;
-                    // }
-                    // #endif
+                    #ifdef USE_ALPHAMAP
+                        alpha *= texture2D( alphaMap, vUv ).g;
+                    #endif
+
+                    #ifdef USE_MAP
+                        alpha *= texture2D( map, vUv ).a;
+                    #endif
+
+                    if(alpha < 1.){
+                        ivec2 blueNoiseSize = textureSize(blueNoiseTexture, 0);
+                        vec2 tSize = vec2(blueNoiseSize.x, blueNoiseSize.y);
+
+                        float alphaThreshold = sampleBlueNoise(blueNoiseTexture, frame, blueNoiseRepeat, tSize).r;
+
+                        if(alpha < alphaThreshold){
+                            discard;
+                            return;
+                        }
+                    }
 
                     //! todo: find better solution
                     //! todo: also fix texture repeat issue (not being repeated)
@@ -200,7 +181,7 @@ export class MRTMaterial extends ShaderMaterial {
                     bool isDeselected = roughness > 10.0e9;
 
                     #ifdef USE_ROUGHNESSMAP
-                        vec4 texelRoughness = textureLod( roughnessMap, vUv, 0. );
+                        vec4 texelRoughness = texture2D( roughnessMap, vUv );
                         // reads channel G, compatible with a combined OcclusionRoughnessMetallic (RGB) texture
                         roughnessFactor *= texelRoughness.g;
                     #endif
