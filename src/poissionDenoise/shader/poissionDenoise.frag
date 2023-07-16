@@ -80,10 +80,10 @@ const vec2 poissonDisk[samples] = POISSON_DISK_SAMPLES;
 void main() {
   vec4 depthTexel = textureLod(depthTexture, vUv, 0.);
 
-  // if (depthTexel.r == 1.0) {
-  //   discard;
-  //   return;
-  // }
+  if (depthTexel.r == 1.0) {
+    discard;
+    return;
+  }
 
   vec4 texel = textureLod(inputTexture, vUv, 0.0);
   vec4 texel2 = textureLod(inputTexture2, vUv, 0.0);
