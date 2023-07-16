@@ -39,8 +39,8 @@ export class SSGIComposePass extends Pass {
 
                 float depth = textureLod(depthTexture, vUv, 0.).r;
 
-				if(depth == 1.){
-					gl_FragColor = vec4(0.);
+				if(depth == 0.){
+					discard;
 					return;
 				}
 

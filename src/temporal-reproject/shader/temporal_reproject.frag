@@ -31,7 +31,6 @@ uniform bool reset;
 #include <packing>
 #include <reproject>
 
-
 void main() {
   vec2 dilatedUv = vUv;
   getVelocityNormalDepth(dilatedUv, velocity, worldNormal, depth);
@@ -52,32 +51,34 @@ void main() {
   bool isSpecular[2] = bool[](false, true);
 
 #pragma unroll_loop_start
-  for (int i = 0; i < textureCount; i++) {
-    // inputTexel[i] = textureLod(inputTexture[i], vUv, 0.0);
+  // for (int i = 0; i < textureCount; i++) {
+  // inputTexel[i] = textureLod(inputTexture[i], vUv, 0.0);
 
-    encodedGI = textureLod(inputTexture[0], vUv, 0.0);
+  encodedGI = textureLod(inputTexture[0], vUv, 0.0);
 
-    if (isSpecular[i]) {
-      inputTexel[i] = vec4(unpackHalf2x16(floatBitsToUint(encodedGI.b)),
-                           unpackHalf2x16(floatBitsToUint(encodedGI.a)));
-    } else {
-      inputTexel[i] = vec4(unpackHalf2x16(floatBitsToUint(encodedGI.r)),
-                           unpackHalf2x16(floatBitsToUint(encodedGI.g)));
-    }
+  inputTexel[0] = vec4(unpackHalf2x16(floatBitsToUint(encodedGI.r)),
+                       unpackHalf2x16(floatBitsToUint(encodedGI.g)));
 
-    textureSampledThisFrame[i] = inputTexel[i].r >= 0.;
+  inputTexel[1] = vec4(unpackHalf2x16(floatBitsToUint(encodedGI.b)),
+                       unpackHalf2x16(floatBitsToUint(encodedGI.a)));
 
-    if (textureSampledThisFrame[i]) {
-      transformColor(inputTexel[i].rgb);
-    } else {
-      inputTexel[i].rgb = vec3(0.0);
-    }
+  textureSampledThisFrame[0] = inputTexel[0].r >= 0.;
+  textureSampledThisFrame[1] = inputTexel[1].r >= 0.;
 
-    if (cnt++ == 0)
-      roughness = max(0., inputTexel[i].a);
-
-    texIndex++;
+  if (textureSampledThisFrame[0]) {
+    transformColor(inputTexel[0].rgb);
+  } else {
+    inputTexel[0].rgb = vec3(0.0);
   }
+
+  if (textureSampledThisFrame[1]) {
+    transformColor(inputTexel[1].rgb);
+  } else {
+    inputTexel[1].rgb = vec3(0.0);
+  }
+
+  roughness = max(0., inputTexel[0].a);
+  // }
 #pragma unroll_loop_end
 
   texIndex = 0;
@@ -185,8 +186,8 @@ void main() {
     } else {
       temporalReprojectMix = blend;
 
-      //   if (accumulatedTexel[i].a > 5.)
-      //     accumulatedTexel[i].a = mix(accumulatedTexel[i].a, 5., angleMix);
+      if (accumulatedTexel[i].a > 5.)
+        accumulatedTexel[i].a = mix(accumulatedTexel[i].a, 5., angleMix);
 
       if (reset)
         accumulatedTexel[i].a = 0.0;
