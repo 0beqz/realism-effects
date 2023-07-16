@@ -85,6 +85,26 @@ composer.addPass(effectPass)
 > **NOTE**: `OrthographicCamera` isn't supported yet. Only `PerspectiveCamera` is supported at the moment. It'll be supported in the future.
 
 ## SSGI
+### NOTE:
+SSGI is being reworked in the branch [poisson-recursive](https://github.com/0beqz/realism-effects/tree/poisson-recursive) which provides far better performance, quality and memory usage over the current version of the main branch.
+You can check out the up-to-date demo [here](https://realism-effects-git-poisson-recursive-obeqz.vercel.app/).
+<br>
+Keep in mind that it is a WIP version and thus issues like device-specific rendering issues will be adressed later on.
+
+To-Dos:
+- [ ] support most properties of MeshPhysicalMaterial (especially transmission, clearcoat, attenuation, sheen)
+- [ ] proper alpha support
+- [ ] approximate glossiness through blurring in the denoiser for less smearing
+- [ ] absolutely optimized memory usage and buffer usage (encode diffuse and specular colors in SSGI & Temporal Reprojection pass in a single texture rather than 2)
+- [ ] perfect env map reflection handling and detection of disocclusions through comparing average sample ray lengths
+- [ ] suport for materials with custom shaders
+- [ ] instead of using MRTMaterial to render out the necessary G-data for SSGI, use a patched MeshPhysicalMaterial for more consistency
+- [ ] accumulate ray length
+- [ ] fog support
+- [ ] use faster approximation (inspired by AO effects) to calculate diffuse lighting?
+- [ ] better method to detect and account for reprojection of pixels from steeper regions to flatter regions
+- [ ] less specular smearing
+- [ ] support `OrthographicCamera`
 
 ### Options
 
@@ -183,12 +203,6 @@ If the project is useful for you and you'd like to sponsor my work:
 If you'd like, you could also buy me a coffee:
 
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/0beqz)
-
-## Todos
-
-- [ ] Use bent normals and/or calculate them at run-time? https://80.lv/articles/ssrtgi-toughest-challenge-in-real-time-3d/
-- [ ] Proper transparency support
-- [ ] Support OrthographicCameras
 
 ## Credits
 
