@@ -214,7 +214,9 @@ export class MRTMaterial extends ShaderMaterial {
                         diffuseColor.rgb *= reflectedLight.indirectDiffuse;
                     #endif
 
-                    gl_FragColor = packGBuffer(diffuseColor.rgb, worldNormal, roughnessFactor, metalnessFactor, totalEmissiveRadiance);
+                    diffuseColor.a = alpha;
+
+                    gl_FragColor = packGBuffer(diffuseColor, worldNormal, roughnessFactor, metalnessFactor, totalEmissiveRadiance);
                 }
             `.replace("#include <gbuffer_packing>", gbuffer_packing),
 			toneMapped: false,

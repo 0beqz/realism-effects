@@ -177,7 +177,7 @@ bool velocityDisocclusionCheck(const vec2 velocity, const vec2 lastVelocity,
 
 bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos,
                            const vec3 worldNormal, const bool isHitPoint) {
-  //   return false;
+  // return true;
 
   if (reprojectedUv.x > 1.0 || reprojectedUv.x < 0.0 || reprojectedUv.y > 1.0 ||
       reprojectedUv.y < 0.0)
@@ -214,8 +214,8 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos,
     return false;
 
   // ! todo: investigate normal disocclusion check
-  // if (normalDisocclusionCheck(worldNormal, lastWorldNormal, distFactor))
-  // return false;
+  if (normalDisocclusionCheck(worldNormal, lastWorldNormal, distFactor))
+    return false;
 
   if (planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal,
                                      distFactor))
@@ -229,7 +229,7 @@ vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength) {
   // no camera position change (only rotation change) as it barely causes any
   // smearing for reflections
 
-  if (roughness > 0.4) {
+  if (roughness > 0.4 || rayLength > 10.0e3) {
     return vUv - velocity;
   }
 
@@ -244,6 +244,11 @@ vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength) {
 
   reprojectedHitPoint.xyz /= reprojectedHitPoint.w;
   reprojectedHitPoint.xy = reprojectedHitPoint.xy * 0.5 + 0.5;
+
+  if (rayLength > 10.0e3) {
+    reprojectedHitPoint.xy =
+        mix(vUv - velocity, reprojectedHitPoint.xy, flatness);
+  }
 
   return reprojectedHitPoint.xy;
 }

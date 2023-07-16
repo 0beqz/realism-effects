@@ -841,7 +841,6 @@ const setupAsset = asset => {
 	}
 
 	scene.add(asset.scene)
-	asset.scene.scale.setScalar(1)
 
 	let planeShaderMaterial
 	let cylinderShaderMaterial

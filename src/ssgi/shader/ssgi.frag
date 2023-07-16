@@ -81,7 +81,8 @@ void main() {
     return;
   }
 
-  vec3 diffuse, normal, emissive;
+  vec4 diffuse;
+  vec3 normal, emissive;
   float roughness, metalness;
 
   getGData(gBuffersTexture, vUv, diffuse, normal, roughness, metalness,
@@ -132,7 +133,7 @@ void main() {
   V = ToLocal(T, B, N, V);
 
   // fresnel f0
-  vec3 f0 = mix(vec3(0.04), diffuse, metalness);
+  vec3 f0 = mix(vec3(0.04), diffuse.rgb, metalness);
 
   float NoL, NoH, LoH, VoH, diffW, specW, invW, pdf, envPdf, diffuseSamples,
       specularSamples, envMisProbability, envMisMultiplier;
@@ -172,7 +173,7 @@ void main() {
     F = F_Schlick(f0, VoH);
 
     // diffuse and specular weight
-    diffW = (1. - metalness) * luminance(diffuse);
+    diffW = (1. - metalness) * luminance(diffuse.rgb);
     specW = luminance(F);
 
     diffW = max(diffW, EPSILON);

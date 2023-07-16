@@ -31,7 +31,8 @@ export class SSGIComposePass extends Pass {
             ${ssgi_poisson_compose_functions}
 
             void main() {
-                vec3 diffuse, normal, emissive;
+                vec4 diffuse;
+				vec3 normal, emissive;
                 float roughness, metalness;
 
                 getGData(gBuffersTexture, vUv, diffuse, normal, roughness, metalness, emissive);
@@ -52,11 +53,9 @@ export class SSGIComposePass extends Pass {
                 vec4 diffuseGi = textureLod(diffuseGiTexture, vUv, 0.);
                 vec4 specularGi = textureLod(specularGiTexture, vUv, 0.);
 
-                vec3 gi = constructGlobalIllumination(diffuseGi.rgb, specularGi.rgb, viewDir, viewNormal, diffuse, emissive, roughness, metalness);
+                vec3 gi = constructGlobalIllumination(diffuseGi.rgb, specularGi.rgb, viewDir, viewNormal, diffuse.rgb, emissive, roughness, metalness);
 
-				// gi = diffuseGi;
-
-				gl_FragColor = vec4(gi, diffuseGi.a + specularGi.a);
+				gl_FragColor = vec4(gi, 1.);
             }
             `,
 			vertexShader: basicVertexShader,

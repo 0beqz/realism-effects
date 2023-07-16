@@ -68,7 +68,7 @@ float getLuminanceWeight(float luminance, float a) {
 void evaluateNeighbor(const vec4 neighborTexel, const float neighborLuminance,
                       inout vec3 denoised, inout float totalWeight,
                       const float basicWeight) {
-  float w = basicWeight;
+  float w = min(1., basicWeight);
   w *= getLuminanceWeight(neighborLuminance, neighborTexel.a);
 
   denoised += w * neighborTexel.rgb;
@@ -91,11 +91,11 @@ void main() {
   float lum = luminance(texel.rgb);
   float lum2 = luminance(texel2.rgb);
 
-  // if (vUv.x > 0.5) {
-  //     gOutput0 = texel;
-  //     gOutput1 = texel2;
+  // if (vUv.x > 0.) {
+  //   gOutput0 = texel;
+  //   gOutput1 = texel2;
 
-  //     return;
+  //   return;
   // }
 
   float totalWeight = getLuminanceWeight(lum, texel.a);
@@ -107,7 +107,8 @@ void main() {
   vec3 denoised = texel.rgb * totalWeight;
   vec3 denoised2 = texel2.rgb * totalWeight2;
 
-  vec3 diffuse, normal, emissive;
+  vec4 diffuse;
+  vec3 normal, emissive;
   float roughness, metalness;
 
   getGData(gBuffersTexture, vUv, diffuse, normal, roughness, metalness,
@@ -132,6 +133,9 @@ void main() {
   float w = smoothstep(0., 1., 1. / pow(a + 1., 1. / 2.5));
   float w2 = smoothstep(0., 1., 1. / pow(a2 + 1., 1. / 2.5));
 
+  float p = 1. / pow(a + 1., 4.);
+  float p2 = 1. / pow(a2 + 1., 4.);
+
   float curvature = getCurvature(normal, depth);
   float r = mix(radius, 4., min(1., curvature * curvature));
 
@@ -148,7 +152,8 @@ void main() {
     toDenoiseSpace(neighborTexel.rgb);
     toDenoiseSpace(neighborTexel2.rgb);
 
-    vec3 neighborNormal, neighborDiffuse;
+    vec4 neighborDiffuse;
+    vec3 neighborNormal;
     float neighborRoughness, neighborMetalness;
 
     getGData(gBuffersTexture, neighborUv, neighborDiffuse, neighborNormal,
@@ -161,7 +166,7 @@ void main() {
     float depthDiff = 10. * distToPlane(worldPos, neighborWorldPos, normal);
 
     float roughnessDiff = abs(roughness - neighborRoughness);
-    float diffuseDiff = length(neighborDiffuse - diffuse);
+    float diffuseDiff = length(neighborDiffuse.rgb - diffuse.rgb);
 
     float lumaDiff = mix(abs(lum - neighborLuminance), 0., w);
     float lumaDiff2 = mix(abs(lum2 - neighborLuminance2), 0., w2);
@@ -174,6 +179,12 @@ void main() {
     float similarity = w * pow(basicWeight, phi / w) * exp(-lumaDiff * lumaPhi);
     float similarity2 = w2 * pow(basicWeight, phi / w2) * specularWeight *
                         exp(-lumaDiff2 * lumaPhi);
+
+    similarity = mix(similarity, 1., p);
+    similarity2 = mix(similarity2, 1., p2);
+
+    similarity = mix(similarity, 0., float(a > 512.));
+    similarity2 = mix(similarity2, 0., float(a2 > 512.));
 
     evaluateNeighbor(neighborTexel, neighborLuminance, denoised, totalWeight,
                      similarity);

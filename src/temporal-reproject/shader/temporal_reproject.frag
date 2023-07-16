@@ -24,7 +24,6 @@ uniform mat4 prevProjectionMatrix;
 uniform mat4 prevProjectionMatrixInverse;
 
 uniform bool reset;
-uniform float delta;
 
 #define EPSILON 0.00001
 
@@ -171,8 +170,8 @@ void main() {
     } else {
       temporalReprojectMix = blend;
 
-      if (accumulatedTexel[i].a > 5.)
-        accumulatedTexel[i].a = mix(accumulatedTexel[i].a, 5., angleMix);
+      //   if (accumulatedTexel[i].a > 5.)
+      //     accumulatedTexel[i].a = mix(accumulatedTexel[i].a, 5., angleMix);
 
       if (reset)
         accumulatedTexel[i].a = 0.0;
