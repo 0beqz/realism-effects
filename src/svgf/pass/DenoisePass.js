@@ -13,7 +13,7 @@ import {
 } from "three"
 import { unrollLoops } from "../../ssgi/utils/Utils"
 // eslint-disable-next-line camelcase
-import gbuffer_packing from "../../ssgi/shader/gbuffer_packing.glsl"
+import gbuffer_packing from "../../utils/shader/gbuffer_packing.glsl"
 import basicVertexShader from "../../utils/shader/basic.vert"
 import fragmentShader from "../shader/denoise.frag"
 

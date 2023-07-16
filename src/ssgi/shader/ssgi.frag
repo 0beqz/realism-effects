@@ -1,15 +1,4 @@
-﻿#if !defined(diffuseOnly) && !defined(specularOnly)
-layout(location = 0) out vec4 gDiffuse;
-layout(location = 1) out vec4 gSpecular;
-#else
-#ifdef diffuseOnly
-layout(location = 0) out vec4 gDiffuse;
-#else
-layout(location = 0) out vec4 gSpecular;
-#endif
-#endif
-
-varying vec2 vUv;
+﻿varying vec2 vUv;
 
 uniform sampler2D accumulatedTexture;
 uniform sampler2D depthTexture;
@@ -294,6 +283,8 @@ void main() {
   specularGI += directLight;
 #endif
 
+  vec4 gDiffuse, gSpecular;
+
 #ifndef specularOnly
   if (diffuseSamples == 0.0)
     diffuseGI = vec3(-1.0);
@@ -323,6 +314,8 @@ void main() {
     specularGI = vec3(-1.0);
   gSpecular = vec4(specularGI, rayLength);
 #endif
+
+  gl_FragColor = packTwoVec4(gDiffuse, gSpecular);
 }
 
 vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal,

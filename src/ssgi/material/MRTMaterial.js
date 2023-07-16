@@ -1,6 +1,7 @@
-﻿import { Color, Matrix3, ShaderMaterial, TangentSpaceNormalMap, Uniform, Vector2 } from "three"
+﻿/* eslint-disable camelcase */
+import { Color, Matrix3, ShaderMaterial, TangentSpaceNormalMap, Uniform, Vector2 } from "three"
 import sampleBlueNoise from "../../utils/shader/sampleBlueNoise.glsl"
-import gbuffer_packing from "../shader/gbuffer_packing.glsl"
+import gbuffer_packing from "../../utils/shader/gbuffer_packing.glsl"
 
 // will render normals to RGB channel of "gNormal" buffer, roughness to A channel of "gNormal" buffer, depth to RGBA channel of "gDepth" buffer
 // and velocity to "gVelocity" buffer

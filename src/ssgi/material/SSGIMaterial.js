@@ -4,7 +4,7 @@ import fragmentShader from "../shader/ssgi.frag"
 // eslint-disable-next-line camelcase
 import ssgi_utils from "../shader/ssgi_utils.frag"
 // eslint-disable-next-line camelcase
-import gbuffer_packing from "../shader/gbuffer_packing.glsl"
+import gbuffer_packing from "../../utils/shader/gbuffer_packing.glsl"
 import sampleBlueNoise from "../../utils/shader/sampleBlueNoise.glsl"
 import { EquirectHdrInfoUniform } from "../utils/EquirectHdrInfoUniform"
 
@@ -58,9 +58,7 @@ export class SSGIMaterial extends ShaderMaterial {
 			blending: NoBlending,
 			depthWrite: false,
 			depthTest: false,
-			toneMapped: false,
-
-			glslVersion: GLSL3
+			toneMapped: false
 		})
 	}
 }

@@ -72,6 +72,25 @@ vec2 unpackVec2(float packedValue) {
   return unpackHalf2x16(floatBitsToUint(packedValue));
 }
 
+vec4 packTwoVec4(vec4 v1, vec4 v2) {
+  vec4 encoded = vec4(0.0);
+
+  encoded.r = uintBitsToFloat(packHalf2x16(v1.rg));
+  encoded.g = uintBitsToFloat(packHalf2x16(v1.ba));
+  encoded.b = uintBitsToFloat(packHalf2x16(v2.rg));
+  encoded.a = uintBitsToFloat(packHalf2x16(v2.ba));
+
+  return encoded;
+}
+
+void unpackTwoVec4(vec4 encoded, out vec4 v1, out vec4 v2) {
+  v1.rg = unpackHalf2x16(floatBitsToUint(encoded.r));
+  v1.ba = unpackHalf2x16(floatBitsToUint(encoded.g));
+
+  v2.rg = unpackHalf2x16(floatBitsToUint(encoded.b));
+  v2.ba = unpackHalf2x16(floatBitsToUint(encoded.a));
+}
+
 // source:
 // https://community.khronos.org/t/addition-of-two-hdr-rgbe-values/55669/2
 vec4 encodeRGBE8(vec3 rgb) {

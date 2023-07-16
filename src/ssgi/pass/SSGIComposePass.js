@@ -2,7 +2,7 @@
 import { Pass } from "postprocessing"
 import { NoBlending, HalfFloatType, ShaderMaterial, WebGLRenderTarget } from "three"
 import basicVertexShader from "../../utils/shader/basic.vert"
-import gbuffer_packing from "../shader/gbuffer_packing.glsl"
+import gbuffer_packing from "../../utils/shader/gbuffer_packing.glsl"
 import ssgi_poisson_compose_functions from "../shader/ssgi_poisson_compose_functions.glsl"
 
 export class SSGIComposePass extends Pass {

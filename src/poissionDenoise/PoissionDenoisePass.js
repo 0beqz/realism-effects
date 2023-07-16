@@ -12,7 +12,7 @@ import {
 	WebGLMultipleRenderTargets
 } from "three"
 // eslint-disable-next-line camelcase
-import gbuffer_packing from "../ssgi/shader/gbuffer_packing.glsl"
+import gbuffer_packing from "../utils/shader/gbuffer_packing.glsl"
 import blueNoiseImage from "../utils/LDR_RGBA_0.png"
 import vertexShader from "../utils/shader/basic.vert"
 import sampleBlueNoise from "../utils/shader/sampleBlueNoise.glsl"

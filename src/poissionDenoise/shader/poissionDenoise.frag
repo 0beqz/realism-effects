@@ -130,6 +130,9 @@ void main() {
   float a = texel.a;
   float a2 = texel2.a;
 
+  float doDenoiseFlag = float(a > 512.);
+  float doDenoiseFlag2 = float(a2 > 512.);
+
   float w = smoothstep(0., 1., 1. / pow(a + 1., 1. / 2.5));
   float w2 = smoothstep(0., 1., 1. / pow(a2 + 1., 1. / 2.5));
 
@@ -183,8 +186,8 @@ void main() {
     similarity = mix(similarity, 1., p);
     similarity2 = mix(similarity2, 1., p2);
 
-    similarity = mix(similarity, 0., float(a > 512.));
-    similarity2 = mix(similarity2, 0., float(a2 > 512.));
+    similarity = mix(similarity, 0., doDenoiseFlag);
+    similarity2 = mix(similarity2, 0., doDenoiseFlag2);
 
     evaluateNeighbor(neighborTexel, neighborLuminance, denoised, totalWeight,
                      similarity);

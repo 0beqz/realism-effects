@@ -1,14 +1,18 @@
-﻿import { GLSL3, Matrix4, NoBlending } from "three"
+﻿/* eslint-disable camelcase */
+import { GLSL3, Matrix4, NoBlending } from "three"
 import { Vector3 } from "three"
 import { ShaderMaterial, Uniform, Vector2 } from "three"
 import vertexShader from "../../utils/shader/basic.vert"
 import fragmentShader from "../shader/temporal_reproject.frag"
 import reproject from "../shader/reproject.frag"
+import gbuffer_packing from "../../utils/shader/gbuffer_packing.glsl"
 import { unrollLoops } from "../../ssgi/utils/Utils"
 
 export class TemporalReprojectMaterial extends ShaderMaterial {
 	constructor(textureCount = 1, temporalReprojectCustomComposeShader = "") {
-		let finalFragmentShader = fragmentShader.replace("#include <reproject>", reproject)
+		let finalFragmentShader = fragmentShader
+			.replace("#include <reproject>", reproject)
+			.replace("#include <gbuffer_packing>", gbuffer_packing)
 
 		if (typeof temporalReprojectCustomComposeShader === "string") {
 			finalFragmentShader = finalFragmentShader.replace(

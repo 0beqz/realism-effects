@@ -27,8 +27,10 @@ uniform bool reset;
 
 #define EPSILON 0.00001
 
+#include <gbuffer_packing>
 #include <packing>
 #include <reproject>
+
 
 void main() {
   vec2 dilatedUv = vUv;
@@ -43,12 +45,25 @@ void main() {
   vec4 inputTexel[textureCount];
   vec4 accumulatedTexel[textureCount];
   bool textureSampledThisFrame[textureCount];
+  vec4 encodedGI;
 
   int cnt = 0;
 
+  bool isSpecular[2] = bool[](false, true);
+
 #pragma unroll_loop_start
   for (int i = 0; i < textureCount; i++) {
-    inputTexel[i] = textureLod(inputTexture[i], vUv, 0.0);
+    // inputTexel[i] = textureLod(inputTexture[i], vUv, 0.0);
+
+    encodedGI = textureLod(inputTexture[0], vUv, 0.0);
+
+    if (isSpecular[i]) {
+      inputTexel[i] = vec4(unpackHalf2x16(floatBitsToUint(encodedGI.b)),
+                           unpackHalf2x16(floatBitsToUint(encodedGI.a)));
+    } else {
+      inputTexel[i] = vec4(unpackHalf2x16(floatBitsToUint(encodedGI.r)),
+                           unpackHalf2x16(floatBitsToUint(encodedGI.g)));
+    }
 
     textureSampledThisFrame[i] = inputTexel[i].r >= 0.;
 

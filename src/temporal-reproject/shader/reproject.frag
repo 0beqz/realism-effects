@@ -38,34 +38,6 @@ vec2 viewSpaceToScreenSpace(const vec3 position, const mat4 projMatrix) {
   return projectedCoord.xy;
 }
 
-// source:
-// https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/
-vec2 OctWrap(vec2 v) {
-  vec2 w = 1.0 - abs(v.yx);
-  if (v.x < 0.0)
-    w.x = -w.x;
-  if (v.y < 0.0)
-    w.y = -w.y;
-  return w;
-}
-
-// source:
-// https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/
-vec3 decodeOctWrap(vec2 f) {
-  f = f * 2.0 - 1.0;
-
-  // https://twitter.com/Stubbesaurus/status/937994790553227264
-  vec3 n = vec3(f.x, f.y, 1.0 - abs(f.x) - abs(f.y));
-  float t = max(-n.z, 0.0);
-  n.x += n.x >= 0.0 ? -t : t;
-  n.y += n.y >= 0.0 ? -t : t;
-  return normalize(n);
-}
-
-vec3 unpackNormal(float packedNormal) {
-  return decodeOctWrap(unpackHalf2x16(floatBitsToUint(packedNormal)));
-}
-
 #ifdef logTransform
 // idea from:
 // https://www.elopezr.com/temporal-aa-and-the-quest-for-the-holy-trail/

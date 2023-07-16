@@ -2,13 +2,11 @@ import { Pass } from "postprocessing"
 import {
 	Color,
 	FloatType,
-	HalfFloatType,
 	NearestFilter,
 	NoColorSpace,
 	RepeatWrapping,
 	Texture,
 	TextureLoader,
-	WebGLMultipleRenderTargets,
 	WebGLRenderTarget
 } from "three"
 import { MRTMaterial } from "../material/MRTMaterial.js"
@@ -41,10 +39,8 @@ export class SSGIPass extends Pass {
 		this.fullscreenMaterial = new SSGIMaterial()
 		this.defaultFragmentShader = this.fullscreenMaterial.fragmentShader
 
-		const bufferCount = !options.diffuseOnly && !options.specularOnly ? 2 : 1
-
-		this.renderTarget = new WebGLMultipleRenderTargets(1, 1, bufferCount, {
-			type: HalfFloatType,
+		this.renderTarget = new WebGLRenderTarget(1, 1, {
+			type: FloatType,
 			depthBuffer: false
 		})
 
@@ -79,7 +75,7 @@ export class SSGIPass extends Pass {
 	}
 
 	get texture() {
-		return this.renderTarget.texture[0]
+		return this.renderTarget.texture
 	}
 
 	get specularTexture() {
