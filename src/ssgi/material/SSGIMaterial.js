@@ -1,4 +1,4 @@
-﻿import { GLSL3, Matrix4, NoBlending, ShaderMaterial, Uniform, Vector2, Vector3 } from "three"
+﻿import { Matrix4, NoBlending, ShaderMaterial, Uniform, Vector2, Vector3 } from "three"
 import vertexShader from "../../utils/shader/basic.vert"
 import fragmentShader from "../shader/ssgi.frag"
 // eslint-disable-next-line camelcase

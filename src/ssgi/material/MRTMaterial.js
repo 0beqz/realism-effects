@@ -155,7 +155,8 @@ export class MRTMaterial extends ShaderMaterial {
                         ivec2 blueNoiseSize = textureSize(blueNoiseTexture, 0);
                         vec2 tSize = vec2(blueNoiseSize.x, blueNoiseSize.y);
 
-                        float alphaThreshold = sampleBlueNoise(blueNoiseTexture, frame, blueNoiseRepeat, tSize).r;
+                        float alphaThreshold = sampleBlueNoise(blueNoiseTexture, frame, blueNoiseRepeat, tSize, screenUv).r;
+                        alphaThreshold = fract(alphaThreshold + hn.r * floor(abs(vHighPrecisionZW[0]) * 10000.0));
 
                         if(alpha < alphaThreshold){
                             discard;

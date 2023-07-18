@@ -52,28 +52,35 @@ void undoColorTransform(inout vec3 color) { color = exp(color) - 1.; }
 void getNeighborhoodAABB(const sampler2D tex, const int clampRadius,
                          inout vec3 minNeighborColor,
                          inout vec3 maxNeighborColor) {
+  vec4 t1, t2;
+
   for (int x = -clampRadius; x <= clampRadius; x++) {
     for (int y = -clampRadius; y <= clampRadius; y++) {
-      if (x != 0 || y != 0) {
-        vec2 offset = vec2(x, y) * invTexSize;
-        vec2 neighborUv = vUv + offset;
+      vec2 offset = vec2(x, y) * invTexSize;
+      vec2 neighborUv = vUv + offset;
 
-        vec4 neighborTexel = textureLod(tex, neighborUv, 0.0);
-        transformColor(neighborTexel.rgb);
+      vec4 packedNeighborTexel = textureLod(inputTexture0, neighborUv, 0.0);
 
-        minNeighborColor = min(neighborTexel.rgb, minNeighborColor);
-        maxNeighborColor = max(neighborTexel.rgb, maxNeighborColor);
-      }
+      unpackTwoVec4(packedNeighborTexel, t1, t2);
+
+      vec4 neighborTexel = texIndex == 0 ? t1 : t2;
+
+      minNeighborColor = min(neighborTexel.rgb, minNeighborColor);
+      maxNeighborColor = max(neighborTexel.rgb, maxNeighborColor);
     }
   }
 }
 
-void clampNeighborhood(const sampler2D tex, inout vec3 color,
-                       const vec3 inputColor, const int clampRadius) {
+void clampNeighborhood(const sampler2D tex, inout vec3 color, vec3 inputColor,
+                       const int clampRadius) {
+  undoColorTransform(inputColor);
   vec3 minNeighborColor = inputColor;
   vec3 maxNeighborColor = inputColor;
 
   getNeighborhoodAABB(tex, clampRadius, minNeighborColor, maxNeighborColor);
+
+  transformColor(minNeighborColor);
+  transformColor(maxNeighborColor);
 
   color = clamp(color, minNeighborColor, maxNeighborColor);
 }
@@ -201,7 +208,7 @@ vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength) {
   // no camera position change (only rotation change) as it barely causes any
   // smearing for reflections
 
-  if (roughness > 0.4 || rayLength > 10.0e3) {
+  if (roughness > 0.75 || rayLength > 10.0e3) {
     return vUv - velocity;
   }
 

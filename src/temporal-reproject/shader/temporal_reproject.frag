@@ -150,15 +150,18 @@ void main() {
       if (textureSampledThisFrame[i]) {
         accumulatedTexel[i].a++; // add one more frame
 
-        if (neighborhoodClamp[i] && didMove) {
+        if (neighborhoodClamp[i]) {
           vec3 clampedColor = accumulatedTexel[i].rgb;
 
           clampNeighborhood(inputTexture[i], clampedColor, inputTexel[i].rgb,
                             neighborhoodClampRadius);
 
+          float clampIntensity =
+              neighborhoodClampIntensity * exp(-accumulatedTexel[i].a * 0.05);
+
           // ! todo: find good neighborhood clamp intensity
-          accumulatedTexel[i].rgb = mix(accumulatedTexel[i].rgb, clampedColor,
-                                        neighborhoodClampIntensity);
+          accumulatedTexel[i].rgb =
+              mix(accumulatedTexel[i].rgb, clampedColor, clampIntensity);
         }
       } else {
         inputTexel[i].rgb = accumulatedTexel[i].rgb;
@@ -186,8 +189,8 @@ void main() {
     } else {
       temporalReprojectMix = blend;
 
-      if (accumulatedTexel[i].a > 5.)
-        accumulatedTexel[i].a = mix(accumulatedTexel[i].a, 5., angleMix);
+      // if (accumulatedTexel[i].a > 5.)
+      //   accumulatedTexel[i].a = mix(accumulatedTexel[i].a, 5., angleMix);
 
       if (reset)
         accumulatedTexel[i].a = 0.0;
