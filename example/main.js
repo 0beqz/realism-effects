@@ -2,7 +2,7 @@ import { getGPUTier } from "detect-gpu"
 import dragDrop from "drag-drop"
 import * as POSTPROCESSING from "postprocessing"
 import { SSGIEffect, SSREffect, TRAAEffect } from "realism-effects"
-import Stats from "stats.js"
+import Stats from "stats-gl"
 import * as THREE from "three"
 import {
 	Box3,
@@ -196,11 +196,17 @@ light.shadow.camera.bottom = -s
 light.shadow.camera.right = s
 light.shadow.camera.top = s
 
-const stats = new Stats()
-stats.showPanel(1)
-stats.dom.style.top = "initial"
-stats.dom.style.bottom = "0"
-document.body.appendChild(stats.dom)
+const stats = new Stats({
+	logsPerSecond: 100,
+	samplesLog: 100,
+	samplesGraph: 10,
+	precision: 2
+})
+
+stats.init(renderer.domElement)
+
+// append the stats container to the body of the document
+document.body.appendChild(stats.container)
 
 const rgbeLoader = new RGBELoader().setDataType(FloatType)
 
@@ -680,7 +686,7 @@ onLongPress(document.body, () => {
 })
 
 const loop = () => {
-	if (stats?.dom.style.display !== "none") stats.begin()
+	stats.begin()
 
 	const dt = clock.getDelta()
 
@@ -707,7 +713,7 @@ const loop = () => {
 		renderer.render(scene, camera)
 	}
 
-	if (stats?.dom.style.display !== "none") stats.end()
+	stats.end()
 	window.requestAnimationFrame(loop)
 }
 
