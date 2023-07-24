@@ -310,8 +310,11 @@ void main() {
     rayLength = distance(cameraPosWS, hitPosWS.xyz);
   }
 
-  if (specularSamples == 0.0)
+  if (specularSamples == 0.0) {
     specularGI = vec3(-1.0);
+    rayLength = 0.;
+  }
+
   gSpecular = vec4(specularGI, rayLength);
 #endif
 

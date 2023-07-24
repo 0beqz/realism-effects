@@ -91,7 +91,7 @@ void main() {
   float lum = luminance(texel.rgb);
   float lum2 = luminance(texel2.rgb);
 
-  // if (vUv.x > 0.) {
+  // if (vUv.x > 0.5) {
   //   gOutput0 = texel;
   //   gOutput1 = texel2;
 
@@ -100,6 +100,9 @@ void main() {
 
   float totalWeight = getLuminanceWeight(lum, texel.a);
   float totalWeight2 = getLuminanceWeight(lum2, texel2.a);
+
+  float darkness = pow(1. - min(luminance(texel.rgb), 1.), 4.);
+  float darkness2 = pow(1. - min(luminance(texel2.rgb), 1.), 4.);
 
   toDenoiseSpace(texel.rgb);
   toDenoiseSpace(texel2.rgb);
@@ -117,6 +120,10 @@ void main() {
   float depth = depthTexel.x;
   vec3 worldPos = getWorldPos(depth, vUv);
 
+  // using cameraMatrixWorld, get how oblique the surface is
+  float faceness = abs(dot(normal, normalize(cameraMatrixWorld[2].xyz)));
+  float obl = 1. - faceness;
+
   vec4 random =
       sampleBlueNoise(blueNoiseTexture, index, blueNoiseRepeat, resolution);
   float angle = random.r * 2. * PI;
@@ -130,8 +137,8 @@ void main() {
   float a = texel.a;
   float a2 = texel2.a;
 
-  float doDenoiseFlag = float(a > 512.);
-  float doDenoiseFlag2 = float(a2 > 512.);
+  float doDenoiseFlag = float(a < 256.);
+  float doDenoiseFlag2 = float(a2 < 256.);
 
   float w = smoothstep(0., 1., 1. / pow(a + 1., 1. / 2.5));
   float w2 = smoothstep(0., 1., 1. / pow(a2 + 1., 1. / 2.5));
@@ -175,7 +182,6 @@ void main() {
     float lumaDiff2 = mix(abs(lum2 - neighborLuminance2), 0., w2);
 
     float basicWeight =
-        float(neighborDepth != 1.0) *
         exp(-normalDiff * normalPhi - depthDiff * depthPhi -
             roughnessDiff * roughnessPhi - diffuseDiff * diffusePhi);
 
@@ -183,17 +189,20 @@ void main() {
     float similarity2 = w2 * pow(basicWeight, phi / w2) * specularWeight *
                         exp(-lumaDiff2 * lumaPhi);
 
+    similarity += (obl * 0.01 + darkness * 0.01) * w;
+    similarity2 += (obl * 0.01 + darkness2 * 0.01) * w2;
+
     similarity = mix(similarity, 1., p);
     similarity2 = mix(similarity2, 1., p2);
 
-    similarity = mix(similarity, 0., doDenoiseFlag);
-    similarity2 = mix(similarity2, 0., doDenoiseFlag2);
+    float validNeighborWeight = doDenoiseFlag * float(neighborDepth != 1.0);
+    float validNeighborWeight2 = doDenoiseFlag2 * float(neighborDepth != 1.0);
 
     evaluateNeighbor(neighborTexel, neighborLuminance, denoised, totalWeight,
-                     similarity);
+                     similarity * validNeighborWeight);
 
     evaluateNeighbor(neighborTexel2, neighborLuminance2, denoised2,
-                     totalWeight2, similarity2);
+                     totalWeight2, similarity2 * validNeighborWeight2);
   }
 
   denoised = totalWeight > 0. ? denoised / totalWeight : texel.rgb;

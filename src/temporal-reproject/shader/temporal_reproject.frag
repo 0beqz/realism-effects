@@ -189,14 +189,17 @@ void main() {
     } else {
       temporalReprojectMix = blend;
 
-      if (accumulatedTexel[i].a > 8.)
-        accumulatedTexel[i].a = mix(accumulatedTexel[i].a, 8., angleMix);
+      // if we reproject from oblique angles to straight angles, we get
+      // stretching and need to counteract it
+      accumulatedTexel[i].a = mix(accumulatedTexel[i].a, 0., angleMix);
 
       if (reset)
         accumulatedTexel[i].a = 0.0;
 
-      if (reprojectSpecular[i] && roughness < 0.1) {
-        maxValue = mix(0.5, maxValue, roughness / 0.1);
+      float roughnessMaximum = inputTexel[i].a > 10.0e3 ? 0.25 : 0.1;
+
+      if (reprojectSpecular[i] && roughness < roughnessMaximum) {
+        maxValue = mix(0.5, maxValue, roughness / roughnessMaximum);
       }
 
       temporalReprojectMix =

@@ -180,8 +180,7 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos,
 
   // angleDiff will be higher, the more we try to reproject pixels from a steep
   // angle onto a surface with a low angle which results in undesired stretching
-  float angleDiff = max(0., abs(lastViewAngle - viewAngle));
-  angleMix = min(1., 2. * angleDiff);
+  angleMix = clamp(2. * abs(lastViewAngle - viewAngle), 0., 1.);
 
   float viewZ = abs(getViewZ(depth));
   float distFactor = 1. + 1. / (viewZ + 1.0);
@@ -190,8 +189,8 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos,
     return false;
 
   // ! todo: investigate normal disocclusion check
-  if (normalDisocclusionCheck(worldNormal, lastWorldNormal, distFactor))
-    return false;
+  // if (normalDisocclusionCheck(worldNormal, lastWorldNormal, distFactor))
+  //   return false;
 
   if (planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal,
                                      distFactor))
@@ -201,11 +200,7 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos,
 }
 
 vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength) {
-  // ! todo: investigate using motion reprojection for reflections when there is
-  // no camera position change (only rotation change) as it barely causes any
-  // smearing for reflections
-
-  if (roughness > 0.75 || rayLength > 10.0e3) {
+  if (rayLength > 10.0e3) {
     return vUv - velocity;
   }
 
@@ -223,7 +218,7 @@ vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength) {
 
   if (rayLength > 10.0e3) {
     reprojectedHitPoint.xy =
-        mix(vUv - velocity, reprojectedHitPoint.xy, flatness);
+        mix(vUv - velocity, reprojectedHitPoint.xy, min(1., flatness * 4.));
   }
 
   return reprojectedHitPoint.xy;
@@ -309,9 +304,9 @@ vec4 SampleTextureCatmullRom(const sampler2D tex, const vec2 uv,
 
 // source:
 // http://rodolphe-vaillant.fr/entry/118/curvature-of-a-distance-field-implicit-surface
-float getFlatness(vec3 g, vec3 rp) {
-  vec3 gw = fwidth(g);
-  vec3 pw = fwidth(rp);
+float getFlatness(vec3 worldPosition, vec3 worldNormal) {
+  vec3 gw = fwidth(worldPosition);
+  vec3 pw = fwidth(worldNormal);
 
   float wfcurvature = length(gw) / length(pw);
   wfcurvature = smoothstep(0.0, 30., wfcurvature);
