@@ -189,8 +189,8 @@ void main() {
     } else {
       temporalReprojectMix = blend;
 
-      // if (accumulatedTexel[i].a > 5.)
-      //   accumulatedTexel[i].a = mix(accumulatedTexel[i].a, 5., angleMix);
+      if (accumulatedTexel[i].a > 8.)
+        accumulatedTexel[i].a = mix(accumulatedTexel[i].a, 8., angleMix);
 
       if (reset)
         accumulatedTexel[i].a = 0.0;

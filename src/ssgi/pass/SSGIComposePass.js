@@ -31,18 +31,18 @@ export class SSGIComposePass extends Pass {
             ${ssgi_poisson_compose_functions}
 
             void main() {
-                vec4 diffuse;
-				vec3 normal, emissive;
-                float roughness, metalness;
-
-                getGData(gBuffersTexture, vUv, diffuse, normal, roughness, metalness, emissive);
-
                 float depth = textureLod(depthTexture, vUv, 0.).r;
 
 				if(depth == 0.){
 					discard;
 					return;
 				}
+
+				vec4 diffuse;
+				vec3 normal, emissive;
+                float roughness, metalness;
+
+                getGData(gBuffersTexture, vUv, diffuse, normal, roughness, metalness, emissive);
 
                 vec3 viewNormal = (vec4(normal, 0.) * cameraMatrixWorld).xyz;
 
