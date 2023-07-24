@@ -101,8 +101,7 @@ void main() {
   float totalWeight = getLuminanceWeight(lum, texel.a);
   float totalWeight2 = getLuminanceWeight(lum2, texel2.a);
 
-  float darkness = pow(1. - min(luminance(texel.rgb), 1.), 4.);
-  float darkness2 = pow(1. - min(luminance(texel2.rgb), 1.), 4.);
+  float darkness = pow(1. - min(lum, 1.), 4.);
 
   toDenoiseSpace(texel.rgb);
   toDenoiseSpace(texel2.rgb);
@@ -190,7 +189,7 @@ void main() {
                         exp(-lumaDiff2 * lumaPhi);
 
     similarity += (obl * 0.01 + darkness * 0.01) * w;
-    similarity2 += (obl * 0.01 + darkness2 * 0.01) * w2;
+    similarity2 += (obl * 0.01) * w2;
 
     similarity = mix(similarity, 1., p);
     similarity2 = mix(similarity2, 1., p2);
