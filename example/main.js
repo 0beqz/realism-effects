@@ -448,6 +448,7 @@ const initScene = async () => {
 
 	gui2 = new SSGIDebugGUI(ssgiEffect, options)
 	gui2.pane.containerElem_.style.left = "8px"
+	gui2.pane.containerElem_.style.top = "56px"
 	if (traaTest) gui2.pane.element.style.visibility = "hidden"
 
 	new POSTPROCESSING.LUT3dlLoader().load("lut.3dl").then(lutTexture => {

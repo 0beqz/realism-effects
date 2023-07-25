@@ -182,6 +182,10 @@ void main() {
   vec3 outputColor;
   float temporalReprojectMix;
 
+  float angleMixFlatness = flatness > 0.001 ? 1.0 : flatness / 0.001;
+
+  angleMix = mix(0., angleMix, angleMixFlatness);
+
 #pragma unroll_loop_start
   for (int i = 0; i < textureCount; i++) {
     if (constantBlend) {
@@ -198,7 +202,7 @@ void main() {
 
       float roughnessMaximum = inputTexel[i].a > 10.0e3 ? 0.25 : 0.1;
 
-      if (reprojectSpecular[i] && roughness < roughnessMaximum) {
+      if (didMove && reprojectSpecular[i] && roughness < roughnessMaximum) {
         maxValue = mix(0.5, maxValue, roughness / roughnessMaximum);
       }
 

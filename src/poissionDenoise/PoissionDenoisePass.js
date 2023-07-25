@@ -6,6 +6,7 @@ import {
 	NearestFilter,
 	NoColorSpace,
 	RepeatWrapping,
+	SRGBColorSpace,
 	ShaderMaterial,
 	TextureLoader,
 	Vector2,
@@ -73,6 +74,7 @@ export class PoissionDenoisePass extends Pass {
 
 		const renderTargetOptions = {
 			type: HalfFloatType,
+			colorSpace: SRGBColorSpace,
 			depthBuffer: false
 		}
 

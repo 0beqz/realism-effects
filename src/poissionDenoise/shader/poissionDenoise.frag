@@ -98,6 +98,8 @@ void main() {
   //   return;
   // }
 
+  // ! todo: increase denoiser aggressiveness by distance
+
   float totalWeight = getLuminanceWeight(lum, texel.a);
   float totalWeight2 = getLuminanceWeight(lum2, texel2.a);
 
@@ -131,7 +133,7 @@ void main() {
 
   float specularWeight =
       roughness * roughness > 0.15 ? 1. : roughness * roughness / 0.15;
-  specularWeight = max(0.1, specularWeight);
+  // specularWeight = max(0.05, specularWeight);
 
   float a = texel.a;
   float a2 = texel2.a;
@@ -185,14 +187,14 @@ void main() {
             roughnessDiff * roughnessPhi - diffuseDiff * diffusePhi);
 
     float similarity = w * pow(basicWeight, phi / w) * exp(-lumaDiff * lumaPhi);
-    float similarity2 = w2 * pow(basicWeight, phi / w2) * specularWeight *
-                        exp(-lumaDiff2 * lumaPhi);
+    float similarity2 =
+        w2 * pow(basicWeight, phi / w2) * exp(-lumaDiff2 * lumaPhi);
 
     similarity += (obl * 0.01 + darkness * 0.01) * w;
     similarity2 += (obl * 0.01) * w2;
 
     similarity = mix(similarity, 1., p);
-    similarity2 = mix(similarity2, 1., p2);
+    similarity2 = mix(similarity2, 1., p2) * specularWeight;
 
     float validNeighborWeight = doDenoiseFlag * float(neighborDepth != 1.0);
     float validNeighborWeight2 = doDenoiseFlag2 * float(neighborDepth != 1.0);

@@ -189,8 +189,8 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos,
     return false;
 
   // ! todo: investigate normal disocclusion check
-  // if (normalDisocclusionCheck(worldNormal, lastWorldNormal, distFactor))
-  //   return false;
+  if (normalDisocclusionCheck(worldNormal, lastWorldNormal, distFactor))
+    return false;
 
   if (planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal,
                                      distFactor))
@@ -324,8 +324,9 @@ vec2 sampleBlocky(vec2 p) {
 
 vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv) {
   // ! todo: investigate using sampleBlocky
-  vec4 blocky = SampleTextureCatmullRom(tex, sampleBlocky(reprojectedUv),
-                                        1. / invTexSize);
+  // vec2 uv = flatness > 0.001 ? sampleBlocky(reprojectedUv) : reprojectedUv;
+
+  vec4 blocky = SampleTextureCatmullRom(tex, reprojectedUv, 1. / invTexSize);
 
   return blocky;
 }
