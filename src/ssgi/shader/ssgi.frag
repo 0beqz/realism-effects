@@ -77,6 +77,7 @@ void main() {
   getGData(gBuffersTexture, vUv, diffuse, normal, roughness, metalness,
            emissive);
 
+  // ! todo: use something else than roughness = 1.0 to detect deselected meshes
   // a roughness of 1 is only being used for deselected meshes
   if (roughness == 1.0 || roughness > maxRoughness) {
     discard;
