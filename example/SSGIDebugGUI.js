@@ -21,7 +21,7 @@ export class SSGIDebugGUI {
 		generalFolder.addInput(params, "distance", { min: 0.001, max: 50, step: 0.01 })
 		generalFolder.addInput(params, "thickness", {
 			min: 0,
-			max: 5,
+			max: 10,
 			step: 0.01
 		})
 

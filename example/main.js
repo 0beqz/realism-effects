@@ -33,6 +33,7 @@ import { HBAOSSAOComparisonEffect } from "./HBAOSSAOComparisonEffect"
 import { SSAODebugGUI } from "./SSAODebugGUI"
 import { SSGIDebugGUI } from "./SSGIDebugGUI"
 import "./style.css"
+import { TAAPass } from "../src/taa/TAAPass"
 
 let traaEffect
 let traaPass
@@ -45,6 +46,7 @@ let pane
 let gui2
 let envMesh
 let fps
+let taaPass
 const guiParams = {
 	Method: "TRAA",
 	Background: false
@@ -171,10 +173,10 @@ if (false) {
 const lightParams = {
 	yaw: 55,
 	pitch: 27,
-	intensity: 1
+	intensity: 2.5
 }
 
-const light = new DirectionalLight(0xfdfbd3, lightParams.intensity)
+const light = new DirectionalLight(0xffffff, lightParams.intensity)
 light.updateMatrixWorld()
 light.castShadow = true
 // scene.add(light)
@@ -242,7 +244,7 @@ const setEnvMesh = envMap => {
 		envMesh.updateMatrixWorld()
 		scene.add(envMesh)
 
-		scene.background = new Color("white")
+		if (taaPass) taaPass.needsUpdate = true
 	}
 }
 
@@ -325,6 +327,19 @@ const refreshLighting = () => {
 	light.updateMatrixWorld()
 	renderer.shadowMap.needsUpdate = true
 }
+
+// when the mouse moves, update the light yaw and pitch based on the mouse position
+document.addEventListener("mousemove", ev => {
+	// check if control is pressed
+	if (!ev.ctrlKey) return
+
+	lightParams.yaw = (ev.clientX / window.innerWidth) * 360
+	lightParams.pitch = (1 - ev.clientY / window.innerHeight) * 180
+
+	refreshLighting()
+	if (ssgiEffect) ssgiEffect.reset()
+	if (taaPass) taaPass.needsUpdate = true
+})
 
 const initScene = async () => {
 	const gpuTier = await getGPUTier()
@@ -450,6 +465,8 @@ const initScene = async () => {
 	gui2.pane.containerElem_.style.left = "8px"
 	gui2.pane.containerElem_.style.top = "56px"
 	if (traaTest) gui2.pane.element.style.visibility = "hidden"
+
+	gui2.pane.on("change", ev => (taaPass.needsUpdate = true))
 
 	new POSTPROCESSING.LUT3dlLoader().load("lut.3dl").then(lutTexture => {
 		const lutEffect = new POSTPROCESSING.LUT3DEffect(lutTexture)
@@ -610,8 +627,10 @@ const initScene = async () => {
 		smaaPass = new POSTPROCESSING.EffectPass(camera, smaaEffect)
 
 		const fxaaEffect = new POSTPROCESSING.FXAAEffect()
-
 		fxaaPass = new POSTPROCESSING.EffectPass(camera, fxaaEffect)
+
+		taaPass = new TAAPass(camera)
+		composer.addPass(taaPass)
 
 		if (!isAoDemo) {
 			if (fps >= 256) {
@@ -810,6 +829,8 @@ document.addEventListener("keydown", ev => {
 		document.querySelector("#aoToggle").checked = !document.querySelector("#aoToggle").checked
 		hbaoSsaoComparisonEffect.setAlbedo(!hbaoSsaoComparisonEffect.isAlbedo())
 	}
+
+	taaPass.needsUpdate = true
 })
 
 dragDrop("body", files => {
@@ -1023,6 +1044,8 @@ const setupAsset = asset => {
 	scene.updateMatrixWorld()
 
 	lastScene = asset.scene
+
+	if (taaPass) taaPass.needsUpdate = true
 
 	requestAnimationFrame(refreshLighting)
 }

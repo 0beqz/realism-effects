@@ -216,10 +216,10 @@ vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength) {
   reprojectedHitPoint.xyz /= reprojectedHitPoint.w;
   reprojectedHitPoint.xy = reprojectedHitPoint.xy * 0.5 + 0.5;
 
-  if (rayLength > 10.0e3) {
-    reprojectedHitPoint.xy =
-        mix(vUv - velocity, reprojectedHitPoint.xy, min(1., flatness * 4.));
-  }
+  float parallaxFactor = flatness * 4. - roughness;
+
+  reprojectedHitPoint.xy =
+      mix(vUv - velocity, reprojectedHitPoint.xy, clamp(0., 0., 1.));
 
   return reprojectedHitPoint.xy;
 }

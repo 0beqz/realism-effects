@@ -50,6 +50,8 @@ vec2 invTexSize;
 #include <sampleBlueNoise>
 #include <ssgi_utils>
 
+vec3 tangent, bitangent;
+
 vec2 RayMarch(inout vec3 dir, inout vec3 hitPos, vec4 random);
 vec2 BinarySearch(inout vec3 dir, inout vec3 hitPos);
 float fastGetViewZ(const float depth);
@@ -102,7 +104,15 @@ void main() {
 
   vec3 viewDir = normalize(viewPos);
   vec3 worldNormal = normal;
+
   vec3 viewNormal = normalize((vec4(worldNormal, 0.) * cameraMatrixWorld).xyz);
+  bitangent = cross(viewDir, normal);
+  // get the tangent from the bitangent and normal
+  tangent = cross(bitangent, viewNormal);
+
+  // convert viewBitangent and viewTangent to world-space
+  bitangent = normalize((vec4(bitangent, 0.) * cameraMatrixWorld).xyz);
+  tangent = normalize((vec4(tangent, 0.) * cameraMatrixWorld).xyz);
 
   vec3 worldPos = vec4(vec4(viewPos, 1.) * viewMatrix).xyz;
 

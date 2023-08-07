@@ -195,12 +195,15 @@ export class SSGIEffect extends Effect {
 		this.ssgiPass.fullscreenMaterial.needsUpdate = true
 	}
 
+	reset() {
+		this.svgf.svgfTemporalReprojectPass.reset()
+	}
+
 	makeOptionsReactive(options) {
 		let needsUpdate = false
 
 		const ssgiPassFullscreenMaterialUniforms = this.ssgiPass.fullscreenMaterial.uniforms
 		const ssgiPassFullscreenMaterialUniformsKeys = Object.keys(ssgiPassFullscreenMaterialUniforms)
-		const temporalReprojectPass = this.svgf.svgfTemporalReprojectPass
 
 		for (const key of Object.keys(options)) {
 			Object.defineProperty(this, key, {
@@ -227,7 +230,7 @@ export class SSGIEffect extends Effect {
 						case "diffusePhi":
 							if (this.svgf.denoisePass.fullscreenMaterial.uniforms[key]) {
 								this.svgf.denoisePass.fullscreenMaterial.uniforms[key].value = value
-								temporalReprojectPass.reset()
+								this.reset()
 							}
 							break
 
@@ -241,7 +244,7 @@ export class SSGIEffect extends Effect {
 						// SSGI
 						case "resolutionScale":
 							this.setSize(this.lastSize.width, this.lastSize.height)
-							temporalReprojectPass.reset()
+							this.reset()
 							break
 
 						// defines
@@ -261,13 +264,13 @@ export class SSGIEffect extends Effect {
 
 							this.ssgiPass.fullscreenMaterial.needsUpdate = needsUpdate
 
-							temporalReprojectPass.reset()
+							this.reset()
 							break
 						case "steps":
 						case "refineSteps":
 							this.ssgiPass.fullscreenMaterial.defines[key] = parseInt(value)
 							this.ssgiPass.fullscreenMaterial.needsUpdate = needsUpdate
-							temporalReprojectPass.reset()
+							this.reset()
 
 							break
 
@@ -280,18 +283,18 @@ export class SSGIEffect extends Effect {
 							}
 
 							this.ssgiPass.fullscreenMaterial.needsUpdate = needsUpdate
-							temporalReprojectPass.reset()
+							this.reset()
 
 							break
 
 						case "blend":
 							this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.uniforms[key].value = value
-							temporalReprojectPass.reset()
+							this.reset()
 							break
 
 						case "distance":
 							ssgiPassFullscreenMaterialUniforms.rayDistance.value = value
-							temporalReprojectPass.reset()
+							this.reset()
 
 							break
 
@@ -299,7 +302,7 @@ export class SSGIEffect extends Effect {
 						default:
 							if (ssgiPassFullscreenMaterialUniformsKeys.includes(key)) {
 								ssgiPassFullscreenMaterialUniforms[key].value = value
-								temporalReprojectPass.reset()
+								this.reset()
 							}
 					}
 				}
@@ -392,7 +395,7 @@ export class SSGIEffect extends Effect {
 					ssgiMaterial.uniforms.envMapInfo.value.map = environment
 				}
 
-				this.svgf.svgfTemporalReprojectPass.reset()
+				this.reset()
 
 				ssgiMaterial.needsUpdate = true
 			}

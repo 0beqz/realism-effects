@@ -14,8 +14,8 @@ import {
 	WebGLMultipleRenderTargets
 } from "three"
 import { CopyPass } from "../ssgi/pass/CopyPass"
+import { jitter } from "../taa/TAAUtils"
 import { TemporalReprojectMaterial } from "./material/TemporalReprojectMaterial"
-import { generateR2 } from "./utils/QuasirandomGenerator"
 
 export const defaultTemporalReprojectPassOptions = {
 	blend: 0.9,
@@ -44,7 +44,7 @@ export class TemporalReprojectPass extends Pass {
 	overrideAccumulatedTextures = []
 	clock = new Clock()
 	r2Sequence = []
-	pointsIndex = 0
+	frame = 0
 	lastCameraTransform = {
 		position: new Vector3(),
 		quaternion: new Quaternion()
@@ -100,7 +100,6 @@ export class TemporalReprojectPass extends Pass {
 		if (options.copyTextures) {
 			// init copy pass to save the accumulated textures and the textures from the last frame
 			this.copyPass = new CopyPass(textureCount)
-			console.log("copyPass", this.copyPass)
 
 			for (let i = 0; i < textureCount; i++) {
 				const accumulatedTexture = this.copyPass.renderTarget.texture[i]
@@ -167,6 +166,8 @@ export class TemporalReprojectPass extends Pass {
 	}
 
 	render(renderer) {
+		this.frame = (this.frame + 1) % 65536
+
 		const delta = Math.min(1 / 10, this.clock.getDelta())
 		this.fullscreenMaterial.uniforms.delta.value = delta
 
@@ -229,17 +230,7 @@ export class TemporalReprojectPass extends Pass {
 	jitter(jitterScale = 1) {
 		this.unjitter()
 
-		if (this.r2Sequence.length === 0) this.r2Sequence = generateR2(256).map(([a, b]) => [a - 0.5, b - 0.5])
-
-		this.pointsIndex = (this.pointsIndex + 1) % this.r2Sequence.length
-
-		const [x, y] = this.r2Sequence[this.pointsIndex]
-
-		const { width, height } = this.renderTarget
-
-		if (this._camera.setViewOffset) {
-			this._camera.setViewOffset(width, height, x * jitterScale, y * jitterScale, width, height)
-		}
+		jitter(this.renderTarget.width, this.renderTarget.height, this._camera, this.frame, jitterScale)
 	}
 
 	unjitter() {

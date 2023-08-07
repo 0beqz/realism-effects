@@ -43,9 +43,7 @@ export class MRTMaterial extends ShaderMaterial {
                 varying vec2 vHighPrecisionZW;
 
                 #define NORMAL
-                #if defined( FLAT_SHADED ) || defined( USE_BUMPMAP ) || defined( TANGENTSPACE_NORMALMAP )
-                    varying vec3 vViewPosition;
-                #endif
+                varying vec3 vViewPosition;
                 
                 #include <common>
                 #include <uv_pars_vertex>
@@ -81,9 +79,7 @@ export class MRTMaterial extends ShaderMaterial {
 
                     #include <color_vertex>
                     
-                    #if defined( FLAT_SHADED ) || defined( USE_BUMPMAP ) || defined( TANGENTSPACE_NORMALMAP )
-                        vViewPosition = - mvPosition.xyz;
-                    #endif
+                    vViewPosition = - mvPosition.xyz;
 
                     screenUv = gl_Position.xy * 0.5 + 0.5;
 
@@ -93,9 +89,7 @@ export class MRTMaterial extends ShaderMaterial {
 
 			fragmentShader: /* glsl */ `
                 #define NORMAL
-                #if defined( FLAT_SHADED ) || defined( USE_BUMPMAP ) || defined( TANGENTSPACE_NORMALMAP )
-                    varying vec3 vViewPosition;
-                #endif
+                varying vec3 vViewPosition;
                 #include <packing>
                 #include <uv_pars_fragment>
                 #include <normal_pars_fragment>

@@ -200,7 +200,7 @@ void main() {
       if (reset)
         accumulatedTexel[i].a = 0.0;
 
-      float roughnessMaximum = inputTexel[i].a > 10.0e3 ? 0.25 : 0.1;
+      float roughnessMaximum = inputTexel[i].a > 10.0e3 ? 0.25 : 0.01;
 
       if (didMove && reprojectSpecular[i] && roughness < roughnessMaximum) {
         maxValue = mix(0.5, maxValue, roughness / roughnessMaximum);
