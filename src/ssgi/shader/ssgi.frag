@@ -7,7 +7,7 @@ uniform sampler2D velocityTexture;
 uniform sampler2D directLightTexture;
 
 uniform mat4 projectionMatrix;
-uniform mat4 inverseProjectionMatrix;
+uniform mat4 projectionMatrixInverse;
 uniform mat4 cameraMatrixWorld;
 uniform float cameraNear;
 uniform float cameraFar;
@@ -215,7 +215,7 @@ void main() {
     envMisMultiplier = 1.;
 #endif
 
-    envPdf = clamp(envPdf, 0.01, 4.0);
+    // envPdf = clamp(envPdf, 0.01, 4.0);
 
     if (isDiffuseSample) {
       if (isEnvMisSample) {
@@ -396,7 +396,7 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal,
 
     envMapSample = sampleEquirectEnvMapColor(reflectedWS, envMapInfo.map, mip);
 
-    float maxEnvLum = isEnvMisSample ? 50.0 : 10.0;
+    float maxEnvLum = isEnvMisSample ? 100.0 : 50.0;
 
     if (maxEnvLum != 0.0) {
       // we won't deal with calculating direct sun light from the env map as it

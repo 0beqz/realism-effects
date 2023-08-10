@@ -1,3 +1,11 @@
+float getViewZ(const in float depth) {
+#if PERSPECTIVE_CAMERA == 1
+  return perspectiveDepthToViewZ(depth, cameraNear, cameraFar);
+#else
+  return orthographicDepthToViewZ(depth, cameraNear, cameraFar);
+#endif
+}
+
 // source:
 // https://github.com/mrdoob/three.js/blob/dev/examples/js/shaders/SSAOShader.js
 vec3 getViewPosition(const float depth) {
@@ -56,7 +64,7 @@ vec3 constructGlobalIllumination(vec3 diffuseGi, vec3 specularGi, vec3 viewDir,
 
   vec3 T, B;
 
-  vec3 v = viewDir; // incoming vector
+  vec3 v = -viewDir; // incoming vector
 
   // convert view dir and view normal to world-space
   vec3 V = (vec4(v, 0.) * viewMatrix).xyz; // invert view dir

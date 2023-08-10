@@ -9,6 +9,8 @@ export class SSGIComposePass extends Pass {
 	constructor(camera) {
 		super("SSGIComposePass")
 
+		this._camera = camera
+
 		this.renderTarget = new WebGLRenderTarget(1, 1, {
 			depthBuffer: false,
 			type: HalfFloatType
@@ -23,9 +25,11 @@ export class SSGIComposePass extends Pass {
             uniform mat4 cameraMatrixWorld;
             uniform mat4 projectionMatrix;
             uniform mat4 projectionMatrixInverse;
+			uniform float cameraNear;
+			uniform float cameraFar;
 
             #include <common>
-            
+            #include <packing>
 
             ${gbuffer_packing}
             ${ssgi_poisson_compose_functions}
@@ -46,8 +50,10 @@ export class SSGIComposePass extends Pass {
 
                 vec3 viewNormal = (vec4(normal, 0.) * cameraMatrixWorld).xyz;
 
+				float viewZ = getViewZ(depth);
+
                 // view-space position of the current texel
-                vec3 viewPos = getViewPosition(depth);
+				vec3 viewPos = getViewPosition(viewZ);
                 vec3 viewDir = normalize(viewPos);
 
                 vec4 diffuseGi = textureLod(diffuseGiTexture, vUv, 0.);
@@ -55,7 +61,14 @@ export class SSGIComposePass extends Pass {
 
                 vec3 gi = constructGlobalIllumination(diffuseGi.rgb, specularGi.rgb, viewDir, viewNormal, diffuse.rgb, emissive, roughness, metalness);
 
-				gl_FragColor = vec4(gi, 1.);
+				// apply fog
+				float vFogDepth = -viewPos.z;
+				float fogDensity = 0.0005;
+				float fogFactor = 1.0 - exp( - fogDensity * fogDensity * vFogDepth * vFogDepth );
+				vec3 fogColor = vec3( 0.5 );
+				gi = mix( gi, fogColor, fogFactor );
+
+				gl_FragColor = vec4(vec3(gi), 1.);
             }
             `,
 			vertexShader: basicVertexShader,
@@ -64,10 +77,15 @@ export class SSGIComposePass extends Pass {
 				cameraMatrixWorld: { value: camera.matrixWorld },
 				projectionMatrix: { value: camera.projectionMatrix },
 				projectionMatrixInverse: { value: camera.projectionMatrixInverse },
+				cameraNear: { value: camera.near },
+				cameraFar: { value: camera.far },
 				gBuffersTexture: { value: null },
 				depthTexture: { value: null },
 				diffuseGiTexture: { value: null },
 				specularGiTexture: { value: null }
+			},
+			defines: {
+				PERSPECTIVE_CAMERA: 1
 			},
 			blending: NoBlending,
 			depthWrite: false,
@@ -85,6 +103,9 @@ export class SSGIComposePass extends Pass {
 	}
 
 	render(renderer) {
+		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
+		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far
+
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)
 	}
