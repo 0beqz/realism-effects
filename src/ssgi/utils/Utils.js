@@ -250,3 +250,15 @@ const materialProps = [
 export const copyNecessaryProps = (originalMaterial, newMaterial) => {
 	for (const props of materialProps) newMaterial[props] = originalMaterial[props]
 }
+
+export const didCameraMove = (camera, lastCameraPosition, lastCameraQuaternion) => {
+	if (camera.position.distanceToSquared(lastCameraPosition) > 0.000001) {
+		return true
+	}
+
+	if (camera.quaternion.angleTo(lastCameraQuaternion) > 0.001) {
+		return true
+	}
+
+	return false
+}

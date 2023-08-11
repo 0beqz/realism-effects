@@ -4,15 +4,18 @@ import {
 	FloatType,
 	NearestFilter,
 	NoColorSpace,
+	Quaternion,
 	RepeatWrapping,
 	Texture,
 	TextureLoader,
+	Vector3,
 	WebGLRenderTarget
 } from "three"
 import { MRTMaterial } from "../material/MRTMaterial.js"
 import { SSGIMaterial } from "../material/SSGIMaterial.js"
 import {
 	copyNecessaryProps,
+	didCameraMove,
 	getVisibleChildren,
 	isChildMaterialRenderable,
 	keepMaterialMapUpdated
@@ -28,6 +31,8 @@ export class SSGIPass extends Pass {
 	frame = 21483
 	cachedMaterials = new WeakMap()
 	visibleMeshes = []
+	lastCameraPosition = new Vector3()
+	lastCameraQuaternion = new Quaternion()
 
 	constructor(ssgiEffect, options) {
 		super("SSGIPass")
@@ -121,6 +126,8 @@ export class SSGIPass extends Pass {
 	setMRTMaterialInScene() {
 		this.visibleMeshes = getVisibleChildren(this._scene)
 
+		const cameraMoved = didCameraMove(this._camera, this.lastCameraPosition, this.lastCameraQuaternion)
+
 		for (const c of this.visibleMeshes) {
 			const originalMaterial = c.material
 
@@ -177,6 +184,7 @@ export class SSGIPass extends Pass {
 			}
 			mrtMaterial.uniforms.texSize.value.set(this.renderTarget.width, this.renderTarget.height)
 			mrtMaterial.uniforms.frame.value = this.frame
+			mrtMaterial.uniforms.cameraMoved.value = cameraMoved
 
 			c.visible = isChildMaterialRenderable(c, originalMaterial)
 
@@ -237,6 +245,10 @@ export class SSGIPass extends Pass {
 
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)
+
+		// reset state
+		this.lastCameraPosition.copy(this._camera.position)
+		this.lastCameraQuaternion.copy(this._camera.quaternion)
 
 		this._scene.background = background
 	}

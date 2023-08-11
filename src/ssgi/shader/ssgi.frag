@@ -50,8 +50,6 @@ vec2 invTexSize;
 #include <sampleBlueNoise>
 #include <ssgi_utils>
 
-vec3 tangent, bitangent;
-
 vec2 RayMarch(inout vec3 dir, inout vec3 hitPos, vec4 random);
 vec2 BinarySearch(inout vec3 dir, inout vec3 hitPos);
 float fastGetViewZ(const float depth);
@@ -72,23 +70,18 @@ void main() {
     return;
   }
 
-  vec4 diffuse;
-  vec3 normal, emissive;
-  float roughness, metalness;
-
-  getGData(gBuffersTexture, vUv, diffuse, normal, roughness, metalness,
-           emissive);
+  Material mat = getMaterial(gBuffersTexture, vUv);
 
   // ! todo: use something else than roughness = 1.0 to detect deselected meshes
   // a roughness of 1 is only being used for deselected meshes
-  if (roughness == 1.0 || roughness > maxRoughness) {
+  if (mat.roughness == 1.0 || mat.roughness > maxRoughness) {
     discard;
     return;
   }
 
   invTexSize = 1. / texSize;
 
-  roughness = clamp(roughness * roughness, 0.000001, 1.0);
+  mat.roughness = clamp(mat.roughness * mat.roughness, 0.000001, 1.0);
 
   // pre-calculated variables for the "fastGetViewZ" function
   nearMinusFar = cameraNear - cameraFar;
@@ -103,16 +96,9 @@ void main() {
   vec3 viewPos = getViewPosition(depth);
 
   vec3 viewDir = normalize(viewPos);
-  vec3 worldNormal = normal;
+  vec3 worldNormal = mat.normal;
 
   vec3 viewNormal = normalize((vec4(worldNormal, 0.) * cameraMatrixWorld).xyz);
-  bitangent = cross(viewDir, normal);
-  // get the tangent from the bitangent and normal
-  tangent = cross(bitangent, viewNormal);
-
-  // convert viewBitangent and viewTangent to world-space
-  bitangent = normalize((vec4(bitangent, 0.) * cameraMatrixWorld).xyz);
-  tangent = normalize((vec4(tangent, 0.) * cameraMatrixWorld).xyz);
 
   vec3 worldPos = vec4(vec4(viewPos, 1.) * viewMatrix).xyz;
 
@@ -133,7 +119,7 @@ void main() {
   V = ToLocal(T, B, N, V);
 
   // fresnel f0
-  vec3 f0 = mix(vec3(0.04), diffuse.rgb, metalness);
+  vec3 f0 = mix(vec3(0.04), mat.diffuse.rgb, mat.metalness);
 
   float NoL, NoH, LoH, VoH, diffW, specW, invW, pdf, envPdf, diffuseSamples,
       specularSamples, envMisProbability, envMisMultiplier;
@@ -150,7 +136,8 @@ void main() {
 
     // Disney BRDF and sampling source: https://www.shadertoy.com/view/cll3R4
     // calculate GGX reflection ray
-    H = SampleGGXVNDF(V, roughness, roughness, blueNoise.r, blueNoise.g);
+    H = SampleGGXVNDF(V, mat.roughness, mat.roughness, blueNoise.r,
+                      blueNoise.g);
     if (H.z < 0.0)
       H = -H;
 
@@ -173,7 +160,7 @@ void main() {
     F = F_Schlick(f0, VoH);
 
     // diffuse and specular weight
-    diffW = (1. - metalness) * luminance(diffuse.rgb);
+    diffW = (1. - mat.metalness) * luminance(mat.diffuse.rgb);
     specW = luminance(F);
 
     diffW = max(diffW, EPSILON);
@@ -231,9 +218,10 @@ void main() {
       LoH = clamp(dot(l, h), EPSILON, ONE_MINUS_EPSILON);
       VoH = clamp(dot(v, h), EPSILON, ONE_MINUS_EPSILON);
 
-      gi = doSample(viewPos, viewDir, viewNormal, worldPos, metalness,
-                    roughness, isDiffuseSample, isEnvMisSample, NoV, NoL, NoH,
-                    LoH, VoH, blueNoise, l, hitPos, isMissedRay, brdf, pdf);
+      gi =
+          doSample(viewPos, viewDir, viewNormal, worldPos, mat.metalness,
+                   mat.roughness, isDiffuseSample, isEnvMisSample, NoV, NoL,
+                   NoH, LoH, VoH, blueNoise, l, hitPos, isMissedRay, brdf, pdf);
 
       gi *= brdf;
 
@@ -250,7 +238,7 @@ void main() {
       diffuseGI = mix(diffuseGI, gi, 1. / diffuseSamples);
 
     } else {
-      isEnvMisSample = isEnvMisSample && roughness >= 0.025;
+      isEnvMisSample = isEnvMisSample && mat.roughness >= 0.025;
       if (isEnvMisSample) {
         l = envMisDir;
 
@@ -262,9 +250,10 @@ void main() {
         VoH = clamp(dot(v, h), EPSILON, ONE_MINUS_EPSILON);
       }
 
-      gi = doSample(viewPos, viewDir, viewNormal, worldPos, metalness,
-                    roughness, isDiffuseSample, isEnvMisSample, NoV, NoL, NoH,
-                    LoH, VoH, blueNoise, l, hitPos, isMissedRay, brdf, pdf);
+      gi =
+          doSample(viewPos, viewDir, viewNormal, worldPos, mat.metalness,
+                   mat.roughness, isDiffuseSample, isEnvMisSample, NoV, NoL,
+                   NoH, LoH, VoH, blueNoise, l, hitPos, isMissedRay, brdf, pdf);
 
       gi *= brdf;
 
@@ -285,7 +274,7 @@ void main() {
   }
 #pragma unroll_loop_end
 
-  roughness = sqrt(roughness);
+  mat.roughness = sqrt(mat.roughness);
 
 #ifdef useDirectLight
   vec3 directLight = textureLod(directLightTexture, vUv, 0.).rgb;
@@ -299,7 +288,7 @@ void main() {
 #ifndef specularOnly
   if (diffuseSamples == 0.0)
     diffuseGI = vec3(-1.0);
-  gDiffuse = vec4(diffuseGI, roughness);
+  gDiffuse = vec4(diffuseGI, mat.roughness);
 #endif
 
 #ifndef diffuseOnly

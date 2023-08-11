@@ -153,8 +153,6 @@ bool velocityDisocclusionCheck(const vec2 velocity, const vec2 lastVelocity,
 
 bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos,
                            const vec3 worldNormal, const bool isHitPoint) {
-  // return true;
-
   if (reprojectedUv.x > 1.0 || reprojectedUv.x < 0.0 || reprojectedUv.y > 1.0 ||
       reprojectedUv.y < 0.0)
     return false;

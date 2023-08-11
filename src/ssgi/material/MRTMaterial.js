@@ -35,6 +35,7 @@ export class MRTMaterial extends ShaderMaterial {
 				blueNoiseRepeat: new Uniform(new Vector2(1, 1)),
 				texSize: new Uniform(new Vector2(1, 1)),
 				frame: new Uniform(0),
+				cameraMoved: new Uniform(false),
 				lightMap: new Uniform(null),
 				lightMapIntensity: new Uniform(1),
 				opacity: new Uniform(1)
@@ -128,6 +129,7 @@ export class MRTMaterial extends ShaderMaterial {
                 uniform vec2 blueNoiseRepeat;
                 uniform vec2 texSize;
                 uniform int frame;
+                uniform bool cameraMoved;
 
                 varying vec2 screenUv;
 
@@ -141,28 +143,28 @@ export class MRTMaterial extends ShaderMaterial {
 
                 void main() {
                     // !todo: properly implement alpha hashing
-                    float alpha = opacity;
+                    if(!cameraMoved){
+                        float alpha = opacity;
 
-                    #ifdef USE_ALPHAMAP
-                        alpha *= texture2D( alphaMap, vUv ).g;
-                    #endif
+                        #ifdef USE_ALPHAMAP
+                            alpha *= texture2D( alphaMap, vUv ).g;
+                        #elif defined(USE_MAP)
+                            alpha *= texture2D( map, vUv ).a;
+                        #endif
 
-                    #ifdef USE_MAP
-                        alpha *= texture2D( map, vUv ).a;
-                    #endif
+                        if(alpha < 1.){
+                            ivec2 blueNoiseSize = textureSize(blueNoiseTexture, 0);
+                            vec2 tSize = vec2(blueNoiseSize.x, blueNoiseSize.y);
 
-                    if(alpha < 1.){
-                        ivec2 blueNoiseSize = textureSize(blueNoiseTexture, 0);
-                        vec2 tSize = vec2(blueNoiseSize.x, blueNoiseSize.y);
+                            float alphaThreshold = sampleBlueNoise(blueNoiseTexture, frame, blueNoiseRepeat, tSize, screenUv).r;
 
-                        float alphaThreshold = sampleBlueNoise(blueNoiseTexture, frame, blueNoiseRepeat, tSize, screenUv).r;
-                        alphaThreshold = fract(alphaThreshold + hn.r * floor(abs(vHighPrecisionZW[0]) * 10000.0));
-
-                        if(alpha < alphaThreshold){
-                            discard;
-                            return;
+                            if(alpha < alphaThreshold){
+                                discard;
+                                return;
+                            }
                         }
                     }
+               
 
                     //! todo: find better solution
                     //! todo: also fix texture repeat issue (not being repeated)
@@ -216,7 +218,7 @@ export class MRTMaterial extends ShaderMaterial {
                         diffuseColor.rgb *= reflectedLight.indirectDiffuse;
                     #endif
 
-                    diffuseColor.a = alpha;
+                    // diffuseColor.a = alpha;
 
                     gl_FragColor = packGBuffer(diffuseColor, worldNormal, roughnessFactor, metalnessFactor, totalEmissiveRadiance);
                 }

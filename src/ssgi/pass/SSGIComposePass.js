@@ -42,13 +42,9 @@ export class SSGIComposePass extends Pass {
 					return;
 				}
 
-				vec4 diffuse;
-				vec3 normal, emissive;
-                float roughness, metalness;
+                Material mat = getMaterial(gBuffersTexture, vUv);
 
-                getGData(gBuffersTexture, vUv, diffuse, normal, roughness, metalness, emissive);
-
-                vec3 viewNormal = (vec4(normal, 0.) * cameraMatrixWorld).xyz;
+                vec3 viewNormal = (vec4(mat.normal, 0.) * cameraMatrixWorld).xyz;
 
 				float viewZ = getViewZ(depth);
 
@@ -59,7 +55,7 @@ export class SSGIComposePass extends Pass {
                 vec4 diffuseGi = textureLod(diffuseGiTexture, vUv, 0.);
                 vec4 specularGi = textureLod(specularGiTexture, vUv, 0.);
 
-                vec3 gi = constructGlobalIllumination(diffuseGi.rgb, specularGi.rgb, viewDir, viewNormal, diffuse.rgb, emissive, roughness, metalness);
+                vec3 gi = constructGlobalIllumination(diffuseGi.rgb, specularGi.rgb, viewDir, viewNormal, mat.diffuse.rgb, mat.emissive, mat.roughness, mat.metalness);
 
 				// apply fog
 				float vFogDepth = -viewPos.z;

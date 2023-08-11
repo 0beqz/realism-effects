@@ -11,16 +11,17 @@ import {
 import vertexShader from "../utils/shader/basic.vert"
 import { jitter } from "./TAAUtils"
 import taa from "./shader/taa.frag"
+import { didCameraMove } from "../ssgi/utils/Utils"
 
 export class TAAPass extends Pass {
 	accumulatedTexture = null
 	lastCameraPosition = new Vector3()
 	lastCameraQuaternion = new Quaternion()
 	lastCameraProjectionMatrix = null
-	renderToScreen = true
 	cameraNotMovedFrames = 0
 	frame = 0
 	needsUpdate = false
+	renderToScreen = true
 
 	renderTarget = new WebGLRenderTarget(1, 1, {
 		type: HalfFloatType,
@@ -67,22 +68,9 @@ export class TAAPass extends Pass {
 		this.fullscreenMaterial.uniforms.inputTexture.value = inputBuffer.texture
 
 		// check if the camera has moved by comparing the camera's world matrix and projection matrix
-		let cameraMoved = this.needsUpdate
+		const cameraMoved =
+			this.needsUpdate || didCameraMove(this._camera, this.lastCameraPosition, this.lastCameraQuaternion)
 		this.needsUpdate = false
-
-		if (!cameraMoved) {
-			for (let el = 0; el < 16; el++) {
-				if (this._camera.position.distanceToSquared(this.lastCameraPosition) > 0.000001) {
-					cameraMoved = true
-					break
-				}
-
-				if (this._camera.quaternion.angleTo(this.lastCameraQuaternion) > 0.001) {
-					cameraMoved = true
-					break
-				}
-			}
-		}
 
 		const cameraNotMovedFrames = this.fullscreenMaterial.uniforms.cameraNotMovedFrames.value
 		if (cameraNotMovedFrames > 0) {

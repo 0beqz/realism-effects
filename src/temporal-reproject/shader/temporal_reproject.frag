@@ -44,17 +44,8 @@ void main() {
   vec4 inputTexel[textureCount];
   vec4 accumulatedTexel[textureCount];
   bool textureSampledThisFrame[textureCount];
-  vec4 encodedGI;
 
-  int cnt = 0;
-
-  bool isSpecular[2] = bool[](false, true);
-
-#pragma unroll_loop_start
-  // for (int i = 0; i < textureCount; i++) {
-  // inputTexel[i] = textureLod(inputTexture[i], vUv, 0.0);
-
-  encodedGI = textureLod(inputTexture[0], vUv, 0.0);
+  vec4 encodedGI = textureLod(inputTexture[0], vUv, 0.0);
 
   inputTexel[0] = vec4(unpackHalf2x16(floatBitsToUint(encodedGI.r)),
                        unpackHalf2x16(floatBitsToUint(encodedGI.g)));
@@ -78,8 +69,6 @@ void main() {
   }
 
   roughness = max(0., inputTexel[0].a);
-  // }
-#pragma unroll_loop_end
 
   texIndex = 0;
 
@@ -126,11 +115,6 @@ void main() {
       // reprojection was not successful -> reset to the input texel
       accumulatedTexel[i] = vec4(inputTexel[i].rgb, 0.0);
 
-#ifdef VISUALIZE_DISOCCLUSIONS
-      accumulatedTexel[i] = vec4(vec3(0., 1., 0.), 0.0);
-      inputTexel[i].rgb = accumulatedTexel[i].rgb;
-#endif
-
     } else {
       if (reprojectHitPoint && reprojectedUvSpecular[i].x >= 0.0) {
         accumulatedTexel[i] = sampleReprojectedTexture(
@@ -139,11 +123,6 @@ void main() {
         accumulatedTexel[i] = sampleReprojectedTexture(accumulatedTexture[i],
                                                        reprojectedUvDiffuse);
       }
-
-#ifdef VISUALIZE_DISOCCLUSIONS
-      accumulatedTexel[i].rgb = vec3(0.);
-      inputTexel[i].rgb = vec3(0.);
-#endif
 
       transformColor(accumulatedTexel[i].rgb);
 

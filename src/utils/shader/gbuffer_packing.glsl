@@ -1,5 +1,13 @@
 uniform sampler2D gBuffersTexture;
 
+struct Material {
+  vec4 diffuse;
+  vec3 normal;
+  float roughness;
+  float metalness;
+  vec3 emissive;
+};
+
 float color2float(in vec3 c) {
   c *= 255.;
   c = floor(c); // without this value could be shifted for some intervals
@@ -130,32 +138,17 @@ vec4 floattovec4(float f) {
   return v;
 }
 
-void getGDataAndGBuffer(sampler2D gBufferTexture, vec2 uv, out vec4 diffuse,
-                        out vec3 normal, out float roughness,
-                        out float metalness, out vec4 gBuffer) {
-  gBuffer = textureLod(gBufferTexture, uv, 0.);
+Material getMaterial(sampler2D gBufferTexture, vec2 uv) {
+  vec4 gBuffer = textureLod(gBufferTexture, uv, 0.);
 
-  diffuse = floattovec4(gBuffer.r);
-  normal = unpackNormal(gBuffer.g);
+  vec4 diffuse = floattovec4(gBuffer.r);
+  vec3 normal = unpackNormal(gBuffer.g);
   vec2 roughnessMetalness = unpackVec2(gBuffer.b);
-  roughness = roughnessMetalness.r;
-  metalness = roughnessMetalness.g;
-}
+  float roughness = roughnessMetalness.r;
+  float metalness = roughnessMetalness.g;
+  vec3 emissive = decodeRGBE8(floattovec4(gBuffer.a));
 
-void getGData(sampler2D gBufferTexture, vec2 uv, out vec4 diffuse,
-              out vec3 normal, out float roughness, out float metalness,
-              out vec3 emissive) {
-  vec4 gBuffer;
-  getGDataAndGBuffer(gBufferTexture, uv, diffuse, normal, roughness, metalness,
-                     gBuffer);
-  emissive = decodeRGBE8(floattovec4(gBuffer.a));
-}
-
-void getGData(sampler2D gBufferTexture, vec2 uv, out vec4 diffuse,
-              out vec3 normal, out float roughness, out float metalness) {
-  vec4 gBuffer;
-  getGDataAndGBuffer(gBufferTexture, uv, diffuse, normal, roughness, metalness,
-                     gBuffer);
+  return Material(diffuse, normal, roughness, metalness, emissive);
 }
 
 vec4 packGBuffer(vec4 diffuse, vec3 normal, float roughness, float metalness,

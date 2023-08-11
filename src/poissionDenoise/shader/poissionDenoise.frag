@@ -88,41 +88,29 @@ void main() {
   vec4 texel = textureLod(inputTexture, vUv, 0.0);
   vec4 texel2 = textureLod(inputTexture2, vUv, 0.0);
 
+  toDenoiseSpace(texel.rgb);
+  toDenoiseSpace(texel2.rgb);
+
   float lum = luminance(texel.rgb);
   float lum2 = luminance(texel2.rgb);
-
-  // if (vUv.x > 0.5) {
-  //   gOutput0 = texel;
-  //   gOutput1 = texel2;
-
-  //   return;
-  // }
+  float darkness = pow(1. - min(lum, 1.), 4.);
 
   // ! todo: increase denoiser aggressiveness by distance
+  // ! todo: use separate weights for diffuse and specular
 
   float totalWeight = getLuminanceWeight(lum, texel.a);
   float totalWeight2 = getLuminanceWeight(lum2, texel2.a);
 
-  float darkness = pow(1. - min(lum, 1.), 4.);
-
-  toDenoiseSpace(texel.rgb);
-  toDenoiseSpace(texel2.rgb);
-
   vec3 denoised = texel.rgb * totalWeight;
   vec3 denoised2 = texel2.rgb * totalWeight2;
 
-  vec4 diffuse;
-  vec3 normal, emissive;
-  float roughness, metalness;
-
-  getGData(gBuffersTexture, vUv, diffuse, normal, roughness, metalness,
-           emissive);
+  Material mat = getMaterial(gBuffersTexture, vUv);
 
   float depth = depthTexel.x;
   vec3 worldPos = getWorldPos(depth, vUv);
 
   // using cameraMatrixWorld, get how oblique the surface is
-  float faceness = abs(dot(normal, normalize(cameraMatrixWorld[2].xyz)));
+  float faceness = abs(dot(mat.normal, normalize(cameraMatrixWorld[2].xyz)));
   float obl = 1. - faceness;
 
   vec4 random =
@@ -131,8 +119,9 @@ void main() {
   float s = sin(angle), c = cos(angle);
   mat2 rotationMatrix = mat2(c, -s, s, c);
 
-  float specularWeight =
-      roughness * roughness > 0.15 ? 1. : roughness * roughness / 0.15;
+  float specularWeight = mat.roughness * mat.roughness > 0.15
+                             ? 1.
+                             : sqrt(mat.roughness * mat.roughness / 0.15);
   // specularWeight = max(0.05, specularWeight);
 
   float a = texel.a;
@@ -141,13 +130,13 @@ void main() {
   float doDenoiseFlag = float(a < 256.);
   float doDenoiseFlag2 = float(a2 < 256.);
 
-  float w = smoothstep(0., 1., 1. / pow(a + 1., 1. / 2.5));
-  float w2 = smoothstep(0., 1., 1. / pow(a2 + 1., 1. / 2.5));
+  float w = smoothstep(0., 1., 1. / sqrt(a * 0.75 + 1.));
+  float w2 = smoothstep(0., 1., 1. / sqrt(a2 * 0.75 + 1.));
 
-  float p = 1. / pow(a + 1., 4.);
-  float p2 = 1. / pow(a2 + 1., 4.);
+  // float p = 1. / pow(a + 1., 4.);
+  // float p2 = 1. / pow(a2 + 1., 4.);
 
-  float curvature = getCurvature(normal, depth);
+  float curvature = getCurvature(mat.normal, depth);
   float r = mix(radius, 4., min(1., curvature * curvature));
 
   for (int i = 0; i < samples; i++) {
@@ -163,21 +152,16 @@ void main() {
     toDenoiseSpace(neighborTexel.rgb);
     toDenoiseSpace(neighborTexel2.rgb);
 
-    vec4 neighborDiffuse;
-    vec3 neighborNormal;
-    float neighborRoughness, neighborMetalness;
-
-    getGData(gBuffersTexture, neighborUv, neighborDiffuse, neighborNormal,
-             neighborRoughness, neighborMetalness);
+    Material neighborMat = getMaterial(gBuffersTexture, neighborUv);
 
     float neighborDepth = textureLod(depthTexture, neighborUv, 0.0).x;
     vec3 neighborWorldPos = getWorldPos(neighborDepth, neighborUv);
 
-    float normalDiff = 1. - max(dot(normal, neighborNormal), 0.);
-    float depthDiff = 10. * distToPlane(worldPos, neighborWorldPos, normal);
+    float normalDiff = 1. - max(dot(mat.normal, neighborMat.normal), 0.);
+    float depthDiff = 10. * distToPlane(worldPos, neighborWorldPos, mat.normal);
 
-    float roughnessDiff = abs(roughness - neighborRoughness);
-    float diffuseDiff = length(neighborDiffuse.rgb - diffuse.rgb);
+    float roughnessDiff = abs(mat.roughness - neighborMat.roughness);
+    float diffuseDiff = length(neighborMat.diffuse.rgb - mat.diffuse.rgb);
 
     float lumaDiff = mix(abs(lum - neighborLuminance), 0., w);
     float lumaDiff2 = mix(abs(lum2 - neighborLuminance2), 0., w2);
@@ -193,8 +177,8 @@ void main() {
     similarity += (obl * 0.01 + darkness * 0.01) * w;
     similarity2 += (obl * 0.01) * w2;
 
-    similarity = mix(similarity, 1., p);
-    similarity2 = mix(similarity2, 1., p2) * specularWeight;
+    // similarity = mix(similarity, 1., p);
+    similarity2 *= specularWeight;
 
     float validNeighborWeight = doDenoiseFlag * float(neighborDepth != 1.0);
     float validNeighborWeight2 = doDenoiseFlag2 * float(neighborDepth != 1.0);
