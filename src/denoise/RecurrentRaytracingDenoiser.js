@@ -1,1 +1,3 @@
-export default class RecurrentRaytracingDenoiser {}
+export default class RecurrentRaytracingDenoiser {
+	constructor() {}
+}
