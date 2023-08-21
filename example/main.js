@@ -631,7 +631,7 @@ const initScene = async () => {
 		fxaaPass = new POSTPROCESSING.EffectPass(camera, fxaaEffect)
 
 		taaPass = new TAAPass(camera)
-		// composer.addPass(taaPass)
+		composer.addPass(taaPass)
 
 		if (!isAoDemo) {
 			if (fps >= 256) {

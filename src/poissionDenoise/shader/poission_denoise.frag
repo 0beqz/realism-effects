@@ -20,7 +20,7 @@ layout(location = 1) out vec4 gOutput1;
 #include <common>
 #include <gbuffer_packing>
 
-#define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
+#define luminance(a) pow(dot(vec3(0.2125, 0.7154, 0.0721), a), 0.25)
 
 vec3 getWorldPos(float depth, vec2 coord) {
   float z = depth * 2.0 - 1.0;
