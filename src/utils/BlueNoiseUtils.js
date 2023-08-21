@@ -33,6 +33,10 @@ export const useBlueNoise = material => {
 		}
 	}
 
+	if (!material.fragmentShader.includes("uniform vec2 resolution;")) {
+		throw new Error("Shader does not contain 'uniform vec2 resolution'")
+	}
+
 	material.fragmentShader = material.fragmentShader.replace(
 		"uniform vec2 resolution;",
 		"uniform vec2 resolution;\n" + blue_noise

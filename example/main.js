@@ -363,7 +363,6 @@ const initScene = async () => {
 		depthPhi: 2.716999999999997,
 		normalPhi: 7.609,
 		roughnessPhi: 41.304,
-		diffusePhi: 6.028164079019405e-15,
 		envBlur: 0,
 		importanceSampling: true,
 		steps: 20,
