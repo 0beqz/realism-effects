@@ -1,6 +1,6 @@
 import { Effect, NormalPass } from "postprocessing"
 import { Color, Uniform } from "three"
-import { PoissionDenoisePass } from "../poissionDenoise/PoissionDenoisePass"
+import { PoissionDenoisePass } from "../denoise/PoissionDenoisePass"
 // eslint-disable-next-line camelcase
 import ao_compose from "./shader/ao_compose.frag"
 import { TRAAEffect } from "../traa/TRAAEffect"

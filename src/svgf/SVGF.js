@@ -1,4 +1,4 @@
-﻿import { PoissionDenoisePass } from "../poissionDenoise/PoissionDenoisePass.js"
+﻿import { PoissionDenoisePass } from "../denoise/PoissionDenoisePass.js"
 import { TemporalReprojectPass } from "../temporal-reproject/TemporalReprojectPass.js"
 
 export class SVGF {

@@ -1,7 +1,7 @@
 import { getGPUTier } from "detect-gpu"
 import dragDrop from "drag-drop"
 import * as POSTPROCESSING from "postprocessing"
-import { SSGIEffect, SSREffect, TRAAEffect } from "realism-effects"
+import { SSGIEffect, TRAAEffect } from "realism-effects"
 import Stats from "stats-gl"
 import * as THREE from "three"
 import {
@@ -24,16 +24,11 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader"
 import { GroundProjectedSkybox } from "three/examples/jsm/objects/GroundProjectedSkybox"
 import { Pane } from "tweakpane"
-import { HBAOEffect } from "../src/hbao/HBAOEffect"
 import { SharpnessEffect } from "../src/sharpness/SharpnessEffect"
-import { SSAOEffect } from "../src/ssao/SSAOEffect"
+import { TAAPass } from "../src/taa/TAAPass"
 import { VelocityDepthNormalPass } from "../src/temporal-reproject/pass/VelocityDepthNormalPass"
-import { HBAODebugGUI } from "./HBAODebugGUI"
-import { HBAOSSAOComparisonEffect } from "./HBAOSSAOComparisonEffect"
-import { SSAODebugGUI } from "./SSAODebugGUI"
 import { SSGIDebugGUI } from "./SSGIDebugGUI"
 import "./style.css"
-import { TAAPass } from "../src/taa/TAAPass"
 
 let traaEffect
 let traaPass
@@ -41,7 +36,6 @@ let smaaPass
 let fxaaPass
 let ssgiEffect
 let postprocessingEnabled = true
-let hbaoSsaoComparisonEffect
 let pane
 let gui2
 let envMesh
@@ -471,152 +465,18 @@ const initScene = async () => {
 	new POSTPROCESSING.LUT3dlLoader().load("lut.3dl").then(lutTexture => {
 		const lutEffect = new POSTPROCESSING.LUT3DEffect(lutTexture)
 
-		if (isAoDemo) {
-			const hbaoOptions = {
-				resolutionScale: 1,
-				spp: 16,
-				distance: 2.1399999999999997,
-				distancePower: 1,
-				power: 2,
-				bias: 39,
-				thickness: 0.1,
-				color: 0,
-				useNormalPass: false,
-				velocityDepthNormalPass: null,
-				normalTexture: null,
-				iterations: 1,
-				samples: 5
-			}
+		if (!traaTest) {
+			if (fps >= 256) {
+				const sharpnessEffect = new SharpnessEffect({ sharpness: 0.75 })
 
-			const ssaoOptions = {
-				resolutionScale: 1,
-				spp: 16,
-				distance: 1,
-				distancePower: 0.25,
-				power: 2,
-				bias: 250,
-				thickness: 0.075,
-				color: 0,
-				useNormalPass: false,
-				velocityDepthNormalPass: null,
-				normalTexture: null,
-				iterations: 1,
-				samples: 5
-			}
+				composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, vignetteEffect, lutEffect))
 
-			const hbaoEffect = new HBAOEffect(composer, camera, scene, hbaoOptions)
+				// const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass)
 
-			const ssaoEffect = new SSAOEffect(composer, camera, scene, ssaoOptions)
-
-			const ssaoPass = new POSTPROCESSING.EffectPass(camera, ssaoEffect)
-			const hbaoPass = new POSTPROCESSING.EffectPass(camera, hbaoEffect)
-
-			const gui3 = new HBAODebugGUI(hbaoEffect, hbaoOptions)
-			const gui4 = new SSAODebugGUI(ssaoEffect, ssaoOptions)
-
-			const hbaoText = document.createElement("div")
-			hbaoText.innerHTML = "HBAO"
-			hbaoText.style.position = "absolute"
-			hbaoText.style.bottom = "128px"
-			hbaoText.style.right = "64px"
-			hbaoText.style.color = "#00ff00"
-			hbaoText.style.fontFamily = "monospace"
-			hbaoText.style.fontSize = "48px"
-			hbaoText.style.fontWeight = "bold"
-			hbaoText.style.userSelect = "none"
-			hbaoText.style.letterSpacing = "4px"
-			hbaoText.style.pointerEvents = "none"
-			hbaoText.style.zIndex = "1000"
-			document.body.appendChild(hbaoText)
-
-			const ssaoText = document.createElement("div")
-			ssaoText.innerHTML = "SSAO"
-			ssaoText.style.position = "absolute"
-			ssaoText.style.bottom = "128px"
-			ssaoText.style.left = "64px"
-			ssaoText.style.color = "#00ff00"
-			ssaoText.style.fontFamily = "monospace"
-			ssaoText.style.fontSize = "48px"
-			ssaoText.style.fontWeight = "bold"
-			ssaoText.style.userSelect = "none"
-			ssaoText.style.letterSpacing = "4px"
-			ssaoText.style.pointerEvents = "none"
-			ssaoText.style.zIndex = "1000"
-			document.body.appendChild(ssaoText)
-
-			document.querySelector("#info").style.color = "black"
-			document.querySelector("#info").innerHTML = "SSAO & HBAO Comparison<br>Hold <b>SHIFT</b> to move blue line"
-
-			const toggle = document.createElement("div")
-			toggle.style.background = "white"
-			toggle.style.borderRadius = "8px"
-			toggle.style.padding = "8px"
-			toggle.style.cursor = "pointer"
-			toggle.innerHTML = "HBAO"
-			toggle.style.position = "absolute"
-			toggle.style.bottom = "64px"
-			toggle.style.left = "50%"
-			toggle.style.userSelect = "none"
-			toggle.style.transform = "translateX(-50%)"
-			toggle.style.boxShadow = "0 0 16px rgba(0, 0, 0, 0.25)"
-			toggle.innerHTML = `
-			AO only&ensp;<input type="checkbox" id="aoToggle" checked>
-			`
-			document.body.appendChild(toggle)
-
-			toggle.onclick = ev => {
-				if (ev.target === document.querySelector("#aoToggle")) return
-				document.querySelector("#aoToggle").checked = !document.querySelector("#aoToggle").checked
-
-				hbaoSsaoComparisonEffect.setAlbedo(!hbaoSsaoComparisonEffect.isAlbedo())
-			}
-
-			// gui3.pane.containerElem_.style.visibility = "hidden"
-			gui3.pane.containerElem_.style.right = "8px"
-			gui4.pane.containerElem_.style.left = "8px"
-
-			composer.addPass(hbaoPass)
-			composer.addPass(ssaoPass)
-
-			hbaoSsaoComparisonEffect = new HBAOSSAOComparisonEffect(hbaoEffect, ssaoEffect)
-
-			composer.addPass(new POSTPROCESSING.EffectPass(camera, hbaoSsaoComparisonEffect))
-		} else {
-			if (!traaTest) {
-				if (fps >= 256) {
-					const ssaoOptions = {
-						resolutionScale: 1,
-						spp: 16,
-						distance: 2,
-						distancePower: 0.125,
-						power: 1,
-						bias: 40,
-						thickness: 0.075,
-						color: 0,
-						useNormalPass: false,
-						velocityDepthNormalPass: null,
-						normalTexture: null,
-						iterations: 1,
-						radius: 8,
-						rings: 5.625,
-						lumaPhi: 10,
-						depthPhi: 2,
-						normalPhi: 3.25,
-						samples: 16
-					}
-
-					const sharpnessEffect = new SharpnessEffect({ sharpness: 0.75 })
-
-					// const ssaoEffect = new SSAOEffect(composer, camera, scene, ssaoOptions)
-					composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, vignetteEffect, lutEffect))
-
-					// const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass)
-
-					composer.addPass(new POSTPROCESSING.EffectPass(camera, sharpnessEffect))
-				} else {
-					composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, vignetteEffect, lutEffect))
-					loadFiles--
-				}
+				composer.addPass(new POSTPROCESSING.EffectPass(camera, sharpnessEffect))
+			} else {
+				composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, vignetteEffect, lutEffect))
+				loadFiles--
 			}
 		}
 
@@ -822,12 +682,6 @@ document.addEventListener("keydown", ev => {
 		a.href = data
 		a.download = "screenshot-" + uuidv4() + ".png" // File name Here
 		a.click() // Downloaded file
-	}
-
-	// if space was pressed
-	if (ev.code === "Space" && isAoDemo) {
-		document.querySelector("#aoToggle").checked = !document.querySelector("#aoToggle").checked
-		hbaoSsaoComparisonEffect.setAlbedo(!hbaoSsaoComparisonEffect.isAlbedo())
 	}
 
 	taaPass.needsUpdate = true

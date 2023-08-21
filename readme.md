@@ -71,13 +71,10 @@ const traaEffect = new TRAAEffect(scene, camera, velocityDepthNormalPass)
 // Motion Blur
 const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass)
 
-// SSAO
-const ssaoEffect = new SSAOEffect(composer, camera, scene)
-
 // HBAO
 const hbaoEffect = new HBAOEffect(composer, camera, scene)
 
-const effectPass = new POSTPROCESSING.EffectPass(camera, ssgiEffect, hbaoEffect, ssaoEffect, traaEffect, motionBlur)
+const effectPass = new POSTPROCESSING.EffectPass(camera, ssgiEffect, hbaoEffect, traaEffect, motionBlur)
 
 composer.addPass(effectPass)
 ```
