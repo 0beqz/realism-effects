@@ -77,9 +77,5 @@
 	"version": "1.1.1",
 	"lint-staged": {
 		"*.{js,css,md}": "prettier --write"
-	},
-	"dependencies": {
-		"stats-gl": "^1.0.4",
-		"vite": "^4.4.9"
 	}
 }
