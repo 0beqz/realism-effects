@@ -63,6 +63,7 @@ scene.matrixWorldAutoUpdate = false
 window.scene = scene
 
 const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.01, 250)
+// const camera = new THREE.OrthographicCamera(-10, 10, 10, -10, 0.01, 250)
 
 // const w = window.innerWidth
 // const h = window.innerHeight
@@ -356,7 +357,7 @@ const initScene = async () => {
 		denoiseSpecular: 25.54,
 		rings: 5,
 		samples: 8,
-		radius: 7,
+		radius: 8,
 		phi: 0.26100000000000007,
 		lumaPhi: 30,
 		depthPhi: 2.716999999999997,
@@ -630,7 +631,7 @@ const initScene = async () => {
 		fxaaPass = new POSTPROCESSING.EffectPass(camera, fxaaEffect)
 
 		taaPass = new TAAPass(camera)
-		composer.addPass(taaPass)
+		// composer.addPass(taaPass)
 
 		if (!isAoDemo) {
 			if (fps >= 256) {

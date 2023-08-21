@@ -1,11 +1,7 @@
 ﻿/* eslint-disable camelcase */
 import { Color, Matrix3, ShaderMaterial, TangentSpaceNormalMap, Uniform, Vector2 } from "three"
-import sampleBlueNoise from "../../utils/shader/sampleBlueNoise.glsl"
 import gbuffer_packing from "../../utils/shader/gbuffer_packing.glsl"
-
-// will render normals to RGB channel of "gNormal" buffer, roughness to A channel of "gNormal" buffer, depth to RGBA channel of "gDepth" buffer
-// and velocity to "gVelocity" buffer
-
+import { useBlueNoise } from "../../utils/BlueNoiseUtils"
 export class MRTMaterial extends ShaderMaterial {
 	constructor() {
 		super({
@@ -33,7 +29,7 @@ export class MRTMaterial extends ShaderMaterial {
 				boneTexture: new Uniform(null),
 				blueNoiseTexture: new Uniform(null),
 				blueNoiseRepeat: new Uniform(new Vector2(1, 1)),
-				texSize: new Uniform(new Vector2(1, 1)),
+				resolution: new Uniform(new Vector2(1, 1)),
 				frame: new Uniform(0),
 				cameraMoved: new Uniform(false),
 				lightMap: new Uniform(null),
@@ -125,15 +121,10 @@ export class MRTMaterial extends ShaderMaterial {
 
                 uniform float opacity;
 
-                uniform sampler2D blueNoiseTexture;
-                uniform vec2 blueNoiseRepeat;
-                uniform vec2 texSize;
-                uniform int frame;
+                uniform vec2 resolution;
                 uniform bool cameraMoved;
 
                 varying vec2 screenUv;
-
-                ${sampleBlueNoise}
 
                 #include <gbuffer_packing>
 
@@ -153,10 +144,7 @@ export class MRTMaterial extends ShaderMaterial {
                         #endif
 
                         if(alpha < 1.){
-                            ivec2 blueNoiseSize = textureSize(blueNoiseTexture, 0);
-                            vec2 tSize = vec2(blueNoiseSize.x, blueNoiseSize.y);
-
-                            float alphaThreshold = sampleBlueNoise(blueNoiseTexture, frame, blueNoiseRepeat, tSize, screenUv).r;
+                            float alphaThreshold = blueNoise().x;
 
                             if(alpha < alphaThreshold){
                                 discard;
@@ -228,6 +216,8 @@ export class MRTMaterial extends ShaderMaterial {
 			fog: false,
 			lights: false
 		})
+
+		useBlueNoise(this)
 
 		this.normalMapType = TangentSpaceNormalMap
 		this.normalScale = new Vector2(1, 1)

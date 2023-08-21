@@ -212,6 +212,7 @@ export const splitIntoGroupsOfVector4 = arr => {
 	for (let i = 0; i < arr.length; i += 4) {
 		result.push(new Vector4(...arr.slice(i, i + 4)))
 	}
+
 	return result
 }
 

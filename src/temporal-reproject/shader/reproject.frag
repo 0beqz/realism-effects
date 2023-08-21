@@ -247,12 +247,12 @@ vec2 getReprojectedUV(const float depth, const vec3 worldPos,
 }
 
 vec4 SampleTextureCatmullRom(const sampler2D tex, const vec2 uv,
-                             const vec2 texSize) {
+                             const vec2 resolution) {
   // We're going to sample a a 4x4 grid of texels surrounding the target UV
   // coordinate. We'll do this by rounding down the sample location to get the
   // exact center of our "starting" texel. The starting texel will be at
   // location [1, 1] in the grid, where [0, 0] is the top left corner.
-  vec2 samplePos = uv * texSize;
+  vec2 samplePos = uv * resolution;
   vec2 texPos1 = floor(samplePos - 0.5f) + 0.5f;
 
   // Compute the fractional offset from our starting texel to our original
@@ -280,9 +280,9 @@ vec4 SampleTextureCatmullRom(const sampler2D tex, const vec2 uv,
   vec2 texPos3 = texPos1 + 2.;
   vec2 texPos12 = texPos1 + offset12;
 
-  texPos0 /= texSize;
-  texPos3 /= texSize;
-  texPos12 /= texSize;
+  texPos0 /= resolution;
+  texPos3 /= resolution;
+  texPos12 /= resolution;
 
   vec4 result = vec4(0.0);
   result += textureLod(tex, vec2(texPos0.x, texPos0.y), 0.0f) * w0.x * w0.y;

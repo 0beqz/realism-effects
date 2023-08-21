@@ -1,28 +1,16 @@
+/* eslint-disable camelcase */
 import { Pass } from "postprocessing"
-import {
-	GLSL3,
-	HalfFloatType,
-	Matrix4,
-	NearestFilter,
-	NoColorSpace,
-	RepeatWrapping,
-	SRGBColorSpace,
-	ShaderMaterial,
-	TextureLoader,
-	Vector2,
-	WebGLMultipleRenderTargets
-} from "three"
+import { GLSL3, HalfFloatType, Matrix4, ShaderMaterial, Vector2, WebGLMultipleRenderTargets } from "three"
 // eslint-disable-next-line camelcase
-import gbuffer_packing from "../utils/shader/gbuffer_packing.glsl"
-import blueNoiseImage from "../utils/LDR_RGBA_0.png"
-import vertexShader from "../utils/shader/basic.vert"
-import sampleBlueNoise from "../utils/shader/sampleBlueNoise.glsl"
-import fragmentShader from "./shader/poissionDenoise.frag"
-import { generateDenoiseSamples, generatePoissonDiskConstant } from "./utils/PoissonUtils"
 
-const finalFragmentShader = fragmentShader
-	.replace("#include <sampleBlueNoise>", sampleBlueNoise)
-	.replace("#include <gbuffer_packing>", gbuffer_packing)
+import vertexShader from "../utils/shader/basic.vert"
+import gbuffer_packing from "../utils/shader/gbuffer_packing.glsl"
+
+import fragmentShader from "./shader/poission_denoise.frag"
+import { generateDenoiseSamples, generatePoissonDiskConstant } from "./utils/PoissonUtils"
+import { useBlueNoise } from "../utils/BlueNoiseUtils"
+
+const finalFragmentShader = fragmentShader.replace("#include <gbuffer_packing>", gbuffer_packing)
 
 const defaultPoissonBlurOptions = {
 	iterations: 1,
@@ -58,23 +46,21 @@ export class PoissionDenoisePass extends Pass {
 				cameraMatrixWorld: { value: new Matrix4() },
 				viewMatrix: { value: new Matrix4() },
 				radius: { value: defaultPoissonBlurOptions.radius },
-				phi: { value: defaultPoissonBlurOptions.lumaPhi },
+				phi: { value: defaultPoissonBlurOptions.phi },
 				lumaPhi: { value: defaultPoissonBlurOptions.lumaPhi },
 				depthPhi: { value: defaultPoissonBlurOptions.depthPhi },
 				normalPhi: { value: defaultPoissonBlurOptions.normalPhi },
 				roughnessPhi: { value: defaultPoissonBlurOptions.roughnessPhi },
 				diffusePhi: { value: defaultPoissonBlurOptions.diffusePhi },
-				resolution: { value: new Vector2() },
-				blueNoiseTexture: { value: null },
-				index: { value: 0 },
-				blueNoiseRepeat: { value: new Vector2() }
+				resolution: { value: new Vector2() }
 			},
 			glslVersion: GLSL3
 		})
 
+		useBlueNoise(this.fullscreenMaterial)
+
 		const renderTargetOptions = {
 			type: HalfFloatType,
-			colorSpace: SRGBColorSpace,
 			depthBuffer: false
 		}
 
@@ -102,16 +88,6 @@ export class PoissionDenoisePass extends Pass {
 				}
 			})
 		}
-
-		new TextureLoader().load(blueNoiseImage, blueNoiseTexture => {
-			blueNoiseTexture.minFilter = NearestFilter
-			blueNoiseTexture.magFilter = NearestFilter
-			blueNoiseTexture.wrapS = RepeatWrapping
-			blueNoiseTexture.wrapT = RepeatWrapping
-			blueNoiseTexture.colorSpace = NoColorSpace
-
-			this.fullscreenMaterial.uniforms.blueNoiseTexture.value = blueNoiseTexture
-		})
 	}
 
 	#updatePoissionDiskSamples(width, height) {
@@ -147,16 +123,6 @@ export class PoissionDenoisePass extends Pass {
 	}
 
 	render(renderer) {
-		const noiseTexture = this.fullscreenMaterial.uniforms.blueNoiseTexture.value
-		if (noiseTexture) {
-			const { width, height } = noiseTexture.source.data
-
-			this.fullscreenMaterial.uniforms.blueNoiseRepeat.value.set(
-				this.renderTargetA.width / width,
-				this.renderTargetA.height / height
-			)
-		}
-
 		for (let i = 0; i < 2 * this.iterations; i++) {
 			const horizontal = i % 2 === 0
 			const inputRenderTarget = horizontal ? this.renderTargetB : this.renderTargetA
@@ -170,9 +136,6 @@ export class PoissionDenoisePass extends Pass {
 
 			renderer.setRenderTarget(renderTarget)
 			renderer.render(this.scene, this.camera)
-
-			this.fullscreenMaterial.uniforms.index.value++
-			this.fullscreenMaterial.uniforms.index.value %= 65536
 		}
 	}
 }

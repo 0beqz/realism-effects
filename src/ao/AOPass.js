@@ -11,9 +11,9 @@ import {
 	Vector2,
 	WebGLRenderTarget
 } from "three"
-import blueNoiseImage from "../utils/LDR_RGBA_0.png"
+import blueNoiseImage from "../utils/blue_noise_rgba.png"
 import vertexShader from "../utils/shader/basic.vert"
-import sampleBlueNoise from "../utils/shader/sampleBlueNoise.glsl"
+import { useBlueNoise } from "../utils/BlueNoiseUtils"
 
 // a general AO pass that can be used for any AO algorithm
 class AOPass extends Pass {
@@ -27,7 +27,7 @@ class AOPass extends Pass {
 			depthBuffer: false
 		})
 
-		const finalFragmentShader = fragmentShader.replace("#include <sampleBlueNoise>", sampleBlueNoise)
+		const finalFragmentShader = fragmentShader
 
 		this.fullscreenMaterial = new ShaderMaterial({
 			fragmentShader: finalFragmentShader,
@@ -42,7 +42,7 @@ class AOPass extends Pass {
 				projectionViewMatrix: { value: new Matrix4() },
 				projectionMatrixInverse: { value: this._camera.projectionMatrixInverse },
 				cameraMatrixWorld: { value: this._camera.matrixWorld },
-				texSize: { value: new Vector2() },
+				resolution: { value: new Vector2() },
 				blueNoiseTexture: { value: null },
 				blueNoiseRepeat: { value: new Vector2() },
 				aoDistance: { value: 0 },
@@ -58,6 +58,8 @@ class AOPass extends Pass {
 			depthTest: false,
 			toneMapped: false
 		})
+
+		useBlueNoise(this.fullscreenMaterial)
 
 		new TextureLoader().load(blueNoiseImage, blueNoiseTexture => {
 			blueNoiseTexture.minFilter = NearestFilter
@@ -77,7 +79,7 @@ class AOPass extends Pass {
 	setSize(width, height) {
 		this.renderTarget.setSize(width, height)
 
-		this.fullscreenMaterial.uniforms.texSize.value.set(this.renderTarget.width, this.renderTarget.height)
+		this.fullscreenMaterial.uniforms.resolution.value.set(this.renderTarget.width, this.renderTarget.height)
 	}
 
 	render(renderer) {

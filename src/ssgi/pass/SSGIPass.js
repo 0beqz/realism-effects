@@ -20,7 +20,7 @@ import {
 	isChildMaterialRenderable,
 	keepMaterialMapUpdated
 } from "../utils/Utils"
-import blueNoiseImage from "./../../utils/LDR_RGBA_0.png"
+import blueNoiseImage from "./../../utils/blue_noise_rgba.png"
 
 const backgroundColor = new Color(0)
 
@@ -106,7 +106,7 @@ export class SSGIPass extends Pass {
 		this.renderTarget.setSize(width * this.ssgiEffect.resolutionScale, height * this.ssgiEffect.resolutionScale)
 		this.gBuffersRenderTarget.setSize(width, height)
 
-		this.fullscreenMaterial.uniforms.texSize.value.set(this.renderTarget.width, this.renderTarget.height)
+		this.fullscreenMaterial.uniforms.resolution.value.set(this.renderTarget.width, this.renderTarget.height)
 	}
 
 	dispose() {
@@ -182,7 +182,8 @@ export class SSGIPass extends Pass {
 					this.renderTarget.height / height
 				)
 			}
-			mrtMaterial.uniforms.texSize.value.set(this.renderTarget.width, this.renderTarget.height)
+
+			mrtMaterial.uniforms.resolution.value.set(this.renderTarget.width, this.renderTarget.height)
 			mrtMaterial.uniforms.frame.value = this.frame
 			mrtMaterial.uniforms.cameraMoved.value = cameraMoved
 

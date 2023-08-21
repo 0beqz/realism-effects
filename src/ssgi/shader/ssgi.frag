@@ -2,7 +2,6 @@
 
 uniform sampler2D accumulatedTexture;
 uniform sampler2D depthTexture;
-uniform sampler2D blueNoiseTexture;
 uniform sampler2D velocityTexture;
 uniform sampler2D directLightTexture;
 
@@ -19,9 +18,7 @@ uniform float maxRoughness;
 uniform float thickness;
 uniform float envBlur;
 
-uniform int frame;
-uniform vec2 texSize;
-uniform vec2 blueNoiseRepeat;
+uniform vec2 resolution;
 
 struct EquirectHdrInfo {
   sampler2D marginalWeights;
@@ -47,12 +44,37 @@ vec2 invTexSize;
 
 // helper functions
 #include <gbuffer_packing>
-#include <sampleBlueNoise>
 #include <ssgi_utils>
 
 vec2 RayMarch(inout vec3 dir, inout vec3 hitPos, vec4 random);
 vec2 BinarySearch(inout vec3 dir, inout vec3 hitPos);
 float fastGetViewZ(const float depth);
+
+struct RayTracingInfo {
+  float NoV;            // dot(n, v)
+  float NoL;            // dot(n, l)
+  float NoH;            // dot(n, h)
+  float LoH;            // dot(l, h)
+  float VoH;            // dot(v, h)
+  bool isDiffuseSample; // whether the sample is diffuse or specular
+  bool isEnvMisSample;  // whether the sample is importance sampled from the env
+                        // map
+};
+
+struct RayTracingResult {
+  vec3 gi;          // computed global illumination for a sample
+  vec3 l;           // sample world space direction
+  vec3 hitPos;      // hit position
+  bool isMissedRay; // whether the ray missed the scene
+  vec3 brdf;        // brdf value
+  float pdf;        // pdf value
+};
+
+// !todo: refactor functions
+// RayTracingResult doSample(const vec3 viewPos, const vec3 viewDir, const vec3
+// viewNormal, const vec3 worldPosition, const vec4 random, Material mat,
+// RayTracingInfo info);
+
 vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal,
               const vec3 worldPosition, const float metalness,
               const float roughness, const bool isDiffuseSample,
@@ -60,6 +82,17 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal,
               const float NoH, const float LoH, const float VoH,
               const vec4 random, inout vec3 l, inout vec3 hitPos,
               out bool isMissedRay, out vec3 brdf, out float pdf);
+
+void calculateAngles(inout vec3 h, inout vec3 l, inout vec3 v, inout vec3 n,
+                     inout float NoL, inout float NoH, inout float LoH,
+                     inout float VoH) {
+  h = normalize(v + l); // half vector
+
+  NoL = clamp(dot(n, l), EPSILON, ONE_MINUS_EPSILON);
+  NoH = clamp(dot(n, h), EPSILON, ONE_MINUS_EPSILON);
+  LoH = clamp(dot(l, h), EPSILON, ONE_MINUS_EPSILON);
+  VoH = clamp(dot(v, h), EPSILON, ONE_MINUS_EPSILON);
+}
 
 void main() {
   vec4 depthTexel = textureLod(depthTexture, vUv, 0.0);
@@ -79,7 +112,7 @@ void main() {
     return;
   }
 
-  invTexSize = 1. / texSize;
+  invTexSize = 1. / resolution;
 
   mat.roughness = clamp(mat.roughness * mat.roughness, 0.000001, 1.0);
 
@@ -110,7 +143,7 @@ void main() {
   vec3 V = (vec4(v, 0.) * viewMatrix).xyz;
   vec3 N = worldNormal;
 
-  vec4 blueNoise;
+  vec4 random;
   vec3 H, l, h, F, T, B, envMisDir, gi;
   vec3 diffuseGI, specularGI, brdf, hitPos, specularHitPos;
 
@@ -131,13 +164,10 @@ void main() {
 
 #pragma unroll_loop_start
   for (int i = 0; i < spp; i++) {
-    blueNoise = sampleBlueNoise(blueNoiseTexture, frame + sampleCounter++,
-                                blueNoiseRepeat, texSize);
-
+    random = blueNoise();
     // Disney BRDF and sampling source: https://www.shadertoy.com/view/cll3R4
     // calculate GGX reflection ray
-    H = SampleGGXVNDF(V, mat.roughness, mat.roughness, blueNoise.r,
-                      blueNoise.g);
+    H = SampleGGXVNDF(V, mat.roughness, mat.roughness, random.r, random.g);
     if (H.z < 0.0)
       H = -H;
 
@@ -148,12 +178,7 @@ void main() {
     l = (vec4(l, 0.) * cameraMatrixWorld).xyz;
     l = normalize(l);
 
-    h = normalize(v + l); // half vector
-
-    NoL = clamp(dot(n, l), EPSILON, ONE_MINUS_EPSILON);
-    NoH = clamp(dot(n, h), EPSILON, ONE_MINUS_EPSILON);
-    LoH = clamp(dot(l, h), EPSILON, ONE_MINUS_EPSILON);
-    VoH = clamp(dot(v, h), EPSILON, ONE_MINUS_EPSILON);
+    calculateAngles(h, l, v, n, NoL, NoH, LoH, VoH);
 
 #if !defined(diffuseOnly) && !defined(specularOnly)
     // fresnel
@@ -173,7 +198,7 @@ void main() {
     specW *= invW;
 
     // if diffuse lighting should be sampled
-    isDiffuseSample = blueNoise.b < diffW;
+    isDiffuseSample = random.b < diffW;
 #else
 #ifdef diffuseOnly
     isDiffuseSample = true;
@@ -184,16 +209,19 @@ void main() {
     envMisDir = vec3(0.0);
 
 #ifdef importanceSampling
-    envPdf = sampleEquirectProbability(envMapInfo, blueNoise.rg, envMisDir);
+    envPdf = sampleEquirectProbability(envMapInfo, random.rg, envMisDir);
     envMisDir = normalize((vec4(envMisDir, 0.) * cameraMatrixWorld).xyz);
 
     envMisProbability = 0.25 + dot(envMisDir, viewNormal) * 0.5;
-    isEnvMisSample = blueNoise.a < envMisProbability;
+    isEnvMisSample = random.a < envMisProbability;
 
     envMisMultiplier = 1. / (1. - envMisProbability);
 
     if (isEnvMisSample) {
       envPdf /= 1. - envMisProbability;
+
+      l = envMisDir;
+      calculateAngles(h, l, v, n, NoL, NoH, LoH, VoH);
     } else {
       envPdf = 0.0001;
     }
@@ -202,26 +230,20 @@ void main() {
     envMisMultiplier = 1.;
 #endif
 
-    // envPdf = clamp(envPdf, 0.01, 4.0);
+    vec3 diffuseRay = isEnvMisSample
+                          ? envMisDir
+                          : cosineSampleHemisphere(viewNormal, random.rg);
+    vec3 specularRay =
+        (isEnvMisSample && mat.roughness >= 0.025) ? envMisDir : l;
 
     if (isDiffuseSample) {
-      if (isEnvMisSample) {
-        l = envMisDir;
-      } else {
-        l = cosineSampleHemisphere(viewNormal, blueNoise.rg);
-      }
+      l = diffuseRay;
 
-      h = normalize(v + l); // half vector
+      calculateAngles(h, l, v, n, NoL, NoH, LoH, VoH);
 
-      NoL = clamp(dot(n, l), EPSILON, ONE_MINUS_EPSILON);
-      NoH = clamp(dot(n, h), EPSILON, ONE_MINUS_EPSILON);
-      LoH = clamp(dot(l, h), EPSILON, ONE_MINUS_EPSILON);
-      VoH = clamp(dot(v, h), EPSILON, ONE_MINUS_EPSILON);
-
-      gi =
-          doSample(viewPos, viewDir, viewNormal, worldPos, mat.metalness,
-                   mat.roughness, isDiffuseSample, isEnvMisSample, NoV, NoL,
-                   NoH, LoH, VoH, blueNoise, l, hitPos, isMissedRay, brdf, pdf);
+      gi = doSample(viewPos, viewDir, viewNormal, worldPos, mat.metalness,
+                    mat.roughness, isDiffuseSample, isEnvMisSample, NoV, NoL,
+                    NoH, LoH, VoH, random, l, hitPos, isMissedRay, brdf, pdf);
 
       gi *= brdf;
 
@@ -238,22 +260,14 @@ void main() {
       diffuseGI = mix(diffuseGI, gi, 1. / diffuseSamples);
 
     } else {
-      isEnvMisSample = isEnvMisSample && mat.roughness >= 0.025;
       if (isEnvMisSample) {
-        l = envMisDir;
-
-        h = normalize(v + l); // half vector
-
-        NoL = clamp(dot(n, l), EPSILON, ONE_MINUS_EPSILON);
-        NoH = clamp(dot(n, h), EPSILON, ONE_MINUS_EPSILON);
-        LoH = clamp(dot(l, h), EPSILON, ONE_MINUS_EPSILON);
-        VoH = clamp(dot(v, h), EPSILON, ONE_MINUS_EPSILON);
+        l = specularRay;
+        calculateAngles(h, l, v, n, NoL, NoH, LoH, VoH);
       }
 
-      gi =
-          doSample(viewPos, viewDir, viewNormal, worldPos, mat.metalness,
-                   mat.roughness, isDiffuseSample, isEnvMisSample, NoV, NoL,
-                   NoH, LoH, VoH, blueNoise, l, hitPos, isMissedRay, brdf, pdf);
+      gi = doSample(viewPos, viewDir, viewNormal, worldPos, mat.metalness,
+                    mat.roughness, isDiffuseSample, isEnvMisSample, NoV, NoL,
+                    NoH, LoH, VoH, random, l, hitPos, isMissedRay, brdf, pdf);
 
       gi *= brdf;
 
@@ -415,9 +429,6 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal,
   if (reprojectedUv.x >= 0.0 && reprojectedUv.x <= 1.0 &&
       reprojectedUv.y >= 0.0 && reprojectedUv.y <= 1.0) {
     vec4 reprojectedGI = textureLod(accumulatedTexture, reprojectedUv, 0.);
-
-    // prevent heat spots
-    reprojectedGI.rgb *= exp(-reprojectedGI.a * 0.001);
 
     SSGI = reprojectedGI.rgb;
   }

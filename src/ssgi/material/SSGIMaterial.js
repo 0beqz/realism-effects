@@ -5,8 +5,8 @@ import fragmentShader from "../shader/ssgi.frag"
 import ssgi_utils from "../shader/ssgi_utils.frag"
 // eslint-disable-next-line camelcase
 import gbuffer_packing from "../../utils/shader/gbuffer_packing.glsl"
-import sampleBlueNoise from "../../utils/shader/sampleBlueNoise.glsl"
 import { EquirectHdrInfoUniform } from "../utils/EquirectHdrInfoUniform"
+import { useBlueNoise } from "../../utils/BlueNoiseUtils"
 
 export class SSGIMaterial extends ShaderMaterial {
 	constructor() {
@@ -35,7 +35,7 @@ export class SSGIMaterial extends ShaderMaterial {
 				envMapInfo: { value: new EquirectHdrInfoUniform() },
 				envMapPosition: new Uniform(new Vector3()),
 				envMapSize: new Uniform(new Vector3()),
-				texSize: new Uniform(new Vector2()),
+				resolution: new Uniform(new Vector2()),
 				blueNoiseRepeat: new Uniform(new Vector2())
 			},
 
@@ -51,8 +51,7 @@ export class SSGIMaterial extends ShaderMaterial {
 
 			fragmentShader: fragmentShader
 				.replace("#include <ssgi_utils>", ssgi_utils)
-				.replace("#include <gbuffer_packing>", gbuffer_packing)
-				.replace("#include <sampleBlueNoise>", sampleBlueNoise),
+				.replace("#include <gbuffer_packing>", gbuffer_packing),
 			vertexShader,
 
 			blending: NoBlending,
@@ -60,5 +59,7 @@ export class SSGIMaterial extends ShaderMaterial {
 			depthTest: false,
 			toneMapped: false
 		})
+
+		useBlueNoise(this)
 	}
 }

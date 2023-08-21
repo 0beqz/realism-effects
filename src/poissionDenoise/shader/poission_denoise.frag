@@ -12,9 +12,6 @@ uniform float depthPhi;
 uniform float normalPhi;
 uniform float roughnessPhi;
 uniform float diffusePhi;
-uniform sampler2D blueNoiseTexture;
-uniform vec2 blueNoiseRepeat;
-uniform int index;
 uniform vec2 resolution;
 
 layout(location = 0) out vec4 gOutput0;
@@ -22,7 +19,6 @@ layout(location = 1) out vec4 gOutput1;
 
 #include <common>
 #include <gbuffer_packing>
-#include <sampleBlueNoise>
 
 #define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
 
@@ -113,8 +109,7 @@ void main() {
   float faceness = abs(dot(mat.normal, normalize(cameraMatrixWorld[2].xyz)));
   float obl = 1. - faceness;
 
-  vec4 random =
-      sampleBlueNoise(blueNoiseTexture, index, blueNoiseRepeat, resolution);
+  vec4 random = blueNoise();
   float angle = random.r * 2. * PI;
   float s = sin(angle), c = cos(angle);
   mat2 rotationMatrix = mat2(c, -s, s, c);
@@ -133,11 +128,7 @@ void main() {
   float w = smoothstep(0., 1., 1. / sqrt(a * 0.75 + 1.));
   float w2 = smoothstep(0., 1., 1. / sqrt(a2 * 0.75 + 1.));
 
-  // float p = 1. / pow(a + 1., 4.);
-  // float p2 = 1. / pow(a2 + 1., 4.);
-
-  float curvature = getCurvature(mat.normal, depth);
-  float r = mix(radius, 4., min(1., curvature * curvature));
+  float r = 2. + random.a * (radius - 2.);
 
   for (int i = 0; i < samples; i++) {
     vec2 offset = r * rotationMatrix * poissonDisk[i];
@@ -146,11 +137,11 @@ void main() {
     vec4 neighborTexel = textureLod(inputTexture, neighborUv, 0.);
     vec4 neighborTexel2 = textureLod(inputTexture2, neighborUv, 0.);
 
-    float neighborLuminance = luminance(neighborTexel.rgb);
-    float neighborLuminance2 = luminance(neighborTexel2.rgb);
-
     toDenoiseSpace(neighborTexel.rgb);
     toDenoiseSpace(neighborTexel2.rgb);
+
+    float neighborLuminance = luminance(neighborTexel.rgb);
+    float neighborLuminance2 = luminance(neighborTexel2.rgb);
 
     Material neighborMat = getMaterial(gBuffersTexture, neighborUv);
 

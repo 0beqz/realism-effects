@@ -138,6 +138,19 @@ vec4 floattovec4(float f) {
   return v;
 }
 
+vec4 packGBuffer(vec4 diffuse, vec3 normal, float roughness, float metalness,
+                 vec3 emissive) {
+  vec4 gBuffer;
+
+  gBuffer.r = vec4tofloat(diffuse);
+  gBuffer.g = packNormal(normal);
+  gBuffer.b = packVec2(vec2(roughness, metalness));
+  gBuffer.a = vec4tofloat(encodeRGBE8(emissive));
+
+  return gBuffer;
+}
+
+// loading a material from a packed g-buffer
 Material getMaterial(sampler2D gBufferTexture, vec2 uv) {
   vec4 gBuffer = textureLod(gBufferTexture, uv, 0.);
 
@@ -149,16 +162,4 @@ Material getMaterial(sampler2D gBufferTexture, vec2 uv) {
   vec3 emissive = decodeRGBE8(floattovec4(gBuffer.a));
 
   return Material(diffuse, normal, roughness, metalness, emissive);
-}
-
-vec4 packGBuffer(vec4 diffuse, vec3 normal, float roughness, float metalness,
-                 vec3 emissive) {
-  vec4 gBuffer;
-
-  gBuffer.r = vec4tofloat(diffuse);
-  gBuffer.g = packNormal(normal);
-  gBuffer.b = packVec2(vec2(roughness, metalness));
-  gBuffer.a = vec4tofloat(encodeRGBE8(emissive));
-
-  return gBuffer;
 }
