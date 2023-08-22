@@ -6,7 +6,7 @@ export class SVGF {
 		this.svgfTemporalReprojectPass = new TemporalReprojectPass(scene, camera, velocityDepthNormalPass, textureCount, {
 			...options,
 			fullAccumulate: true,
-			logTransform: false,
+			logTransform: true,
 			copyTextures: false
 		})
 
@@ -15,7 +15,7 @@ export class SVGF {
 		// this.denoisePass = new DenoisePass(camera, textures, options)
 		// this.denoisePass.setMomentTexture(this.svgfTemporalReprojectPass.momentTexture)
 
-		this.denoisePass = new PoissionDenoisePass(camera, textures[0], window.depthTexture, options)
+		this.denoisePass = new PoissionDenoisePass(camera, textures[0], null, options)
 		this.denoisePass.inputTexture2 = textures[1]
 
 		this.svgfTemporalReprojectPass.overrideAccumulatedTextures = this.denoisePass.renderTargetB.texture

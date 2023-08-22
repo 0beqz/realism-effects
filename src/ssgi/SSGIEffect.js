@@ -107,6 +107,7 @@ export class SSGIEffect extends Effect {
 		})
 
 		this.svgf.denoisePass.setGBufferTexture(this.ssgiPass.gBufferPass.texture)
+		this.svgf.denoisePass.setDepthTexture(this.ssgiPass.gBufferPass.depthTexture)
 
 		// patch the denoise pass
 		this.svgf.denoisePass.fullscreenMaterial.uniforms = {

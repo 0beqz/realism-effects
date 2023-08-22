@@ -1,6 +1,6 @@
 /* eslint-disable camelcase */
 import { Pass } from "postprocessing"
-import { FloatType, GLSL3, HalfFloatType, Matrix4, ShaderMaterial, Vector2, WebGLMultipleRenderTargets } from "three"
+import { FloatType, GLSL3, Matrix4, ShaderMaterial, Vector2, WebGLMultipleRenderTargets } from "three"
 // eslint-disable-next-line camelcase
 
 import vertexShader from "../utils/shader/basic.vert"
@@ -114,6 +114,10 @@ export class PoissionDenoisePass extends Pass {
 
 	setGBufferTexture(texture) {
 		this.fullscreenMaterial.uniforms.gBufferTexture.value = texture
+	}
+
+	setDepthTexture(texture) {
+		this.fullscreenMaterial.uniforms.depthTexture.value = texture
 	}
 
 	render(renderer) {

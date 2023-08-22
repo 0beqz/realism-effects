@@ -144,7 +144,7 @@ vec4 packGBuffer(vec4 diffuse, vec3 normal, float roughness, float metalness,
 
   gBuffer.r = vec4ToFloat(diffuse);
   gBuffer.g = packNormal(normal);
-  gBuffer.b = packVec2(vec2(1., metalness));
+  gBuffer.b = packVec2(vec2(0.1, metalness));
   gBuffer.a = vec4ToFloat(encodeRGBE8(emissive));
 
   return gBuffer;

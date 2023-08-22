@@ -19,7 +19,7 @@ layout(location = 1) out vec4 gOutput1;
 #include <common>
 #include <gbuffer_packing>
 
-#define luminance(a) log(dot(vec3(0.2125, 0.7154, 0.0721), a) + 1.)
+#define luminance(a) log(dot(vec3(0.2125, 0.7154, 0.0721), a) + 1.);
 
 vec3 getWorldPos(float depth, vec2 coord) {
   float z = depth * 2.0 - 1.0;
@@ -47,7 +47,7 @@ void toLinearSpace(inout vec3 color) { color = exp(color) - 1.; }
 void evaluateNeighbor(const vec4 neighborTexel, const float neighborLuminance,
                       inout vec3 denoised, inout float totalWeight,
                       const float similarity) {
-  float w = min(1., similarity);
+  float w = similarity;
 
   if (w < 0.01)
     return;
@@ -69,15 +69,15 @@ void main() {
   vec4 texel = textureLod(inputTexture, vUv, 0.0);
   vec4 texel2 = textureLod(inputTexture2, vUv, 0.0);
 
+  // if (vUv.x < 0.5) {
+  //   gOutput0 = texel;
+  //   gOutput1 = texel2;
+  //   return;
+  // }
+
   float a = texel.a;
   float a2 = texel2.a;
   float pixelAge = a + a2;
-
-  if (pixelAge > 512.) {
-    gOutput0 = texel;
-    gOutput1 = texel2;
-    return;
-  }
 
   toDenoiseSpace(texel.rgb);
   toDenoiseSpace(texel2.rgb);
@@ -86,23 +86,29 @@ void main() {
   float lum2 = luminance(texel2.rgb);
 
   Material mat = getMaterial(gBufferTexture, vUv);
+  float roughnessSq = mat.roughness * mat.roughness;
 
   float depth = depthTexel.x;
   vec3 worldPos = getWorldPos(depth, vUv);
 
   // using cameraMatrixWorld, get how oblique the surface is
   float faceness = abs(dot(mat.normal, normalize(cameraMatrixWorld[2].xyz)));
-  float obl = (1. - faceness) * 0.01;
 
   vec4 random = blueNoise();
   float angle = random.r * 2. * PI;
   float s = sin(angle), c = cos(angle);
   mat2 rotationMatrix = mat2(c, -s, s, c);
 
-  float specularWeight = clamp(mat.roughness / 0.15, 0.05, 1.);
+  float specularWeight = mat.roughness * mat.roughness;
+  specularWeight *= specularWeight;
 
-  float historyW = smoothstep(0., 1., 1. / pow(a + 1., 0.625));
-  float historyW2 = smoothstep(0., 1., 1. / pow(a2 + 1., 0.625));
+  const float e = 2.718281828459045235360287471352662497757247093699959574966;
+
+  float w = 1. / log(a + e);
+  float w2 = 1. / log(a2 * a2 + e);
+
+  float historyW = smoothstep(0., 1., w);
+  float historyW2 = smoothstep(0., 1., w2);
 
   float totalWeight = 1.;
   float totalWeight2 = 1.;
@@ -110,11 +116,14 @@ void main() {
   vec3 denoised = texel.rgb * totalWeight;
   vec3 denoised2 = texel2.rgb * totalWeight2;
 
-  float r = random.a * exp(-pixelAge * 0.005) * (radius - 1.);
+  float r = random.a * exp(-pixelAge * 0.005) * radius;
 
   for (int i = 0; i < samples; i++) {
     vec2 offset = r * rotationMatrix * poissonDisk[i];
     vec2 neighborUv = vUv + offset;
+
+    float distanceToCenter = length(offset) + 1.;
+    distanceToCenter = pow(distanceToCenter, 8.) - 1.;
 
     Material neighborMat = getMaterial(gBufferTexture, neighborUv);
 
@@ -133,6 +142,9 @@ void main() {
     float normalDiff = 1. - max(dot(mat.normal, neighborMat.normal), 0.);
     float depthDiff = 10. * distToPlane(worldPos, neighborWorldPos, mat.normal);
     float roughnessDiff = abs(mat.roughness - neighborMat.roughness);
+    float diffuseDiff = length(texel.rgb - neighborTexel.rgb);
+
+    roughnessDiff *= 10. * diffuseDiff;
 
     float neighborLuminance = luminance(neighborTexel.rgb);
     float neighborLuminance2 = luminance(neighborTexel2.rgb);
@@ -140,18 +152,20 @@ void main() {
     float lumaDiff = mix(abs(lum - neighborLuminance), 0., historyW);
     float lumaDiff2 = mix(abs(lum2 - neighborLuminance2), 0., historyW2);
 
+    // lumaDiff2 = clamp(lumaDiff2 + random.b * 0.5 - 0.25, 0., 1.);
+
     float basicWeight = exp(-normalDiff * normalPhi - depthDiff * depthPhi -
                             roughnessDiff * roughnessPhi);
 
     float similarity =
         historyW * pow(basicWeight, phi / historyW) * exp(-lumaDiff * lumaPhi);
-    similarity += obl * historyW;
+    similarity += faceness * historyW;
 
-    float similarity2 = historyW2 * pow(basicWeight, phi / historyW2) *
-                        exp(-lumaDiff2 * lumaPhi);
+    float similarity2 = historyW2 * pow(basicWeight, phi / historyW2);
 
-    similarity2 += obl * historyW2;
-    similarity2 *= specularWeight;
+    // similarity2 += (1. - faceness) * historyW2 * 0.01;
+    similarity2 *=
+        mix(exp(-distanceToCenter * 50. - normalDiff * 200.), 1., roughnessSq);
 
     evaluateNeighbor(neighborTexel, neighborLuminance, denoised, totalWeight,
                      similarity);

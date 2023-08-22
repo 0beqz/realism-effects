@@ -51,10 +51,6 @@ export class SSGIPass extends Pass {
 		return this.renderTarget.texture[index]
 	}
 
-	get depthTexture() {
-		return this.gBufferPass.texture
-	}
-
 	setSize(width, height) {
 		this.renderTarget.setSize(width * this.ssgiEffect.resolutionScale, height * this.ssgiEffect.resolutionScale)
 		this.gBufferPass.setSize(width, height)
@@ -69,11 +65,6 @@ export class SSGIPass extends Pass {
 		this.gBufferRenderTarget.dispose()
 
 		this.fullscreenMaterial.dispose()
-
-		this.normalTexture = null
-		this.depthTexture = null
-		this.diffuseTexture = null
-		this.emissiveTexture = null
 	}
 
 	render(renderer) {
