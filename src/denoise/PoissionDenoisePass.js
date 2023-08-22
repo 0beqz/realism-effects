@@ -1,6 +1,6 @@
 /* eslint-disable camelcase */
 import { Pass } from "postprocessing"
-import { FloatType, GLSL3, Matrix4, ShaderMaterial, Vector2, WebGLMultipleRenderTargets } from "three"
+import { HalfFloatType, GLSL3, Matrix4, ShaderMaterial, Vector2, WebGLMultipleRenderTargets } from "three"
 // eslint-disable-next-line camelcase
 
 import vertexShader from "../utils/shader/basic.vert"
@@ -59,7 +59,7 @@ export class PoissionDenoisePass extends Pass {
 		useBlueNoise(this.fullscreenMaterial)
 
 		const renderTargetOptions = {
-			type: FloatType,
+			type: HalfFloatType,
 			depthBuffer: false
 		}
 

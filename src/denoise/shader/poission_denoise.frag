@@ -161,8 +161,8 @@ void main() {
                         exp(-lumaDiff2 * lumaPhi);
 
     // similarity2 += (1. - faceness) * historyW2 * 0.1;
-    similarity2 *=
-        mix(exp(-distanceToCenter * 20. - normalDiff * 100.), 1., roughnessSq);
+    similarity2 *= mix(exp(-distanceToCenter * 20. - normalDiff * 100.), 1.,
+                       roughnessSq * roughnessSq);
 
     evaluateNeighbor(neighborTexel, neighborLuminance, denoised, totalWeight,
                      similarity);
