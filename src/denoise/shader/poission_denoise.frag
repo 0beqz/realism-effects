@@ -21,7 +21,7 @@ const float e = 2.7182818;
 #include <common>
 #include <gbuffer_packing>
 
-#define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a);
+#define luminance(a) log(dot(vec3(0.2125, 0.7154, 0.0721), a));
 
 vec3 getWorldPos(float depth, vec2 coord) {
   float z = depth * 2.0 - 1.0;
