@@ -166,7 +166,7 @@ export class TemporalReprojectPass extends Pass {
 	}
 
 	render(renderer) {
-		this.frame = (this.frame + 1) % 65536
+		this.frame = (this.frame + 1) % 4096
 
 		const delta = Math.min(1 / 10, this.clock.getDelta())
 		this.fullscreenMaterial.uniforms.delta.value = delta

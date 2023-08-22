@@ -80,7 +80,7 @@ export class MotionBlurEffect extends Effect {
 		this.uniforms.get("inputTexture").value = inputBuffer.texture
 		this.uniforms.get("deltaTime").value = Math.max(1 / 1000, deltaTime)
 
-		const frame = renderer.info.render.frame % 65536
+		const frame = renderer.info.render.frame % 4096
 		this.uniforms.get("frame").value = frame
 
 		this.uniforms.get("resolution").value.set(window.innerWidth, window.innerHeight)

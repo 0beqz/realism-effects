@@ -110,6 +110,7 @@ export class GBufferPass extends Pass {
 			// todo: implement selection
 
 			mrtMaterial.uniforms.metalness.value = c.material.metalness ?? 0
+			mrtMaterial.uniforms.roughness.value = c.material.roughness ?? 0
 			mrtMaterial.uniforms.emissiveIntensity.value = c.material.emissiveIntensity ?? 0
 			mrtMaterial.uniforms.opacity.value = originalMaterial.opacity
 
@@ -126,7 +127,7 @@ export class GBufferPass extends Pass {
 	}
 
 	render(renderer) {
-		this.frame = (this.frame + 1) % 65536
+		this.frame = (this.frame + 1) % 4096
 
 		const { background } = this._scene
 

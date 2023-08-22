@@ -237,7 +237,7 @@ const setEnvMesh = envMap => {
 		envMesh.height = 20
 		envMesh.scale.setScalar(100)
 		envMesh.updateMatrixWorld()
-		scene.add(envMesh)
+		// scene.add(envMesh)
 
 		if (taaPass) taaPass.needsUpdate = true
 	}
@@ -341,7 +341,7 @@ const initScene = async () => {
 	fps = gpuTier.fps
 
 	const options = {
-		distance: 5.980000000000011,
+		distance: 2.7200000000000113,
 		thickness: 4.999999999999997,
 		maxRoughness: 1,
 		blend: 0.9749999999999999,
@@ -351,12 +351,12 @@ const initScene = async () => {
 		denoiseSpecular: 25.54,
 		rings: 5,
 		samples: 8,
-		radius: 28,
-		phi: 0.0980000000000001,
-		lumaPhi: 50,
-		depthPhi: 5.977999999999998,
-		normalPhi: 24.999999999999993,
-		roughnessPhi: 41.304,
+		radius: 7,
+		phi: 0.0540000000000001,
+		lumaPhi: 11.956999999999999,
+		depthPhi: 6.521999999999998,
+		normalPhi: 19.564999999999994,
+		roughnessPhi: 67.391,
 		envBlur: 0,
 		importanceSampling: true,
 		steps: 20,

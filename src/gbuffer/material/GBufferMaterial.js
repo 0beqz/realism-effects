@@ -171,7 +171,6 @@ export class GBufferMaterial extends ShaderMaterial {
                     #include <normal_fragment_maps>
 
                     float roughnessFactor = roughness;
-                    bool isDeselected = roughness > 10.0e9;
 
                     #ifdef USE_ROUGHNESSMAP
                         vec4 texelRoughness = texture2D( roughnessMap, vUv );
@@ -179,15 +178,12 @@ export class GBufferMaterial extends ShaderMaterial {
                         roughnessFactor *= texelRoughness.g;
                     #endif
 
-                    // roughness of 1.0 is reserved for deselected meshes
-                    roughnessFactor = min(0.99, roughnessFactor);
-
                     vec3 worldNormal = normalize((vec4(normal, 1.) * viewMatrix).xyz);
 
-                    if(isDeselected){
-                        discard;
-                        return;
-                    }
+                    // if(isDeselected){
+                    //     discard;
+                    //     return;
+                    // }
 
                     #include <metalnessmap_fragment>
 

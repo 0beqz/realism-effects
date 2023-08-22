@@ -57,14 +57,7 @@ export class SSGIComposePass extends Pass {
 
                 vec3 gi = constructGlobalIllumination(diffuseGi.rgb, specularGi.rgb, viewDir, viewNormal, mat.diffuse.rgb, mat.emissive, mat.roughness, mat.metalness);
 
-				// apply fog
-				float vFogDepth = -viewPos.z;
-				float fogDensity = 0.0005;
-				float fogFactor = 1.0 - exp( - fogDensity * fogDensity * vFogDepth * vFogDepth );
-				vec3 fogColor = vec3( 0.5 );
-				gi = mix( gi, fogColor, fogFactor );
-
-				gl_FragColor = vec4(vec3(gi), 1.);
+				gl_FragColor = vec4(gi, 1.);
             }
             `,
 			vertexShader: basicVertexShader,

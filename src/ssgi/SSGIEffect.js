@@ -79,7 +79,7 @@ export class SSGIEffect extends Effect {
 			options.roughnessDependent = [false, true]
 		}
 
-		options.neighborhoodClamp = [false, false]
+		options.neighborhoodClamp = [false, true]
 		options.neighborhoodClampRadius = 2
 		options.neighborhoodClampIntensity = 1
 
@@ -102,7 +102,7 @@ export class SSGIEffect extends Effect {
 				this.ssgiPass.specularTexture
 		}
 
-		this.svgf.setJitteredGBuffer(this.ssgiPass.depthTexture, this.ssgiPass.normalTexture, {
+		this.svgf.setJitteredGBuffer(this.ssgiPass.gBufferPass.depthTexture, this.ssgiPass.normalTexture, {
 			useRoughnessInAlphaChannel: true
 		})
 
@@ -404,7 +404,7 @@ export class SSGIEffect extends Effect {
 
 		const ssgiComposePassUniforms = this.ssgiComposePass.fullscreenMaterial.uniforms
 		ssgiComposePassUniforms.gBufferTexture.value = this.ssgiPass.gBufferPass.texture
-		ssgiComposePassUniforms.depthTexture.value = this.ssgiPass.depthTexture
+		ssgiComposePassUniforms.depthTexture.value = this.ssgiPass.gBufferPass.depthTexture
 		ssgiComposePassUniforms.diffuseGiTexture.value = this.svgf.denoisePass.texture[0]
 		ssgiComposePassUniforms.specularGiTexture.value = this.svgf.denoisePass.texture[1]
 
@@ -412,9 +412,9 @@ export class SSGIEffect extends Effect {
 		this.svgf.render(renderer)
 		this.ssgiComposePass.render(renderer)
 
-		this.uniforms.get("inputTexture").value = this.svgf.denoisePass.renderTargetB.texture[1]
+		this.uniforms.get("inputTexture").value = this.ssgiComposePass.renderTarget.texture
 		this.uniforms.get("sceneTexture").value = sceneBuffer.texture
-		this.uniforms.get("depthTexture").value = this.ssgiPass.depthTexture
+		this.uniforms.get("depthTexture").value = this.ssgiPass.gBufferPass.depthTexture
 		this.uniforms.get("toneMapping").value = renderer.toneMapping
 
 		for (const c of hideMeshes) c.visible = true

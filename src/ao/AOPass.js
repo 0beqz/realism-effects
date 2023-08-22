@@ -85,7 +85,7 @@ class AOPass extends Pass {
 	render(renderer) {
 		const spp = +this.fullscreenMaterial.defines.spp
 
-		this.fullscreenMaterial.uniforms.frame.value = (this.fullscreenMaterial.uniforms.frame.value + spp) % 65536
+		this.fullscreenMaterial.uniforms.frame.value = (this.fullscreenMaterial.uniforms.frame.value + spp) % 4096
 
 		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
 		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far

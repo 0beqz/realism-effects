@@ -68,7 +68,7 @@ export class SSGIPass extends Pass {
 	}
 
 	render(renderer) {
-		this.frame = (this.frame + this.ssgiEffect.spp) % 65536
+		this.frame = (this.frame + this.ssgiEffect.spp) % 4096
 
 		// render G-Buffers
 		this.gBufferPass.render(renderer)

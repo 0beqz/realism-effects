@@ -63,7 +63,7 @@ export class TAAPass extends Pass {
 	}
 
 	render(renderer, inputBuffer) {
-		this.frame = (this.frame + 1) % 65536
+		this.frame = (this.frame + 1) % 4096
 
 		this.fullscreenMaterial.uniforms.inputTexture.value = inputBuffer.texture
 
@@ -78,7 +78,7 @@ export class TAAPass extends Pass {
 			jitter(width, height, this._camera, this.frame)
 		}
 
-		this.fullscreenMaterial.uniforms.cameraNotMovedFrames.value = cameraMoved ? 0 : (cameraNotMovedFrames + 1) % 65536
+		this.fullscreenMaterial.uniforms.cameraNotMovedFrames.value = cameraMoved ? 0 : (cameraNotMovedFrames + 1) % 4096
 
 		this.lastCameraPosition.copy(this._camera.position)
 		this.lastCameraQuaternion.copy(this._camera.quaternion)

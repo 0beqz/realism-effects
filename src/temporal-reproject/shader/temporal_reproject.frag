@@ -135,8 +135,9 @@ void main() {
           clampNeighborhood(inputTexture[i], clampedColor, inputTexel[i].rgb,
                             neighborhoodClampRadius);
 
-          float clampIntensity = neighborhoodClampIntensity *
-                                 (reprojectSpecular[i] ? roughness : 1.0);
+          float clampIntensity =
+              neighborhoodClampIntensity *
+              (reprojectSpecular[i] ? (1. - roughness) : 1.0);
 
           // ! todo: find good neighborhood clamp intensity
           accumulatedTexel[i].rgb =
