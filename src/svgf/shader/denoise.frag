@@ -80,7 +80,7 @@ void tap(const vec2 neighborVec, const vec2 pixelStepOffset, const vec3 normal,
   vec3 neighborNormal, neighborDiffuse, neighborEmissive;
   float neighborRoughness, neighborMetalness;
 
-  getGData(gBuffersTexture, neighborUvNearest, neighborDiffuse, neighborNormal,
+  getGData(gBufferTexture, neighborUvNearest, neighborDiffuse, neighborNormal,
            neighborRoughness, neighborMetalness, neighborEmissive);
 
 // depth similarity
@@ -209,7 +209,7 @@ void main() {
   worldPos = screenSpaceToWorldSpace(vUv, depth, cameraMatrixWorld);
 #endif
 
-  getGData(gBuffersTexture, vUv, diffuse, normal, roughness, metalness,
+  getGData(gBufferTexture, vUv, diffuse, normal, roughness, metalness,
            emissive);
   roughness *= roughness;
 

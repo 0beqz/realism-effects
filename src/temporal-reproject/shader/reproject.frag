@@ -178,7 +178,7 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos,
 
   // angleDiff will be higher, the more we try to reproject pixels from a steep
   // angle onto a surface with a low angle which results in undesired stretching
-  angleMix = clamp(2. * abs(lastViewAngle - viewAngle), 0., 1.);
+  angleMix = clamp(4. * abs(lastViewAngle - viewAngle), 0., 1.);
 
   float viewZ = abs(getViewZ(depth));
   float distFactor = 1. + 1. / (viewZ + 1.0);
@@ -264,9 +264,9 @@ vec4 SampleTextureCatmullRom(const sampler2D tex, const vec2 uv,
   // calculated earlier. These equations are pre-expanded based on our knowledge
   // of where the texels will be located, which lets us avoid having to evaluate
   // a piece-wise function.
-  vec2 w0 = f * (-0.5f + f * (1.0f - 0.5f * f));
-  vec2 w1 = 1.0f + f * f * (-2.5f + 1.5f * f);
-  vec2 w2 = f * (0.5f + f * (2.0f - 1.5f * f));
+  vec2 w0 = f * (-0.5f + f * (1.0 - 0.5f * f));
+  vec2 w1 = 1.0 + f * f * (-2.5f + 1.5f * f);
+  vec2 w2 = f * (0.5f + f * (2.0 - 1.5f * f));
   vec2 w3 = f * f * (-0.5f + 0.5f * f);
 
   // Work out weighting factors and sampling offsets that will let us use
@@ -285,15 +285,15 @@ vec4 SampleTextureCatmullRom(const sampler2D tex, const vec2 uv,
   texPos12 /= resolution;
 
   vec4 result = vec4(0.0);
-  result += textureLod(tex, vec2(texPos0.x, texPos0.y), 0.0f) * w0.x * w0.y;
-  result += textureLod(tex, vec2(texPos12.x, texPos0.y), 0.0f) * w12.x * w0.y;
-  result += textureLod(tex, vec2(texPos3.x, texPos0.y), 0.0f) * w3.x * w0.y;
-  result += textureLod(tex, vec2(texPos0.x, texPos12.y), 0.0f) * w0.x * w12.y;
-  result += textureLod(tex, vec2(texPos12.x, texPos12.y), 0.0f) * w12.x * w12.y;
-  result += textureLod(tex, vec2(texPos3.x, texPos12.y), 0.0f) * w3.x * w12.y;
-  result += textureLod(tex, vec2(texPos0.x, texPos3.y), 0.0f) * w0.x * w3.y;
-  result += textureLod(tex, vec2(texPos12.x, texPos3.y), 0.0f) * w12.x * w3.y;
-  result += textureLod(tex, vec2(texPos3.x, texPos3.y), 0.0f) * w3.x * w3.y;
+  result += textureLod(tex, vec2(texPos0.x, texPos0.y), 0.0) * w0.x * w0.y;
+  result += textureLod(tex, vec2(texPos12.x, texPos0.y), 0.0) * w12.x * w0.y;
+  result += textureLod(tex, vec2(texPos3.x, texPos0.y), 0.0) * w3.x * w0.y;
+  result += textureLod(tex, vec2(texPos0.x, texPos12.y), 0.0) * w0.x * w12.y;
+  result += textureLod(tex, vec2(texPos12.x, texPos12.y), 0.0) * w12.x * w12.y;
+  result += textureLod(tex, vec2(texPos3.x, texPos12.y), 0.0) * w3.x * w12.y;
+  result += textureLod(tex, vec2(texPos0.x, texPos3.y), 0.0) * w0.x * w3.y;
+  result += textureLod(tex, vec2(texPos12.x, texPos3.y), 0.0) * w12.x * w3.y;
+  result += textureLod(tex, vec2(texPos3.x, texPos3.y), 0.0) * w3.x * w3.y;
 
   result = max(result, vec4(0.));
 

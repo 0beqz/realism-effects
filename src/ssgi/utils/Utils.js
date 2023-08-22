@@ -33,48 +33,6 @@ export const getMaxMipLevel = texture => {
 	return Math.floor(Math.log2(Math.max(width, height))) + 1
 }
 
-export const saveBoneTexture = object => {
-	let boneTexture = object.material.uniforms.prevBoneTexture.value
-
-	if (boneTexture && boneTexture.image.width === object.skeleton.boneTexture.width) {
-		boneTexture = object.material.uniforms.prevBoneTexture.value
-		boneTexture.image.data.set(object.skeleton.boneTexture.image.data)
-	} else {
-		boneTexture?.dispose()
-
-		const boneMatrices = object.skeleton.boneTexture.image.data.slice()
-		const size = object.skeleton.boneTexture.image.width
-
-		boneTexture = new DataTexture(boneMatrices, size, size, RGBAFormat, FloatType)
-		object.material.uniforms.prevBoneTexture.value = boneTexture
-
-		boneTexture.needsUpdate = true
-	}
-}
-
-export const updateVelocityDepthNormalMaterialBeforeRender = (c, camera) => {
-	if (c.skeleton?.boneTexture) {
-		c.material.uniforms.boneTexture.value = c.skeleton.boneTexture
-
-		if (!("USE_SKINNING" in c.material.defines)) {
-			c.material.defines.USE_SKINNING = ""
-			c.material.defines.BONE_TEXTURE = ""
-
-			c.material.needsUpdate = true
-		}
-	}
-
-	c.modelViewMatrix.multiplyMatrices(camera.matrixWorldInverse, c.matrixWorld)
-
-	c.material.uniforms.velocityMatrix.value.multiplyMatrices(camera.projectionMatrix, c.modelViewMatrix)
-}
-
-export const updateVelocityDepthNormalMaterialAfterRender = (c, camera) => {
-	c.material.uniforms.prevVelocityMatrix.value.multiplyMatrices(camera.projectionMatrix, c.modelViewMatrix)
-
-	if (c.skeleton?.boneTexture) saveBoneTexture(c)
-}
-
 export const createGlobalDisableIblRadianceUniform = () => {
 	if (!ShaderChunk.envmap_physical_pars_fragment.includes("iblRadianceDisabled")) {
 		ShaderChunk.envmap_physical_pars_fragment = ShaderChunk.envmap_physical_pars_fragment.replace(

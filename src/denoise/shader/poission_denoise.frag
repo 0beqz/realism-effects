@@ -19,7 +19,7 @@ layout(location = 1) out vec4 gOutput1;
 #include <common>
 #include <gbuffer_packing>
 
-#define luminance(a) pow(dot(vec3(0.2125, 0.7154, 0.0721), a), 0.25)
+#define luminance(a) log(dot(vec3(0.2125, 0.7154, 0.0721), a) + 1.)
 
 vec3 getWorldPos(float depth, vec2 coord) {
   float z = depth * 2.0 - 1.0;
@@ -44,15 +44,10 @@ void toDenoiseSpace(inout vec3 color) { color = log(color + 1.); }
 
 void toLinearSpace(inout vec3 color) { color = exp(color) - 1.; }
 
-float getLuminanceWeight(float luminance, float a) {
-  return mix(1. / (luminance + 0.01), 1., 1. / pow(a + 1., 4.));
-}
-
 void evaluateNeighbor(const vec4 neighborTexel, const float neighborLuminance,
                       inout vec3 denoised, inout float totalWeight,
                       const float similarity) {
   float w = min(1., similarity);
-  w *= getLuminanceWeight(neighborLuminance, neighborTexel.a);
 
   if (w < 0.01)
     return;
@@ -76,8 +71,9 @@ void main() {
 
   float a = texel.a;
   float a2 = texel2.a;
+  float pixelAge = a + a2;
 
-  if (a + a2 > 512.) {
+  if (pixelAge > 512.) {
     gOutput0 = texel;
     gOutput1 = texel2;
     return;
@@ -89,7 +85,7 @@ void main() {
   float lum = luminance(texel.rgb);
   float lum2 = luminance(texel2.rgb);
 
-  Material mat = getMaterial(gBuffersTexture, vUv);
+  Material mat = getMaterial(gBufferTexture, vUv);
 
   float depth = depthTexel.x;
   vec3 worldPos = getWorldPos(depth, vUv);
@@ -105,22 +101,22 @@ void main() {
 
   float specularWeight = clamp(mat.roughness / 0.15, 0.05, 1.);
 
-  float historyW = smoothstep(0., 1., 1. / sqrt(a * 0.75 + 1.));
-  float historyW2 = smoothstep(0., 1., 1. / sqrt(a2 * 0.75 + 1.));
+  float historyW = smoothstep(0., 1., 1. / pow(a + 1., 0.625));
+  float historyW2 = smoothstep(0., 1., 1. / pow(a2 + 1., 0.625));
 
-  float totalWeight = getLuminanceWeight(lum, a);
-  float totalWeight2 = getLuminanceWeight(lum2, a2);
+  float totalWeight = 1.;
+  float totalWeight2 = 1.;
 
   vec3 denoised = texel.rgb * totalWeight;
   vec3 denoised2 = texel2.rgb * totalWeight2;
 
-  float r = 1. + random.a * (radius - 1.);
+  float r = random.a * exp(-pixelAge * 0.005) * (radius - 1.);
 
   for (int i = 0; i < samples; i++) {
     vec2 offset = r * rotationMatrix * poissonDisk[i];
     vec2 neighborUv = vUv + offset;
 
-    Material neighborMat = getMaterial(gBuffersTexture, neighborUv);
+    Material neighborMat = getMaterial(gBufferTexture, neighborUv);
 
     vec4 neighborTexel = textureLod(inputTexture, neighborUv, 0.);
     vec4 neighborTexel2 = textureLod(inputTexture2, neighborUv, 0.);

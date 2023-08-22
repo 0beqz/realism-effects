@@ -11,7 +11,7 @@ import {
 import vertexShader from "../utils/shader/basic.vert"
 import { jitter } from "./TAAUtils"
 import taa from "./shader/taa.frag"
-import { didCameraMove } from "../ssgi/utils/Utils"
+import { didCameraMove } from "../utils/SceneUtils"
 
 export class TAAPass extends Pass {
 	accumulatedTexture = null

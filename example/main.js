@@ -281,7 +281,7 @@ if (traaTest) {
 		loadFiles = 4
 	} else {
 		url = "squid_game.optimized.glb"
-		loadFiles = 10
+		loadFiles = 9
 	}
 }
 
@@ -351,11 +351,11 @@ const initScene = async () => {
 		denoiseSpecular: 25.54,
 		rings: 5,
 		samples: 8,
-		radius: 8,
-		phi: 0.10000000000000006,
-		lumaPhi: 30,
-		depthPhi: 4.8909999999999965,
-		normalPhi: 16.304000000000002,
+		radius: 28,
+		phi: 0.6090000000000001,
+		lumaPhi: 50,
+		depthPhi: 19.022,
+		normalPhi: 64.13,
 		roughnessPhi: 41.304,
 		envBlur: 0,
 		importanceSampling: true,

@@ -36,6 +36,7 @@ export class GBufferMaterial extends ShaderMaterial {
 				lightMapIntensity: new Uniform(1),
 				opacity: new Uniform(1)
 			},
+
 			vertexShader: /* glsl */ `
                 varying vec2 vHighPrecisionZW;
 
@@ -112,7 +113,7 @@ export class GBufferMaterial extends ShaderMaterial {
                 #include <metalnessmap_pars_fragment>
                 uniform float metalness;
 
-                #include <roughnessmap_pars_fragment>#
+                #include <roughnessmap_pars_fragment>
                 uniform float roughness;
 
                 #include <emissivemap_pars_fragment>
@@ -211,6 +212,7 @@ export class GBufferMaterial extends ShaderMaterial {
                     gl_FragColor = packGBuffer(diffuseColor, worldNormal, roughnessFactor, metalnessFactor, totalEmissiveRadiance);
                 }
             `.replace("#include <gbuffer_packing>", gbuffer_packing),
+
 			toneMapped: false,
 			alphaTest: false,
 			fog: false,

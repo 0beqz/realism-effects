@@ -1,6 +1,7 @@
 ﻿import { Pass } from "postprocessing"
 import {
 	Color,
+	DataTexture,
 	DepthTexture,
 	FloatType,
 	FramebufferTexture,
@@ -10,21 +11,56 @@ import {
 	Vector2,
 	WebGLRenderTarget
 } from "three"
-import {
-	copyNecessaryProps,
-	getVisibleChildren,
-	isChildMaterialRenderable,
-	keepMaterialMapUpdated,
-	saveBoneTexture,
-	updateVelocityDepthNormalMaterialAfterRender,
-	updateVelocityDepthNormalMaterialBeforeRender
-} from "../../ssgi/utils/Utils"
 import { VelocityDepthNormalMaterial } from "../material/VelocityDepthNormalMaterial.js"
+import { copyNecessaryProps, getVisibleChildren, keepMaterialMapUpdated } from "../../gbuffer/utils/GBufferUtils.js"
+import { isChildMaterialRenderable } from "../../utils/SceneUtils.js"
 
 const backgroundColor = new Color(0)
 const zeroVec2 = new Vector2()
 const tmpProjectionMatrix = new Matrix4()
 const tmpProjectionMatrixInverse = new Matrix4()
+
+const saveBoneTexture = object => {
+	let boneTexture = object.material.uniforms.prevBoneTexture.value
+
+	if (boneTexture && boneTexture.image.width === object.skeleton.boneTexture.width) {
+		boneTexture = object.material.uniforms.prevBoneTexture.value
+		boneTexture.image.data.set(object.skeleton.boneTexture.image.data)
+	} else {
+		boneTexture?.dispose()
+
+		const boneMatrices = object.skeleton.boneTexture.image.data.slice()
+		const size = object.skeleton.boneTexture.image.width
+
+		boneTexture = new DataTexture(boneMatrices, size, size, RGBAFormat, FloatType)
+		object.material.uniforms.prevBoneTexture.value = boneTexture
+
+		boneTexture.needsUpdate = true
+	}
+}
+
+const updateVelocityDepthNormalMaterialBeforeRender = (c, camera) => {
+	if (c.skeleton?.boneTexture) {
+		c.material.uniforms.boneTexture.value = c.skeleton.boneTexture
+
+		if (!("USE_SKINNING" in c.material.defines)) {
+			c.material.defines.USE_SKINNING = ""
+			c.material.defines.BONE_TEXTURE = ""
+
+			c.material.needsUpdate = true
+		}
+	}
+
+	c.modelViewMatrix.multiplyMatrices(camera.matrixWorldInverse, c.matrixWorld)
+
+	c.material.uniforms.velocityMatrix.value.multiplyMatrices(camera.projectionMatrix, c.modelViewMatrix)
+}
+
+const updateVelocityDepthNormalMaterialAfterRender = (c, camera) => {
+	c.material.uniforms.prevVelocityMatrix.value.multiplyMatrices(camera.projectionMatrix, c.modelViewMatrix)
+
+	if (c.skeleton?.boneTexture) saveBoneTexture(c)
+}
 
 export class VelocityDepthNormalPass extends Pass {
 	cachedMaterials = new WeakMap()

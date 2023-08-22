@@ -5,6 +5,7 @@ import { GBufferPass } from "../../gbuffer/GBufferPass.js"
 
 export class SSGIPass extends Pass {
 	needsSwap = false
+	defaultFragmentShader = ""
 	frame = 21483
 
 	constructor(ssgiEffect, options) {
@@ -15,6 +16,7 @@ export class SSGIPass extends Pass {
 		this._camera = ssgiEffect._camera
 
 		this.fullscreenMaterial = new SSGIMaterial()
+		this.defaultFragmentShader = this.fullscreenMaterial.fragmentShader
 
 		this.renderTarget = new WebGLRenderTarget(1, 1, {
 			type: FloatType,
@@ -35,6 +37,9 @@ export class SSGIPass extends Pass {
 		if (options.specularOnly) this.fullscreenMaterial.defines.specularOnly = ""
 
 		this.gBufferPass = new GBufferPass(this._scene, this._camera)
+
+		this.fullscreenMaterial.uniforms.gBufferTexture.value = this.gBufferPass.texture
+		this.fullscreenMaterial.uniforms.depthTexture.value = this.gBufferPass.depthTexture
 	}
 
 	get texture() {
@@ -46,9 +51,13 @@ export class SSGIPass extends Pass {
 		return this.renderTarget.texture[index]
 	}
 
+	get depthTexture() {
+		return this.gBufferPass.texture
+	}
+
 	setSize(width, height) {
 		this.renderTarget.setSize(width * this.ssgiEffect.resolutionScale, height * this.ssgiEffect.resolutionScale)
-		this.gBuffersRenderTarget.setSize(width, height)
+		this.gBufferPass.setSize(width, height)
 
 		this.fullscreenMaterial.uniforms.resolution.value.set(this.renderTarget.width, this.renderTarget.height)
 	}
@@ -57,7 +66,7 @@ export class SSGIPass extends Pass {
 		super.dispose()
 
 		this.renderTarget.dispose()
-		this.gBuffersRenderTarget.dispose()
+		this.gBufferRenderTarget.dispose()
 
 		this.fullscreenMaterial.dispose()
 
@@ -77,7 +86,6 @@ export class SSGIPass extends Pass {
 		this.fullscreenMaterial.uniforms.frame.value = this.frame
 		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
 		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far
-		this.fullscreenMaterial.uniforms.viewMatrix.value.copy(this._camera.matrixWorldInverse)
 		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.ssgiEffect.ssgiComposePass.renderTarget.texture
 
 		renderer.setRenderTarget(this.renderTarget)

@@ -1,13 +1,8 @@
 import { Pass } from "postprocessing"
-import { Color, FloatType, NearestFilter, Quaternion, Texture, Vector3, WebGLRenderTarget } from "three"
+import { Color, DepthTexture, FloatType, NearestFilter, Quaternion, Texture, Vector3, WebGLRenderTarget } from "three"
+import { didCameraMove, isChildMaterialRenderable } from "../utils/SceneUtils.js"
 import { GBufferMaterial } from "./material/GBufferMaterial.js"
-import {
-	copyNecessaryProps,
-	getVisibleChildren,
-	isChildMaterialRenderable,
-	keepMaterialMapUpdated
-} from "./utils/GBufferUtils.js"
-import { didCameraMove } from "../ssgi/utils/Utils.js"
+import { copyNecessaryProps, getVisibleChildren, keepMaterialMapUpdated } from "./utils/GBufferUtils.js"
 
 const backgroundColor = new Color(0)
 
@@ -28,33 +23,31 @@ export class GBufferPass extends Pass {
 	}
 
 	get texture() {
-		return this.gBuffersRenderTarget.texture
+		return this.gBufferRenderTarget.texture
+	}
+
+	get depthTexture() {
+		return this.gBufferRenderTarget.depthTexture
 	}
 
 	initMRTRenderTarget() {
-		this.gBuffersRenderTarget = new WebGLRenderTarget(1, 1, {
+		this.gBufferRenderTarget = new WebGLRenderTarget(1, 1, {
 			minFilter: NearestFilter,
 			magFilter: NearestFilter,
 			type: FloatType
 		})
 
-		this.depthTexture = this.ssgiEffect.composer.depthTexture
-		this.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
-		this.gBuffersRenderTarget.depthTexture = this.depthTexture
-
-		this.fullscreenMaterial.uniforms.gBuffersTexture.value = this.gBuffersRenderTarget.texture
+		this.gBufferRenderTarget.depthTexture = new DepthTexture(1, 1)
+		this.gBufferRenderTarget.depthTexture.type = FloatType
 	}
 
 	setSize(width, height) {
-		this.gBuffersRenderTarget.setSize(width, height)
+		this.gBufferRenderTarget.setSize(width, height)
 	}
 
 	dispose() {
 		super.dispose()
-		this.gBuffersRenderTarget.dispose()
-		this.depthTexture.dispose()
-
-		this.depthTexture = null
+		this.gBufferRenderTarget.dispose()
 	}
 
 	setMRTMaterialInScene() {
@@ -67,6 +60,7 @@ export class GBufferPass extends Pass {
 
 			let [cachedOriginalMaterial, mrtMaterial] = this.cachedMaterials.get(c) || []
 
+			// init a new material if the original material changed or if the cached material is missing
 			if (originalMaterial !== cachedOriginalMaterial) {
 				if (mrtMaterial) mrtMaterial.dispose()
 
@@ -107,17 +101,7 @@ export class GBufferPass extends Pass {
 			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "alphaMap", "USE_ALPHAMAP", originalMaterial.transparent)
 			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "lightMap", "USE_LIGHTMAP", true)
 
-			const noiseTexture = this.fullscreenMaterial.uniforms.blueNoiseTexture.value
-			if (noiseTexture) {
-				const { width, height } = noiseTexture.source.data
-				mrtMaterial.uniforms.blueNoiseTexture.value = noiseTexture
-				mrtMaterial.uniforms.blueNoiseRepeat.value.set(
-					this.renderTarget.width / width,
-					this.renderTarget.height / height
-				)
-			}
-
-			mrtMaterial.uniforms.resolution.value.set(this.renderTarget.width, this.renderTarget.height)
+			mrtMaterial.uniforms.resolution.value.set(this.gBufferRenderTarget.width, this.gBufferRenderTarget.height)
 			mrtMaterial.uniforms.frame.value = this.frame
 			mrtMaterial.uniforms.cameraMoved.value = cameraMoved
 
@@ -150,7 +134,7 @@ export class GBufferPass extends Pass {
 
 		this.setMRTMaterialInScene()
 
-		renderer.setRenderTarget(this.gBuffersRenderTarget)
+		renderer.setRenderTarget(this.gBufferRenderTarget)
 		renderer.render(this._scene, this._camera)
 
 		this.unsetMRTMaterialInScene()

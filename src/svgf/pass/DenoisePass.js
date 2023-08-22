@@ -56,7 +56,7 @@ export class DenoisePass extends Pass {
 			vertexShader: basicVertexShader,
 			uniforms: {
 				depthTexture: new Uniform(null),
-				gBuffersTexture: new Uniform(null),
+				gBufferTexture: new Uniform(null),
 				normalTexture: new Uniform(null),
 				momentTexture: new Uniform(null),
 				invTexSize: new Uniform(new Vector2()),
@@ -170,8 +170,8 @@ export class DenoisePass extends Pass {
 		this.options.depth = true
 	}
 
-	setGBuffersTexture(gBuffersTexture) {
-		this.fullscreenMaterial.uniforms.gBuffersTexture.value = gBuffersTexture
+	setGBufferTexture(gBufferTexture) {
+		this.fullscreenMaterial.uniforms.gBufferTexture.value = gBufferTexture
 
 		this.options.normal = true
 		this.options.roughness = true

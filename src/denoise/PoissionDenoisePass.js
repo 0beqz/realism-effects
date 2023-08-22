@@ -1,6 +1,6 @@
 /* eslint-disable camelcase */
 import { Pass } from "postprocessing"
-import { GLSL3, HalfFloatType, Matrix4, ShaderMaterial, Vector2, WebGLMultipleRenderTargets } from "three"
+import { FloatType, GLSL3, HalfFloatType, Matrix4, ShaderMaterial, Vector2, WebGLMultipleRenderTargets } from "three"
 // eslint-disable-next-line camelcase
 
 import vertexShader from "../utils/shader/basic.vert"
@@ -41,7 +41,7 @@ export class PoissionDenoisePass extends Pass {
 				depthTexture: { value: null },
 				inputTexture: { value: null },
 				inputTexture2: { value: null },
-				gBuffersTexture: { value: null },
+				gBufferTexture: { value: null },
 				projectionMatrixInverse: { value: new Matrix4() },
 				cameraMatrixWorld: { value: new Matrix4() },
 				viewMatrix: { value: new Matrix4() },
@@ -59,7 +59,7 @@ export class PoissionDenoisePass extends Pass {
 		useBlueNoise(this.fullscreenMaterial)
 
 		const renderTargetOptions = {
-			type: HalfFloatType,
+			type: FloatType,
 			depthBuffer: false
 		}
 
@@ -90,12 +90,7 @@ export class PoissionDenoisePass extends Pass {
 	}
 
 	#updatePoissionDiskSamples(width, height) {
-		const poissonDisk = generateDenoiseSamples(
-			this.samples,
-			this.rings,
-			this.radius,
-			new Vector2(1 / width, 1 / height)
-		)
+		const poissonDisk = generateDenoiseSamples(this.samples, this.rings, new Vector2(1 / width, 1 / height))
 
 		this.fullscreenMaterial.defines.samples = this.samples
 
@@ -117,8 +112,8 @@ export class PoissionDenoisePass extends Pass {
 		return this.renderTargetB.texture
 	}
 
-	setGBuffersTexture(texture) {
-		this.fullscreenMaterial.uniforms.gBuffersTexture.value = texture
+	setGBufferTexture(texture) {
+		this.fullscreenMaterial.uniforms.gBufferTexture.value = texture
 	}
 
 	render(renderer) {

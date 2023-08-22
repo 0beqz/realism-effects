@@ -15,7 +15,7 @@ export class SSGIMaterial extends ShaderMaterial {
 
 			uniforms: {
 				accumulatedTexture: new Uniform(null),
-				gBuffersTexture: new Uniform(null),
+				gBufferTexture: new Uniform(null),
 				depthTexture: new Uniform(null),
 				velocityTexture: new Uniform(null),
 				directLightTexture: new Uniform(null),

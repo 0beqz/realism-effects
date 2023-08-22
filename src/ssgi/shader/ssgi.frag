@@ -95,19 +95,18 @@ void calculateAngles(inout vec3 h, inout vec3 l, inout vec3 v, inout vec3 n,
 }
 
 void main() {
-  vec4 depthTexel = textureLod(depthTexture, vUv, 0.0);
+  float unpackedDepth = textureLod(depthTexture, vUv, 0.0).r;
 
   // filter out background
-  if (depthTexel.r == 1.0) {
+  if (unpackedDepth == 1.0) {
     discard;
     return;
   }
 
-  Material mat = getMaterial(gBuffersTexture, vUv);
+  Material mat = getMaterial(gBufferTexture, vUv);
 
   // ! todo: use something else than roughness = 1.0 to detect deselected meshes
-  // a roughness of 1 is only being used for deselected meshes
-  if (mat.roughness == 1.0 || mat.roughness > maxRoughness) {
+  if (mat.roughness > maxRoughness) {
     discard;
     return;
   }
@@ -120,8 +119,6 @@ void main() {
   nearMinusFar = cameraNear - cameraFar;
   nearMulFar = cameraNear * cameraFar;
   farMinusNear = cameraFar - cameraNear;
-
-  float unpackedDepth = depthTexel.r;
   // view-space depth
   float depth = fastGetViewZ(unpackedDepth);
 
@@ -399,7 +396,7 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal,
 
     envMapSample = sampleEquirectEnvMapColor(reflectedWS, envMapInfo.map, mip);
 
-    float maxEnvLum = isEnvMisSample ? 100.0 : 50.0;
+    float maxEnvLum = isEnvMisSample ? 50.0 : 10.0;
 
     if (maxEnvLum != 0.0) {
       // we won't deal with calculating direct sun light from the env map as it

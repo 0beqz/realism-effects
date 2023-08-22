@@ -1,4 +1,4 @@
-uniform sampler2D gBuffersTexture;
+uniform sampler2D gBufferTexture;
 
 struct Material {
   vec4 diffuse;
@@ -119,14 +119,14 @@ vec3 decodeRGBE8(vec4 rgbe) {
   return vDecoded;
 }
 
-float vec4tofloat(vec4 vec) {
+float vec4ToFloat(vec4 vec) {
   uvec4 v = uvec4(vec * 255.0);
   uint value = (v.a << 24u) | (v.b << 16u) | (v.g << 8u) | (v.r);
 
   return uintBitsToFloat(value);
 }
 
-vec4 floattovec4(float f) {
+vec4 floatToVec4(float f) {
   uint value = floatBitsToUint(f);
 
   vec4 v;
@@ -142,10 +142,10 @@ vec4 packGBuffer(vec4 diffuse, vec3 normal, float roughness, float metalness,
                  vec3 emissive) {
   vec4 gBuffer;
 
-  gBuffer.r = vec4tofloat(diffuse);
+  gBuffer.r = vec4ToFloat(diffuse);
   gBuffer.g = packNormal(normal);
-  gBuffer.b = packVec2(vec2(roughness, metalness));
-  gBuffer.a = vec4tofloat(encodeRGBE8(emissive));
+  gBuffer.b = packVec2(vec2(1., metalness));
+  gBuffer.a = vec4ToFloat(encodeRGBE8(emissive));
 
   return gBuffer;
 }
@@ -154,12 +154,12 @@ vec4 packGBuffer(vec4 diffuse, vec3 normal, float roughness, float metalness,
 Material getMaterial(sampler2D gBufferTexture, vec2 uv) {
   vec4 gBuffer = textureLod(gBufferTexture, uv, 0.);
 
-  vec4 diffuse = floattovec4(gBuffer.r);
+  vec4 diffuse = floatToVec4(gBuffer.r);
   vec3 normal = unpackNormal(gBuffer.g);
   vec2 roughnessMetalness = unpackVec2(gBuffer.b);
   float roughness = roughnessMetalness.r;
   float metalness = roughnessMetalness.g;
-  vec3 emissive = decodeRGBE8(floattovec4(gBuffer.a));
+  vec3 emissive = decodeRGBE8(floatToVec4(gBuffer.a));
 
   return Material(diffuse, normal, roughness, metalness, emissive);
 }

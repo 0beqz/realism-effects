@@ -3,7 +3,6 @@ import {
 	LinearFilter,
 	LinearMipMapLinearFilter,
 	NoToneMapping,
-	PerspectiveCamera,
 	SRGBColorSpace,
 	Uniform,
 	WebGLRenderTarget
@@ -19,10 +18,10 @@ import {
 	createGlobalDisableIblIradianceUniform,
 	createGlobalDisableIblRadianceUniform,
 	getMaxMipLevel,
-	getVisibleChildren,
-	isChildMaterialRenderable,
 	unrollLoops
 } from "./utils/Utils.js"
+import { isChildMaterialRenderable } from "../utils/SceneUtils.js"
+import { getVisibleChildren } from "../gbuffer/utils/GBufferUtils.js"
 
 const { render } = RenderPass.prototype
 
@@ -61,8 +60,6 @@ export class SSGIEffect extends Effect {
 
 		if (!composer.depthTexture) composer.createDepthTexture()
 
-		window.depthTexture = composer.depthTexture
-
 		let definesName
 
 		if (options.diffuseOnly) {
@@ -82,41 +79,13 @@ export class SSGIEffect extends Effect {
 			options.roughnessDependent = [false, true]
 		}
 
-		options.neighborhoodClamp = [false, true]
+		options.neighborhoodClamp = [false, false]
 		options.neighborhoodClampRadius = 2
 		options.neighborhoodClampIntensity = 1
 
 		const textureCount = options.diffuseOnly || options.specularOnly ? 1 : 2
 
-		// options = {
-		// 	...options,
-		// 	...{
-		// 		denoiseCustomComposeShader: denoise_compose,
-		// 		denoiseCustomComposeShaderFunctions: denoise_compose_functions
-		// 	}
-		// }
-
 		this.svgf = new SVGF(scene, camera, velocityDepthNormalPass, textureCount, options)
-
-		// if (definesName === "ssgi") {
-		// 	this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.fragmentShader =
-		// 		this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.fragmentShader.replace(
-		// 			"accumulatedTexel[ 1 ].rgb = clampedColor;",
-		// 			`
-		// 				float roughness = inputTexel[ 0 ].a;
-		// 				accumulatedTexel[ 1 ].rgb = mix(accumulatedTexel[ 1 ].rgb, clampedColor, 1. - sqrt(roughness));
-		// 				`
-		// 		)
-		// } else if (definesName === "ssr") {
-		// 	this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.fragmentShader =
-		// 		this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.fragmentShader.replace(
-		// 			"accumulatedTexel[ 0 ].rgb = clampedColor;",
-		// 			`
-		// 			accumulatedTexel[ 0 ].rgb = mix(accumulatedTexel[ 0 ].rgb, clampedColor, 0.5);
-		// 			`
-		// 		)
-		// }
-
 		this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.needsUpdate = true
 
 		// ssgi pass
@@ -133,11 +102,11 @@ export class SSGIEffect extends Effect {
 				this.ssgiPass.specularTexture
 		}
 
-		this.svgf.setJitteredGBuffers(this.ssgiPass.depthTexture, this.ssgiPass.normalTexture, {
+		this.svgf.setJitteredGBuffer(this.ssgiPass.depthTexture, this.ssgiPass.normalTexture, {
 			useRoughnessInAlphaChannel: true
 		})
 
-		this.svgf.denoisePass.setGBuffersTexture(this.ssgiPass.gBuffersRenderTarget.texture)
+		this.svgf.denoisePass.setGBufferTexture(this.ssgiPass.gBufferPass.texture)
 
 		// patch the denoise pass
 		this.svgf.denoisePass.fullscreenMaterial.uniforms = {
@@ -433,7 +402,7 @@ export class SSGIEffect extends Effect {
 		this.ssgiPass.fullscreenMaterial.uniforms.directLightTexture.value = sceneBuffer.texture
 
 		const ssgiComposePassUniforms = this.ssgiComposePass.fullscreenMaterial.uniforms
-		ssgiComposePassUniforms.gBuffersTexture.value = this.ssgiPass.gBuffersRenderTarget.texture
+		ssgiComposePassUniforms.gBufferTexture.value = this.ssgiPass.gBufferPass.texture
 		ssgiComposePassUniforms.depthTexture.value = this.ssgiPass.depthTexture
 		ssgiComposePassUniforms.diffuseGiTexture.value = this.svgf.denoisePass.texture[0]
 		ssgiComposePassUniforms.specularGiTexture.value = this.svgf.denoisePass.texture[1]
@@ -442,7 +411,7 @@ export class SSGIEffect extends Effect {
 		this.svgf.render(renderer)
 		this.ssgiComposePass.render(renderer)
 
-		this.uniforms.get("inputTexture").value = this.ssgiComposePass.renderTarget.texture
+		this.uniforms.get("inputTexture").value = this.svgf.denoisePass.renderTargetB.texture[1]
 		this.uniforms.get("sceneTexture").value = sceneBuffer.texture
 		this.uniforms.get("depthTexture").value = this.ssgiPass.depthTexture
 		this.uniforms.get("toneMapping").value = renderer.toneMapping

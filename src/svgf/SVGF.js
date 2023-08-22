@@ -6,7 +6,7 @@ export class SVGF {
 		this.svgfTemporalReprojectPass = new TemporalReprojectPass(scene, camera, velocityDepthNormalPass, textureCount, {
 			...options,
 			fullAccumulate: true,
-			logTransform: true,
+			logTransform: false,
 			copyTextures: false
 		})
 
@@ -28,12 +28,12 @@ export class SVGF {
 		return this.denoisePass.texture
 	}
 
-	setGBuffers(depthTexture, normalTexture) {
-		this.setJitteredGBuffers(depthTexture, normalTexture)
-		this.setNonJitteredGBuffers(depthTexture, normalTexture)
+	setGBuffer(depthTexture, normalTexture) {
+		this.setJitteredGBuffer(depthTexture, normalTexture)
+		this.setNonJitteredGBuffer(depthTexture, normalTexture)
 	}
 
-	setJitteredGBuffers(depthTexture, normalTexture, { useRoughnessInAlphaChannel = false } = {}) {
+	setJitteredGBuffer(depthTexture, normalTexture, { useRoughnessInAlphaChannel = false } = {}) {
 		// this.denoisePass.setDepthTexture(depthTexture)
 		// this.denoisePass.setNormalTexture(normalTexture, { useRoughnessInAlphaChannel })
 	}

@@ -42,7 +42,7 @@ export class SSGIComposePass extends Pass {
 					return;
 				}
 
-                Material mat = getMaterial(gBuffersTexture, vUv);
+                Material mat = getMaterial(gBufferTexture, vUv);
 
                 vec3 viewNormal = (vec4(mat.normal, 0.) * cameraMatrixWorld).xyz;
 
@@ -75,7 +75,7 @@ export class SSGIComposePass extends Pass {
 				projectionMatrixInverse: { value: camera.projectionMatrixInverse },
 				cameraNear: { value: camera.near },
 				cameraFar: { value: camera.far },
-				gBuffersTexture: { value: null },
+				gBufferTexture: { value: null },
 				depthTexture: { value: null },
 				diffuseGiTexture: { value: null },
 				specularGiTexture: { value: null }
