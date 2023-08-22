@@ -239,6 +239,9 @@ const setEnvMesh = envMap => {
 		envMesh.updateMatrixWorld()
 		// scene.add(envMesh)
 
+		const skyBlueColor = new Color(0x4c7fe5)
+		scene.background = skyBlueColor
+
 		if (taaPass) taaPass.needsUpdate = true
 	}
 }
