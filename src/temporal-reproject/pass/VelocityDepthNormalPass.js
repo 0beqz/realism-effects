@@ -6,7 +6,6 @@ import {
 	FramebufferTexture,
 	Matrix4,
 	NearestFilter,
-	PerspectiveCamera,
 	RGBAFormat,
 	Vector2,
 	WebGLRenderTarget

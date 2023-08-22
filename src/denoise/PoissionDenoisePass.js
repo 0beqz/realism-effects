@@ -6,9 +6,9 @@ import { GLSL3, HalfFloatType, Matrix4, ShaderMaterial, Vector2, WebGLMultipleRe
 import vertexShader from "../utils/shader/basic.vert"
 import gbuffer_packing from "../utils/shader/gbuffer_packing.glsl"
 
+import { useBlueNoise } from "../utils/BlueNoiseUtils"
 import fragmentShader from "./shader/poission_denoise.frag"
 import { generateDenoiseSamples, generatePoissonDiskConstant } from "./utils/PoissonUtils"
-import { useBlueNoise } from "../utils/BlueNoiseUtils"
 
 const finalFragmentShader = fragmentShader.replace("#include <gbuffer_packing>", gbuffer_packing)
 

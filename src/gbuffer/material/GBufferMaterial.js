@@ -2,10 +2,10 @@
 import { Color, Matrix3, ShaderMaterial, TangentSpaceNormalMap, Uniform, Vector2 } from "three"
 import gbuffer_packing from "../../utils/shader/gbuffer_packing.glsl"
 import { useBlueNoise } from "../../utils/BlueNoiseUtils"
-export class MRTMaterial extends ShaderMaterial {
+export class GBufferMaterial extends ShaderMaterial {
 	constructor() {
 		super({
-			type: "MRTMaterial",
+			type: "GBufferMaterial",
 
 			defines: {
 				USE_UV: "",
@@ -112,7 +112,7 @@ export class MRTMaterial extends ShaderMaterial {
                 #include <metalnessmap_pars_fragment>
                 uniform float metalness;
 
-                #include <roughnessmap_pars_fragment>
+                #include <roughnessmap_pars_fragment>#
                 uniform float roughness;
 
                 #include <emissivemap_pars_fragment>

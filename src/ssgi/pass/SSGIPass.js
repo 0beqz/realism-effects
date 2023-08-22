@@ -1,38 +1,11 @@
 import { Pass } from "postprocessing"
-import {
-	Color,
-	FloatType,
-	NearestFilter,
-	NoColorSpace,
-	Quaternion,
-	RepeatWrapping,
-	Texture,
-	TextureLoader,
-	Vector3,
-	WebGLRenderTarget
-} from "three"
-import { MRTMaterial } from "../material/MRTMaterial.js"
+import { FloatType, NearestFilter, WebGLRenderTarget } from "three"
 import { SSGIMaterial } from "../material/SSGIMaterial.js"
-import {
-	copyNecessaryProps,
-	didCameraMove,
-	getVisibleChildren,
-	isChildMaterialRenderable,
-	keepMaterialMapUpdated
-} from "../utils/Utils"
-import blueNoiseImage from "./../../utils/blue_noise_rgba.png"
-
-const backgroundColor = new Color(0)
+import { GBufferPass } from "../../gbuffer/GBufferPass.js"
 
 export class SSGIPass extends Pass {
 	needsSwap = false
-	defaultFragmentShader = ""
-
 	frame = 21483
-	cachedMaterials = new WeakMap()
-	visibleMeshes = []
-	lastCameraPosition = new Vector3()
-	lastCameraQuaternion = new Quaternion()
 
 	constructor(ssgiEffect, options) {
 		super("SSGIPass")
@@ -42,10 +15,11 @@ export class SSGIPass extends Pass {
 		this._camera = ssgiEffect._camera
 
 		this.fullscreenMaterial = new SSGIMaterial()
-		this.defaultFragmentShader = this.fullscreenMaterial.fragmentShader
 
 		this.renderTarget = new WebGLRenderTarget(1, 1, {
 			type: FloatType,
+			minFilter: NearestFilter,
+			magFilter: NearestFilter,
 			depthBuffer: false
 		})
 
@@ -60,23 +34,7 @@ export class SSGIPass extends Pass {
 		if (options.diffuseOnly) this.fullscreenMaterial.defines.diffuseOnly = ""
 		if (options.specularOnly) this.fullscreenMaterial.defines.specularOnly = ""
 
-		this.initMRTRenderTarget()
-	}
-
-	initialize(renderer, ...args) {
-		super.initialize(renderer, ...args)
-
-		new TextureLoader().load(blueNoiseImage, blueNoiseTexture => {
-			blueNoiseTexture.minFilter = NearestFilter
-			blueNoiseTexture.magFilter = NearestFilter
-			blueNoiseTexture.wrapS = RepeatWrapping
-			blueNoiseTexture.wrapT = RepeatWrapping
-			blueNoiseTexture.colorSpace = NoColorSpace
-
-			blueNoiseTexture.needsUpdate = true
-
-			this.fullscreenMaterial.uniforms.blueNoiseTexture.value = blueNoiseTexture
-		})
+		this.gBufferPass = new GBufferPass(this._scene, this._camera)
 	}
 
 	get texture() {
@@ -86,20 +44,6 @@ export class SSGIPass extends Pass {
 	get specularTexture() {
 		const index = "specularOnly" in this.fullscreenMaterial.defines ? 0 : 1
 		return this.renderTarget.texture[index]
-	}
-
-	initMRTRenderTarget() {
-		this.gBuffersRenderTarget = new WebGLRenderTarget(1, 1, {
-			minFilter: NearestFilter,
-			magFilter: NearestFilter,
-			type: FloatType
-		})
-
-		this.depthTexture = this.ssgiEffect.composer.depthTexture
-		this.fullscreenMaterial.uniforms.depthTexture.value = this.depthTexture
-		this.gBuffersRenderTarget.depthTexture = this.depthTexture
-
-		this.fullscreenMaterial.uniforms.gBuffersTexture.value = this.gBuffersRenderTarget.texture
 	}
 
 	setSize(width, height) {
@@ -123,109 +67,11 @@ export class SSGIPass extends Pass {
 		this.emissiveTexture = null
 	}
 
-	setMRTMaterialInScene() {
-		this.visibleMeshes = getVisibleChildren(this._scene)
-
-		const cameraMoved = didCameraMove(this._camera, this.lastCameraPosition, this.lastCameraQuaternion)
-
-		for (const c of this.visibleMeshes) {
-			const originalMaterial = c.material
-
-			let [cachedOriginalMaterial, mrtMaterial] = this.cachedMaterials.get(c) || []
-
-			if (originalMaterial !== cachedOriginalMaterial) {
-				if (mrtMaterial) mrtMaterial.dispose()
-
-				mrtMaterial = new MRTMaterial()
-
-				copyNecessaryProps(originalMaterial, mrtMaterial)
-
-				mrtMaterial.uniforms.normalScale.value = originalMaterial.normalScale
-
-				if (c.skeleton?.boneTexture) {
-					mrtMaterial.defines.USE_SKINNING = ""
-					mrtMaterial.defines.BONE_TEXTURE = ""
-
-					mrtMaterial.uniforms.boneTexture.value = c.skeleton.boneTexture
-
-					mrtMaterial.needsUpdate = true
-				}
-
-				const textureKey = Object.keys(originalMaterial).find(key => {
-					const value = originalMaterial[key]
-					return value instanceof Texture && value.matrix
-				})
-
-				if (textureKey) mrtMaterial.uniforms.uvTransform.value = originalMaterial[textureKey].matrix
-
-				this.cachedMaterials.set(c, [originalMaterial, mrtMaterial])
-			}
-
-			if (originalMaterial.emissive) mrtMaterial.uniforms.emissive.value = originalMaterial.emissive
-			if (originalMaterial.color) mrtMaterial.uniforms.color.value = originalMaterial.color
-
-			// update the child's MRT material
-			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "normalMap", "USE_NORMALMAP_TANGENTSPACE", true) // todo: object space normals support
-			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "roughnessMap", "USE_ROUGHNESSMAP", true)
-			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "metalnessMap", "USE_	METALNESSMAP", true)
-			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "map", "USE_MAP", true)
-			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "emissiveMap", "USE_EMISSIVEMAP", true)
-			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "alphaMap", "USE_ALPHAMAP", originalMaterial.transparent)
-			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "lightMap", "USE_LIGHTMAP", true)
-
-			const noiseTexture = this.fullscreenMaterial.uniforms.blueNoiseTexture.value
-			if (noiseTexture) {
-				const { width, height } = noiseTexture.source.data
-				mrtMaterial.uniforms.blueNoiseTexture.value = noiseTexture
-				mrtMaterial.uniforms.blueNoiseRepeat.value.set(
-					this.renderTarget.width / width,
-					this.renderTarget.height / height
-				)
-			}
-
-			mrtMaterial.uniforms.resolution.value.set(this.renderTarget.width, this.renderTarget.height)
-			mrtMaterial.uniforms.frame.value = this.frame
-			mrtMaterial.uniforms.cameraMoved.value = cameraMoved
-
-			c.visible = isChildMaterialRenderable(c, originalMaterial)
-
-			const origRoughness = originalMaterial.roughness ?? 1
-
-			mrtMaterial.uniforms.roughness.value =
-				this.ssgiEffect.selection.size === 0 || this.ssgiEffect.selection.has(c) ? origRoughness : 10e10
-
-			mrtMaterial.uniforms.metalness.value = c.material.metalness ?? 0
-			mrtMaterial.uniforms.emissiveIntensity.value = c.material.emissiveIntensity ?? 0
-			mrtMaterial.uniforms.opacity.value = originalMaterial.opacity
-
-			c.material = mrtMaterial
-		}
-	}
-
-	unsetMRTMaterialInScene() {
-		for (const c of this.visibleMeshes) {
-			c.visible = true
-
-			// set material back to the original one
-			const [originalMaterial] = this.cachedMaterials.get(c)
-
-			c.material = originalMaterial
-		}
-	}
-
 	render(renderer) {
 		this.frame = (this.frame + this.ssgiEffect.spp) % 65536
 
-		const { background } = this._scene
-
-		this._scene.background = backgroundColor
-
-		this.setMRTMaterialInScene()
-
-		renderer.setRenderTarget(this.gBuffersRenderTarget)
-		renderer.render(this._scene, this._camera)
-
-		this.unsetMRTMaterialInScene()
+		// render G-Buffers
+		this.gBufferPass.render(renderer)
 
 		// update uniforms
 		this.fullscreenMaterial.uniforms.frame.value = this.frame
@@ -234,23 +80,7 @@ export class SSGIPass extends Pass {
 		this.fullscreenMaterial.uniforms.viewMatrix.value.copy(this._camera.matrixWorldInverse)
 		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.ssgiEffect.ssgiComposePass.renderTarget.texture
 
-		const noiseTexture = this.fullscreenMaterial.uniforms.blueNoiseTexture.value
-		if (noiseTexture) {
-			const { width, height } = noiseTexture.source.data
-
-			this.fullscreenMaterial.uniforms.blueNoiseRepeat.value.set(
-				this.renderTarget.width / width,
-				this.renderTarget.height / height
-			)
-		}
-
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)
-
-		// reset state
-		this.lastCameraPosition.copy(this._camera.position)
-		this.lastCameraQuaternion.copy(this._camera.quaternion)
-
-		this._scene.background = background
 	}
 }

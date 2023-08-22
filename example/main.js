@@ -352,10 +352,10 @@ const initScene = async () => {
 		rings: 5,
 		samples: 8,
 		radius: 8,
-		phi: 0.26100000000000007,
+		phi: 0.10000000000000006,
 		lumaPhi: 30,
-		depthPhi: 2.716999999999997,
-		normalPhi: 7.609,
+		depthPhi: 4.8909999999999965,
+		normalPhi: 16.304000000000002,
 		roughnessPhi: 41.304,
 		envBlur: 0,
 		importanceSampling: true,
@@ -490,7 +490,7 @@ const initScene = async () => {
 		fxaaPass = new POSTPROCESSING.EffectPass(camera, fxaaEffect)
 
 		taaPass = new TAAPass(camera)
-		composer.addPass(taaPass)
+		// composer.addPass(taaPass)
 
 		if (!isAoDemo) {
 			if (fps >= 256) {
