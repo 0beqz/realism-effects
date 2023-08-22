@@ -115,7 +115,7 @@ void main() {
   vec3 denoised = texel.rgb * totalWeight;
   vec3 denoised2 = texel2.rgb * totalWeight2;
 
-  float r = random.a * exp(-pixelAge * 0.005) * radius;
+  float r = 1. + random.a * exp(-pixelAge * 0.005) * radius;
 
   for (int i = 0; i < samples; i++) {
     vec2 offset = r * rotationMatrix * poissonDisk[i];
