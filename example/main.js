@@ -160,10 +160,6 @@ if (isAoDemo) {
 }
 
 const composer = new POSTPROCESSING.EffectComposer(renderer)
-if (false) {
-	const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
-	composer.addPass(renderPass)
-}
 
 const lightParams = {
 	yaw: 55,
@@ -175,6 +171,14 @@ const light = new DirectionalLight(0xffffff, lightParams.intensity)
 light.updateMatrixWorld()
 light.castShadow = true
 // scene.add(light)
+
+const fog = new THREE.FogExp2(0xffffff, 0.025)
+scene.fog = fog
+
+if (scene.getObjectByProperty("isDirectionalLight", true)) {
+	const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
+	composer.addPass(renderPass)
+}
 
 renderer.shadowMap.enabled = true
 renderer.shadowMap.autoUpdate = false
