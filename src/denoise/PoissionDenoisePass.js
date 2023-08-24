@@ -1,6 +1,6 @@
 /* eslint-disable camelcase */
 import { Pass } from "postprocessing"
-import { HalfFloatType, GLSL3, Matrix4, ShaderMaterial, Vector2, WebGLMultipleRenderTargets } from "three"
+import { GLSL3, HalfFloatType, ShaderMaterial, Vector2, WebGLMultipleRenderTargets } from "three"
 // eslint-disable-next-line camelcase
 
 import vertexShader from "../utils/shader/basic.vert"
@@ -42,9 +42,10 @@ export class PoissionDenoisePass extends Pass {
 				inputTexture: { value: null },
 				inputTexture2: { value: null },
 				gBufferTexture: { value: null },
-				projectionMatrixInverse: { value: new Matrix4() },
-				cameraMatrixWorld: { value: new Matrix4() },
-				viewMatrix: { value: new Matrix4() },
+				projectionMatrix: { value: camera.projectionMatrix },
+				projectionMatrixInverse: { value: camera.projectionMatrixInverse },
+				cameraMatrixWorld: { value: camera.matrixWorld },
+				viewMatrix: { value: camera.matrixWorldInverse },
 				radius: { value: defaultPoissonBlurOptions.radius },
 				phi: { value: defaultPoissonBlurOptions.phi },
 				lumaPhi: { value: defaultPoissonBlurOptions.lumaPhi },
@@ -70,9 +71,6 @@ export class PoissionDenoisePass extends Pass {
 
 		uniforms["inputTexture"].value = this.inputTexture
 		uniforms["depthTexture"].value = depthTexture
-		uniforms["projectionMatrixInverse"].value = camera.projectionMatrixInverse
-		uniforms["cameraMatrixWorld"].value = camera.matrixWorld
-		uniforms["viewMatrix"].value = camera.matrixWorldInverse
 		uniforms["depthPhi"].value = options.depthPhi
 		uniforms["normalPhi"].value = options.normalPhi
 

@@ -3,6 +3,7 @@ varying vec2 vUv;
 uniform sampler2D inputTexture;
 uniform sampler2D inputTexture2;
 uniform sampler2D depthTexture;
+uniform mat4 projectionMatrix;
 uniform mat4 projectionMatrixInverse;
 uniform mat4 cameraMatrixWorld;
 uniform float radius;
@@ -38,6 +39,15 @@ float distToPlane(const vec3 worldPos, const vec3 neighborWorldPos,
   float distToPlane = abs(dot(toCurrent, worldNormal));
 
   return distToPlane;
+}
+
+vec2 viewSpaceToScreenSpace(const vec3 position) {
+  vec4 projectedCoord = projectionMatrix * vec4(position, 1.0);
+  projectedCoord.xy /= projectedCoord.w;
+  // [-1, 1] --> [0, 1] (NDC to screen position)
+  projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;
+
+  return projectedCoord.xy;
 }
 
 void toDenoiseSpace(inout vec3 color) { color = log(color + 1.); }
@@ -101,7 +111,7 @@ Neighbor getNeighborWeight(vec2 neighborUv, bool isDiffuseGi) {
 
   if (isDiffuseGi) {
     float wDiff = w * pow(wBasic, phi / w) * exp(-lumaDiff * lumaPhi);
-    wDiff += (centerObliqueness * centerDarkness) * w;
+    // wDiff += (centerObliqueness * centerDarkness) * w;
 
     return Neighbor(neighborDiffuseGi, wDiff);
   } else {
@@ -110,7 +120,7 @@ Neighbor getNeighborWeight(vec2 neighborUv, bool isDiffuseGi) {
     wSpec *= mix(exp(-distanceToCenter * 20. - normalDiff * 100.), 1.,
                  centerRoughnessPow4);
 
-    wSpec += centerObliqueness * w2;
+    // wSpec += centerObliqueness * w2;
 
     return Neighbor(neighborSpecularGi, wSpec);
   }
@@ -128,6 +138,13 @@ void main() {
 
   vec4 centerDiffuseGi = textureLod(inputTexture, vUv, 0.0);
   vec4 centerSpecularGi = textureLod(inputTexture2, vUv, 0.0);
+
+  // if (vUv.x < 0.5) {
+  //   gOutput0 = centerDiffuseGi;
+  //   gOutput1 = centerSpecularGi;
+
+  //   return;
+  // }
 
   toDenoiseSpace(centerDiffuseGi.rgb);
   toDenoiseSpace(centerSpecularGi.rgb);
@@ -171,8 +188,17 @@ void main() {
   // scale the radius depending on the pixel's age
   float r = 1. + random.a * exp(-(a + a2) * 0.001) * radius;
 
+  // vec3 viewNormal = (viewMatrix * vec4(centerMat.normal, 0.0)).xyz;
+  // vec3 tangent = normalize(cross(viewNormal, vec3(0.0, 1.0, 0.0)));
+  // vec3 bitangent = normalize(cross(viewNormal, tangent));
+
   for (int i = 0; i < samples; i++) {
+    // vec2 offset =
+    //     r * rotationMatrix *
+    //     (poissonDisk[i].x * tangent.xy + poissonDisk[i].y * bitangent.xy);
+
     vec2 offset = r * rotationMatrix * poissonDisk[i];
+
     vec2 neighborUv = vUv + offset;
 
     Neighbor neighborDiffuse = getNeighborWeight(neighborUv, true);
@@ -192,6 +218,9 @@ void main() {
 
   toLinearSpace(denoisedDiffuse);
   toLinearSpace(denoisedSpecular);
+
+  // vec3 v = random.x * tangent + random.y * bitangent;
+  // v.xy = viewSpaceToScreenSpace(v);
 
   gOutput0 = vec4(denoisedDiffuse, centerDiffuseGi.a);
   gOutput1 = vec4(denoisedSpecular, centerSpecularGi.a);
