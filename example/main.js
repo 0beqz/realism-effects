@@ -339,7 +339,7 @@ document.addEventListener("mousemove", ev => {
 	lightParams.pitch = (1 - ev.clientY / window.innerHeight) * 180
 
 	refreshLighting()
-	if (ssgiEffect) ssgiEffect.reset()
+	// if (ssgiEffect) ssgiEffect.reset()
 	if (taaPass) taaPass.needsUpdate = true
 })
 
@@ -358,11 +358,11 @@ const initScene = async () => {
 		denoiseSpecular: 25.54,
 		rings: 5,
 		samples: 8,
-		radius: 8,
+		radius: 14,
 		phi: 0.26100000000000007,
-		lumaPhi: 30,
-		depthPhi: 2.716999999999997,
-		normalPhi: 7.609,
+		lumaPhi: 19.022,
+		depthPhi: 6.521999999999997,
+		normalPhi: 17.391000000000002,
 		roughnessPhi: 41.304,
 		envBlur: 0,
 		importanceSampling: true,

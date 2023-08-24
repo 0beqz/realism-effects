@@ -199,7 +199,8 @@ void main() {
     envPdf = sampleEquirectProbability(envMapInfo, random.rg, envMisDir);
     envMisDir = normalize((vec4(envMisDir, 0.) * cameraMatrixWorld).xyz);
 
-    envMisProbability = 0.25 + dot(envMisDir, viewNormal) * 0.5;
+    envMisProbability = 0.5 + dot(envMisDir, viewNormal) * 0.5;
+    envMisProbability *= sqrt(mat.roughness);
     isEnvMisSample = random.a < envMisProbability;
 
     envMisMultiplier = 1. / (1. - envMisProbability);

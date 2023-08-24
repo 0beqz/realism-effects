@@ -117,7 +117,7 @@ Neighbor getNeighborWeight(vec2 neighborUv, bool isDiffuseGi) {
   } else {
     float wSpec = w2 * pow(wBasic, phi / w2) * exp(-lumaDiff2 * lumaPhi);
 
-    wSpec *= mix(exp(-distanceToCenter * 20. - normalDiff * 100.), 1.,
+    wSpec *= mix(exp(-distanceToCenter * 50. - normalDiff * 100.), 1.,
                  centerRoughnessPow4);
 
     // wSpec += centerObliqueness * w2;

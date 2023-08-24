@@ -81,7 +81,7 @@ export class SSGIEffect extends Effect {
 
 		options.neighborhoodClamp = [false, true]
 		options.neighborhoodClampRadius = 2
-		options.neighborhoodClampIntensity = 1
+		options.neighborhoodClampIntensity = 0.5
 
 		const textureCount = options.diffuseOnly || options.specularOnly ? 1 : 2
 
@@ -150,7 +150,7 @@ export class SSGIEffect extends Effect {
 			render.call(this, ...args)
 		}
 
-		this.ssgiComposePass = new SSGIComposePass(camera)
+		this.ssgiComposePass = new SSGIComposePass(camera, velocityDepthNormalPass.texture)
 
 		this.makeOptionsReactive(options)
 	}

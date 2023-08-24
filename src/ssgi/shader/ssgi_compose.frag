@@ -20,29 +20,29 @@ void mainImage(const in vec4 inputColor, const in vec2 uv,
     vec3 ssgiClrBright = pow(max(ssgiClr, vec3(0.)), vec3(2.));
     ssgiClr += ssgiClrBright;
 
-    // switch (toneMapping) {
-    // case 1:
-    //   ssgiClr = LinearToneMapping(ssgiClr);
-    //   break;
+    switch (toneMapping) {
+    case 1:
+      ssgiClr = LinearToneMapping(ssgiClr);
+      break;
 
-    // case 2:
-    //   ssgiClr = ReinhardToneMapping(ssgiClr);
-    //   break;
+    case 2:
+      ssgiClr = ReinhardToneMapping(ssgiClr);
+      break;
 
-    // case 3:
-    //   ssgiClr = OptimizedCineonToneMapping(ssgiClr);
-    //   break;
+    case 3:
+      ssgiClr = OptimizedCineonToneMapping(ssgiClr);
+      break;
 
-    // case 4:
-    //   ssgiClr = ACESFilmicToneMapping(ssgiClr);
-    //   break;
+    case 4:
+      ssgiClr = ACESFilmicToneMapping(ssgiClr);
+      break;
 
-    // case 5:
-    //   ssgiClr = CustomToneMapping(ssgiClr);
-    //   break;
-    // }
+    case 5:
+      ssgiClr = CustomToneMapping(ssgiClr);
+      break;
+    }
 
-    // ssgiClr *= toneMappingExposure;
+    ssgiClr *= toneMappingExposure;
   }
 
   outputColor = vec4(ssgiClr, 1.0);

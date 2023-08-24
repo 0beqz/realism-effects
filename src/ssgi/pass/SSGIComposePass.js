@@ -6,7 +6,7 @@ import gbuffer_packing from "../../utils/shader/gbuffer_packing.glsl"
 import ssgi_poisson_compose_functions from "../shader/ssgi_poisson_compose_functions.glsl"
 
 export class SSGIComposePass extends Pass {
-	constructor(camera) {
+	constructor(camera, velocityTexture) {
 		super("SSGIComposePass")
 
 		this._camera = camera
@@ -20,6 +20,7 @@ export class SSGIComposePass extends Pass {
 			fragmentShader: /* glsl */ `
             varying vec2 vUv;
             uniform sampler2D depthTexture;
+            uniform sampler2D velocityTexture;
             uniform sampler2D diffuseGiTexture;
             uniform sampler2D specularGiTexture;
             uniform mat4 cameraMatrixWorld;
@@ -35,7 +36,8 @@ export class SSGIComposePass extends Pass {
             ${ssgi_poisson_compose_functions}
 
             void main() {
-                float depth = textureLod(depthTexture, vUv, 0.).r;
+                // float depth = textureLod(depthTexture, vUv, 0.).r;
+				float depth = textureLod(velocityTexture, vUv, 0.).a;
 
 				if(depth == 0.){
 					discard;
@@ -70,6 +72,7 @@ export class SSGIComposePass extends Pass {
 				cameraFar: { value: camera.far },
 				gBufferTexture: { value: null },
 				depthTexture: { value: null },
+				velocityTexture: { value: velocityTexture },
 				diffuseGiTexture: { value: null },
 				specularGiTexture: { value: null }
 			},

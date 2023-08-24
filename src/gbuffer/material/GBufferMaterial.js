@@ -135,7 +135,7 @@ export class GBufferMaterial extends ShaderMaterial {
 
                 void main() {
                     // !todo: properly implement alpha hashing
-                    if(!cameraMoved){
+                    // if(!cameraMoved){
                         float alpha = opacity;
 
                         #ifdef USE_ALPHAMAP
@@ -152,7 +152,7 @@ export class GBufferMaterial extends ShaderMaterial {
                                 return;
                             }
                         }
-                    }
+                    // }
                
 
                     //! todo: find better solution

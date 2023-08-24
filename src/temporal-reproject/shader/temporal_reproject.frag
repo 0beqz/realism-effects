@@ -72,7 +72,8 @@ void main() {
 
   texIndex = 0;
 
-  bool didMove = dot(velocity, velocity) > 0.000000001;
+  float movement = dot(velocity, velocity);
+  bool didMove = movement > 0.000000001;
 
   vec3 worldPos = screenSpaceToWorldSpace(dilatedUv, depth, cameraMatrixWorld,
                                           projectionMatrixInverse);
@@ -188,6 +189,14 @@ void main() {
 
       temporalReprojectMix =
           min(1. - 1. / (accumulatedTexel[i].a + 1.0), maxValue);
+
+      // float lumDiff = min(abs(luminance(inputTexel[i].rgb) -
+      //                         luminance(accumulatedTexel[i].rgb)),
+      //                     1.);
+
+      // float lumFactor = clamp(lumDiff * 1. - 0.5, 0., 1.);
+      // temporalReprojectMix = mix(temporalReprojectMix, 0.9,
+      //                            min(lumFactor * movement * 100000000., 1.));
     }
 
     outputColor =

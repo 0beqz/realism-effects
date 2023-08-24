@@ -94,6 +94,10 @@ export class VelocityDepthNormalPass extends Pass {
 		this.renderDepth = renderDepth
 	}
 
+	get texture() {
+		return this.renderTarget.texture
+	}
+
 	setVelocityDepthNormalMaterialInScene() {
 		this.visibleMeshes = getVisibleChildren(this._scene)
 
