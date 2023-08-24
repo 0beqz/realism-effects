@@ -172,8 +172,8 @@ light.updateMatrixWorld()
 light.castShadow = true
 // scene.add(light)
 
-const fog = new THREE.FogExp2(0xffffff, 0.025)
-scene.fog = fog
+// const fog = new THREE.FogExp2(0xffffff, 0.025)
+// scene.fog = fog
 
 if (scene.getObjectByProperty("isDirectionalLight", true)) {
 	const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
