@@ -1,5 +1,7 @@
+// source:
+// https://github.com/mrdoob/three.js/blob/342946c8392639028da439b6dc0597e58209c696/examples/js/shaders/SAOShader.js#L123
 float getViewZ(const in float depth) {
-#if PERSPECTIVE_CAMERA == 1
+#ifdef PERSPECTIVE_CAMERA
   return perspectiveDepthToViewZ(depth, cameraNear, cameraFar);
 #else
   return orthographicDepthToViewZ(depth, cameraNear, cameraFar);
@@ -8,11 +10,13 @@ float getViewZ(const in float depth) {
 
 // source:
 // https://github.com/mrdoob/three.js/blob/dev/examples/js/shaders/SSAOShader.js
-vec3 getViewPosition(const float depth) {
-  float clipW = projectionMatrix[2][3] * depth + projectionMatrix[3][3];
-  vec4 clipPosition = vec4((vec3(vUv, depth) - 0.5) * 2.0, 1.0);
+vec3 getViewPosition(float viewZ) {
+  float clipW = projectionMatrix[2][3] * viewZ + projectionMatrix[3][3];
+  vec4 clipPosition = vec4((vec3(vUv, viewZ) - 0.5) * 2.0, 1.0);
   clipPosition *= clipW;
-  return (projectionMatrixInverse * clipPosition).xyz;
+  vec3 p = (projectionMatrixInverse * clipPosition).xyz;
+  p.z = -viewZ;
+  return p;
 }
 
 vec3 F_Schlick(const vec3 f0, const float theta) {

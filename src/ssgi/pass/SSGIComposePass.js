@@ -46,7 +46,7 @@ export class SSGIComposePass extends Pass {
 
                 vec3 viewNormal = (vec4(mat.normal, 0.) * cameraMatrixWorld).xyz;
 
-				float viewZ = getViewZ(depth);
+				float viewZ = -getViewZ(depth);
 
                 // view-space position of the current texel
 				vec3 viewPos = getViewPosition(viewZ);
@@ -73,14 +73,13 @@ export class SSGIComposePass extends Pass {
 				diffuseGiTexture: { value: null },
 				specularGiTexture: { value: null }
 			},
-			defines: {
-				PERSPECTIVE_CAMERA: 1
-			},
 			blending: NoBlending,
 			depthWrite: false,
 			depthTest: false,
 			toneMapped: false
 		})
+
+		if (camera.isPerspectiveCamera) this.fullscreenMaterial.defines.PERSPECTIVE_CAMERA = ""
 	}
 
 	dispose() {

@@ -48,7 +48,6 @@ vec2 invTexSize;
 
 vec2 RayMarch(inout vec3 dir, inout vec3 hitPos, vec4 random);
 vec2 BinarySearch(inout vec3 dir, inout vec3 hitPos);
-float fastGetViewZ(const float depth);
 
 struct RayTracingInfo {
   float NoV;            // dot(n, v)
@@ -105,22 +104,17 @@ void main() {
 
   Material mat = getMaterial(gBufferTexture, vUv);
 
-  // ! todo: use something else than roughness = 1.0 to detect deselected meshes
-  if (mat.roughness > maxRoughness) {
-    discard;
-    return;
-  }
-
   invTexSize = 1. / resolution;
 
   mat.roughness = clamp(mat.roughness * mat.roughness, 0.000001, 1.0);
 
   // pre-calculated variables for the "fastGetViewZ" function
-  nearMinusFar = cameraNear - cameraFar;
-  nearMulFar = cameraNear * cameraFar;
-  farMinusNear = cameraFar - cameraNear;
+  // nearMinusFar = cameraNear - cameraFar;
+  // nearMulFar = cameraNear * cameraFar;
+  // farMinusNear = cameraFar - cameraNear;
+
   // view-space depth
-  float depth = fastGetViewZ(unpackedDepth);
+  float depth = getViewZ(unpackedDepth);
 
   // view-space position of the current texel
   vec3 viewPos = getViewPosition(depth);
@@ -154,10 +148,6 @@ void main() {
   float NoL, NoH, LoH, VoH, diffW, specW, invW, pdf, envPdf, diffuseSamples,
       specularSamples, envMisProbability, envMisMultiplier;
   bool isDiffuseSample, isEnvMisSample, isMissedRay;
-
-  int sampleCounter = 0;
-
-  // start taking samples
 
 #pragma unroll_loop_start
   for (int i = 0; i < spp; i++) {
@@ -461,7 +451,7 @@ vec2 RayMarch(inout vec3 dir, inout vec3 hitPos, vec4 random) {
     uv = viewSpaceToScreenSpace(hitPos);
 
     float unpackedDepth = textureLod(depthTexture, uv, 0.0).r;
-    float depth = fastGetViewZ(unpackedDepth);
+    float depth = getViewZ(unpackedDepth);
 
     rayHitDepthDifference = depth - hitPos.z;
 
@@ -492,7 +482,7 @@ vec2 BinarySearch(inout vec3 dir, inout vec3 hitPos) {
     uv = viewSpaceToScreenSpace(hitPos);
 
     float unpackedDepth = unpackRGBAToDepth(textureLod(depthTexture, uv, 0.0));
-    float depth = fastGetViewZ(unpackedDepth);
+    float depth = getViewZ(unpackedDepth);
 
     rayHitDepthDifference = depth - hitPos.z;
 
@@ -503,14 +493,4 @@ vec2 BinarySearch(inout vec3 dir, inout vec3 hitPos) {
   uv = viewSpaceToScreenSpace(hitPos);
 
   return uv;
-}
-
-// source:
-// https://github.com/mrdoob/three.js/blob/342946c8392639028da439b6dc0597e58209c696/examples/js/shaders/SAOShader.js#L123
-float fastGetViewZ(const float depth) {
-#ifdef PERSPECTIVE_CAMERA
-  return nearMulFar / (farMinusNear * depth - cameraFar);
-#else
-  return depth * nearMinusFar - cameraNear;
-#endif
 }

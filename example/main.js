@@ -57,7 +57,7 @@ scene.matrixWorldAutoUpdate = false
 window.scene = scene
 
 const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.01, 250)
-// const camera = new THREE.OrthographicCamera(-10, 10, 10, -10, 0.01, 250)
+// const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.01, 250)
 
 // const w = window.innerWidth
 // const h = window.innerHeight
@@ -613,6 +613,18 @@ const resize = () => {
 
 	renderer.setSize(window.innerWidth, window.innerHeight)
 	composer.setSize(window.innerWidth, window.innerHeight)
+
+	const w = window.innerWidth
+	const h = window.innerHeight
+
+	if (camera.isOrthographicCamera) {
+		camera.left = w / -2 / 100
+		camera.right = w / 2 / 100
+		camera.top = h / 2 / 100
+		camera.bottom = h / -2 / 100
+
+		camera.updateProjectionMatrix()
+	}
 }
 
 // event handlers
