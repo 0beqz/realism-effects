@@ -11,7 +11,7 @@
  * @property {Number} [denoiseDiffuse] diffuse luminance factor of the denoiser, higher values will denoise areas with varying luminance more aggressively
  * @property {Number} [denoiseSpecular] specular luminance factor of the denoiser, higher values will denoise areas with varying luminance more aggressively
  * @property {Number} [depthPhi] depth factor of the denoiser, higher values will use neighboring areas with different depth values more resulting in less noise but loss of details
- * @property {Number} [depthPhi] normals factor of the denoiser, higher values will use neighboring areas with different normals more resulting in less noise but loss of details and sharpness
+ * @property {Number} [normalPhi] normals factor of the denoiser, higher values will use neighboring areas with different normals more resulting in less noise but loss of details and sharpness
  * @property {Number} [roughnessPhi] roughness factor of the denoiser setting how much the denoiser should only apply the blur to rougher surfaces, a value of 0 means the denoiser will blur mirror-like surfaces the same as rough surfaces
  * @property {Number} [directLightMultiplier] how much to boost direct lighting
  * @property {Number} [envBlur] higher values will result in lower mipmaps being sampled which will cause less noise but also less detail regarding environment lighting
