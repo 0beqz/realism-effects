@@ -76,7 +76,7 @@ export class PoissionDenoisePass extends Pass {
 		uniforms["normalPhi"].value = options.normalPhi
 
 		if (options.normalTexture) {
-			uniforms["normalTexture"].value = options.normalTexture
+			uniforms["normalTexture"] = { value : options.normalTexture }
 		} else {
 			this.fullscreenMaterial.defines.NORMAL_IN_RGB = ""
 		}
