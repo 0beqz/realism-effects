@@ -4,9 +4,9 @@ import fragmentShader from "../shader/ssgi.frag"
 // eslint-disable-next-line camelcase
 import ssgi_utils from "../shader/ssgi_utils.frag"
 // eslint-disable-next-line camelcase
+import { useBlueNoise } from "../../utils/BlueNoiseUtils"
 import gbuffer_packing from "../../utils/shader/gbuffer_packing.glsl"
 import { EquirectHdrInfoUniform } from "../utils/EquirectHdrInfoUniform"
-import { useBlueNoise } from "../../utils/BlueNoiseUtils"
 
 export class SSGIMaterial extends ShaderMaterial {
 	constructor() {

@@ -4,7 +4,6 @@ uniform sampler2D acculumatedTexture;
 uniform float cameraNotMovedFrames;
 
 void main() {
-  // vec4 color = cameraMoved ? vec4(0., 1., 0., 1.) : vec4(1., 0., 0., 1.);
   vec4 color = linearToOutputTexel(textureLod(inputTexture, vUv, 0.));
 
   if (cameraNotMovedFrames == 0.) {

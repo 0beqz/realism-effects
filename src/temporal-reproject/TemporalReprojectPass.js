@@ -5,6 +5,7 @@ import {
 	HalfFloatType,
 	LinearFilter,
 	Matrix4,
+	NearestFilter,
 	Quaternion,
 	RGBAFormat,
 	SRGBColorSpace,

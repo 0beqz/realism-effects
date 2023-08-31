@@ -38,6 +38,7 @@ export class SSGIComposePass extends Pass {
             void main() {
                 // float depth = textureLod(depthTexture, vUv, 0.).r;
 				float depth = textureLod(velocityTexture, vUv, 0.).a;
+				vec3 normal = unpackNormal(textureLod(velocityTexture, vUv, 0.).b);
 
 				if(depth == 0.){
 					discard;
@@ -46,7 +47,7 @@ export class SSGIComposePass extends Pass {
 
                 Material mat = getMaterial(gBufferTexture, vUv);
 
-                vec3 viewNormal = (vec4(mat.normal, 0.) * cameraMatrixWorld).xyz;
+                vec3 viewNormal = (vec4(normal, 0.) * cameraMatrixWorld).xyz;
 
 				float viewZ = -getViewZ(depth);
 

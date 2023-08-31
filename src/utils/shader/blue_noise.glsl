@@ -36,7 +36,7 @@ ivec2 shift2(ivec2 size) {
 }
 
 // needs a uniform called "texSize" with the size of the render target
-vec4 blueNoise(int index) {
+vec4 blueNoise(vec2 uv, int index) {
   rng_initialize(vUv * resolution, index);
 
   vec4 blueNoise =
@@ -55,4 +55,5 @@ vec4 blueNoise(int index) {
   return blueNoise;
 }
 
-vec4 blueNoise() { return blueNoise(int(blueNoiseIndex)); }
+vec4 blueNoise() { return blueNoise(vUv, int(blueNoiseIndex)); }
+vec4 blueNoise(vec2 uv) { return blueNoise(uv, int(blueNoiseIndex)); }

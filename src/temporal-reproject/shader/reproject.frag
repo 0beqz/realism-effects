@@ -126,8 +126,7 @@ void getVelocityNormalDepth(inout vec2 dilatedUv, out vec2 vel, out vec3 normal,
 #endif
 }
 
-#define PLANE_DISTANCE 2.0
-#define NORMAL_DISTANCE 0.1
+#define PLANE_DISTANCE 2.5
 #define VELOCITY_DISTANCE 0.005
 
 bool planeDistanceDisocclusionCheck(const vec3 worldPos,
@@ -140,12 +139,6 @@ bool planeDistanceDisocclusionCheck(const vec3 worldPos,
   return distToPlane > PLANE_DISTANCE * distFactor;
 }
 
-bool normalDisocclusionCheck(vec3 worldNormal, vec3 lastWorldNormal,
-                             const float distFactor) {
-  return pow(abs(dot(worldNormal, lastWorldNormal)), 2.) <
-         NORMAL_DISTANCE * distFactor;
-}
-
 bool velocityDisocclusionCheck(const vec2 velocity, const vec2 lastVelocity,
                                const float distFactor) {
   return length(velocity - lastVelocity) > VELOCITY_DISTANCE * distFactor;
@@ -154,7 +147,7 @@ bool velocityDisocclusionCheck(const vec2 velocity, const vec2 lastVelocity,
 bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos,
                            const vec3 worldNormal, const bool isHitPoint) {
   // if (vUv.x < 0.5)
-  // return false;
+  // return true;
   if (reprojectedUv.x > 1.0 || reprojectedUv.x < 0.0 || reprojectedUv.y > 1.0 ||
       reprojectedUv.y < 0.0)
     return false;
@@ -186,10 +179,6 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos,
   float distFactor = 1. + 1. / (viewZ + 1.0);
 
   if (velocityDisocclusionCheck(velocity, lastVelocity, distFactor))
-    return false;
-
-  // ! todo: investigate normal disocclusion check
-  if (normalDisocclusionCheck(worldNormal, lastWorldNormal, distFactor))
     return false;
 
   if (planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal,
@@ -323,9 +312,6 @@ vec2 sampleBlocky(vec2 p) {
 }
 
 vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv) {
-  // ! todo: investigate using sampleBlocky
-  // vec2 uv = flatness > 0.001 ? sampleBlocky(reprojectedUv) : reprojectedUv;
-
   vec4 blocky = SampleTextureCatmullRom(tex, reprojectedUv, 1. / invTexSize);
 
   return blocky;

@@ -1,7 +1,7 @@
 import { getGPUTier } from "detect-gpu"
 import dragDrop from "drag-drop"
 import * as POSTPROCESSING from "postprocessing"
-import { SSGIEffect, TRAAEffect } from "realism-effects"
+import { MotionBlurEffect, SSGIEffect, TRAAEffect } from "realism-effects"
 import Stats from "stats-gl"
 import * as THREE from "three"
 import {
@@ -360,9 +360,9 @@ const initScene = async () => {
 		samples: 8,
 		radius: 8,
 		phi: 0.26100000000000007,
-		lumaPhi: 30,
-		depthPhi: 2.716999999999997,
-		normalPhi: 7.609,
+		lumaPhi: 5.977999999999999,
+		depthPhi: 9.238999999999997,
+		normalPhi: 18.477999999999998,
 		roughnessPhi: 41.304,
 		envBlur: 0,
 		importanceSampling: true,
@@ -478,7 +478,9 @@ const initScene = async () => {
 
 				composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, vignetteEffect, lutEffect))
 
-				// const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass)
+				const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass, {
+					intensity: 1
+				})
 
 				composer.addPass(new POSTPROCESSING.EffectPass(camera, sharpnessEffect))
 			} else {

@@ -47,32 +47,33 @@ ivec2 shift2() {
 
 void mainImage(const in vec4 inputColor, const in vec2 uv,
                out vec4 outputColor) {
-  vec4 velocity = textureLod(velocityTexture, vUv, 0.0);
+  vec2 velocity = textureLod(velocityTexture, vUv, 0.0).xy;
+  float movement = dot(velocity, velocity);
+  bool didMove = movement > 0.000000001;
 
-  if (dot(velocity.xyz, velocity.xyz) == 0.0) {
-    outputColor = inputColor;
+  if (!didMove) {
     return;
   }
 
-  velocity.xy *= intensity;
+  velocity *= intensity;
 
   rng_initialize(vUv * resolution, frame);
 
   vec2 blueNoise = texelFetch(blueNoiseTexture, shift2(), 0).rg - 0.5;
 
-  vec2 jitterOffset = jitter * velocity.xy * blueNoise;
+  vec2 jitterOffset = jitter * velocity * blueNoise;
 
   float frameSpeed = (1. / 100.) / deltaTime;
 
   // UVs will be centered around the target pixel (see
   // http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html)
-  vec2 startUv = vUv + (jitterOffset - velocity.xy * 0.5) * frameSpeed;
-  vec2 endUv = vUv + (jitterOffset + velocity.xy * 0.5) * frameSpeed;
+  vec2 startUv = vUv + (jitterOffset - velocity * 0.5) * frameSpeed;
+  vec2 endUv = vUv + (jitterOffset + velocity * 0.5) * frameSpeed;
 
   startUv = max(vec2(0.), startUv);
   endUv = min(vec2(1.), endUv);
 
-  vec3 motionBlurredColor;
+  vec3 motionBlurredColor = inputColor.rgb;
   for (float i = 0.0; i <= samplesFloat; i++) {
     vec2 reprojectedUv = mix(startUv, endUv, i / samplesFloat);
     vec3 neighborColor = textureLod(inputTexture, reprojectedUv, 0.0).rgb;
@@ -80,7 +81,7 @@ void mainImage(const in vec4 inputColor, const in vec2 uv,
     motionBlurredColor += neighborColor;
   }
 
-  motionBlurredColor /= samplesFloat;
+  motionBlurredColor /= samplesFloat + 2.;
 
   outputColor = vec4(motionBlurredColor, inputColor.a);
 }

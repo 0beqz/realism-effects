@@ -9,11 +9,14 @@ import { SVGF } from "./svgf/SVGF"
 import { TemporalReprojectPass } from "./temporal-reproject/TemporalReprojectPass"
 import { PoissionDenoisePass } from "./denoise/PoissionDenoisePass"
 import { HBAOEffect } from "./hbao/HBAOEffect"
+import { TAAPass } from "./taa/TAAPass"
+import { SharpnessEffect } from "./sharpness/SharpnessEffect"
 
 export {
 	SSGIEffect,
 	SSREffect,
 	SSDGIEffect,
+	TAAPass,
 	TRAAEffect,
 	MotionBlurEffect,
 	VelocityPass,
@@ -21,5 +24,6 @@ export {
 	TemporalReprojectPass,
 	SVGF,
 	PoissionDenoisePass,
-	HBAOEffect
+	HBAOEffect,
+	SharpnessEffect
 }

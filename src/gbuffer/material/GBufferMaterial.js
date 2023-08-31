@@ -145,7 +145,7 @@ export class GBufferMaterial extends ShaderMaterial {
                         #endif
 
                         if(alpha < 1.){
-                            float alphaThreshold = blueNoise().x;
+                            float alphaThreshold = blueNoise(screenUv).x;
 
                             if(alpha < alphaThreshold){
                                 discard;

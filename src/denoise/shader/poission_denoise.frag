@@ -20,7 +20,7 @@ layout(location = 1) out vec4 gOutput1;
 #include <common>
 #include <gbuffer_packing>
 
-#define luminance(a) min(log(dot(vec3(0.2125, 0.7154, 0.0721), a) + 1.), 0.5);
+#define luminance(a) log(dot(vec3(0.2125, 0.7154, 0.0721), a));
 
 vec3 getWorldPos(float depth, vec2 coord) {
   float z = depth * 2.0 - 1.0;
@@ -110,12 +110,12 @@ Neighbor getNeighborWeight(vec2 neighborUv, bool isDiffuseGi) {
                      roughnessDiff * roughnessPhi);
 
   if (isDiffuseGi) {
-    float wDiff = w * pow(wBasic, phi / w) * exp(-lumaDiff * lumaPhi);
+    float wDiff = w * pow(wBasic * exp(-lumaDiff * lumaPhi), phi / w);
     // wDiff += (centerObliqueness * centerDarkness) * w;
 
     return Neighbor(neighborDiffuseGi, wDiff);
   } else {
-    float wSpec = w2 * pow(wBasic, phi / w2) * exp(-lumaDiff2 * lumaPhi);
+    float wSpec = w2 * pow(wBasic * exp(-lumaDiff2 * lumaPhi), phi / w2);
 
     wSpec *= mix(exp(-distanceToCenter * 50. - normalDiff * 100.), 1.,
                  centerRoughnessPow4);
@@ -182,11 +182,11 @@ void main() {
 
   // the weights w, w2 are used to make the denoiser more aggressive the younger
   // the pixel is
-  w = smoothstep(0., 1., 1. / sqrt(a * 0.75 + 1.));
-  w2 = smoothstep(0., 1., 1. / sqrt(a2 * 0.75 + 1.));
+  w = 1. / sqrt(a * 0.75 + 1.);
+  w2 = 1. / sqrt(a2 * 0.75 + 1.);
 
   // scale the radius depending on the pixel's age
-  float r = 1. + random.a * exp(-(a + a2) * 0.001) * radius;
+  float r = 1. + sqrt(random.a) * exp(-(a + a2) * 0.001) * radius;
 
   // vec3 viewNormal = (viewMatrix * vec4(centerMat.normal, 0.0)).xyz;
   // vec3 tangent = normalize(cross(viewNormal, vec3(0.0, 1.0, 0.0)));

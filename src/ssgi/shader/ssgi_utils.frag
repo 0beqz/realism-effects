@@ -219,12 +219,14 @@ float equirectDirectionPdf(vec3 direction) {
   return 1.0 / (2.0 * PI * PI * sinTheta);
 }
 
+// for whatever reason, using names like "random" or "noise" for the blueNoise
+// param results in shader errors, e.g. "_urandom is not defined"
 // source: https://github.com/gkjohnson/three-gpu-pathtracer
-float sampleEquirectProbability(EquirectHdrInfo info, vec2 r,
+float sampleEquirectProbability(EquirectHdrInfo info, vec2 blueNoise,
                                 out vec3 direction) {
   // sample env map cdf
-  float v = textureLod(info.marginalWeights, vec2(r.x, 0.0), 0.).x;
-  float u = textureLod(info.conditionalWeights, vec2(r.y, v), 0.).x;
+  float v = textureLod(info.marginalWeights, vec2(blueNoise.x, 0.0), 0.).x;
+  float u = textureLod(info.conditionalWeights, vec2(blueNoise.y, v), 0.).x;
   vec2 uv = vec2(u, v);
 
   vec3 derivedDirection = equirectUvToDirection(uv);
