@@ -116,9 +116,7 @@ export class VelocityDepthNormalMaterial extends ShaderMaterial {
 
 					varying vec2 vUv;
 
-					#if defined( FLAT_SHADED ) || defined( USE_BUMPMAP ) || defined( TANGENTSPACE_NORMALMAP )
-						varying vec3 vViewPosition;
-					#endif
+					varying vec3 vViewPosition;
 					
                     ${velocity_vertex_pars}
         
@@ -142,17 +140,13 @@ export class VelocityDepthNormalMaterial extends ShaderMaterial {
 
 						${velocity_vertex_main}
 
-						#if defined( FLAT_SHADED ) || defined( USE_BUMPMAP ) || defined( TANGENTSPACE_NORMALMAP )
-							vViewPosition = - mvPosition.xyz;
-						#endif
+						vViewPosition = - mvPosition.xyz;
 
 						vUv = uv;
 
                     }`,
 			fragmentShader: /* glsl */ `
-					#if defined( FLAT_SHADED ) || defined( USE_BUMPMAP ) || defined( TANGENTSPACE_NORMALMAP )
-						varying vec3 vViewPosition;
-					#endif
+					varying vec3 vViewPosition;
 
 					${velocity_fragment_pars}
 					#include <packing>

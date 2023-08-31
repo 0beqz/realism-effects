@@ -12,7 +12,8 @@ import {
 	WebGLRenderTarget
 } from "three"
 import { VelocityDepthNormalMaterial } from "../material/VelocityDepthNormalMaterial.js"
-import { copyNecessaryProps, getVisibleChildren, keepMaterialMapUpdated } from "../../gbuffer/utils/GBufferUtils.js"
+import { copyNecessaryProps, keepMaterialMapUpdated } from "../../gbuffer/utils/GBufferUtils.js"
+import { getVisibleChildren } from "../../utils/SceneUtils.js"
 import { isChildMaterialRenderable } from "../../utils/SceneUtils.js"
 
 const backgroundColor = new Color(0)

@@ -67,7 +67,7 @@ float centerDepth;
 vec3 centerWorldPos;
 float centerLumDiffuse;
 float centerLumSpecular;
-float glossiness;
+float roughnessSpecularFactor;
 float w, w2;
 struct Neighbor {
   vec4 texel;
@@ -116,8 +116,8 @@ Neighbor getNeighborWeight(vec2 neighborUv, bool isDiffuseGi) {
     wBasic = mix(wBasic, exp(-normalDiff * 10.), w2);
     float wSpec = w2 * pow(wBasic * exp(-lumaDiff2 * lumaPhi), phi / w2);
 
-    wSpec *=
-        mix(exp(-distanceToCenter * 100. - normalDiff * 50.), w2, glossiness);
+    wSpec *= mix(exp(-distanceToCenter * 100. - normalDiff * 50.), w2,
+                 roughnessSpecularFactor);
 
     return Neighbor(neighborSpecularGi, wSpec);
   }
@@ -151,7 +151,8 @@ void main() {
   centerLumSpecular = luminance(centerSpecularGi.rgb);
 
   centerMat = getMaterial(gBufferTexture, vUv);
-  glossiness = 1. - centerMat.roughness * centerMat.roughness;
+  roughnessSpecularFactor = min(1., centerMat.roughness / 0.25);
+  roughnessSpecularFactor *= roughnessSpecularFactor;
 
   // ! todo: increase denoiser aggressiveness by distance
   // ! todo: use separate weights for diffuse and specular
