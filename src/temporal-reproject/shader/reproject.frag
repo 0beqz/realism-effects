@@ -147,7 +147,7 @@ bool velocityDisocclusionCheck(const vec2 velocity, const vec2 lastVelocity,
 bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos,
                            const vec3 worldNormal, const bool isHitPoint) {
   // if (vUv.x < 0.5)
-  // return true;
+  // return false;
   if (reprojectedUv.x > 1.0 || reprojectedUv.x < 0.0 || reprojectedUv.y > 1.0 ||
       reprojectedUv.y < 0.0)
     return false;
@@ -205,10 +205,8 @@ vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength) {
   reprojectedHitPoint.xyz /= reprojectedHitPoint.w;
   reprojectedHitPoint.xy = reprojectedHitPoint.xy * 0.5 + 0.5;
 
-  float parallaxFactor = flatness * 4. - roughness;
-
   reprojectedHitPoint.xy =
-      mix(vUv - velocity, reprojectedHitPoint.xy, clamp(0., 0., 1.));
+      mix(reprojectedHitPoint.xy, vUv - velocity, min(1., roughness / 0.375));
 
   return reprojectedHitPoint.xy;
 }

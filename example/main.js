@@ -359,11 +359,11 @@ const initScene = async () => {
 		rings: 5,
 		samples: 8,
 		radius: 8,
-		phi: 0.26100000000000007,
-		lumaPhi: 5.977999999999999,
-		depthPhi: 9.238999999999997,
-		normalPhi: 18.477999999999998,
-		roughnessPhi: 41.304,
+		phi: 0.6089999999999979,
+		lumaPhi: 21.739,
+		depthPhi: 8.534839501805891e-16,
+		normalPhi: 55.435,
+		roughnessPhi: 1.186550857568136e-15,
 		envBlur: 0,
 		importanceSampling: true,
 		steps: 20,
@@ -478,9 +478,9 @@ const initScene = async () => {
 
 				composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, vignetteEffect, lutEffect))
 
-				const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass, {
-					intensity: 1
-				})
+				// const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass, {
+				// 	intensity: 1
+				// })
 
 				composer.addPass(new POSTPROCESSING.EffectPass(camera, sharpnessEffect))
 			} else {

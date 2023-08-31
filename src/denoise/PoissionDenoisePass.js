@@ -87,7 +87,7 @@ export class PoissionDenoisePass extends Pass {
 		}
 	}
 
-	#updatePoissionDiskSamples(width, height) {
+	updatePoissionDiskSamples(width, height) {
 		const poissonDisk = generateDenoiseSamples(this.samples, this.rings, new Vector2(1 / width, 1 / height))
 
 		this.fullscreenMaterial.defines.samples = this.samples
@@ -103,7 +103,7 @@ export class PoissionDenoisePass extends Pass {
 
 		this.fullscreenMaterial.uniforms.resolution.value.set(width, height)
 
-		this.#updatePoissionDiskSamples(width, height)
+		this.updatePoissionDiskSamples(width, height)
 	}
 
 	get texture() {

@@ -183,9 +183,10 @@ void main() {
 
       float roughnessMaximum = inputTexel[i].a > 10.0e3 ? 0.25 : 0.01;
 
-      // if (didMove && reprojectSpecular[i] && roughness < roughnessMaximum) {
-      //   maxValue = mix(0.5, maxValue, roughness / roughnessMaximum);
-      // }
+      if (didMove && rayLength > 10.0e3 && reprojectSpecular[i] &&
+          roughness < roughnessMaximum) {
+        maxValue = mix(0.5, maxValue, roughness / roughnessMaximum);
+      }
 
       temporalReprojectMix =
           min(1. - 1. / (accumulatedTexel[i].a + 1.0), maxValue);

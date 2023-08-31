@@ -1,223 +1,102 @@
 ﻿/* eslint-disable camelcase */
-import { Color, Matrix3, ShaderMaterial, TangentSpaceNormalMap, Uniform, Vector2 } from "three"
+import { MeshPhysicalMaterial, Vector2 } from "three"
 import gbuffer_packing from "../../utils/shader/gbuffer_packing.glsl"
-import { useBlueNoise } from "../../utils/BlueNoiseUtils"
-export class GBufferMaterial extends ShaderMaterial {
-	constructor() {
-		super({
-			type: "GBufferMaterial",
 
-			defines: {
-				USE_UV: "",
-				TEMPORAL_RESOLVE: ""
-			},
+class GBufferMaterial extends MeshPhysicalMaterial {
+	onBeforeCompile(shader) {
+		// todo: add blue noise texture
+		shader.uniforms.blueNoiseTexture = { value: null }
+		shader.uniforms.blueNoiseRepeat = { value: new Vector2(1, 1) }
+		shader.uniforms.resolution = { value: new Vector2(1, 1) }
+		shader.uniforms.cameraMoved = { value: false }
 
-			uniforms: {
-				color: new Uniform(new Color()),
-				emissive: new Uniform(new Color()),
-				map: new Uniform(null),
-				roughnessMap: new Uniform(null),
-				metalnessMap: new Uniform(null),
-				emissiveMap: new Uniform(null),
-				alphaMap: new Uniform(null),
-				normalMap: new Uniform(null),
-				normalScale: new Uniform(new Vector2(1, 1)),
-				roughness: new Uniform(0),
-				metalness: new Uniform(0),
-				emissiveIntensity: new Uniform(0),
-				uvTransform: new Uniform(new Matrix3()),
-				boneTexture: new Uniform(null),
-				blueNoiseTexture: new Uniform(null),
-				blueNoiseRepeat: new Uniform(new Vector2(1, 1)),
-				resolution: new Uniform(new Vector2(1, 1)),
-				frame: new Uniform(0),
-				cameraMoved: new Uniform(false),
-				lightMap: new Uniform(null),
-				lightMapIntensity: new Uniform(1),
-				opacity: new Uniform(1)
-			},
+		const vertexShader = shader.vertexShader.replace(
+			"void main() {",
+			/* glsl */ `
+            varying vec2 screenUv;
+            void main() {
+                screenUv = gl_Position.xy * 0.5 + 0.5;
+            `
+		)
 
-			vertexShader: /* glsl */ `
-                varying vec2 vHighPrecisionZW;
+		shader.vertexShader = vertexShader
 
-                #define NORMAL
-                #if defined( FLAT_SHADED ) || defined( USE_BUMPMAP ) || defined( TANGENTSPACE_NORMALMAP )
-                    varying vec3 vViewPosition;
-                #endif
-                
-                #include <common>
-                #include <uv_pars_vertex>
-                #include <displacementmap_pars_vertex>
-                #include <normal_pars_vertex>
-                #include <morphtarget_pars_vertex>
-                #include <logdepthbuf_pars_vertex>
-                #include <clipping_planes_pars_vertex>
-                #include <skinning_pars_vertex>
-                #include <color_pars_vertex>
+		// delete all includes that have the pattern "#include <lights_something>"
+		shader.vertexShader = shader.vertexShader.replace(/#include <lights_.*>/g, "")
+		shader.fragmentShader = shader.fragmentShader.replace(/#include <lights_.*>/g, "")
 
-                varying vec2 screenUv;
+		// delete all includes that have the pattern "#include <alpha...>"
+		shader.vertexShader = shader.vertexShader.replace(/#include <alpha.*>/g, "")
+		shader.fragmentShader = shader.fragmentShader.replace(/#include <alpha.*>/g, "")
 
-                void main() {
-                    #include <uv_vertex>
-                    
-                    #include <skinbase_vertex>
-                    #include <beginnormal_vertex>
-                    #include <skinnormal_vertex>
-                    #include <defaultnormal_vertex>
+		// delete all includes that have the pattern "#include <aomap...>"
+		shader.vertexShader = shader.vertexShader.replace(/#include <aomap.*>/g, "")
+		shader.fragmentShader = shader.fragmentShader.replace(/#include <aomap.*>/g, "")
 
-                    #include <morphnormal_vertex>
-                    #include <normal_vertex>
-                    #include <begin_vertex>
-                    #include <morphtarget_vertex>
+		// delete all includes that have the pattern "#include <lightmap...>"
+		shader.vertexShader = shader.vertexShader.replace(/#include <lightmap.*>/g, "")
+		shader.fragmentShader = shader.fragmentShader.replace(/#include <lightmap.*>/g, "")
 
-                    #include <skinning_vertex>
+		// delete the fog_fragment include
+		shader.fragmentShader = shader.fragmentShader.replace("#include <fog_fragment>", "")
 
-                    #include <displacementmap_vertex>
-                    #include <project_vertex>
-                    #include <logdepthbuf_vertex>
-                    #include <clipping_planes_vertex>
+		shader.fragmentShader = shader.fragmentShader
+			.replace(
+				"void main() {",
+				/* glsl */ `
+            uniform vec2 resolution;
+            uniform bool cameraMoved;
+            varying vec2 screenUv;
 
-                    #include <color_vertex>
-                    
-                    #if defined( FLAT_SHADED ) || defined( USE_BUMPMAP ) || defined( TANGENTSPACE_NORMALMAP )
-                        vViewPosition = - mvPosition.xyz;
-                    #endif
+            ${gbuffer_packing}
 
-                    screenUv = gl_Position.xy * 0.5 + 0.5;
+            void main() {
+        `
+			)
+			.replace(
+				"#include <dithering_fragment>",
+				/* glsl */ `
+            #include <dithering_fragment>
 
-                    vHighPrecisionZW = gl_Position.zw;
-                }
-            `,
+            vec3 worldNormal = normalize((vec4(normal, 1.) * viewMatrix).xyz);
 
-			fragmentShader: /* glsl */ `
-                #define NORMAL
-                #if defined( FLAT_SHADED ) || defined( USE_BUMPMAP ) || defined( TANGENTSPACE_NORMALMAP )
-                    varying vec3 vViewPosition;
-                #endif
-                #include <packing>
-                #include <uv_pars_fragment>
-                #include <normal_pars_fragment>
-                #include <bumpmap_pars_fragment>
-                #include <normalmap_pars_fragment>
-                #include <logdepthbuf_pars_fragment>
-                #include <clipping_planes_pars_fragment>
-                #include <color_pars_fragment>
-                #include <alphamap_pars_fragment>
-                #include <lightmap_pars_fragment>
+            vec4 gBuffer = packGBuffer(diffuseColor, worldNormal, roughnessFactor, metalnessFactor, totalEmissiveRadiance);
 
-                #include <map_pars_fragment>
-                uniform vec3 color;
+            gl_FragColor = gBuffer;`
+			)
+	}
+}
 
-                varying vec2 vHighPrecisionZW;
+const gBufferMaterial = new GBufferMaterial()
 
-                #include <metalnessmap_pars_fragment>
-                uniform float metalness;
+export function createGBufferMaterial(originalMaterial) {
+	const material = gBufferMaterial.clone()
 
-                #include <roughnessmap_pars_fragment>
-                uniform float roughness;
+	copyAllPropsToGBufferMaterial(originalMaterial, material)
 
-                #include <emissivemap_pars_fragment>
-                uniform vec3 emissive;
-                uniform float emissiveIntensity;
+	return material
+}
 
-                uniform float opacity;
+let props = Object.keys(gBufferMaterial)
 
-                uniform vec2 resolution;
-                uniform bool cameraMoved;
+// delete the ones that start with "_"
+props = props.filter(key => !key.startsWith("_") && !key.startsWith("is") && key !== "uuid" && key !== "type")
 
-                varying vec2 screenUv;
+// this function attempts to copy all the props from the original material to the new GBufferMaterial
+function copyAllPropsToGBufferMaterial(originalMaterial, gBufferMaterial) {
+	for (const key of props) {
+		if (originalMaterial[key] !== undefined) {
+			gBufferMaterial[key] = originalMaterial[key]
+		}
+	}
+}
 
-                #include <gbuffer_packing>
+const propsPrimitive = props.filter(
+	key => typeof gBufferMaterial[key] === "string" || typeof gBufferMaterial[key] === "number"
+)
 
-                struct ReflectedLight {
-                    vec3 indirectDiffuse;
-                };
-
-                void main() {
-                    // !todo: properly implement alpha hashing
-                    // if(!cameraMoved){
-                        float alpha = opacity;
-
-                        #ifdef USE_ALPHAMAP
-                            alpha *= texture2D( alphaMap, vUv ).g;
-                        #elif defined(USE_MAP)
-                            alpha *= texture2D( map, vUv ).a;
-                        #endif
-
-                        if(alpha < 1.){
-                            float alphaThreshold = blueNoise(screenUv).x;
-
-                            if(alpha < alphaThreshold){
-                                discard;
-                                return;
-                            }
-                        }
-                    // }
-               
-
-                    //! todo: find better solution
-                    //! todo: also fix texture repeat issue (not being repeated)
-                    #define vMapUv vUv
-                    #define vMetalnessMapUv vUv
-                    #define vRoughnessMapUv vUv
-                    #define vNormalMapUv vUv
-                    #define vEmissiveMapUv vUv
-                    #define vLightMapUv vUv
-                    #define vEmissiveMapUv vUv
-
-                    #include <clipping_planes_fragment>
-                    #include <logdepthbuf_fragment>
-                    #include <normal_fragment_begin>
-                    #include <normal_fragment_maps>
-
-                    float roughnessFactor = roughness;
-
-                    #ifdef USE_ROUGHNESSMAP
-                        vec4 texelRoughness = texture2D( roughnessMap, vUv );
-                        // reads channel G, compatible with a combined OcclusionRoughnessMetallic (RGB) texture
-                        roughnessFactor *= texelRoughness.g;
-                    #endif
-
-                    vec3 worldNormal = normalize((vec4(normal, 1.) * viewMatrix).xyz);
-
-                    // if(isDeselected){
-                    //     discard;
-                    //     return;
-                    // }
-
-                    #include <metalnessmap_fragment>
-
-                    vec4 diffuseColor = vec4(color, metalnessFactor);
-
-                    #include <map_fragment>
-                    #include <color_fragment>
-
-                    vec3 totalEmissiveRadiance = vec3( emissive * emissiveIntensity );
-                    #include <emissivemap_fragment>
-
-                    ReflectedLight reflectedLight;
-
-                    #include <lightmap_fragment>
-
-                    #ifdef USE_LIGHTMAP
-                        diffuseColor.rgb *= reflectedLight.indirectDiffuse;
-                    #endif
-
-                    // diffuseColor.a = alpha;
-
-                    gl_FragColor = packGBuffer(diffuseColor, worldNormal, roughnessFactor, metalnessFactor, totalEmissiveRadiance);
-                }
-            `.replace("#include <gbuffer_packing>", gbuffer_packing),
-
-			toneMapped: false,
-			alphaTest: false,
-			fog: false,
-			lights: false
-		})
-
-		useBlueNoise(this)
-
-		this.normalMapType = TangentSpaceNormalMap
-		this.normalScale = new Vector2(1, 1)
+export function copyPropsToGBufferMaterial(originalMaterial, gBufferMaterial) {
+	for (const prop of propsPrimitive) {
+		gBufferMaterial[prop] = originalMaterial[prop]
 	}
 }

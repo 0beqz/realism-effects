@@ -1,8 +1,8 @@
 import { Pass } from "postprocessing"
-import { Color, DepthTexture, FloatType, NearestFilter, Quaternion, Texture, Vector3, WebGLRenderTarget } from "three"
+import { Color, DepthTexture, FloatType, NearestFilter, Quaternion, Vector3, WebGLRenderTarget } from "three"
 import { didCameraMove, isChildMaterialRenderable } from "../utils/SceneUtils.js"
-import { GBufferMaterial } from "./material/GBufferMaterial.js"
-import { copyNecessaryProps, getVisibleChildren, keepMaterialMapUpdated } from "./utils/GBufferUtils.js"
+import { copyPropsToGBufferMaterial, createGBufferMaterial } from "./material/GBufferMaterial.js"
+import { getVisibleChildren } from "./utils/GBufferUtils.js"
 
 const backgroundColor = new Color(0)
 
@@ -64,55 +64,25 @@ export class GBufferPass extends Pass {
 			if (originalMaterial !== cachedOriginalMaterial) {
 				if (mrtMaterial) mrtMaterial.dispose()
 
-				mrtMaterial = new GBufferMaterial()
-
-				copyNecessaryProps(originalMaterial, mrtMaterial)
-
-				mrtMaterial.uniforms.normalScale.value = originalMaterial.normalScale
-
-				if (c.skeleton?.boneTexture) {
-					mrtMaterial.defines.USE_SKINNING = ""
-					mrtMaterial.defines.BONE_TEXTURE = ""
-
-					mrtMaterial.uniforms.boneTexture.value = c.skeleton.boneTexture
-
-					mrtMaterial.needsUpdate = true
-				}
-
-				const textureKey = Object.keys(originalMaterial).find(key => {
-					const value = originalMaterial[key]
-					return value instanceof Texture && value.matrix
-				})
-
-				if (textureKey) mrtMaterial.uniforms.uvTransform.value = originalMaterial[textureKey].matrix
+				mrtMaterial = createGBufferMaterial(originalMaterial)
 
 				this.cachedMaterials.set(c, [originalMaterial, mrtMaterial])
 			}
 
-			if (originalMaterial.emissive) mrtMaterial.uniforms.emissive.value = originalMaterial.emissive
-			if (originalMaterial.color) mrtMaterial.uniforms.color.value = originalMaterial.color
-
-			// update the child's MRT material
-			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "normalMap", "USE_NORMALMAP_TANGENTSPACE", true) // todo: object space normals support
-			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "roughnessMap", "USE_ROUGHNESSMAP", true)
-			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "metalnessMap", "USE_	METALNESSMAP", true)
-			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "map", "USE_MAP", true)
-			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "emissiveMap", "USE_EMISSIVEMAP", true)
-			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "alphaMap", "USE_ALPHAMAP", originalMaterial.transparent)
-			keepMaterialMapUpdated(mrtMaterial, originalMaterial, "lightMap", "USE_LIGHTMAP", true)
-
-			mrtMaterial.uniforms.resolution.value.set(this.gBufferRenderTarget.width, this.gBufferRenderTarget.height)
-			mrtMaterial.uniforms.frame.value = this.frame
-			mrtMaterial.uniforms.cameraMoved.value = cameraMoved
+			// mrtMaterial.uniforms.resolution.value.set(this.gBufferRenderTarget.width, this.gBufferRenderTarget.height)
+			// mrtMaterial.uniforms.frame.value = this.frame
+			// mrtMaterial.uniforms.cameraMoved.value = cameraMoved
 
 			c.visible = isChildMaterialRenderable(c, originalMaterial)
 
+			copyPropsToGBufferMaterial(originalMaterial, mrtMaterial)
+
 			// todo: implement selection
 
-			mrtMaterial.uniforms.metalness.value = c.material.metalness ?? 0
-			mrtMaterial.uniforms.roughness.value = c.material.roughness ?? 0
-			mrtMaterial.uniforms.emissiveIntensity.value = c.material.emissiveIntensity ?? 0
-			mrtMaterial.uniforms.opacity.value = originalMaterial.opacity
+			// mrtMaterial.uniforms.metalness.value = c.material.metalness ?? 0
+			// mrtMaterial.uniforms.roughness.value = c.material.roughness ?? 0
+			// mrtMaterial.uniforms.emissiveIntensity.value = c.material.emissiveIntensity ?? 0
+			// mrtMaterial.uniforms.opacity.value = originalMaterial.opacity
 
 			c.material = mrtMaterial
 		}

@@ -20,7 +20,7 @@ layout(location = 1) out vec4 gOutput1;
 #include <common>
 #include <gbuffer_packing>
 
-#define luminance(a) log(dot(vec3(0.2125, 0.7154, 0.0721), a));
+#define luminance(a) pow(dot(vec3(0.2125, 0.7154, 0.0721), a), 0.125);
 
 vec3 getWorldPos(float depth, vec2 coord) {
   float z = depth * 2.0 - 1.0;
@@ -67,9 +67,7 @@ float centerDepth;
 vec3 centerWorldPos;
 float centerLumDiffuse;
 float centerLumSpecular;
-float centerObliqueness;
-float centerDarkness;
-float centerRoughnessPow4;
+float glossiness;
 float w, w2;
 struct Neighbor {
   vec4 texel;
@@ -110,17 +108,16 @@ Neighbor getNeighborWeight(vec2 neighborUv, bool isDiffuseGi) {
                      roughnessDiff * roughnessPhi);
 
   if (isDiffuseGi) {
+    wBasic = mix(wBasic, exp(-normalDiff * 10.), w);
     float wDiff = w * pow(wBasic * exp(-lumaDiff * lumaPhi), phi / w);
-    // wDiff += (centerObliqueness * centerDarkness) * w;
 
     return Neighbor(neighborDiffuseGi, wDiff);
   } else {
+    wBasic = mix(wBasic, exp(-normalDiff * 10.), w2);
     float wSpec = w2 * pow(wBasic * exp(-lumaDiff2 * lumaPhi), phi / w2);
 
-    wSpec *= mix(exp(-distanceToCenter * 50. - normalDiff * 100.), 1.,
-                 centerRoughnessPow4);
-
-    // wSpec += centerObliqueness * w2;
+    wSpec *=
+        mix(exp(-distanceToCenter * 100. - normalDiff * 50.), w2, glossiness);
 
     return Neighbor(neighborSpecularGi, wSpec);
   }
@@ -139,19 +136,22 @@ void main() {
   vec4 centerDiffuseGi = textureLod(inputTexture, vUv, 0.0);
   vec4 centerSpecularGi = textureLod(inputTexture2, vUv, 0.0);
 
-  // if (vUv.x < 0.5) {
-  //   gOutput0 = centerDiffuseGi;
-  //   gOutput1 = centerSpecularGi;
+  float a = centerDiffuseGi.a;
+  float a2 = centerSpecularGi.a;
 
-  //   return;
-  // }
+  // the weights w, w2 are used to make the denoiser more aggressive the younger
+  // the pixel is
+  w = 1. / pow(a + 1., phi);
+  w2 = 1. / pow(a2 + 1., phi);
 
   toDenoiseSpace(centerDiffuseGi.rgb);
   toDenoiseSpace(centerSpecularGi.rgb);
 
   centerLumDiffuse = luminance(centerDiffuseGi.rgb);
   centerLumSpecular = luminance(centerSpecularGi.rgb);
-  centerDarkness = pow(1. - min(centerLumDiffuse, 1.), 4.);
+
+  centerMat = getMaterial(gBufferTexture, vUv);
+  glossiness = 1. - centerMat.roughness * centerMat.roughness;
 
   // ! todo: increase denoiser aggressiveness by distance
   // ! todo: use separate weights for diffuse and specular
@@ -162,42 +162,26 @@ void main() {
   vec3 denoisedDiffuse = centerDiffuseGi.rgb * totalWeight;
   vec3 denoisedSpecular = centerSpecularGi.rgb * totalWeight2;
 
-  centerMat = getMaterial(gBufferTexture, vUv);
-  centerRoughnessPow4 = centerMat.roughness * centerMat.roughness;
-  centerRoughnessPow4 *= centerRoughnessPow4;
   centerWorldPos = getWorldPos(centerDepth, vUv);
-
-  // using cameraMatrixWorld, get how oblique the surface is
-  float faceness =
-      abs(dot(centerMat.normal, normalize(cameraMatrixWorld[2].xyz)));
-  centerObliqueness = (1. - faceness) * 0.01;
 
   vec4 random = blueNoise();
   float angle = random.r * 2. * PI;
   float s = sin(angle), c = cos(angle);
   mat2 rotationMatrix = mat2(c, -s, s, c);
 
-  float a = centerDiffuseGi.a;
-  float a2 = centerSpecularGi.a;
-
-  // the weights w, w2 are used to make the denoiser more aggressive the younger
-  // the pixel is
-  w = 1. / sqrt(a * 0.75 + 1.);
-  w2 = 1. / sqrt(a2 * 0.75 + 1.);
-
   // scale the radius depending on the pixel's age
   float r = 1. + sqrt(random.a) * exp(-(a + a2) * 0.001) * radius;
 
-  // vec3 viewNormal = (viewMatrix * vec4(centerMat.normal, 0.0)).xyz;
-  // vec3 tangent = normalize(cross(viewNormal, vec3(0.0, 1.0, 0.0)));
-  // vec3 bitangent = normalize(cross(viewNormal, tangent));
+  vec3 viewNormal = (viewMatrix * vec4(centerMat.normal, 0.0)).xyz;
+  vec3 tangent = normalize(cross(viewNormal, vec3(0.0, 1.0, 0.0)));
+  vec3 bitangent = normalize(cross(viewNormal, tangent));
 
   for (int i = 0; i < samples; i++) {
-    // vec2 offset =
-    //     r * rotationMatrix *
-    //     (poissonDisk[i].x * tangent.xy + poissonDisk[i].y * bitangent.xy);
+    vec2 offset =
+        r * rotationMatrix *
+        (poissonDisk[i].x * tangent.xy + poissonDisk[i].y * bitangent.xy);
 
-    vec2 offset = r * rotationMatrix * poissonDisk[i];
+    // vec2 offset = r * rotationMatrix * poissonDisk[i];
 
     vec2 neighborUv = vUv + offset;
 
@@ -218,9 +202,6 @@ void main() {
 
   toLinearSpace(denoisedDiffuse);
   toLinearSpace(denoisedSpecular);
-
-  // vec3 v = random.x * tangent + random.y * bitangent;
-  // v.xy = viewSpaceToScreenSpace(v);
 
   gOutput0 = vec4(denoisedDiffuse, centerDiffuseGi.a);
   gOutput1 = vec4(denoisedSpecular, centerSpecularGi.a);
