@@ -141,8 +141,8 @@ void main() {
 
   // the weights w, w2 are used to make the denoiser more aggressive the younger
   // the pixel is
-  w = 1. / pow(a + 1., phi);
-  w2 = 1. / pow(a2 + 1., phi);
+  w = 1. / pow(a + 1., 0.5);
+  w2 = 1. / pow(a2 + 1., 0.5);
 
   toDenoiseSpace(centerDiffuseGi.rgb);
   toDenoiseSpace(centerSpecularGi.rgb);
@@ -171,7 +171,7 @@ void main() {
   mat2 rotationMatrix = mat2(c, -s, s, c);
 
   // scale the radius depending on the pixel's age
-  float r = 1. + sqrt(random.a) * exp(-(a + a2) * 0.001) * radius;
+  float r = 1. + sqrt(random.a) * exp(-(a + a2) * 0.01) * radius;
 
   vec3 viewNormal = (viewMatrix * vec4(centerMat.normal, 0.0)).xyz;
   vec3 tangent = normalize(cross(viewNormal, vec3(0.0, 1.0, 0.0)));

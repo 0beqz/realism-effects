@@ -37,8 +37,13 @@ export class SSGIComposePass extends Pass {
 
             void main() {
                 // float depth = textureLod(depthTexture, vUv, 0.).r;
-				float depth = textureLod(velocityTexture, vUv, 0.).a;
-				vec3 normal = unpackNormal(textureLod(velocityTexture, vUv, 0.).b);
+
+				vec4 velocity = textureLod(velocityTexture, vUv, 0.);
+				float depth = velocity.a;
+				vec3 normal = unpackNormal(velocity.b);
+
+				// on Android there's a bug where using "vec3 normal = unpackNormal(textureLod(velocityTexture, vUv, 0.).b);" instead of
+				// "vec3 normal = unpackNormal(velocity.b);" causes the normal to be distorted (possibly due to packHalf2x16 function)
 
 				if(depth == 0.){
 					discard;

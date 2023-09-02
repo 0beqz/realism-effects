@@ -163,12 +163,6 @@ void main() {
   vec3 outputColor;
   float temporalReprojectMix;
 
-  float angleMixFlatness = flatness > 0.001 ? 1.0 : flatness / 0.001;
-
-  angleMix = mix(0., angleMix, angleMixFlatness);
-
-  float rayLengthDelta = fwidth(rayLength);
-
 #pragma unroll_loop_start
   for (int i = 0; i < textureCount; i++) {
     if (constantBlend) {
