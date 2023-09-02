@@ -77,6 +77,7 @@ export class TemporalReprojectPass extends Pass {
 		if (options.dilation) this.fullscreenMaterial.defines.dilation = ""
 		if (options.neighborhoodClamp) this.fullscreenMaterial.defines.neighborhoodClamp = ""
 		if (options.logTransform) this.fullscreenMaterial.defines.logTransform = ""
+		if (camera.isPerspectiveCamera) this.fullscreenMaterial.defines.PERSPECTIVE_CAMERA = ""
 		this.fullscreenMaterial.defines.neighborhoodClampRadius = parseInt(options.neighborhoodClampRadius)
 
 		this.fullscreenMaterial.defines.depthDistance = options.depthDistance.toPrecision(5)

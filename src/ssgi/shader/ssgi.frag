@@ -182,7 +182,6 @@ void main() {
 
     // relative weights used for choosing either a diffuse or specular ray
     diffW *= invW;
-    specW *= invW;
 
     // if diffuse lighting should be sampled
     isDiffuseSample = random.b < diffW;
@@ -246,33 +245,34 @@ void main() {
       diffuseSamples++;
 
       diffuseGI = mix(diffuseGI, gi, 1. / diffuseSamples);
-
-    } else {
-      if (isEnvMisSample) {
-        l = specularRay;
-        calculateAngles(h, l, v, n, NoL, NoH, LoH, VoH);
-      }
-
-      gi = doSample(viewPos, viewDir, viewNormal, worldPos, mat.metalness,
-                    mat.roughness, isDiffuseSample, isEnvMisSample, NoV, NoL,
-                    NoH, LoH, VoH, random, l, hitPos, isMissedRay, brdf, pdf);
-
-      gi *= brdf;
-
-      if (isEnvMisSample) {
-        gi *= misHeuristic(envPdf, pdf);
-        gi /= envPdf;
-      } else {
-        gi /= pdf;
-        gi *= envMisMultiplier;
-      }
-
-      specularHitPos = hitPos;
-
-      specularSamples++;
-
-      specularGI = mix(specularGI, gi, 1. / specularSamples);
     }
+
+    // specular
+    l = specularRay;
+
+    if (isEnvMisSample) {
+      calculateAngles(h, l, v, n, NoL, NoH, LoH, VoH);
+    }
+
+    gi = doSample(viewPos, viewDir, viewNormal, worldPos, mat.metalness,
+                  mat.roughness, isDiffuseSample, isEnvMisSample, NoV, NoL, NoH,
+                  LoH, VoH, random, l, hitPos, isMissedRay, brdf, pdf);
+
+    gi *= brdf;
+
+    if (isEnvMisSample) {
+      gi *= misHeuristic(envPdf, pdf);
+      gi /= envPdf;
+    } else {
+      gi /= pdf;
+      gi *= envMisMultiplier;
+    }
+
+    specularHitPos = hitPos;
+
+    specularSamples++;
+
+    specularGI = mix(specularGI, gi, 1. / specularSamples);
   }
 #pragma unroll_loop_end
 

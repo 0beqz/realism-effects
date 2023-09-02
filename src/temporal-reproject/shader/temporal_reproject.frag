@@ -167,6 +167,8 @@ void main() {
 
   angleMix = mix(0., angleMix, angleMixFlatness);
 
+  float rayLengthDelta = fwidth(rayLength);
+
 #pragma unroll_loop_start
   for (int i = 0; i < textureCount; i++) {
     if (constantBlend) {
@@ -181,7 +183,7 @@ void main() {
       if (reset)
         accumulatedTexel[i].a = 0.0;
 
-      float roughnessMaximum = inputTexel[i].a > 10.0e3 ? 0.25 : 0.01;
+      float roughnessMaximum = 0.01;
 
       if (didMove && rayLength > 10.0e3 && reprojectSpecular[i] &&
           roughness < roughnessMaximum) {

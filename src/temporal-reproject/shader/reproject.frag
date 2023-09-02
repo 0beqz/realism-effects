@@ -13,8 +13,14 @@ float roughness = 0.0;
 
 #define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
 
-float getViewZ(const float depth) {
+// source:
+// https://github.com/mrdoob/three.js/blob/342946c8392639028da439b6dc0597e58209c696/examples/js/shaders/SAOShader.js#L123
+float getViewZ(const in float depth) {
+#ifdef PERSPECTIVE_CAMERA
   return perspectiveDepthToViewZ(depth, cameraNear, cameraFar);
+#else
+  return orthographicDepthToViewZ(depth, cameraNear, cameraFar);
+#endif
 }
 
 vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth,
@@ -189,6 +195,10 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos,
 }
 
 vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength) {
+#ifndef PERSPECTIVE_CAMERA
+  return vUv - velocity;
+#endif
+
   if (rayLength > 10.0e3) {
     return vUv - velocity;
   }
@@ -204,9 +214,6 @@ vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength) {
 
   reprojectedHitPoint.xyz /= reprojectedHitPoint.w;
   reprojectedHitPoint.xy = reprojectedHitPoint.xy * 0.5 + 0.5;
-
-  reprojectedHitPoint.xy =
-      mix(reprojectedHitPoint.xy, vUv - velocity, min(1., roughness / 0.375));
 
   return reprojectedHitPoint.xy;
 }
