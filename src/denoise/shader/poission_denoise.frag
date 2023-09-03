@@ -111,6 +111,8 @@ Neighbor getNeighborWeight(vec2 neighborUv, bool isDiffuseGi) {
     wBasic = mix(wBasic, exp(-normalDiff * 10.), w);
     float wDiff = w * pow(wBasic * exp(-lumaDiff * lumaPhi), phi / w);
 
+    wDiff = min(wDiff, 1.);
+
     return Neighbor(neighborDiffuseGi, wDiff);
   } else {
     wBasic = mix(wBasic, exp(-normalDiff * 10.), w2);
@@ -118,6 +120,8 @@ Neighbor getNeighborWeight(vec2 neighborUv, bool isDiffuseGi) {
 
     wSpec *= mix(exp(-distanceToCenter * 100. - normalDiff * 50.), w2,
                  roughnessSpecularFactor);
+
+    wSpec = min(wSpec, 1.);
 
     return Neighbor(neighborSpecularGi, wSpec);
   }
@@ -139,8 +143,8 @@ void main() {
   float a = centerDiffuseGi.a;
   float a2 = centerSpecularGi.a;
 
-  // the weights w, w2 are used to make the denoiser more aggressive the younger
-  // the pixel is
+  // the weights w, w2 are used to make the denoiser more aggressive the
+  // younger the pixel is
   w = 1. / pow(a + 1., 0.5);
   w2 = 1. / pow(a2 + 1., 0.5);
 
@@ -196,10 +200,8 @@ void main() {
                      neighborSpecular.weight);
   }
 
-  denoisedDiffuse =
-      totalWeight > 0. ? denoisedDiffuse / totalWeight : centerDiffuseGi.rgb;
-  denoisedSpecular = totalWeight2 > 0. ? denoisedSpecular / totalWeight2
-                                       : centerSpecularGi.rgb;
+  denoisedDiffuse /= totalWeight;
+  denoisedSpecular /= totalWeight2;
 
   toLinearSpace(denoisedDiffuse);
   toLinearSpace(denoisedSpecular);

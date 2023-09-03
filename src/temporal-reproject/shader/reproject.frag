@@ -167,7 +167,7 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos,
                                               prevCameraMatrixWorld,
                                               prevProjectionMatrixInverse);
 
-  vec3 lastViewPos = (viewMatrix * vec4(lastWorldPos, 1.0)).xyz;
+  vec3 lastViewPos = (prevViewMatrix * vec4(lastWorldPos, 1.0)).xyz;
 
   vec3 lastViewDir = normalize(lastViewPos);
   vec3 lastViewNormal = (viewMatrix * vec4(lastWorldNormal, 0.0)).xyz;
@@ -177,7 +177,7 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos,
 
   // angleDiff will be higher, the more we try to reproject pixels from a steep
   // angle onto a surface with a low angle which results in undesired stretching
-  angleMix = clamp(4. * abs(lastViewAngle - viewAngle), 0., 1.);
+  angleMix = min(pow(abs(lastViewAngle - viewAngle) * 4., 2.), 1.);
 
   float viewZ = abs(getViewZ(depth));
   float distFactor = 1. + 1. / (viewZ + 1.0);

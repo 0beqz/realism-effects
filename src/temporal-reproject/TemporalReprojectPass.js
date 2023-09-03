@@ -63,7 +63,6 @@ export class TemporalReprojectPass extends Pass {
 			minFilter: LinearFilter,
 			magFilter: LinearFilter,
 			type: HalfFloatType,
-			colorSpace: SRGBColorSpace,
 			depthBuffer: false
 		})
 
