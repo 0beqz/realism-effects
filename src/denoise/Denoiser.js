@@ -2,7 +2,7 @@ import { TemporalReprojectPass } from "../temporal-reproject/TemporalReprojectPa
 import { PoissionDenoisePass } from "./PoissionDenoisePass"
 
 // todo: implement this
-export default class RecurrentRaytracingDenoiser {
+export default class Denoiser {
 	constructor(
 		scene,
 		camera,
@@ -27,6 +27,24 @@ export default class RecurrentRaytracingDenoiser {
 		this.denoisePass.setGBufferPass(options.gBufferPass || velocityDepthNormalPass)
 
 		this.temporalReprojectPass.overrideAccumulatedTextures = this.denoisePass.renderTargetB.texture
+	}
+
+	get texture() {
+		return this.denoisePass.texture
+	}
+
+	reset() {
+		this.temporalReprojectPass.reset()
+	}
+
+	setSize(width, height) {
+		this.denoisePass.setSize(width, height)
+		this.temporalReprojectPass.setSize(width, height)
+	}
+
+	dispose() {
+		this.denoisePass.dispose()
+		this.temporalReprojectPass.dispose()
 	}
 
 	denoise(renderer) {

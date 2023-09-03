@@ -130,6 +130,14 @@ export class PoissionDenoisePass extends Pass {
 		this.fullscreenMaterial.uniforms.depthTexture.value = texture
 	}
 
+	dispose() {
+		super.dispose()
+
+		this.renderTargetA.dispose()
+		this.renderTargetB.dispose()
+		this.fullscreenMaterial.dispose()
+	}
+
 	render(renderer) {
 		for (let i = 0; i < 2 * this.iterations; i++) {
 			const horizontal = i % 2 === 0

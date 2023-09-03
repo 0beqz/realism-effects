@@ -7,10 +7,10 @@ import {
 	Uniform,
 	WebGLRenderTarget
 } from "three"
-import { SVGF } from "../svgf/SVGF.js"
 import { CubeToEquirectEnvPass } from "./pass/CubeToEquirectEnvPass.js"
 import { SSGIPass } from "./pass/SSGIPass.js"
 /* eslint-disable camelcase */
+import Denoiser from "../denoise/Denoiser.js"
 import { getVisibleChildren } from "../gbuffer/utils/GBufferUtils.js"
 import { isChildMaterialRenderable } from "../utils/SceneUtils.js"
 import { defaultSSGIOptions } from "./SSGIOptions"
@@ -21,7 +21,6 @@ import {
 	createGlobalDisableIblRadianceUniform,
 	getMaxMipLevel
 } from "./utils/Utils.js"
-import { jitter } from "../taa/TAAUtils.js"
 
 const { render } = RenderPass.prototype
 
@@ -74,42 +73,9 @@ export class SSGIEffect extends Effect {
 		options.neighborhoodClampRadius = 2
 		options.neighborhoodClampIntensity = 0.5
 
-		const textureCount = options.diffuseOnly || options.specularOnly ? 1 : 2
-
-		this.svgf = new SVGF(scene, camera, velocityDepthNormalPass, textureCount, options)
-		this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.needsUpdate = true
-
 		// ssgi pass
 		this.ssgiPass = new SSGIPass(this, options)
-
-		if (options.diffuseOnly) {
-			this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.uniforms.inputTexture0.value = this.ssgiPass.texture
-		} else if (options.specularOnly) {
-			this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.uniforms.inputTexture0.value =
-				this.ssgiPass.specularTexture
-		} else {
-			this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.uniforms.inputTexture0.value = this.ssgiPass.texture
-			this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.uniforms.inputTexture1.value =
-				this.ssgiPass.specularTexture
-		}
-
-		this.svgf.setJitteredGBuffer(this.ssgiPass.gBufferPass.depthTexture, this.ssgiPass.normalTexture, {
-			useRoughnessInAlphaChannel: true
-		})
-
-		this.svgf.denoisePass.setGBufferPass(this.ssgiPass.gBufferPass)
-
-		// patch the denoise pass
-		this.svgf.denoisePass.fullscreenMaterial.uniforms = {
-			...this.svgf.denoisePass.fullscreenMaterial.uniforms,
-			...{
-				diffuseTexture: new Uniform(null)
-			}
-		}
-
-		this.svgf.denoisePass.fullscreenMaterial.defines[definesName] = ""
-
-		this.svgf.denoisePass.fullscreenMaterial.uniforms.diffuseTexture.value = this.ssgiPass.diffuseTexture
+		this.denoiser = new Denoiser(scene, camera, this.ssgiPass.texture, velocityDepthNormalPass)
 
 		this.lastSize = {
 			width: options.width,
@@ -156,7 +122,7 @@ export class SSGIEffect extends Effect {
 	}
 
 	reset() {
-		this.svgf.svgfTemporalReprojectPass.reset()
+		this.denoiser.reset()
 	}
 
 	makeOptionsReactive(options) {
@@ -178,7 +144,7 @@ export class SSGIEffect extends Effect {
 					switch (key) {
 						// denoiser
 						case "denoiseIterations":
-							this.svgf.denoisePass.iterations = value
+							this.denoiser.denoisePass.iterations = value
 							break
 
 						case "radius":
@@ -187,8 +153,8 @@ export class SSGIEffect extends Effect {
 						case "depthPhi":
 						case "normalPhi":
 						case "roughnessPhi":
-							if (this.svgf.denoisePass.fullscreenMaterial.uniforms[key]) {
-								this.svgf.denoisePass.fullscreenMaterial.uniforms[key].value = value
+							if (this.denoiser.denoisePass.fullscreenMaterial.uniforms[key]) {
+								this.denoiser.denoisePass.fullscreenMaterial.uniforms[key].value = value
 								this.reset()
 							}
 							break
@@ -196,7 +162,7 @@ export class SSGIEffect extends Effect {
 						case "denoiseIterations":
 						case "radius":
 						case "samples":
-							this.svgf.denoisePass[key] = value
+							this.denoiser.denoisePass[key] = value
 							break
 
 						// SSGI
@@ -227,7 +193,7 @@ export class SSGIEffect extends Effect {
 							break
 
 						case "blend":
-							this.svgf.svgfTemporalReprojectPass.fullscreenMaterial.uniforms[key].value = value
+							this.denoiser.temporalReprojectPass.fullscreenMaterial.uniforms[key].value = value
 							this.reset()
 							break
 
@@ -271,7 +237,7 @@ export class SSGIEffect extends Effect {
 		}
 
 		this.ssgiPass.setSize(width, height)
-		this.svgf.setSize(width, height)
+		this.denoiser.setSize(width, height)
 		this.ssgiComposePass.setSize(width, height)
 		this.sceneRenderTarget.setSize(width, height)
 		this.cubeToEquirectEnvPass?.setSize(width, height)
@@ -287,7 +253,7 @@ export class SSGIEffect extends Effect {
 		super.dispose()
 
 		this.ssgiPass.dispose()
-		this.svgf.dispose()
+		this.denoiser.dispose()
 		this.cubeToEquirectEnvPass?.dispose()
 
 		RenderPass.prototype.render = render
@@ -375,12 +341,11 @@ export class SSGIEffect extends Effect {
 		const ssgiComposePassUniforms = this.ssgiComposePass.fullscreenMaterial.uniforms
 		ssgiComposePassUniforms.gBufferTexture.value = this.ssgiPass.gBufferPass.texture
 		ssgiComposePassUniforms.depthTexture.value = this.ssgiPass.gBufferPass.depthTexture
-		ssgiComposePassUniforms.diffuseGiTexture.value = this.svgf.denoisePass.texture[0]
-		ssgiComposePassUniforms.specularGiTexture.value = this.svgf.denoisePass.texture[1]
+		ssgiComposePassUniforms.diffuseGiTexture.value = this.denoiser.texture[0]
+		ssgiComposePassUniforms.specularGiTexture.value = this.denoiser.texture[1]
 
 		this.ssgiPass.render(renderer)
-		this._camera.clearViewOffset()
-		this.svgf.render(renderer)
+		this.denoiser.denoise(renderer)
 		this.ssgiComposePass.render(renderer)
 
 		this.uniforms.get("inputTexture").value = this.ssgiComposePass.renderTarget.texture
