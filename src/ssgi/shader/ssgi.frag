@@ -14,7 +14,6 @@ uniform float cameraFar;
 uniform float maxEnvMapMipLevel;
 
 uniform float rayDistance;
-uniform float maxRoughness;
 uniform float thickness;
 uniform float envBlur;
 
@@ -149,110 +148,81 @@ void main() {
       specularSamples, envMisProbability, envMisMultiplier;
   bool isDiffuseSample, isEnvMisSample, isMissedRay;
 
-#pragma unroll_loop_start
-  for (int i = 0; i < spp; i++) {
-    random = blueNoise();
-    // Disney BRDF and sampling source: https://www.shadertoy.com/view/cll3R4
-    // calculate GGX reflection ray
-    H = SampleGGXVNDF(V, mat.roughness, mat.roughness, random.r, random.g);
-    if (H.z < 0.0)
-      H = -H;
+  random = blueNoise();
+  // Disney BRDF and sampling source: https://www.shadertoy.com/view/cll3R4
+  // calculate GGX reflection ray
+  H = SampleGGXVNDF(V, mat.roughness, mat.roughness, random.r, random.g);
+  if (H.z < 0.0)
+    H = -H;
 
-    l = normalize(reflect(-V, H));
-    l = ToWorld(T, B, N, l);
+  l = normalize(reflect(-V, H));
+  l = ToWorld(T, B, N, l);
 
-    // convert reflected vector back to view-space
-    l = (vec4(l, 0.) * cameraMatrixWorld).xyz;
-    l = normalize(l);
+  // convert reflected vector back to view-space
+  l = (vec4(l, 0.) * cameraMatrixWorld).xyz;
+  l = normalize(l);
 
-    calculateAngles(h, l, v, n, NoL, NoH, LoH, VoH);
+  calculateAngles(h, l, v, n, NoL, NoH, LoH, VoH);
 
 #if !defined(diffuseOnly) && !defined(specularOnly)
-    // fresnel
-    F = F_Schlick(f0, VoH);
+  // fresnel
+  F = F_Schlick(f0, VoH);
 
-    // diffuse and specular weight
-    diffW = (1. - mat.metalness) * luminance(mat.diffuse.rgb);
-    specW = luminance(F);
+  // diffuse and specular weight
+  diffW = (1. - mat.metalness) * luminance(mat.diffuse.rgb);
+  specW = luminance(F);
 
-    diffW = max(diffW, EPSILON);
-    specW = max(specW, EPSILON);
+  diffW = max(diffW, EPSILON);
+  specW = max(specW, EPSILON);
 
-    invW = 1. / (diffW + specW);
+  invW = 1. / (diffW + specW);
 
-    // relative weights used for choosing either a diffuse or specular ray
-    diffW *= invW;
+  // relative weights used for choosing either a diffuse or specular ray
+  diffW *= invW;
 
-    // if diffuse lighting should be sampled
-    isDiffuseSample = random.b < diffW;
+  // if diffuse lighting should be sampled
+  isDiffuseSample = random.b < diffW;
 #else
 #ifdef diffuseOnly
-    isDiffuseSample = true;
+  isDiffuseSample = true;
 #else
-    isDiffuseSample = false;
+  isDiffuseSample = false;
 #endif
 #endif
-    envMisDir = vec3(0.0);
+  envMisDir = vec3(0.0);
 
 #ifdef importanceSampling
-    envPdf = sampleEquirectProbability(envMapInfo, random.rg, envMisDir);
-    envMisDir = normalize((vec4(envMisDir, 0.) * cameraMatrixWorld).xyz);
+  envPdf = sampleEquirectProbability(envMapInfo, random.rg, envMisDir);
+  envMisDir = normalize((vec4(envMisDir, 0.) * cameraMatrixWorld).xyz);
 
-    envMisProbability = 0.5 + dot(envMisDir, viewNormal) * 0.5;
-    envMisProbability *= sqrt(mat.roughness);
-    isEnvMisSample = random.a < envMisProbability;
+  envMisProbability = 0.5 + dot(envMisDir, viewNormal) * 0.5;
+  envMisProbability *= sqrt(mat.roughness);
+  isEnvMisSample = random.a < envMisProbability;
 
-    envMisMultiplier = 1. / (1. - envMisProbability);
+  envMisMultiplier = 1. / (1. - envMisProbability);
 
-    if (isEnvMisSample) {
-      envPdf /= 1. - envMisProbability;
+  if (isEnvMisSample) {
+    envPdf /= 1. - envMisProbability;
 
-      l = envMisDir;
-      calculateAngles(h, l, v, n, NoL, NoH, LoH, VoH);
-    } else {
-      envPdf = 0.0001;
-    }
+    l = envMisDir;
+    calculateAngles(h, l, v, n, NoL, NoH, LoH, VoH);
+  } else {
+    envPdf = 0.0001;
+  }
 #else
-    envPdf = 0.0;
-    envMisMultiplier = 1.;
+  envPdf = 0.0;
+  envMisMultiplier = 1.;
 #endif
 
-    vec3 diffuseRay = isEnvMisSample
-                          ? envMisDir
-                          : cosineSampleHemisphere(viewNormal, random.rg);
-    vec3 specularRay =
-        (isEnvMisSample && mat.roughness >= 0.025) ? envMisDir : l;
+  vec3 diffuseRay = isEnvMisSample
+                        ? envMisDir
+                        : cosineSampleHemisphere(viewNormal, random.rg);
+  vec3 specularRay = (isEnvMisSample && mat.roughness >= 0.025) ? envMisDir : l;
 
-    if (isDiffuseSample) {
-      l = diffuseRay;
+  if (isDiffuseSample) {
+    l = diffuseRay;
 
-      calculateAngles(h, l, v, n, NoL, NoH, LoH, VoH);
-
-      gi = doSample(viewPos, viewDir, viewNormal, worldPos, mat.metalness,
-                    mat.roughness, isDiffuseSample, isEnvMisSample, NoV, NoL,
-                    NoH, LoH, VoH, random, l, hitPos, isMissedRay, brdf, pdf);
-
-      gi *= brdf;
-
-      if (isEnvMisSample) {
-        gi *= misHeuristic(envPdf, pdf);
-        gi /= envPdf;
-      } else {
-        gi /= pdf;
-        gi *= envMisMultiplier;
-      }
-
-      diffuseSamples++;
-
-      diffuseGI = mix(diffuseGI, gi, 1. / diffuseSamples);
-    }
-
-    // specular
-    l = specularRay;
-
-    if (isEnvMisSample) {
-      calculateAngles(h, l, v, n, NoL, NoH, LoH, VoH);
-    }
+    calculateAngles(h, l, v, n, NoL, NoH, LoH, VoH);
 
     gi = doSample(viewPos, viewDir, viewNormal, worldPos, mat.metalness,
                   mat.roughness, isDiffuseSample, isEnvMisSample, NoV, NoL, NoH,
@@ -268,13 +238,37 @@ void main() {
       gi *= envMisMultiplier;
     }
 
-    specularHitPos = hitPos;
+    diffuseSamples++;
 
-    specularSamples++;
-
-    specularGI = mix(specularGI, gi, 1. / specularSamples);
+    diffuseGI = mix(diffuseGI, gi, 1. / diffuseSamples);
   }
-#pragma unroll_loop_end
+
+  // specular
+  l = specularRay;
+
+  if (isEnvMisSample) {
+    calculateAngles(h, l, v, n, NoL, NoH, LoH, VoH);
+  }
+
+  gi = doSample(viewPos, viewDir, viewNormal, worldPos, mat.metalness,
+                mat.roughness, isDiffuseSample, isEnvMisSample, NoV, NoL, NoH,
+                LoH, VoH, random, l, hitPos, isMissedRay, brdf, pdf);
+
+  gi *= brdf;
+
+  if (isEnvMisSample) {
+    gi *= misHeuristic(envPdf, pdf);
+    gi /= envPdf;
+  } else {
+    gi /= pdf;
+    gi *= envMisMultiplier;
+  }
+
+  specularHitPos = hitPos;
+
+  specularSamples++;
+
+  specularGI = mix(specularGI, gi, 1. / specularSamples);
 
   mat.roughness = sqrt(mat.roughness);
 

@@ -73,13 +73,13 @@ void main() {
   texIndex = 0;
 
   float movement = dot(velocity, velocity);
-  bool didMove = movement > 0.000000001;
+  float moveFactor = min(movement / 0.000000001, 1.);
 
   vec3 worldPos = screenSpaceToWorldSpace(dilatedUv, depth, cameraMatrixWorld,
                                           projectionMatrixInverse);
   flatness = getFlatness(worldPos, worldNormal);
   vec3 viewPos = (viewMatrix * vec4(worldPos, 1.0)).xyz;
-  vec3 viewDir = normalize(viewPos);
+  viewDir = normalize(viewPos);
   vec3 viewNormal = (viewMatrix * vec4(worldNormal, 0.0)).xyz;
 
   // get the angle between the view direction and the normal
@@ -158,7 +158,7 @@ void main() {
   // float m = 1. - delta / (1. / 60.);
   // float fpsAdjustedBlend = blend + max(0., (1. - blend) * m);
 
-  float maxValue = (fullAccumulate && !didMove) ? 1.0 : blend;
+  float maxValue = fullAccumulate ? mix(1.0, blend, moveFactor) : blend;
 
   vec3 outputColor;
   float temporalReprojectMix;
@@ -179,9 +179,11 @@ void main() {
 
       float roughnessMaximum = 0.01;
 
-      if (didMove && rayLength > 10.0e3 && reprojectSpecular[i] &&
+      if (rayLength > 10.0e3 && reprojectSpecular[i] &&
           roughness < roughnessMaximum) {
-        maxValue = mix(0.5, maxValue, roughness / roughnessMaximum);
+        float maxRoughnessValue =
+            mix(0.5, maxValue, roughness / roughnessMaximum);
+        maxValue = mix(maxValue, maxRoughnessValue, moveFactor);
       }
 
       temporalReprojectMix =

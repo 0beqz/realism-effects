@@ -92,7 +92,6 @@ composer.addPass(effectPass)
 const options = {
 	distance: 10,
 	thickness: 10,
-	maxRoughness: 1,
 	blend: 0.9,
 	denoiseIterations: 1,
 	denoiseKernel: 2,

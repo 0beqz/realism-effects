@@ -10,6 +10,7 @@ vec3 debugVec3;
 float viewAngle;
 float angleMix;
 float roughness = 0.0;
+vec3 viewDir;
 
 #define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
 
@@ -134,6 +135,7 @@ void getVelocityNormalDepth(inout vec2 dilatedUv, out vec2 vel, out vec3 normal,
 
 #define PLANE_DISTANCE 2.5
 #define VELOCITY_DISTANCE 0.01
+#define WORLD_DISTANCE 2.
 
 bool planeDistanceDisocclusionCheck(const vec3 worldPos,
                                     const vec3 lastWorldPos,
@@ -148,6 +150,12 @@ bool planeDistanceDisocclusionCheck(const vec3 worldPos,
 bool velocityDisocclusionCheck(const vec2 velocity, const vec2 lastVelocity,
                                const float distFactor) {
   return length(velocity - lastVelocity) > VELOCITY_DISTANCE * distFactor;
+}
+
+bool worldDistanceDisocclusionCheck(const vec3 worldPos,
+                                    const vec3 lastWorldPos,
+                                    const float distFactor) {
+  return length(worldPos - lastWorldPos) > WORLD_DISTANCE * distFactor;
 }
 
 bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos,
@@ -188,7 +196,9 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos,
   if (planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal,
                                      distFactor))
     return false;
-  return true;
+
+  if (worldDistanceDisocclusionCheck(worldPos, lastWorldPos, distFactor))
+    return false;
 
   return true;
 }
@@ -316,7 +326,8 @@ vec2 sampleBlocky(vec2 p) {
 }
 
 vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv) {
-  vec4 blocky = SampleTextureCatmullRom(tex, reprojectedUv, 1. / invTexSize);
+  vec4 blocky = SampleTextureCatmullRom(tex, sampleBlocky(reprojectedUv),
+                                        1. / invTexSize);
 
   return blocky;
 }

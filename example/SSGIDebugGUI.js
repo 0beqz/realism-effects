@@ -25,7 +25,6 @@ export class SSGIDebugGUI {
 			step: 0.01
 		})
 
-		generalFolder.addInput(params, "maxRoughness", { min: 0, max: 1, step: 0.01 })
 		generalFolder.addInput(params, "envBlur", { min: 0, max: 1, step: 0.01 })
 		generalFolder.addInput(params, "importanceSampling")
 

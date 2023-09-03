@@ -262,7 +262,7 @@ const environments = [
 	"# cube map test"
 ]
 
-rgbeLoader.load("hdr/garden_nook_1k.hdr", initEnvMap)
+rgbeLoader.load("hdr/spree_bank_1k.hdr", initEnvMap)
 
 const gltflLoader = new GLTFLoader()
 
@@ -350,7 +350,6 @@ const initScene = async () => {
 	const options = {
 		distance: 2.170000000000011,
 		thickness: 4.999999999999997,
-		maxRoughness: 1,
 		blend: 0.9749999999999999,
 		denoiseIterations: 1,
 		denoiseKernel: 3,
@@ -818,6 +817,8 @@ const setupAsset = asset => {
 				c.material.map.minFilter = NearestFilter
 				c.material.map.magFilter = NearestFilter
 			}
+
+			c.material.transparent = false
 
 			// const lm = c.material.emissiveMap
 			// c.material.emissiveMap = null

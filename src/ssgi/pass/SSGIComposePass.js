@@ -6,7 +6,7 @@ import gbuffer_packing from "../../utils/shader/gbuffer_packing.glsl"
 import ssgi_poisson_compose_functions from "../shader/ssgi_poisson_compose_functions.glsl"
 
 export class SSGIComposePass extends Pass {
-	constructor(camera, velocityTexture) {
+	constructor(camera) {
 		super("SSGIComposePass")
 
 		this._camera = camera
@@ -20,7 +20,6 @@ export class SSGIComposePass extends Pass {
 			fragmentShader: /* glsl */ `
             varying vec2 vUv;
             uniform sampler2D depthTexture;
-            uniform sampler2D velocityTexture;
             uniform sampler2D diffuseGiTexture;
             uniform sampler2D specularGiTexture;
             uniform mat4 cameraMatrixWorld;
@@ -36,23 +35,19 @@ export class SSGIComposePass extends Pass {
             ${ssgi_poisson_compose_functions}
 
             void main() {
-                // float depth = textureLod(depthTexture, vUv, 0.).r;
-
-				vec4 velocity = textureLod(velocityTexture, vUv, 0.);
-				float depth = velocity.a;
-				vec3 normal = unpackNormal(velocity.b);
-
-				// on Android there's a bug where using "vec3 normal = unpackNormal(textureLod(velocityTexture, vUv, 0.).b);" instead of
-				// "vec3 normal = unpackNormal(velocity.b);" causes the normal to be distorted (possibly due to packHalf2x16 function)
+                float depth = textureLod(depthTexture, vUv, 0.).r;
 
 				if(depth == 0.){
 					discard;
 					return;
 				}
 
+				// on Android there's a bug where using "vec3 normal = unpackNormal(textureLod(velocityTexture, vUv, 0.).b);" instead of
+				// "vec3 normal = unpackNormal(velocity.b);" causes the normal to be distorted (possibly due to packHalf2x16 function)
+
                 Material mat = getMaterial(gBufferTexture, vUv);
 
-                vec3 viewNormal = (vec4(normal, 0.) * cameraMatrixWorld).xyz;
+                vec3 viewNormal = (vec4(mat.normal, 0.) * cameraMatrixWorld).xyz;
 
 				float viewZ = -getViewZ(depth);
 
@@ -78,7 +73,6 @@ export class SSGIComposePass extends Pass {
 				cameraFar: { value: camera.far },
 				gBufferTexture: { value: null },
 				depthTexture: { value: null },
-				velocityTexture: { value: velocityTexture },
 				diffuseGiTexture: { value: null },
 				specularGiTexture: { value: null }
 			},

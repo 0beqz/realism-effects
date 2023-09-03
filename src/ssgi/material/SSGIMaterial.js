@@ -30,7 +30,6 @@ export class SSGIMaterial extends ShaderMaterial {
 				thickness: new Uniform(0),
 				frame: new Uniform(0),
 				envBlur: new Uniform(0),
-				maxRoughness: new Uniform(0),
 				maxEnvMapMipLevel: new Uniform(0),
 				envMapInfo: { value: new EquirectHdrInfoUniform() },
 				envMapPosition: new Uniform(new Vector3()),
@@ -42,7 +41,6 @@ export class SSGIMaterial extends ShaderMaterial {
 			defines: {
 				steps: 20,
 				refineSteps: 5,
-				spp: 1,
 				CUBEUV_TEXEL_WIDTH: 0,
 				CUBEUV_TEXEL_HEIGHT: 0,
 				CUBEUV_MAX_MIP: 0,

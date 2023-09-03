@@ -15,7 +15,6 @@ const finalFragmentShader = fragmentShader.replace("#include <gbuffer_packing>",
 const defaultPoissonBlurOptions = {
 	iterations: 1,
 	radius: 3,
-	rings: 3,
 	phi: 0.5,
 	lumaPhi: 5,
 	depthPhi: 2,
@@ -75,7 +74,7 @@ export class PoissionDenoisePass extends Pass {
 		uniforms["normalPhi"].value = options.normalPhi
 
 		// these properties need the shader to be recompiled
-		for (const prop of ["radius", "rings", "samples"]) {
+		for (const prop of ["radius", "samples"]) {
 			Object.defineProperty(this, prop, {
 				get: () => options[prop],
 				set: value => {
@@ -88,7 +87,7 @@ export class PoissionDenoisePass extends Pass {
 	}
 
 	updatePoissionDiskSamples(width, height) {
-		const poissonDisk = generateDenoiseSamples(this.samples, this.rings, new Vector2(1 / width, 1 / height))
+		const poissonDisk = generateDenoiseSamples(this.samples, new Vector2(1 / width, 1 / height))
 
 		this.fullscreenMaterial.defines.samples = this.samples
 

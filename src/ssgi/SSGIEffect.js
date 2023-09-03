@@ -150,7 +150,7 @@ export class SSGIEffect extends Effect {
 			render.call(this, ...args)
 		}
 
-		this.ssgiComposePass = new SSGIComposePass(camera, velocityDepthNormalPass.texture)
+		this.ssgiComposePass = new SSGIComposePass(camera)
 
 		this.makeOptionsReactive(options)
 	}
@@ -203,9 +203,8 @@ export class SSGIEffect extends Effect {
 							}
 							break
 
-						case "iterations":
+						case "denoiseIterations":
 						case "radius":
-						case "rings":
 						case "samples":
 							this.svgf.denoisePass[key] = value
 							break
@@ -216,25 +215,6 @@ export class SSGIEffect extends Effect {
 							this.reset()
 							break
 
-						// defines
-						case "spp":
-							this.ssgiPass.fullscreenMaterial.fragmentShader = this.ssgiPass.defaultFragmentShader.replaceAll(
-								"spp",
-								value
-							)
-
-							if (value !== 1) {
-								this.ssgiPass.fullscreenMaterial.fragmentShader = unrollLoops(
-									this.ssgiPass.fullscreenMaterial.fragmentShader
-										.replace("#pragma unroll_loop_start", "")
-										.replace("#pragma unroll_loop_end", "")
-								)
-							}
-
-							this.ssgiPass.fullscreenMaterial.needsUpdate = needsUpdate
-
-							this.reset()
-							break
 						case "steps":
 						case "refineSteps":
 							this.ssgiPass.fullscreenMaterial.defines[key] = parseInt(value)
