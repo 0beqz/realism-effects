@@ -113,10 +113,10 @@ void main() {
   // farMinusNear = cameraFar - cameraNear;
 
   // view-space depth
-  float depth = getViewZ(unpackedDepth);
+  float viewZ = getViewZ(unpackedDepth);
 
   // view-space position of the current texel
-  vec3 viewPos = getViewPosition(depth);
+  vec3 viewPos = getViewPosition(viewZ);
 
   vec3 viewDir = normalize(viewPos);
   vec3 worldNormal = mat.normal;

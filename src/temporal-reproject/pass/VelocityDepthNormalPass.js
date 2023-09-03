@@ -69,16 +69,7 @@ export class VelocityDepthNormalPass extends Pass {
 	needsSwap = false
 
 	constructor(scene, camera, renderDepth = true) {
-		super("velocityDepthNormalPass")
-
-		// if (!(camera instanceof PerspectiveCamera)) {
-		// 	throw new Error(
-		// 		this.constructor.name +
-		// 			" doesn't support cameras of type '" +
-		// 			camera.constructor.name +
-		// 			"' yet. Only cameras of type 'PerspectiveCamera' are supported."
-		// 	)
-		// }
+		super("VelocityDepthNormalPass")
 
 		this._scene = scene
 		this._camera = camera

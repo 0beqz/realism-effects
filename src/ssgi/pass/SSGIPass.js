@@ -1,7 +1,7 @@
 import { Pass } from "postprocessing"
 import { FloatType, NearestFilter, WebGLRenderTarget } from "three"
-import { SSGIMaterial } from "../material/SSGIMaterial.js"
 import { GBufferPass } from "../../gbuffer/GBufferPass.js"
+import { SSGIMaterial } from "../material/SSGIMaterial.js"
 
 export class SSGIPass extends Pass {
 	needsSwap = false
@@ -62,7 +62,7 @@ export class SSGIPass extends Pass {
 		super.dispose()
 
 		this.renderTarget.dispose()
-		this.gBufferRenderTarget.dispose()
+		this.renderTarget.dispose()
 
 		this.fullscreenMaterial.dispose()
 	}

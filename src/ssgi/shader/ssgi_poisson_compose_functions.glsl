@@ -58,9 +58,10 @@ vec3 ToWorld(const vec3 X, const vec3 Y, const vec3 Z, const vec3 V) {
   return V.x * X + V.y * Y + V.z * Z;
 }
 
-vec3 constructGlobalIllumination(vec3 diffuseGi, vec3 specularGi, vec3 viewDir,
-                                 vec3 viewNormal, vec3 diffuse, vec3 emissive,
-                                 float roughness, float metalness) {
+vec3 constructGlobalIllumination(vec3 diffuseGi, vec3 specularGi,
+                                 vec3 cameraRay, vec3 viewNormal, vec3 diffuse,
+                                 vec3 emissive, float roughness,
+                                 float metalness) {
   roughness *= roughness;
 
   // convert the viewNormal to world-space
@@ -68,7 +69,7 @@ vec3 constructGlobalIllumination(vec3 diffuseGi, vec3 specularGi, vec3 viewDir,
 
   vec3 T, B;
 
-  vec3 v = -viewDir; // incoming vector
+  vec3 v = -cameraRay; // incoming vector
 
   // convert view dir and view normal to world-space
   vec3 V = (vec4(v, 0.) * viewMatrix).xyz; // invert view dir

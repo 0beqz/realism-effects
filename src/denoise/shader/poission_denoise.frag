@@ -3,6 +3,8 @@ varying vec2 vUv;
 uniform sampler2D inputTexture;
 uniform sampler2D inputTexture2;
 uniform sampler2D depthTexture;
+uniform sampler2D
+    depthNormalTexture; // optional, in case no gBufferTexture is used
 uniform mat4 projectionMatrix;
 uniform mat4 projectionMatrixInverse;
 uniform mat4 cameraMatrixWorld;
@@ -63,6 +65,7 @@ void evaluateNeighbor(const vec4 neighborTexel, inout vec3 denoised,
 }
 
 Material centerMat;
+vec3 normal;
 float centerDepth;
 vec3 centerWorldPos;
 float centerLumDiffuse;
@@ -91,21 +94,32 @@ Neighbor getNeighborWeight(vec2 neighborUv, bool isDiffuseGi) {
   float neighborLuminance = luminance(neighborDiffuseGi.rgb);
   float neighborLuminance2 = luminance(neighborSpecularGi.rgb);
 
+#ifdef GBUFFER_TEXTURE
   Material neighborMat = getMaterial(gBufferTexture, neighborUv);
+  vec3 neighborNormal = neighborMat.normal;
+#else
+  vec3 neighborDepthVelocityTexel =
+      textureLod(depthNormalTexture, neighborUv, 0.).xyz;
+  vec3 neighborNormal = unpackNormal(neighborDepthVelocityTexel.b);
+#endif
 
   vec3 neighborWorldPos = getWorldPos(neighborDepth, neighborUv);
 
-  float normalDiff = 1. - max(dot(centerMat.normal, neighborMat.normal), 0.);
+  float normalDiff = 1. - max(dot(normal, neighborNormal), 0.);
   float depthDiff =
       10. * distToPlane(centerWorldPos, neighborWorldPos, centerMat.normal);
-
-  float roughnessDiff = abs(centerMat.roughness - neighborMat.roughness);
 
   float lumaDiff = mix(abs(centerLumDiffuse - neighborLuminance), 0., w);
   float lumaDiff2 = mix(abs(centerLumSpecular - neighborLuminance2), 0., w2);
 
+#ifdef GBUFFER_TEXTURE
+  float roughnessDiff = abs(centerMat.roughness - neighborMat.roughness);
+
   float wBasic = exp(-normalDiff * normalPhi - depthDiff * depthPhi -
                      roughnessDiff * roughnessPhi);
+#else
+  float wBasic = exp(-normalDiff * normalPhi - depthDiff * depthPhi);
+#endif
 
   if (isDiffuseGi) {
     wBasic = mix(wBasic, exp(-normalDiff * 10.), w);
@@ -143,10 +157,15 @@ void main() {
   float a = centerDiffuseGi.a;
   float a2 = centerSpecularGi.a;
 
+  if (a + a2 > 512.) {
+    discard;
+    return;
+  }
+
   // the weights w, w2 are used to make the denoiser more aggressive the
   // younger the pixel is
-  w = 1. / pow(a + 1., 0.5);
-  w2 = 1. / pow(a2 + 1., 0.5);
+  w = 1. / sqrt(a + 1.);
+  w2 = 1. / sqrt(a2 + 1.);
 
   toDenoiseSpace(centerDiffuseGi.rgb);
   toDenoiseSpace(centerSpecularGi.rgb);
@@ -155,6 +174,14 @@ void main() {
   centerLumSpecular = luminance(centerSpecularGi.rgb);
 
   centerMat = getMaterial(gBufferTexture, vUv);
+
+#ifdef GBUFFER_TEXTURE
+  normal = centerMat.normal;
+#else
+  vec3 depthVelocityTexel = textureLod(depthNormalTexture, vUv, 0.).xyz;
+  normal = unpackNormal(depthVelocityTexel.b);
+#endif
+
   roughnessSpecularFactor = min(1., centerMat.roughness / 0.25);
   roughnessSpecularFactor *= roughnessSpecularFactor;
 
@@ -177,16 +204,8 @@ void main() {
   // scale the radius depending on the pixel's age
   float r = 1. + sqrt(random.a) * exp(-(a + a2) * 0.01) * radius;
 
-  vec3 viewNormal = (viewMatrix * vec4(centerMat.normal, 0.0)).xyz;
-  vec3 tangent = normalize(cross(viewNormal, vec3(0.0, 1.0, 0.0)));
-  vec3 bitangent = normalize(cross(viewNormal, tangent));
-
   for (int i = 0; i < samples; i++) {
-    vec2 offset =
-        r * rotationMatrix *
-        (poissonDisk[i].x * tangent.xy + poissonDisk[i].y * bitangent.xy);
-
-    // vec2 offset = r * rotationMatrix * poissonDisk[i];
+    vec2 offset = r * rotationMatrix * poissonDisk[i];
 
     vec2 neighborUv = vUv + offset;
 

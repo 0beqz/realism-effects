@@ -9,6 +9,7 @@ import gbuffer_packing from "../utils/shader/gbuffer_packing.glsl"
 import { useBlueNoise } from "../utils/BlueNoiseUtils"
 import fragmentShader from "./shader/poission_denoise.frag"
 import { generateDenoiseSamples, generatePoissonDiskConstant } from "./utils/PoissonUtils"
+import { GBufferPass } from "../gbuffer/GBufferPass"
 
 const finalFragmentShader = fragmentShader.replace("#include <gbuffer_packing>", gbuffer_packing)
 
@@ -26,7 +27,7 @@ export class PoissionDenoisePass extends Pass {
 	iterations = defaultPoissonBlurOptions.iterations
 	index = 0
 
-	constructor(camera, inputTexture, depthTexture, options = defaultPoissonBlurOptions) {
+	constructor(camera, inputTexture, options = defaultPoissonBlurOptions) {
 		super("PoissionBlurPass")
 
 		options = { ...defaultPoissonBlurOptions, ...options }
@@ -41,6 +42,7 @@ export class PoissionDenoisePass extends Pass {
 				inputTexture: { value: null },
 				inputTexture2: { value: null },
 				gBufferTexture: { value: null },
+				depthNormalTexture: { value: null },
 				projectionMatrix: { value: camera.projectionMatrix },
 				projectionMatrixInverse: { value: camera.projectionMatrixInverse },
 				cameraMatrixWorld: { value: camera.matrixWorld },
@@ -69,7 +71,6 @@ export class PoissionDenoisePass extends Pass {
 		const { uniforms } = this.fullscreenMaterial
 
 		uniforms["inputTexture"].value = this.inputTexture
-		uniforms["depthTexture"].value = depthTexture
 		uniforms["depthPhi"].value = options.depthPhi
 		uniforms["normalPhi"].value = options.normalPhi
 
@@ -109,8 +110,20 @@ export class PoissionDenoisePass extends Pass {
 		return this.renderTargetB.texture
 	}
 
-	setGBufferTexture(texture) {
-		this.fullscreenMaterial.uniforms.gBufferTexture.value = texture
+	// can either be a GBufferPass or a VelocityDepthNormalPass
+	setGBufferPass(gBufferPass) {
+		if (gBufferPass instanceof GBufferPass) {
+			this.fullscreenMaterial.uniforms.gBufferTexture.value = gBufferPass.texture
+			this.fullscreenMaterial.defines.GBUFFER_TEXTURE = ""
+		} else {
+			this.fullscreenMaterial.uniforms.depthNormalTexture.value = gBufferPass.texture
+		}
+
+		this.fullscreenMaterial.uniforms.depthTexture.value = gBufferPass.renderTarget.depthTexture
+	}
+
+	setDepthNormalTexture(texture) {
+		this.fullscreenMaterial.uniforms.depthNormalTexture.value = texture
 	}
 
 	setDepthTexture(texture) {

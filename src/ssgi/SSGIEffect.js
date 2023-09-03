@@ -11,17 +11,17 @@ import { SVGF } from "../svgf/SVGF.js"
 import { CubeToEquirectEnvPass } from "./pass/CubeToEquirectEnvPass.js"
 import { SSGIPass } from "./pass/SSGIPass.js"
 /* eslint-disable camelcase */
+import { getVisibleChildren } from "../gbuffer/utils/GBufferUtils.js"
+import { isChildMaterialRenderable } from "../utils/SceneUtils.js"
 import { defaultSSGIOptions } from "./SSGIOptions"
 import { SSGIComposePass } from "./pass/SSGIComposePass.js"
 import ssgi_compose from "./shader/ssgi_compose.frag"
 import {
 	createGlobalDisableIblIradianceUniform,
 	createGlobalDisableIblRadianceUniform,
-	getMaxMipLevel,
-	unrollLoops
+	getMaxMipLevel
 } from "./utils/Utils.js"
-import { isChildMaterialRenderable } from "../utils/SceneUtils.js"
-import { getVisibleChildren } from "../gbuffer/utils/GBufferUtils.js"
+import { jitter } from "../taa/TAAUtils.js"
 
 const { render } = RenderPass.prototype
 
@@ -44,15 +44,6 @@ export class SSGIEffect extends Effect {
 				["toneMapping", new Uniform(NoToneMapping)]
 			])
 		})
-
-		// if (!(camera instanceof PerspectiveCamera)) {
-		// 	throw new Error(
-		// 		this.constructor.name +
-		// 			" doesn't support cameras of type '" +
-		// 			camera.constructor.name +
-		// 			"' yet. Only cameras of type 'PerspectiveCamera' are supported."
-		// 	)
-		// }
 
 		this._scene = scene
 		this._camera = camera
@@ -106,8 +97,7 @@ export class SSGIEffect extends Effect {
 			useRoughnessInAlphaChannel: true
 		})
 
-		this.svgf.denoisePass.setGBufferTexture(this.ssgiPass.gBufferPass.texture)
-		this.svgf.denoisePass.setDepthTexture(this.ssgiPass.gBufferPass.depthTexture)
+		this.svgf.denoisePass.setGBufferPass(this.ssgiPass.gBufferPass)
 
 		// patch the denoise pass
 		this.svgf.denoisePass.fullscreenMaterial.uniforms = {
@@ -389,6 +379,7 @@ export class SSGIEffect extends Effect {
 		ssgiComposePassUniforms.specularGiTexture.value = this.svgf.denoisePass.texture[1]
 
 		this.ssgiPass.render(renderer)
+		this._camera.clearViewOffset()
 		this.svgf.render(renderer)
 		this.ssgiComposePass.render(renderer)
 

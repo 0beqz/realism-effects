@@ -23,37 +23,37 @@ export class GBufferPass extends Pass {
 	}
 
 	get texture() {
-		return this.gBufferRenderTarget.texture
+		return this.renderTarget.texture
 	}
 
 	get depthTexture() {
-		return this.gBufferRenderTarget.depthTexture
+		return this.renderTarget.depthTexture
 	}
 
 	initMRTRenderTarget() {
-		this.gBufferRenderTarget = new WebGLRenderTarget(1, 1, {
+		this.renderTarget = new WebGLRenderTarget(1, 1, {
 			minFilter: NearestFilter,
 			magFilter: NearestFilter,
 			type: FloatType
 		})
 
-		this.gBufferRenderTarget.depthTexture = new DepthTexture(1, 1)
-		this.gBufferRenderTarget.depthTexture.type = FloatType
+		this.renderTarget.depthTexture = new DepthTexture(1, 1)
+		this.renderTarget.depthTexture.type = FloatType
 	}
 
 	setSize(width, height) {
-		this.gBufferRenderTarget.setSize(width, height)
+		this.renderTarget.setSize(width, height)
 	}
 
 	dispose() {
 		super.dispose()
-		this.gBufferRenderTarget.dispose()
+		this.renderTarget.dispose()
 	}
 
 	setMRTMaterialInScene() {
 		this.visibleMeshes = getVisibleChildren(this._scene)
 
-		const cameraMoved = didCameraMove(this._camera, this.lastCameraPosition, this.lastCameraQuaternion)
+		// const cameraMoved = didCameraMove(this._camera, this.lastCameraPosition, this.lastCameraQuaternion)
 
 		for (const c of this.visibleMeshes) {
 			const originalMaterial = c.material
@@ -69,7 +69,7 @@ export class GBufferPass extends Pass {
 				this.cachedMaterials.set(c, [originalMaterial, mrtMaterial])
 			}
 
-			// mrtMaterial.uniforms.resolution.value.set(this.gBufferRenderTarget.width, this.gBufferRenderTarget.height)
+			// mrtMaterial.uniforms.resolution.value.set(this.renderTarget.width, this.renderTarget.height)
 			// mrtMaterial.uniforms.frame.value = this.frame
 			// mrtMaterial.uniforms.cameraMoved.value = cameraMoved
 
@@ -78,11 +78,6 @@ export class GBufferPass extends Pass {
 			copyPropsToGBufferMaterial(originalMaterial, mrtMaterial)
 
 			// todo: implement selection
-
-			// mrtMaterial.uniforms.metalness.value = c.material.metalness ?? 0
-			// mrtMaterial.uniforms.roughness.value = c.material.roughness ?? 0
-			// mrtMaterial.uniforms.emissiveIntensity.value = c.material.emissiveIntensity ?? 0
-			// mrtMaterial.uniforms.opacity.value = originalMaterial.opacity
 
 			c.material = mrtMaterial
 		}
@@ -105,7 +100,7 @@ export class GBufferPass extends Pass {
 
 		this.setMRTMaterialInScene()
 
-		renderer.setRenderTarget(this.gBufferRenderTarget)
+		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this._scene, this._camera)
 
 		this.unsetMRTMaterialInScene()
