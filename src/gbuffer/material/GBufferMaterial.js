@@ -1,5 +1,5 @@
 ﻿/* eslint-disable camelcase */
-import { MeshPhysicalMaterial, Vector2 } from "three"
+import { GLSL3, MeshPhysicalMaterial, Vector2 } from "three"
 import gbuffer_packing from "../shader/gbuffer_packing.glsl"
 
 class GBufferMaterial extends MeshPhysicalMaterial {
@@ -9,6 +9,8 @@ class GBufferMaterial extends MeshPhysicalMaterial {
 		shader.uniforms.blueNoiseRepeat = { value: new Vector2(1, 1) }
 		shader.uniforms.resolution = { value: new Vector2(1, 1) }
 		shader.uniforms.cameraMoved = { value: false }
+
+		shader.glslVersion = GLSL3
 
 		const vertexShader = shader.vertexShader.replace(
 			"void main() {",
@@ -37,6 +39,12 @@ class GBufferMaterial extends MeshPhysicalMaterial {
 		shader.vertexShader = shader.vertexShader.replace(/#include <lightmap.*>/g, "")
 		shader.fragmentShader = shader.fragmentShader.replace(/#include <lightmap.*>/g, "")
 
+		// remove opaque_fragment include
+		shader.fragmentShader = shader.fragmentShader.replace("#include <opaque_fragment>", "")
+
+		// remove colorspace_fragment include
+		shader.fragmentShader = shader.fragmentShader.replace("#include <colorspace_fragment>", "")
+
 		// delete the fog_fragment include
 		shader.fragmentShader = shader.fragmentShader.replace("#include <fog_fragment>", "")
 
@@ -50,6 +58,8 @@ class GBufferMaterial extends MeshPhysicalMaterial {
 
             ${gbuffer_packing}
 
+			layout(location = 0) out vec4 color;
+
             void main() {
         `
 			)
@@ -62,7 +72,7 @@ class GBufferMaterial extends MeshPhysicalMaterial {
 
             vec4 gBuffer = packGBuffer(diffuseColor, worldNormal, roughnessFactor, metalnessFactor, totalEmissiveRadiance);
 
-            gl_FragColor = gBuffer;`
+            color = gBuffer;`
 			)
 	}
 }
