@@ -75,11 +75,11 @@ highp vec3 unpackNormal(highp float packedNormal) {
 }
 
 highp float packVec2(highp vec2 value) {
-  return uintBitsToFloat(packUnorm2x16(value));
+  return uintBitsToFloat(packHalf2x16(value));
 }
 
 highp vec2 unpackVec2(highp float packedValue) {
-  return unpackUnorm2x16(floatBitsToUint(packedValue));
+  return unpackHalf2x16(floatBitsToUint(packedValue));
 }
 
 highp vec4 packTwoVec4(highp vec4 v1, highp vec4 v2) {
@@ -149,9 +149,13 @@ highp vec4 packGBuffer(highp vec4 diffuse, highp vec3 normal,
   // has to be done as otherwise we get blue instead of white on Metal backends
   diffuse = clamp(diffuse, vec4(0.), vec4(0.999999));
 
+  // clamp roughness and metalness to [0;1]
+  roughness = clamp(roughness, 0.0, 1.0);
+  metalness = clamp(metalness, 0.0, 1.0);
+
   gBuffer.r = vec4ToFloat(diffuse);
-  gBuffer.g = packNormal(normal);
-  gBuffer.b = packVec2(vec2(roughness, metalness));
+  gBuffer.g = packVec2(vec2(roughness, metalness));
+  gBuffer.b = packNormal(normal);
   gBuffer.a = vec4ToFloat(encodeRGBE8(emissive));
 
   return gBuffer;
@@ -162,8 +166,8 @@ Material getMaterial(sampler2D gBufferTexture, highp vec2 uv) {
   highp vec4 gBuffer = textureLod(gBufferTexture, uv, 0.0);
 
   highp vec4 diffuse = floatToVec4(gBuffer.r);
-  highp vec3 normal = unpackNormal(gBuffer.g);
-  highp vec2 roughnessMetalness = unpackVec2(gBuffer.b);
+  highp vec3 normal = unpackNormal(gBuffer.b);
+  highp vec2 roughnessMetalness = unpackVec2(gBuffer.g);
   highp float roughness = roughnessMetalness.r;
   highp float metalness = roughnessMetalness.g;
   highp vec3 emissive = decodeRGBE8(floatToVec4(gBuffer.a));
