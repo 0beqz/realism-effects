@@ -14,7 +14,6 @@ import Denoiser from "../denoise/Denoiser.js"
 import { getVisibleChildren } from "../gbuffer/utils/GBufferUtils.js"
 import { isChildMaterialRenderable } from "../utils/SceneUtils.js"
 import { defaultSSGIOptions } from "./SSGIOptions"
-import { SSGIComposePass } from "./pass/SSGIComposePass.js"
 import ssgi_compose from "./shader/ssgi_compose.frag"
 import {
 	createGlobalDisableIblIradianceUniform,
@@ -31,7 +30,7 @@ export class SSGIEffect extends Effect {
 	selection = new Selection()
 	isUsingRenderPass = true
 
-	constructor(composer, scene, camera, velocityDepthNormalPass, options) {
+	constructor(composer, scene, camera, options) {
 		options = { ...defaultSSGIOptions, ...options }
 
 		super("SSGIEffect", ssgi_compose, {
@@ -75,7 +74,10 @@ export class SSGIEffect extends Effect {
 
 		// ssgi pass
 		this.ssgiPass = new SSGIPass(this, options)
-		this.denoiser = new Denoiser(scene, camera, this.ssgiPass.texture, velocityDepthNormalPass)
+		this.denoiser = new Denoiser(scene, camera, this.ssgiPass.texture, {
+			gBufferPass: this.ssgiPass.gBufferPass,
+			velocityDepthNormalPass: options.velocityDepthNormalPass
+		})
 
 		this.lastSize = {
 			width: options.width,
@@ -105,8 +107,6 @@ export class SSGIEffect extends Effect {
 
 			render.call(this, ...args)
 		}
-
-		this.ssgiComposePass = new SSGIComposePass(camera)
 
 		this.makeOptionsReactive(options)
 	}
@@ -238,7 +238,6 @@ export class SSGIEffect extends Effect {
 
 		this.ssgiPass.setSize(width, height)
 		this.denoiser.setSize(width, height)
-		this.ssgiComposePass.setSize(width, height)
 		this.sceneRenderTarget.setSize(width, height)
 		this.cubeToEquirectEnvPass?.setSize(width, height)
 
@@ -338,17 +337,10 @@ export class SSGIEffect extends Effect {
 
 		this.ssgiPass.fullscreenMaterial.uniforms.directLightTexture.value = sceneBuffer.texture
 
-		const ssgiComposePassUniforms = this.ssgiComposePass.fullscreenMaterial.uniforms
-		ssgiComposePassUniforms.gBufferTexture.value = this.ssgiPass.gBufferPass.texture
-		ssgiComposePassUniforms.depthTexture.value = this.ssgiPass.gBufferPass.depthTexture
-		ssgiComposePassUniforms.diffuseGiTexture.value = this.denoiser.texture[0]
-		ssgiComposePassUniforms.specularGiTexture.value = this.denoiser.texture[1]
-
 		this.ssgiPass.render(renderer)
 		this.denoiser.denoise(renderer)
-		this.ssgiComposePass.render(renderer)
 
-		this.uniforms.get("inputTexture").value = this.ssgiComposePass.renderTarget.texture
+		this.uniforms.get("inputTexture").value = this.denoiser.texture
 		this.uniforms.get("sceneTexture").value = sceneBuffer.texture
 		this.uniforms.get("depthTexture").value = this.ssgiPass.gBufferPass.depthTexture
 		this.uniforms.get("toneMapping").value = renderer.toneMapping

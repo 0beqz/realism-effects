@@ -1,19 +1,19 @@
 /* eslint-disable camelcase */
 import { Pass } from "postprocessing"
-import { NoBlending, HalfFloatType, ShaderMaterial, WebGLRenderTarget } from "three"
+import { FloatType, NoBlending, ShaderMaterial, WebGLRenderTarget } from "three"
+import gbuffer_packing from "../../gbuffer/shader/gbuffer_packing.glsl"
 import basicVertexShader from "../../utils/shader/basic.vert"
-import gbuffer_packing from "../../utils/shader/gbuffer_packing.glsl"
-import ssgi_poisson_compose_functions from "../shader/ssgi_poisson_compose_functions.glsl"
+import ssgi_poisson_compose_functions from "../shader/denoiser_compose_functions.glsl"
 
-export class SSGIComposePass extends Pass {
-	constructor(camera) {
-		super("SSGIComposePass")
+export class DenoiserComposePass extends Pass {
+	constructor(camera, textures, gBufferTexture, depthTexture) {
+		super("DenoiserComposePass")
 
 		this._camera = camera
 
 		this.renderTarget = new WebGLRenderTarget(1, 1, {
 			depthBuffer: false,
-			type: HalfFloatType
+			type: FloatType
 		})
 
 		this.fullscreenMaterial = new ShaderMaterial({
@@ -71,10 +71,10 @@ export class SSGIComposePass extends Pass {
 				projectionMatrixInverse: { value: camera.projectionMatrixInverse },
 				cameraNear: { value: camera.near },
 				cameraFar: { value: camera.far },
-				gBufferTexture: { value: null },
-				depthTexture: { value: null },
-				diffuseGiTexture: { value: null },
-				specularGiTexture: { value: null }
+				gBufferTexture: { value: gBufferTexture },
+				depthTexture: { value: depthTexture },
+				diffuseGiTexture: { value: textures[0] },
+				specularGiTexture: { value: textures[1] }
 			},
 			blending: NoBlending,
 			depthWrite: false,
@@ -83,6 +83,10 @@ export class SSGIComposePass extends Pass {
 		})
 
 		if (camera.isPerspectiveCamera) this.fullscreenMaterial.defines.PERSPECTIVE_CAMERA = ""
+	}
+
+	get texture() {
+		return this.renderTarget.texture
 	}
 
 	dispose() {

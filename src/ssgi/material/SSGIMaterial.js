@@ -1,11 +1,10 @@
-﻿import { Matrix4, NoBlending, ShaderMaterial, Uniform, Vector2, Vector3 } from "three"
+﻿/* eslint-disable camelcase */
+import { Matrix4, NoBlending, ShaderMaterial, Uniform, Vector2, Vector3 } from "three"
 import vertexShader from "../../utils/shader/basic.vert"
 import fragmentShader from "../shader/ssgi.frag"
-// eslint-disable-next-line camelcase
 import ssgi_utils from "../shader/ssgi_utils.frag"
-// eslint-disable-next-line camelcase
 import { useBlueNoise } from "../../utils/BlueNoiseUtils"
-import gbuffer_packing from "../../utils/shader/gbuffer_packing.glsl"
+import gbuffer_packing from "../../gbuffer/shader/gbuffer_packing.glsl"
 import { EquirectHdrInfoUniform } from "../utils/EquirectHdrInfoUniform"
 
 export class SSGIMaterial extends ShaderMaterial {

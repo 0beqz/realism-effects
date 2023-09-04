@@ -1,6 +1,6 @@
 ﻿/* eslint-disable camelcase */
 import { MeshPhysicalMaterial, Vector2 } from "three"
-import gbuffer_packing from "../../utils/shader/gbuffer_packing.glsl"
+import gbuffer_packing from "../shader/gbuffer_packing.glsl"
 
 class GBufferMaterial extends MeshPhysicalMaterial {
 	onBeforeCompile(shader) {

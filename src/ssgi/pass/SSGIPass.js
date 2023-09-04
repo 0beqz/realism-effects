@@ -77,7 +77,7 @@ export class SSGIPass extends Pass {
 		this.fullscreenMaterial.uniforms.frame.value = this.frame
 		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
 		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far
-		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.ssgiEffect.ssgiComposePass.renderTarget.texture
+		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.ssgiEffect.denoiser.texture
 
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)

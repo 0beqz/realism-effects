@@ -339,7 +339,7 @@ document.addEventListener("mousemove", ev => {
 	lightParams.pitch = (1 - ev.clientY / window.innerHeight) * 180
 
 	refreshLighting()
-	// if (ssgiEffect) ssgiEffect.reset()
+	if (ssgiEffect) ssgiEffect.reset()
 	if (taaPass) taaPass.needsUpdate = true
 })
 
@@ -448,7 +448,7 @@ const initScene = async () => {
 	const bloomEffect = new POSTPROCESSING.BloomEffect({
 		intensity: 1,
 		mipmapBlur: true,
-		luminanceSmoothing: 0.75,
+		luminanceSmoothing: 0.5,
 		luminanceThreshold: 0.75,
 		kernelSize: POSTPROCESSING.KernelSize.HUGE
 	})
@@ -458,7 +458,7 @@ const initScene = async () => {
 		offset: 0.3
 	})
 
-	ssgiEffect = new SSGIEffect(composer, scene, camera, velocityDepthNormalPass, options)
+	ssgiEffect = new SSGIEffect(composer, scene, camera, { ...options, velocityDepthNormalPass })
 	window.ssgiEffect = ssgiEffect
 
 	gui2 = new SSGIDebugGUI(ssgiEffect, options)
@@ -475,7 +475,7 @@ const initScene = async () => {
 			if (fps >= 256) {
 				const sharpnessEffect = new SharpnessEffect({ sharpness: 0.75 })
 
-				composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, vignetteEffect, lutEffect))
+				composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, bloomEffect, vignetteEffect, lutEffect))
 
 				// const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass, {
 				// 	intensity: 1
@@ -498,7 +498,7 @@ const initScene = async () => {
 		fxaaPass = new POSTPROCESSING.EffectPass(camera, fxaaEffect)
 
 		taaPass = new TAAPass(camera)
-		// composer.addPass(taaPass)
+		composer.addPass(taaPass)
 
 		if (!isAoDemo) {
 			if (fps >= 256) {
@@ -743,6 +743,7 @@ const setupAsset = asset => {
 	}
 
 	scene.add(asset.scene)
+	if (ssgiEffect) ssgiEffect.reset()
 
 	let planeShaderMaterial
 	let cylinderShaderMaterial
@@ -818,7 +819,7 @@ const setupAsset = asset => {
 				c.material.map.magFilter = NearestFilter
 			}
 
-			c.material.transparent = false
+			// c.material.transparent = false
 
 			// const lm = c.material.emissiveMap
 			// c.material.emissiveMap = null

@@ -3,13 +3,13 @@ import { Pass } from "postprocessing"
 import { FloatType, GLSL3, ShaderMaterial, Vector2, WebGLMultipleRenderTargets } from "three"
 // eslint-disable-next-line camelcase
 
-import vertexShader from "../utils/shader/basic.vert"
-import gbuffer_packing from "../utils/shader/gbuffer_packing.glsl"
+import vertexShader from "../../utils/shader/basic.vert"
+import gbuffer_packing from "../../gbuffer/shader/gbuffer_packing.glsl"
 
-import { useBlueNoise } from "../utils/BlueNoiseUtils"
-import fragmentShader from "./shader/poission_denoise.frag"
-import { generateDenoiseSamples, generatePoissonDiskConstant } from "./utils/PoissonUtils"
-import { GBufferPass } from "../gbuffer/GBufferPass"
+import { useBlueNoise } from "../../utils/BlueNoiseUtils"
+import fragmentShader from "../shader/poission_denoise.frag"
+import { generateDenoiseSamples, generatePoissonDiskConstant } from "../utils/PoissonUtils"
+import { GBufferPass } from "../../gbuffer/GBufferPass"
 
 const finalFragmentShader = fragmentShader.replace("#include <gbuffer_packing>", gbuffer_packing)
 
@@ -27,20 +27,20 @@ export class PoissionDenoisePass extends Pass {
 	iterations = defaultPoissonBlurOptions.iterations
 	index = 0
 
-	constructor(camera, inputTexture, options = defaultPoissonBlurOptions) {
+	constructor(camera, textures, options = defaultPoissonBlurOptions) {
 		super("PoissionBlurPass")
 
 		options = { ...defaultPoissonBlurOptions, ...options }
 
-		this.inputTexture = inputTexture
+		this.textures = textures
 
 		this.fullscreenMaterial = new ShaderMaterial({
 			fragmentShader: finalFragmentShader,
 			vertexShader,
 			uniforms: {
 				depthTexture: { value: null },
-				inputTexture: { value: null },
-				inputTexture2: { value: null },
+				inputTexture: { value: textures[0] },
+				inputTexture2: { value: textures[1] },
 				gBufferTexture: { value: null },
 				depthNormalTexture: { value: null },
 				projectionMatrix: { value: camera.projectionMatrix },
@@ -70,7 +70,6 @@ export class PoissionDenoisePass extends Pass {
 
 		const { uniforms } = this.fullscreenMaterial
 
-		uniforms["inputTexture"].value = this.inputTexture
 		uniforms["depthPhi"].value = options.depthPhi
 		uniforms["normalPhi"].value = options.normalPhi
 
@@ -143,10 +142,9 @@ export class PoissionDenoisePass extends Pass {
 			const horizontal = i % 2 === 0
 			const inputRenderTarget = horizontal ? this.renderTargetB : this.renderTargetA
 
-			this.fullscreenMaterial.uniforms["inputTexture"].value =
-				i === 0 ? this.inputTexture : inputRenderTarget.texture[0]
+			this.fullscreenMaterial.uniforms["inputTexture"].value = i === 0 ? this.textures[0] : inputRenderTarget.texture[0]
 			this.fullscreenMaterial.uniforms["inputTexture2"].value =
-				i === 0 ? this.inputTexture2 : inputRenderTarget.texture[1]
+				i === 0 ? this.textures[1] : inputRenderTarget.texture[1]
 
 			const renderTarget = horizontal ? this.renderTargetA : this.renderTargetB
 
