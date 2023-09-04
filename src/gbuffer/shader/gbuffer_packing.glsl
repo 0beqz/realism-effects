@@ -74,12 +74,18 @@ highp vec3 unpackNormal(highp float packedNormal) {
   return decodeOctWrap(unpackHalf2x16(floatBitsToUint(packedNormal)));
 }
 
-highp float packVec2(highp vec2 value) {
-  return uintBitsToFloat(packHalf2x16(value));
+highp float packVec2(highp vec2 vec) {
+  highp uvec2 uvec = uvec2(vec * 65535.0);
+  highp uint value = (uvec.y << 16u) | uvec.x;
+  return uintBitsToFloat(value);
 }
 
 highp vec2 unpackVec2(highp float packedValue) {
-  return unpackHalf2x16(floatBitsToUint(packedValue));
+  highp uint value = floatBitsToUint(packedValue);
+  highp uvec2 uvec;
+  uvec.x = value & 0xFFFFu;
+  uvec.y = (value >> 16u) & 0xFFFFu;
+  return vec2(uvec) / 65535.0;
 }
 
 highp vec4 packTwoVec4(highp vec4 v1, highp vec4 v2) {
@@ -146,6 +152,7 @@ highp vec4 packGBuffer(highp vec4 diffuse, highp vec3 normal,
   highp vec4 gBuffer;
 
   // clamp diffuse to [0;1[
+  // has to be done as otherwise we get blue instead of white on Metal backends
   diffuse = clamp(diffuse, vec4(0.), vec4(0.999999));
 
   gBuffer.r = vec4ToFloat(diffuse);

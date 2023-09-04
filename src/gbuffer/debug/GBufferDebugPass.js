@@ -30,7 +30,7 @@ export class GBufferDebugPass extends Pass {
                 float depth = textureLod(depthTexture, vUv, 0.).r;
 
 				if(depth == 0.){
-					discard;
+					gl_FragColor = vec4(0.);
 					return;
 				}
 
