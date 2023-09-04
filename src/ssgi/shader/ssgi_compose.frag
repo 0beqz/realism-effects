@@ -2,11 +2,16 @@
 uniform sampler2D sceneTexture;
 uniform sampler2D depthTexture;
 uniform int toneMapping;
+uniform bool isDebug;
 
 #include <tonemapping_pars_fragment>
 
 void mainImage(const in vec4 inputColor, const in vec2 uv,
                out vec4 outputColor) {
+  // if (isDebug) {
+  //   gl_FragColor = textureLod(inputTexture, uv, 0.);
+  //   return;
+  // }
   vec4 depthTexel = textureLod(depthTexture, uv, 0.);
   vec3 ssgiClr;
 

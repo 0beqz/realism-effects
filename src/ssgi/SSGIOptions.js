@@ -44,5 +44,6 @@ export const defaultSSGIOptions = {
 	refineSteps: 5,
 	spp: 1,
 	resolutionScale: 1,
-	missedRays: false
+	missedRays: false,
+	outputTexture: null
 }

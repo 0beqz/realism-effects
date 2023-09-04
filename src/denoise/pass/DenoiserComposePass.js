@@ -16,6 +16,8 @@ export class DenoiserComposePass extends Pass {
 			type: FloatType
 		})
 
+		this.renderTarget.texture.name = "DenoiserComposePass.Texture"
+
 		this.fullscreenMaterial = new ShaderMaterial({
 			fragmentShader: /* glsl */ `
             varying vec2 vUv;

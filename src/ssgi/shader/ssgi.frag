@@ -330,18 +330,17 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal,
     vec3 diffuseBrdf =
         vec3(evalDisneyDiffuse(NoL, NoV, LoH, roughness, metalness));
     pdf = NoL / M_PI;
-    pdf = max(EPSILON, pdf);
 
     brdf = diffuseBrdf;
   } else {
     vec3 specularBrdf = evalDisneySpecular(roughness, NoH, NoV, NoL);
     pdf = GGXVNDFPdf(NoH, NoV, roughness);
-    pdf = max(EPSILON, pdf);
 
     brdf = specularBrdf;
   }
 
   brdf *= cosTheta;
+  pdf = max(0.01, pdf);
 
   hitPos = viewPos;
 

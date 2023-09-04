@@ -80,6 +80,8 @@ export class VelocityDepthNormalPass extends Pass {
 			magFilter: NearestFilter
 		})
 
+		this.renderTarget.texture.name = "VelocityDepthNormalPass.Texture"
+
 		this.renderTarget.depthTexture = new DepthTexture(1, 1)
 		this.renderTarget.depthTexture.type = FloatType
 

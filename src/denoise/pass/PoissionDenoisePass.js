@@ -42,7 +42,7 @@ export class PoissionDenoisePass extends Pass {
 				inputTexture: { value: textures[0] },
 				inputTexture2: { value: textures[1] },
 				gBufferTexture: { value: null },
-				depthNormalTexture: { value: null },
+				normalTexture: { value: null },
 				projectionMatrix: { value: camera.projectionMatrix },
 				projectionMatrixInverse: { value: camera.projectionMatrixInverse },
 				cameraMatrixWorld: { value: camera.matrixWorld },
@@ -67,6 +67,13 @@ export class PoissionDenoisePass extends Pass {
 
 		this.renderTargetA = new WebGLMultipleRenderTargets(1, 1, 2, renderTargetOptions)
 		this.renderTargetB = new WebGLMultipleRenderTargets(1, 1, 2, renderTargetOptions)
+
+		// give the textures of renderTargetA and renderTargetB names
+		this.renderTargetA.texture[0].name = "PoissionDenoisePass.diffuse"
+		this.renderTargetA.texture[1].name = "PoissionDenoisePass.specular"
+
+		this.renderTargetB.texture[0].name = "PoissionDenoisePass.diffuse"
+		this.renderTargetB.texture[1].name = "PoissionDenoisePass.specular"
 
 		const { uniforms } = this.fullscreenMaterial
 
@@ -115,14 +122,14 @@ export class PoissionDenoisePass extends Pass {
 			this.fullscreenMaterial.uniforms.gBufferTexture.value = gBufferPass.texture
 			this.fullscreenMaterial.defines.GBUFFER_TEXTURE = ""
 		} else {
-			this.fullscreenMaterial.uniforms.depthNormalTexture.value = gBufferPass.texture
+			this.fullscreenMaterial.uniforms.normalTexture.value = gBufferPass.texture
 		}
 
 		this.fullscreenMaterial.uniforms.depthTexture.value = gBufferPass.renderTarget.depthTexture
 	}
 
-	setDepthNormalTexture(texture) {
-		this.fullscreenMaterial.uniforms.depthNormalTexture.value = texture
+	setnormalTexture(texture) {
+		this.fullscreenMaterial.uniforms.normalTexture.value = texture
 	}
 
 	setDepthTexture(texture) {

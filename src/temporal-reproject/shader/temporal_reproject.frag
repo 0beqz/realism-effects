@@ -158,57 +158,62 @@ void main() {
   // float m = 1. - delta / (1. / 60.);
   // float fpsAdjustedBlend = blend + max(0., (1. - blend) * m);
 
-  float maxValue = fullAccumulate ? mix(1.0, blend, moveFactor) : blend;
-
   vec3 outputColor;
   float temporalReprojectMix;
 
 #pragma unroll_loop_start
   for (int i = 0; i < textureCount; i++) {
-    if (constantBlend) {
-      temporalReprojectMix = accumulatedTexel[i].a == 0.0 ? 0.0 : blend;
-    } else {
-      temporalReprojectMix = blend;
+    {
+      if (constantBlend) {
+        temporalReprojectMix = accumulatedTexel[i].a == 0.0 ? 0.0 : blend;
+      } else {
+        temporalReprojectMix = blend;
 
-      // if we reproject from oblique angles to straight angles, we get
-      // stretching and need to counteract it
-      accumulatedTexel[i].a = mix(accumulatedTexel[i].a, 0.0, angleMix);
+        // if we reproject from oblique angles to straight angles, we get
+        // stretching and need to counteract it
+        accumulatedTexel[i].a = mix(accumulatedTexel[i].a, 0.0, angleMix);
 
-      if (reset)
-        accumulatedTexel[i].a = 0.0;
+        if (reset)
+          accumulatedTexel[i].a = 0.0;
 
-      float roughnessMaximum = 0.25;
+        float maxValue = fullAccumulate ? mix(1.0, blend, moveFactor) : blend;
+        if (fullAccumulate && reprojectedUvSpecular[i].x > 0.)
+          maxValue = 0.975;
 
-      if (reprojectSpecular[i] && roughness < roughnessMaximum &&
-          (rayLength > 10.0e3 || reprojectedUvSpecular[i].x < 0.)) {
-        float maxRoughnessValue =
-            mix(0.5, maxValue, roughness / roughnessMaximum);
-        maxValue = mix(maxValue, maxRoughnessValue, moveFactor);
+        float roughnessMaximum = 0.25;
+
+        if (reprojectSpecular[i] && roughness < roughnessMaximum &&
+            (rayLength > 10.0e3 || reprojectedUvSpecular[i].x < 0.)) {
+          float maxRoughnessValue =
+              mix(0.5, maxValue, roughness / roughnessMaximum);
+          maxValue = mix(maxValue, maxRoughnessValue, moveFactor);
+        }
+
+        temporalReprojectMix =
+            min(1. - 1. / (accumulatedTexel[i].a + 1.0), maxValue);
+
+        // float lumDiff = min(abs(luminance(inputTexel[i].rgb) -
+        //                         luminance(accumulatedTexel[i].rgb)),
+        //                     1.);
+
+        // float lumFactor = clamp(lumDiff * 1. - 0.5, 0., 1.);
+        // temporalReprojectMix = mix(temporalReprojectMix, 0.9,
+        //                            min(lumFactor * movement *
+        //                            100000000., 1.));
       }
 
-      temporalReprojectMix =
-          min(1. - 1. / (accumulatedTexel[i].a + 1.0), maxValue);
+      outputColor =
+          mix(inputTexel[i].rgb, accumulatedTexel[i].rgb, temporalReprojectMix);
 
-      // float lumDiff = min(abs(luminance(inputTexel[i].rgb) -
-      //                         luminance(accumulatedTexel[i].rgb)),
-      //                     1.);
+      // calculate the alpha from temporalReprojectMix
+      accumulatedTexel[i].a = 1. / (1. - temporalReprojectMix) - 1.;
 
-      // float lumFactor = clamp(lumDiff * 1. - 0.5, 0., 1.);
-      // temporalReprojectMix = mix(temporalReprojectMix, 0.9,
-      //                            min(lumFactor * movement * 100000000., 1.));
+      undoColorTransform(outputColor);
+
+      gOutput[i] = vec4(outputColor, accumulatedTexel[i].a);
+
+      texIndex++;
     }
-
-    outputColor =
-        mix(inputTexel[i].rgb, accumulatedTexel[i].rgb, temporalReprojectMix);
-
-    // calculate the alpha from temporalReprojectMix
-    accumulatedTexel[i].a = 1. / (1. - temporalReprojectMix) - 1.;
-
-    undoColorTransform(outputColor);
-
-    gOutput[i] = vec4(outputColor, accumulatedTexel[i].a);
-
-    texIndex++;
   }
 #pragma unroll_loop_end
 

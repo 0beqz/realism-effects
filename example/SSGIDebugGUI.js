@@ -1,6 +1,6 @@
-﻿import { SSGIEffect } from "realism-effects"
+﻿import copy from "copy-to-clipboard"
+import { SSGIEffect } from "realism-effects"
 import { Pane } from "tweakpane"
-import copy from "copy-to-clipboard"
 
 export class SSGIDebugGUI {
 	constructor(ssgiEffect, params = SSGIEffect.DefaultOptions) {
@@ -34,7 +34,6 @@ export class SSGIDebugGUI {
 		const denoiseFolder = pane.addFolder({ title: "Denoise" })
 		denoiseFolder.addInput(params, "denoiseIterations", { min: 0, max: 5, step: 1 })
 		denoiseFolder.addInput(params, "radius", { min: 0, max: 32, step: 1 })
-		denoiseFolder.addInput(params, "rings", { min: 0, max: 16, step: 0.125 })
 		denoiseFolder.addInput(params, "samples", { min: 0, max: 32, step: 1 })
 
 		denoiseFolder.addInput(params, "phi", {
@@ -77,6 +76,36 @@ export class SSGIDebugGUI {
 		const resolutionFolder = pane.addFolder({ title: "Resolution", expanded: false })
 		resolutionFolder.addInput(params, "resolutionScale", { min: 0.25, max: 1, step: 0.25 })
 
+		const textures = [
+			ssgiEffect.denoiser.denoiserComposePass.texture,
+			ssgiEffect.ssgiPass.renderTarget.texture,
+			ssgiEffect.ssgiPass.gBufferPass.renderTarget.depthTexture,
+			ssgiEffect.denoiser.velocityDepthNormalPass.renderTarget.texture,
+			ssgiEffect.denoiser.denoisePass.renderTargetA.texture[0],
+			ssgiEffect.denoiser.denoisePass.renderTargetA.texture[1],
+			ssgiEffect.denoiser.denoisePass.renderTargetB.texture[0],
+			ssgiEffect.denoiser.denoisePass.renderTargetB.texture[1],
+			ssgiEffect.ssgiPass.gBufferPass.texture
+		]
+
+		// turn textures into an object with names
+		const textureObject = {}
+		textures.forEach(tex => (textureObject[tex.name] = tex.name))
+
+		const modes = ["diffuse", "alpha", "normal", "roughness", "metalness", "emissive"]
+		modes.forEach(name => (textureObject[name] = name))
+
+		const textureDebugParams = { Texture: "DenoiserComposePass.Texture" }
+
+		const debugFolder = pane.addFolder({ title: "Debug", expanded: false })
+		debugFolder
+			.addInput(textureDebugParams, "Texture", {
+				options: textureObject
+			})
+			.on("change", ev => {
+				ssgiEffect.outputTexture = textures.find(tex => tex.name === ev.value) ?? ev.value
+			})
+
 		pane
 			.addButton({
 				title: "Copy to Clipboard"
@@ -85,6 +114,7 @@ export class SSGIDebugGUI {
 				const json = {}
 
 				for (const prop of Object.keys(SSGIEffect.DefaultOptions)) {
+					if (prop === "outputTexture") continue
 					json[prop] = ssgiEffect[prop]
 				}
 

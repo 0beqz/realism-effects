@@ -25,6 +25,8 @@ export class SSGIPass extends Pass {
 			depthBuffer: false
 		})
 
+		this.renderTarget.texture.name = "SSGIPass.Texture"
+
 		// set up basic uniforms that we don't have to update
 		this.fullscreenMaterial.uniforms.cameraMatrixWorld.value = this._camera.matrixWorld
 		this.fullscreenMaterial.uniforms.viewMatrix.value = this._camera.matrixWorldInverse

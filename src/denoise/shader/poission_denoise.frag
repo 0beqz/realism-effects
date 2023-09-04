@@ -3,8 +3,7 @@ varying vec2 vUv;
 uniform sampler2D inputTexture;
 uniform sampler2D inputTexture2;
 uniform sampler2D depthTexture;
-uniform sampler2D
-    depthNormalTexture; // optional, in case no gBufferTexture is used
+uniform sampler2D normalTexture; // optional, in case no gBufferTexture is used
 uniform mat4 projectionMatrix;
 uniform mat4 projectionMatrixInverse;
 uniform mat4 cameraMatrixWorld;
@@ -99,7 +98,7 @@ Neighbor getNeighborWeight(vec2 neighborUv, bool isDiffuseGi) {
   vec3 neighborNormal = neighborMat.normal;
 #else
   vec3 neighborDepthVelocityTexel =
-      textureLod(depthNormalTexture, neighborUv, 0.).xyz;
+      textureLod(normalTexture, neighborUv, 0.).xyz;
   vec3 neighborNormal = unpackNormal(neighborDepthVelocityTexel.b);
 #endif
 
@@ -178,7 +177,7 @@ void main() {
 #ifdef GBUFFER_TEXTURE
   normal = centerMat.normal;
 #else
-  vec3 depthVelocityTexel = textureLod(depthNormalTexture, vUv, 0.).xyz;
+  vec3 depthVelocityTexel = textureLod(normalTexture, vUv, 0.).xyz;
   normal = unpackNormal(depthVelocityTexel.b);
 #endif
 

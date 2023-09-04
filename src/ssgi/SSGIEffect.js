@@ -20,6 +20,7 @@ import {
 	createGlobalDisableIblRadianceUniform,
 	getMaxMipLevel
 } from "./utils/Utils.js"
+import { GBufferDebugPass } from "../gbuffer/debug/GBufferDebugPass.js"
 
 const { render } = RenderPass.prototype
 
@@ -39,6 +40,7 @@ export class SSGIEffect extends Effect {
 				["inputTexture", new Uniform(null)],
 				["sceneTexture", new Uniform(null)],
 				["depthTexture", new Uniform(null)],
+				["isDebug", new Uniform(false)],
 				["toneMapping", new Uniform(NoToneMapping)]
 			])
 		})
@@ -101,6 +103,8 @@ export class SSGIEffect extends Effect {
 		}
 
 		this.makeOptionsReactive(options)
+
+		this.outputTexture = this.denoiser.texture
 	}
 
 	updateUsingRenderPass() {
@@ -192,6 +196,30 @@ export class SSGIEffect extends Effect {
 						case "distance":
 							ssgiPassFullscreenMaterialUniforms.rayDistance.value = value
 							this.reset()
+							break
+
+						case "outputTexture":
+							if (!this.outputTexture) {
+								return
+							}
+
+							if (typeof value === "string") {
+								if (this.gBufferDebugPass === undefined) {
+									this.gBufferDebugPass = new GBufferDebugPass(this.ssgiPass.gBufferPass.texture)
+									this.gBufferDebugPass.setSize(this.lastSize.width, this.lastSize.height)
+								}
+
+								const modes = ["diffuse", "alpha", "normal", "roughness", "metalness", "emissive"]
+								const mode = modes.indexOf(value)
+								this.gBufferDebugPass.fullscreenMaterial.uniforms.mode.value = mode
+
+								this.outputTexture = this.gBufferDebugPass.texture
+							} else if (this.gBufferDebugPass !== undefined && this.outputTexture !== this.gBufferDebugPass.texture) {
+								this.gBufferDebugPass.dispose()
+								delete this.gBufferDebugPass
+							}
+
+							this.uniforms.get("isDebug").value = this.outputTexture !== this.denoiser.texture
 
 							break
 
@@ -230,6 +258,7 @@ export class SSGIEffect extends Effect {
 
 		this.ssgiPass.setSize(width, height)
 		this.denoiser.setSize(width, height)
+		this.gBufferDebugPass?.setSize(width, height)
 		this.sceneRenderTarget.setSize(width, height)
 		this.cubeToEquirectEnvPass?.setSize(width, height)
 
@@ -330,9 +359,10 @@ export class SSGIEffect extends Effect {
 		this.ssgiPass.fullscreenMaterial.uniforms.directLightTexture.value = sceneBuffer.texture
 
 		this.ssgiPass.render(renderer)
+		this.gBufferDebugPass?.render(renderer)
 		this.denoiser.denoise(renderer)
 
-		this.uniforms.get("inputTexture").value = this.denoiser.texture
+		this.uniforms.get("inputTexture").value = this.outputTexture
 		this.uniforms.get("sceneTexture").value = sceneBuffer.texture
 		this.uniforms.get("depthTexture").value = this.ssgiPass.gBufferPass.depthTexture
 		this.uniforms.get("toneMapping").value = renderer.toneMapping
