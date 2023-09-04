@@ -340,7 +340,7 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal,
   }
 
   brdf *= cosTheta;
-  pdf = max(0.01, pdf);
+  pdf = max(EPSILON, pdf);
 
   hitPos = viewPos;
 
