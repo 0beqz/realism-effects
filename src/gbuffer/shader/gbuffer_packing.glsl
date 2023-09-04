@@ -127,21 +127,23 @@ float vec4ToFloat(vec4 vec) {
 }
 
 vec4 floatToVec4(float f) {
-  highp uint value = floatBitsToUint(f);
+  uint value = floatBitsToUint(f);
 
-  highp uvec4 uvec;
+  vec4 v;
+  v.r = float(value & 0xFFu) / 255.0;
+  v.g = float((value >> 8u) & 0xFFu) / 255.0;
+  v.b = float((value >> 16u) & 0xFFu) / 255.0;
+  v.a = float((value >> 24u) & 0xFFu) / 255.0;
 
-  uvec.r = value & 0xFFu;
-  uvec.g = (value >> 8u) & 0xFFu;
-  uvec.b = (value >> 16u) & 0xFFu;
-  uvec.a = (value >> 24u) & 0xFFu;
-
-  return vec4(uvec) / 255.0;
+  return v;
 }
 
 vec4 packGBuffer(vec4 diffuse, vec3 normal, float roughness, float metalness,
                  vec3 emissive) {
   vec4 gBuffer;
+
+  // clamp diffuse to [0;1[
+  diffuse = clamp(diffuse, vec4(0.), vec4(0.999999));
 
   gBuffer.r = vec4ToFloat(diffuse);
   gBuffer.g = packNormal(normal);
