@@ -19,7 +19,11 @@ export default class Denoiser {
 		this.temporalReprojectPass = new TemporalReprojectPass(scene, camera, this.velocityDepthNormalPass, 2, {
 			fullAccumulate: true,
 			logTransform: true,
-			copyTextures: false
+			copyTextures: false,
+			reprojectSpecular: [false, true],
+			neighborhoodClamp: [false, true],
+			neighborhoodClampRadius: 2,
+			neighborhoodClampIntensity: 0.5
 		})
 
 		this.temporalReprojectPass.setTextures(texture)

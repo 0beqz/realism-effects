@@ -54,25 +54,17 @@ export class SSGIEffect extends Effect {
 		if (options.diffuseOnly) {
 			definesName = "ssdgi"
 			options.reprojectSpecular = false
-			options.roughnessDependent = false
 			options.neighborhoodClamp = false
 		} else if (options.specularOnly) {
 			definesName = "ssr"
 			options.reprojectSpecular = true
-			options.roughnessDependent = true
 			options.neighborhoodClamp = true
 		} else {
 			definesName = "ssgi"
 			options.reprojectSpecular = [false, true]
 			options.neighborhoodClamp = [true, true]
-			options.roughnessDependent = [false, true]
 		}
 
-		options.neighborhoodClamp = [false, true]
-		options.neighborhoodClampRadius = 2
-		options.neighborhoodClampIntensity = 0.5
-
-		// ssgi pass
 		this.ssgiPass = new SSGIPass(this, options)
 		this.denoiser = new Denoiser(scene, camera, this.ssgiPass.texture, {
 			gBufferPass: this.ssgiPass.gBufferPass,
