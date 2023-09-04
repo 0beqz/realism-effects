@@ -75,11 +75,11 @@ highp vec3 unpackNormal(highp float packedNormal) {
 }
 
 highp float packVec2(highp vec2 value) {
-  return uintBitsToFloat(packHalf2x16(value));
+  return uintBitsToFloat(packUnorm2x16(value));
 }
 
 highp vec2 unpackVec2(highp float packedValue) {
-  return unpackHalf2x16(floatBitsToUint(packedValue));
+  return unpackUnorm2x16(floatBitsToUint(packedValue));
 }
 
 highp vec4 packTwoVec4(highp vec4 v1, highp vec4 v2) {
