@@ -75,17 +75,16 @@ highp vec3 unpackNormal(highp float packedNormal) {
 }
 
 highp float packVec2(highp vec2 vec) {
-  highp vec2 scaledVec = vec * 65535.0;
-  highp float encodedFloat = floor(scaledVec.x) + floor(scaledVec.y) * 256.0;
-  return encodedFloat / 16777216.0;
+  highp float x = fract(vec.x * 255.0);
+  highp float y = fract(vec.y * 255.0);
+  return (x * 255.0 + y) / 65535.0;
 }
 
 highp vec2 unpackVec2(highp float f) {
-  highp vec2 decodedVec;
-  f *= 16777216.0;
-  decodedVec.y = floor(f / 256.0) / 65535.0;
-  decodedVec.x = mod(f, 256.0) / 65535.0;
-  return decodedVec;
+  highp float xy = f * 65535.0;
+  highp float x = floor(xy / 256.0) / 255.0;
+  highp float y = mod(xy, 256.0) / 255.0;
+  return vec2(x, y);
 }
 
 highp vec4 packTwoVec4(highp vec4 v1, highp vec4 v2) {
@@ -157,7 +156,7 @@ highp vec4 packGBuffer(highp vec4 diffuse, highp vec3 normal,
 
   gBuffer.r = vec4ToFloat(diffuse);
   gBuffer.g = packNormal(normal);
-  gBuffer.b = packVec2(vec2(roughness, metalness));
+  gBuffer.b = vec4ToFloat(vec2(roughness, metalness).xxyy);
   gBuffer.a = vec4ToFloat(encodeRGBE8(emissive));
 
   return gBuffer;
@@ -169,9 +168,9 @@ Material getMaterial(sampler2D gBufferTexture, highp vec2 uv) {
 
   highp vec4 diffuse = floatToVec4(gBuffer.r);
   highp vec3 normal = unpackNormal(gBuffer.g);
-  highp vec2 roughnessMetalness = unpackVec2(gBuffer.b);
+  highp vec4 roughnessMetalness = floatToVec4(gBuffer.b);
   highp float roughness = roughnessMetalness.r;
-  highp float metalness = roughnessMetalness.g;
+  highp float metalness = roughnessMetalness.b;
   highp vec3 emissive = decodeRGBE8(floatToVec4(gBuffer.a));
 
   return Material(diffuse, normal, roughness, metalness, emissive);
