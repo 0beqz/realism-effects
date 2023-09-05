@@ -66,13 +66,15 @@ highp vec3 unpackNormal(highp float packedNormal) {
   return decodeOctWrap(unpackUnorm2x16(floatBitsToUint(packedNormal)));
 }
 
-highp float packVec2(highp vec2 value) {
-  return uintBitsToFloat(packHalf2x16(value));
-}
+// not used, results in severe precision loss and artifacts on Metal backends
+// highp float packVec2(highp vec2 value) {
+//   return uintBitsToFloat(packHalf2x16(value));
+// }
 
-highp vec2 unpackVec2(highp float packedValue) {
-  return unpackHalf2x16(floatBitsToUint(packedValue));
-}
+// not used, results in severe precision loss and artifacts on Metal backends
+// highp vec2 unpackVec2(highp float packedValue) {
+//   return unpackHalf2x16(floatBitsToUint(packedValue));
+// }
 
 highp vec4 packTwoVec4(highp vec4 v1, highp vec4 v2) {
   highp vec4 encoded = vec4(0.0);
