@@ -8,7 +8,7 @@ struct Material {
   highp vec3 emissive;
 };
 
-const float c_precision = 128.0;
+const float c_precision = 256.0;
 const float c_precisionp1 = c_precision + 1.0;
 
 highp float color2float(in highp vec3 color) {
