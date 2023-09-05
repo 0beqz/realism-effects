@@ -1,5 +1,5 @@
 ﻿/* eslint-disable camelcase */
-import { GLSL3, MeshPhysicalMaterial, Vector2 } from "three"
+import { MeshPhysicalMaterial, Vector2 } from "three"
 import gbuffer_packing from "../shader/gbuffer_packing.glsl"
 
 class GBufferMaterial extends MeshPhysicalMaterial {
@@ -9,9 +9,6 @@ class GBufferMaterial extends MeshPhysicalMaterial {
 		shader.uniforms.blueNoiseRepeat = { value: new Vector2(1, 1) }
 		shader.uniforms.resolution = { value: new Vector2(1, 1) }
 		shader.uniforms.cameraMoved = { value: false }
-
-		shader.glslVersion = GLSL3
-		shader.precision = "highp"
 
 		const vertexShader = shader.vertexShader.replace(
 			"void main() {",
@@ -59,8 +56,6 @@ class GBufferMaterial extends MeshPhysicalMaterial {
 
             ${gbuffer_packing}
 
-			layout(location = 0) out vec4 color;
-
             void main() {
         `
 			)
@@ -73,7 +68,7 @@ class GBufferMaterial extends MeshPhysicalMaterial {
 
             vec4 gBuffer = packGBuffer(diffuseColor, worldNormal, roughnessFactor, metalnessFactor, totalEmissiveRadiance);
 
-            color = gBuffer;`
+            gl_FragColor = gBuffer;`
 			)
 	}
 }
