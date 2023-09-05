@@ -8,31 +8,23 @@ struct Material {
   highp vec3 emissive;
 };
 
-highp float color2float(in highp vec3 c) {
-  c *= 255.0;
-  c = floor(c); // without this value could be shifted for some intervals
+const float c_precision = 128.0;
+const float c_precisionp1 = c_precision + 1.0;
 
-  return c.r * 256.0 * 256.0 + c.g * 256.0 + c.b - 8388608.0;
+highp float color2float(in highp vec3 color) {
+  color = clamp(color, 0.0, 1.0);
+  return floor(color.r * c_precision + 0.5) +
+         floor(color.b * c_precision + 0.5) * c_precisionp1 +
+         floor(color.g * c_precision + 0.5) * c_precisionp1 * c_precisionp1;
 }
 
 // values out of <-8388608;8388608> are stored as min/max values
-highp vec3 float2color(in highp float val) {
-  val += 8388608.0; // this makes values signed
-  if (val < 0.0) {
-    return vec3(0.0);
-  }
-
-  if (val > 16777216.0) {
-    return vec3(1.0);
-  }
-
-  highp vec3 c = vec3(0.0);
-  c.b = mod(val, 256.0);
-  val = floor(val / 256.0);
-  c.g = mod(val, 256.0);
-  val = floor(val / 256.0);
-  c.r = mod(val, 256.0);
-  return c / 255.0;
+highp vec3 float2color(in highp float value) {
+  vec3 color;
+  color.r = mod(value, c_precisionp1) / c_precision;
+  color.b = mod(floor(value / c_precisionp1), c_precisionp1) / c_precision;
+  color.g = floor(value / (c_precisionp1 * c_precisionp1)) / c_precision;
+  return color;
 }
 
 // source:
@@ -155,6 +147,9 @@ highp vec4 packGBuffer(highp vec4 diffuse, highp vec3 normal,
 
   gBuffer.r = vec4ToFloat(diffuse);
   gBuffer.g = packNormal(normal);
+
+  // unfortunately packVec2 results in severe precision loss and artifacts for
+  // the first on Metal backends thus we use color2float instead
   gBuffer.b = color2float(vec3(roughness, metalness, 0.));
   gBuffer.a = vec4ToFloat(encodeRGBE8(emissive));
 
@@ -167,6 +162,9 @@ Material getMaterial(sampler2D gBufferTexture, highp vec2 uv) {
 
   highp vec4 diffuse = floatToVec4(gBuffer.r);
   highp vec3 normal = unpackNormal(gBuffer.g);
+
+  // using float2color instead of unpackVec2 as the latter results in severe
+  // precision loss and artifacts on Metal backends
   highp vec3 roughnessMetalness = float2color(gBuffer.b);
   highp float roughness = roughnessMetalness.r;
   highp float metalness = roughnessMetalness.g;
