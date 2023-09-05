@@ -818,7 +818,7 @@ const setupAsset = asset => {
 				c.material.map.magFilter = NearestFilter
 			}
 
-			// c.material.transparent = false
+			c.material.transparent = false
 
 			// const lm = c.material.emissiveMap
 			// c.material.emissiveMap = null

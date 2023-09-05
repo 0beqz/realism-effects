@@ -11,6 +11,7 @@ struct Material {
 const float c_precision = 256.0;
 const float c_precisionp1 = c_precision + 1.0;
 
+// source: http://emmettmcquinn.com/blog/graphics/2012/11/07/float-packing.html
 highp float color2float(in highp vec3 color) {
   color = clamp(color, 0.0, 1.0);
   return floor(color.r * c_precision + 0.5) +
@@ -18,7 +19,7 @@ highp float color2float(in highp vec3 color) {
          floor(color.g * c_precision + 0.5) * c_precisionp1 * c_precisionp1;
 }
 
-// values out of <-8388608;8388608> are stored as min/max values
+// source: http://emmettmcquinn.com/blog/graphics/2012/11/07/float-packing.html
 highp vec3 float2color(in highp float value) {
   vec3 color;
   color.r = mod(value, c_precisionp1) / c_precision;

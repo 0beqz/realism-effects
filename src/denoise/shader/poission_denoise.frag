@@ -140,7 +140,7 @@ Neighbor getNeighborWeight(vec2 neighborUv, bool isDiffuseGi) {
   }
 }
 
-const vec2 poissonDisk[samples] = POISSON_DISK_SAMPLES;
+const vec2 poissonDisk[8] = POISSON_DISK_SAMPLES;
 
 void main() {
   centerDepth = textureLod(depthTexture, vUv, 0.).r;
@@ -185,26 +185,27 @@ void main() {
   roughnessSpecularFactor *= roughnessSpecularFactor;
 
   // ! todo: increase denoiser aggressiveness by distance
-  // ! todo: use separate weights for diffuse and specular
 
   float totalWeight = 1.;
   float totalWeight2 = 1.;
 
-  vec3 denoisedDiffuse = centerDiffuseGi.rgb * totalWeight;
-  vec3 denoisedSpecular = centerSpecularGi.rgb * totalWeight2;
+  vec3 denoisedDiffuse = centerDiffuseGi.rgb;
+  vec3 denoisedSpecular = centerSpecularGi.rgb;
 
   centerWorldPos = getWorldPos(centerDepth, vUv);
 
   vec4 random = blueNoise();
-  float angle = random.r * 2. * PI;
-  float s = sin(angle), c = cos(angle);
-  mat2 rotationMatrix = mat2(c, -s, s, c);
-
-  // scale the radius depending on the pixel's age
   float r = 1. + sqrt(random.a) * exp(-(a + a2) * 0.01) * radius;
 
-  for (int i = 0; i < samples; i++) {
-    vec2 offset = r * rotationMatrix * poissonDisk[i];
+  // rotate the poisson disk
+  float angle = random.r * 2. * PI;
+  float s = sin(angle), c = cos(angle);
+  mat2 rm = mat2(c, -s, s, c);
+
+  rm *= r;
+
+  for (int i = 0; i < 8; i++) {
+    vec2 offset = rm * poissonDisk[i];
 
     vec2 neighborUv = vUv + offset;
 

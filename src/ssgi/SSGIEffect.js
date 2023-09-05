@@ -157,7 +157,6 @@ export class SSGIEffect extends Effect {
 
 						case "denoiseIterations":
 						case "radius":
-						case "samples":
 							this.denoiser.denoisePass[key] = value
 							break
 

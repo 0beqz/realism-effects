@@ -1,16 +1,21 @@
 import { Vector2 } from "three"
 
-export function generateDenoiseSamples(numSamples, texelSize) {
-	const angleStep = (2 * Math.PI) / numSamples
-	const samples = []
-	let angle = 0
+export function generateDenoiseSamples(texelSize) {
+	const sqr2 = 2 ** 0.5
 
-	for (let i = 0; i < numSamples; i++) {
-		const v = new Vector2(Math.cos(angle), Math.sin(angle)).multiply(texelSize)
+	// by Nvidia ReBLUR, for distribution see: https://www.desmos.com/calculator/abaqyvswem
+	let samples = [
+		new Vector2(-1, 0),
+		new Vector2(0, -1),
+		new Vector2(1, 0),
+		new Vector2(0, 1),
+		new Vector2(-0.25 * sqr2, -0.25 * sqr2),
+		new Vector2(0.25 * sqr2, -0.25 * sqr2),
+		new Vector2(0.25 * sqr2, 0.25 * sqr2),
+		new Vector2(-0.25 * sqr2, 0.25 * sqr2)
+	]
 
-		samples.push(v)
-		angle += angleStep
-	}
+	samples = samples.map(sample => sample.multiply(texelSize))
 
 	return samples
 }

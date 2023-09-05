@@ -19,8 +19,7 @@ const defaultPoissonBlurOptions = {
 	phi: 0.5,
 	lumaPhi: 5,
 	depthPhi: 2,
-	normalPhi: 3.25,
-	samples: 8
+	normalPhi: 3.25
 }
 
 export class PoissionDenoisePass extends Pass {
@@ -79,24 +78,10 @@ export class PoissionDenoisePass extends Pass {
 
 		uniforms["depthPhi"].value = options.depthPhi
 		uniforms["normalPhi"].value = options.normalPhi
-
-		// these properties need the shader to be recompiled
-		for (const prop of ["radius", "samples"]) {
-			Object.defineProperty(this, prop, {
-				get: () => options[prop],
-				set: value => {
-					options[prop] = value
-
-					this.setSize(this.renderTargetA.width, this.renderTargetA.height)
-				}
-			})
-		}
 	}
 
 	updatePoissionDiskSamples(width, height) {
-		const poissonDisk = generateDenoiseSamples(this.samples, new Vector2(1 / width, 1 / height))
-
-		this.fullscreenMaterial.defines.samples = this.samples
+		const poissonDisk = generateDenoiseSamples(new Vector2(1 / width, 1 / height))
 
 		const poissonDiskConstant = generatePoissonDiskConstant(poissonDisk)
 		this.fullscreenMaterial.defines.POISSON_DISK_SAMPLES = poissonDiskConstant
