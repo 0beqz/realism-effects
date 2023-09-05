@@ -11,6 +11,7 @@ class GBufferMaterial extends MeshPhysicalMaterial {
 		shader.uniforms.cameraMoved = { value: false }
 
 		shader.glslVersion = GLSL3
+		shader.precision = "highp"
 
 		const vertexShader = shader.vertexShader.replace(
 			"void main() {",
