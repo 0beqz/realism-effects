@@ -178,14 +178,16 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos,
   vec3 lastViewPos = (prevViewMatrix * vec4(lastWorldPos, 1.0)).xyz;
 
   vec3 lastViewDir = normalize(lastViewPos);
-  vec3 lastViewNormal = (viewMatrix * vec4(lastWorldNormal, 0.0)).xyz;
+  vec3 lastViewNormal = (prevViewMatrix * vec4(lastWorldNormal, 0.0)).xyz;
 
   // get the angle between the view direction and the normal
   float lastViewAngle = dot(-lastViewDir, lastViewNormal);
 
   // angleDiff will be higher, the more we try to reproject pixels from a steep
   // angle onto a surface with a low angle which results in undesired stretching
-  angleMix = min(abs(lastViewAngle - viewAngle) * 4., 1.);
+  angleMix = abs(lastViewAngle - viewAngle) * 25.;
+  angleMix = mix(0., angleMix, flatness);
+  angleMix = min(angleMix, 1.);
 
   float viewZ = abs(getViewZ(depth));
   float distFactor = 1. + 1. / (viewZ + 1.0);
@@ -326,8 +328,7 @@ vec2 sampleBlocky(vec2 p) {
 }
 
 vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv) {
-  vec4 blocky = SampleTextureCatmullRom(tex, sampleBlocky(reprojectedUv),
-                                        1. / invTexSize);
+  vec4 blocky = SampleTextureCatmullRom(tex, reprojectedUv, 1. / invTexSize);
 
   return blocky;
 }

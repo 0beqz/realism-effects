@@ -4,14 +4,15 @@ import { DenoiserComposePass } from "./pass/DenoiserComposePass"
 import { PoissionDenoisePass } from "./pass/PoissionDenoisePass"
 
 const defaultDenosierOptions = {
+	mode: "full", // can be "full" | "full_temporal" | "denoised" | "temporal"
 	gBufferPass: null,
-	velocityDepthNormalPass: null,
-	mode: "full" // can be "full" or "denoise"
+	velocityDepthNormalPass: null
 }
 
 export default class Denoiser {
 	constructor(scene, camera, texture, options = defaultDenosierOptions) {
 		options = { ...defaultDenosierOptions, ...options }
+		this.options = options
 
 		this.velocityDepthNormalPass = options.velocityDepthNormalPass ?? new VelocityDepthNormalPass(scene, camera)
 		this.isOwnVelocityDepthNormalPass = !options.velocityDepthNormalPass
@@ -19,7 +20,7 @@ export default class Denoiser {
 		this.temporalReprojectPass = new TemporalReprojectPass(scene, camera, this.velocityDepthNormalPass, 2, {
 			fullAccumulate: true,
 			logTransform: true,
-			copyTextures: false,
+			copyTextures: !options.denoise,
 			reprojectSpecular: [false, true],
 			neighborhoodClamp: [false, true],
 			neighborhoodClampRadius: 2,
@@ -27,28 +28,35 @@ export default class Denoiser {
 		})
 
 		this.temporalReprojectPass.setTextures(texture)
-
 		const textures = this.temporalReprojectPass.renderTarget.texture.slice(0, 2)
 
-		this.denoisePass = new PoissionDenoisePass(camera, textures)
-		this.denoisePass.setGBufferPass(options.gBufferPass || this.velocityDepthNormalPass)
+		if (this.options.mode === "full" || this.options.mode === "denoised") {
+			this.denoisePass = new PoissionDenoisePass(camera, textures)
+			this.denoisePass.setGBufferPass(options.gBufferPass || this.velocityDepthNormalPass)
 
-		this.temporalReprojectPass.overrideAccumulatedTextures = this.denoisePass.renderTargetB.texture
+			this.temporalReprojectPass.overrideAccumulatedTextures = this.denoisePass.renderTargetB.texture
+		}
 
-		if (options.mode === "full") {
+		if (options.mode === "full" || options.mode === "full_temporal") {
+			const composerInputTextures = options.mode === "full" ? this.denoisePass.texture : textures
+
 			this.denoiserComposePass = new DenoiserComposePass(
 				camera,
-				this.denoisePass.texture,
+				composerInputTextures,
 				options.gBufferPass.texture,
 				options.gBufferPass.renderTarget.depthTexture
 			)
 		}
 	}
 
-	// the texture of the denoiseComposePass will be a single texture
-	// the texture of the denoisePass will be 2 textures (diffuse & specular) lighting
 	get texture() {
-		return this.denoiserComposePass?.texture ?? this.denoisePass.texture[0]
+		if (this.options.mode === "full" || this.options.mode === "full_temporal") {
+			return this.denoiserComposePass.texture
+		} else if (this.options.mode === "denoised") {
+			return this.denoisePass.texture
+		}
+
+		return this.temporalReprojectPass.texture
 	}
 
 	reset() {
@@ -58,21 +66,22 @@ export default class Denoiser {
 	setSize(width, height) {
 		this.velocityDepthNormalPass.setSize(width, height)
 		this.temporalReprojectPass.setSize(width, height)
-		this.denoisePass.setSize(width, height)
+		this.denoisePass?.setSize(width, height)
 		this.denoiserComposePass?.setSize(width, height)
 	}
 
 	dispose() {
 		this.velocityDepthNormalPass.dispose()
 		this.temporalReprojectPass.dispose()
-		this.denoisePass.dispose()
+		this.denoisePass?.dispose()
 		this.denoiserComposePass?.dispose()
 	}
 
 	denoise(renderer) {
 		if (this.isOwnVelocityDepthNormalPass) this.velocityDepthNormalPass.render(renderer)
 		this.temporalReprojectPass.render(renderer)
-		this.denoisePass.render(renderer)
+
+		this.denoisePass?.render(renderer)
 		this.denoiserComposePass?.render(renderer)
 	}
 }

@@ -34,7 +34,6 @@ export class SSGIDebugGUI {
 		const denoiseFolder = pane.addFolder({ title: "Denoise" })
 		denoiseFolder.addInput(params, "denoiseIterations", { min: 0, max: 5, step: 1 })
 		denoiseFolder.addInput(params, "radius", { min: 0, max: 32, step: 1 })
-		denoiseFolder.addInput(params, "samples", { min: 0, max: 32, step: 1 })
 
 		denoiseFolder.addInput(params, "phi", {
 			min: 0,
@@ -77,16 +76,25 @@ export class SSGIDebugGUI {
 		resolutionFolder.addInput(params, "resolutionScale", { min: 0.25, max: 1, step: 0.25 })
 
 		const textures = [
-			ssgiEffect.denoiser.denoiserComposePass.texture,
 			ssgiEffect.ssgiPass.renderTarget.texture,
 			ssgiEffect.ssgiPass.gBufferPass.renderTarget.depthTexture,
-			ssgiEffect.denoiser.velocityDepthNormalPass.renderTarget.texture,
-			ssgiEffect.denoiser.denoisePass.renderTargetA.texture[0],
-			ssgiEffect.denoiser.denoisePass.renderTargetA.texture[1],
-			ssgiEffect.denoiser.denoisePass.renderTargetB.texture[0],
-			ssgiEffect.denoiser.denoisePass.renderTargetB.texture[1],
-			ssgiEffect.ssgiPass.gBufferPass.texture
+			ssgiEffect.denoiser.velocityDepthNormalPass.renderTarget.texture
 		]
+
+		if (ssgiEffect.denoiser.denoiserComposePass?.texture) {
+			textures.unshift(ssgiEffect.denoiser.denoiserComposePass.texture)
+		}
+
+		if (ssgiEffect.denoiser.denoisePass) {
+			textures.push(
+				ssgiEffect.denoiser.denoisePass.renderTargetA.texture[0],
+				ssgiEffect.denoiser.denoisePass.renderTargetA.texture[1],
+				ssgiEffect.denoiser.denoisePass.renderTargetB.texture[0],
+				ssgiEffect.denoiser.denoisePass.renderTargetB.texture[1]
+			)
+		}
+
+		textures.push(ssgiEffect.ssgiPass.gBufferPass.texture)
 
 		// turn textures into an object with names
 		const textureObject = {}

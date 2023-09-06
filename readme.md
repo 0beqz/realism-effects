@@ -29,7 +29,6 @@ A collection of the following effects for three.js:
   Credits go to [N8programs](https://github.com/N8python) for the SSAO effect as well as the denoiser used for both AO effects (namely the `PoissonDenoisePass`)
   <br></br>
 - SSR (Screen-Space Reflections)
-- SSDGI (Screen-Space Diffuse Global Illumination)
 
 <br>
 

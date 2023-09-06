@@ -24,6 +24,7 @@
  * @type {SSGIOptions}
  */
 export const defaultSSGIOptions = {
+	mode: "ssgi",
 	distance: 10,
 	thickness: 10,
 	blend: 0.9,
@@ -31,7 +32,6 @@ export const defaultSSGIOptions = {
 	denoiseKernel: 2,
 	denoiseDiffuse: 10,
 	denoiseSpecular: 10,
-	samples: 8,
 	radius: 3,
 	phi: 0.5,
 	lumaPhi: 5,

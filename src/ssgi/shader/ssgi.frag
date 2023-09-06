@@ -39,6 +39,9 @@ float nearMulFar;
 float farMinusNear;
 vec2 invTexSize;
 
+#define MODE_SSGI 0
+#define MODE_SSR 1
+
 #include <packing>
 
 // helper functions
@@ -164,7 +167,7 @@ void main() {
 
   calculateAngles(h, l, v, n, NoL, NoH, LoH, VoH);
 
-#if !defined(diffuseOnly) && !defined(specularOnly)
+#if mode == MODE_SSGI
   // fresnel
   F = F_Schlick(f0, VoH);
 
@@ -183,12 +186,9 @@ void main() {
   // if diffuse lighting should be sampled
   isDiffuseSample = random.b < diffW;
 #else
-#ifdef diffuseOnly
-  isDiffuseSample = true;
-#else
   isDiffuseSample = false;
 #endif
-#endif
+
   envMisDir = vec3(0.0);
 
 #ifdef importanceSampling
@@ -219,6 +219,8 @@ void main() {
                         : cosineSampleHemisphere(viewNormal, random.rg);
   vec3 specularRay = (isEnvMisSample && mat.roughness >= 0.025) ? envMisDir : l;
 
+// optional diffuse ray
+#if mode == MODE_SSGI
   if (isDiffuseSample) {
     l = diffuseRay;
 
@@ -242,8 +244,9 @@ void main() {
 
     diffuseGI = mix(diffuseGI, gi, 1. / diffuseSamples);
   }
+#endif
 
-  // specular
+  // specular ray (traced every frame)
   l = specularRay;
 
   if (isEnvMisSample) {
@@ -281,13 +284,12 @@ void main() {
 
   vec4 gDiffuse, gSpecular;
 
-#ifndef specularOnly
+#if mode == MODE_SSGI
   if (diffuseSamples == 0.0)
     diffuseGI = vec3(-1.0);
   gDiffuse = vec4(diffuseGI, mat.roughness);
 #endif
 
-#ifndef diffuseOnly
   // calculate world-space ray length used for reprojecting hit points instead
   // of screen-space pixels in the temporal reproject pass
   float rayLength = 0.0;
@@ -306,15 +308,14 @@ void main() {
     rayLength = distance(cameraPosWS, hitPosWS.xyz);
   }
 
-  // if (specularSamples == 0.0) {
-  //   specularGI = vec3(-1.0);
-  //   rayLength = 0.;
-  // }
-
   gSpecular = vec4(specularGI, rayLength);
-#endif
 
+#if mode == MODE_SSGI
   gl_FragColor = packTwoVec4(gDiffuse, gSpecular);
+#else
+  gl_FragColor = gSpecuvscode - file
+      : // vscode-app/c:/Users/a/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/code/electron-sandbox/workbench/workbench.htmllar;
+#endif
 }
 
 vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal,

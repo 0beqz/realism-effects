@@ -474,7 +474,7 @@ const initScene = async () => {
 			if (fps >= 256) {
 				const sharpnessEffect = new SharpnessEffect({ sharpness: 0.75 })
 
-				composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, bloomEffect, vignetteEffect, lutEffect))
+				composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, vignetteEffect, lutEffect))
 
 				// const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass, {
 				// 	intensity: 1

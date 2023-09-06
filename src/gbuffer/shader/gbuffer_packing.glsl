@@ -60,11 +60,11 @@ highp vec3 decodeOctWrap(highp vec2 f) {
 }
 
 highp float packNormal(highp vec3 normal) {
-  return uintBitsToFloat(packUnorm2x16(encodeOctWrap(normal)));
+  return uintBitsToFloat(packHalf2x16(encodeOctWrap(normal)));
 }
 
 highp vec3 unpackNormal(highp float packedNormal) {
-  return decodeOctWrap(unpackUnorm2x16(floatBitsToUint(packedNormal)));
+  return decodeOctWrap(unpackHalf2x16(floatBitsToUint(packedNormal)));
 }
 
 // not used, results in severe precision loss and artifacts on Metal backends

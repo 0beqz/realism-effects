@@ -131,8 +131,7 @@ Neighbor getNeighborWeight(vec2 neighborUv, bool isDiffuseGi) {
     wBasic = mix(wBasic, exp(-normalDiff * 10.), w2);
     float wSpec = w2 * pow(wBasic * exp(-lumaDiff2 * lumaPhi), phi / w2);
 
-    wSpec *= mix(exp(-distanceToCenter * 100. - normalDiff * 50.), w2,
-                 roughnessSpecularFactor);
+    wSpec *= mix(exp(-distanceToCenter * 100.), 1., roughnessSpecularFactor);
 
     wSpec = min(wSpec, 1.);
 
@@ -181,8 +180,7 @@ void main() {
   normal = unpackNormal(depthVelocityTexel.b);
 #endif
 
-  roughnessSpecularFactor = min(1., centerMat.roughness / 0.25);
-  roughnessSpecularFactor *= roughnessSpecularFactor;
+  roughnessSpecularFactor = centerMat.roughness * centerMat.roughness;
 
   // ! todo: increase denoiser aggressiveness by distance
 

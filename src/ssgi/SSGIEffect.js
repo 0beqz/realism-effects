@@ -51,18 +51,10 @@ export class SSGIEffect extends Effect {
 
 		if (!composer.depthTexture) composer.createDepthTexture()
 
-		let definesName
-
-		if (options.diffuseOnly) {
-			definesName = "ssdgi"
-			options.reprojectSpecular = false
-			options.neighborhoodClamp = false
-		} else if (options.specularOnly) {
-			definesName = "ssr"
+		if (options.mode === "ssr") {
 			options.reprojectSpecular = true
 			options.neighborhoodClamp = true
-		} else {
-			definesName = "ssgi"
+		} else if (options.mode === "ssgi") {
 			options.reprojectSpecular = [false, true]
 			options.neighborhoodClamp = [true, true]
 		}
@@ -140,7 +132,7 @@ export class SSGIEffect extends Effect {
 					switch (key) {
 						// denoiser
 						case "denoiseIterations":
-							this.denoiser.denoisePass.iterations = value
+							if (this.denoiser.denoisePass) this.denoiser.denoisePass.iterations = value
 							break
 
 						case "radius":
@@ -149,7 +141,7 @@ export class SSGIEffect extends Effect {
 						case "depthPhi":
 						case "normalPhi":
 						case "roughnessPhi":
-							if (this.denoiser.denoisePass.fullscreenMaterial.uniforms[key]) {
+							if (this.denoiser.denoisePass && this.denoiser.denoisePass.fullscreenMaterial.uniforms[key]) {
 								this.denoiser.denoisePass.fullscreenMaterial.uniforms[key].value = value
 								this.reset()
 							}
@@ -157,7 +149,7 @@ export class SSGIEffect extends Effect {
 
 						case "denoiseIterations":
 						case "radius":
-							this.denoiser.denoisePass[key] = value
+							if (this.denoiser.denoisePass) this.denoiser.denoisePass[key] = value
 							break
 
 						// SSGI
@@ -361,7 +353,7 @@ export class SSGIEffect extends Effect {
 		this.gBufferDebugPass?.render(renderer)
 		this.denoiser.denoise(renderer)
 
-		this.uniforms.get("inputTexture").value = this.outputTexture
+		this.uniforms.get("inputTexture").value = this.outputTexture[0] ?? this.outputTexture
 		this.uniforms.get("sceneTexture").value = sceneBuffer.texture
 		this.uniforms.get("depthTexture").value = this.ssgiPass.gBufferPass.depthTexture
 		this.uniforms.get("toneMapping").value = renderer.toneMapping

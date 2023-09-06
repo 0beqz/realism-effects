@@ -35,8 +35,7 @@ export class SSGIPass extends Pass {
 
 		if (ssgiEffect._camera.isPerspectiveCamera) this.fullscreenMaterial.defines.PERSPECTIVE_CAMERA = ""
 
-		if (options.diffuseOnly) this.fullscreenMaterial.defines.diffuseOnly = ""
-		if (options.specularOnly) this.fullscreenMaterial.defines.specularOnly = ""
+		this.fullscreenMaterial.defines.mode = ["ssgi", "ssr"].indexOf(options.mode)
 
 		this.gBufferPass = new GBufferPass(this._scene, this._camera)
 
