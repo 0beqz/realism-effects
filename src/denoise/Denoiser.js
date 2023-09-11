@@ -32,7 +32,7 @@ export default class Denoiser {
 
 		if (this.options.mode === "full" || this.options.mode === "denoised") {
 			this.denoisePass = new PoissionDenoisePass(camera, textures)
-			this.denoisePass.setGBufferPass(options.gBufferPass || this.velocityDepthNormalPass)
+			this.denoisePass.setGBufferPass(options.gBufferPass ?? this.velocityDepthNormalPass)
 
 			this.temporalReprojectPass.overrideAccumulatedTextures = this.denoisePass.renderTargetB.texture
 		}

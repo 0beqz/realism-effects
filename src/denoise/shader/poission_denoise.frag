@@ -13,6 +13,7 @@ uniform float lumaPhi;
 uniform float depthPhi;
 uniform float normalPhi;
 uniform float roughnessPhi;
+uniform float specularPhi;
 uniform vec2 resolution;
 
 layout(location = 0) out vec4 gOutput0;
@@ -131,7 +132,8 @@ Neighbor getNeighborWeight(vec2 neighborUv, bool isDiffuseGi) {
     wBasic = mix(wBasic, exp(-normalDiff * 10.), w2);
     float wSpec = w2 * pow(wBasic * exp(-lumaDiff2 * lumaPhi), phi / w2);
 
-    wSpec *= mix(exp(-distanceToCenter * 100.), 1., roughnessSpecularFactor);
+    wSpec *= exp(roughnessSpecularFactor *
+                 (-distanceToCenter * 10. - normalDiff) * specularPhi);
 
     wSpec = min(wSpec, 1.);
 

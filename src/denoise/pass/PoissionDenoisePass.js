@@ -52,6 +52,7 @@ export class PoissionDenoisePass extends Pass {
 				depthPhi: { value: defaultPoissonBlurOptions.depthPhi },
 				normalPhi: { value: defaultPoissonBlurOptions.normalPhi },
 				roughnessPhi: { value: defaultPoissonBlurOptions.roughnessPhi },
+				specularPhi: { value: defaultPoissonBlurOptions.specularPhi },
 				resolution: { value: new Vector2() }
 			},
 			glslVersion: GLSL3

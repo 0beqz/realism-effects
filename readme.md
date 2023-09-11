@@ -99,6 +99,7 @@ const options = {
 	depthPhi: 2,
 	normalPhi: 50,
 	roughnessPhi: 1,
+	specularPhi: 1,
 	envBlur: 0.5,
 	importanceSampling: true,
 	steps: 20,

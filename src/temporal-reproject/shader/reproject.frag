@@ -133,8 +133,8 @@ void getVelocityNormalDepth(inout vec2 dilatedUv, out vec2 vel, out vec3 normal,
 #endif
 }
 
-#define PLANE_DISTANCE 2.5
-#define VELOCITY_DISTANCE 0.01
+#define PLANE_DISTANCE 1.5
+#define VELOCITY_DISTANCE 0.005
 #define WORLD_DISTANCE 2.
 
 bool planeDistanceDisocclusionCheck(const vec3 worldPos,
@@ -186,7 +186,7 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos,
   // angleDiff will be higher, the more we try to reproject pixels from a steep
   // angle onto a surface with a low angle which results in undesired stretching
   angleMix = abs(lastViewAngle - viewAngle) * 25.;
-  angleMix = mix(0., angleMix, flatness);
+  angleMix = mix(0., angleMix, sqrt(flatness));
   angleMix = min(angleMix, 1.);
 
   float viewZ = abs(getViewZ(depth));

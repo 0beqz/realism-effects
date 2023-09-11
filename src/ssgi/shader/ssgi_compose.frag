@@ -20,11 +20,6 @@ void mainImage(const in vec4 inputColor, const in vec2 uv,
   } else {
     ssgiClr = textureLod(inputTexture, uv, 0.).rgb;
 
-    // attempt to restore the high frequencies that were damped by accumulating
-    // and denoising in log-space
-    vec3 ssgiClrBright = pow(max(ssgiClr, vec3(0.)), vec3(2.));
-    ssgiClr += ssgiClrBright;
-
     switch (toneMapping) {
     case 1:
       ssgiClr = LinearToneMapping(ssgiClr);

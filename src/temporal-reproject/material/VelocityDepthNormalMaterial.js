@@ -180,7 +180,7 @@ export class VelocityDepthNormalMaterial extends ShaderMaterial {
 						#define vNormalMapUv vUv
 
 						#include <normal_fragment_begin>
-                    	// #include <normal_fragment_maps>
+                    	#include <normal_fragment_maps>
 
 						${velocity_fragment_main}
 						vec3 worldNormal = normalize((viewMatrix * vec4(normal, 0.)).xyz);

@@ -8,6 +8,8 @@ struct Material {
   highp vec3 emissive;
 };
 
+#define ONE_MINUS_EPSILON 0.999999
+
 const float c_precision = 256.0;
 const float c_precisionp1 = c_precision + 1.0;
 
@@ -142,11 +144,11 @@ highp vec4 packGBuffer(highp vec4 diffuse, highp vec3 normal,
 
   // clamp diffuse to [0;1[
   // has to be done as otherwise we get blue instead of white on Metal backends
-  diffuse = clamp(diffuse, vec4(0.), vec4(0.999999));
+  diffuse = clamp(diffuse, vec4(0.), vec4(ONE_MINUS_EPSILON));
 
   // clamp roughness and metalness to [0;1]
-  roughness = clamp(roughness, 0.0, 1.0);
-  metalness = clamp(metalness, 0.0, 1.0);
+  roughness = clamp(roughness, 0.0, ONE_MINUS_EPSILON);
+  metalness = clamp(metalness, 0.0, ONE_MINUS_EPSILON);
 
   gBuffer.r = vec4ToFloat(diffuse);
   gBuffer.g = packNormal(normal);

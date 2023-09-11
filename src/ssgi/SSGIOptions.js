@@ -12,6 +12,7 @@
  * @property {Number} [depthPhi] depth factor of the denoiser, higher values will use neighboring areas with different depth values more resulting in less noise but loss of details
  * @property {Number} [normalPhi] normals factor of the denoiser, higher values will use neighboring areas with different normals more resulting in less noise but loss of details and sharpness
  * @property {Number} [roughnessPhi] roughness factor of the denoiser setting how much the denoiser should only apply the blur to rougher surfaces, a value of 0 means the denoiser will blur mirror-like surfaces the same as rough surfaces
+ * @property {Number} [specularPhi] specular factor of the denoiser setting how much the denoiser will blur specular reflections
  * @property {Number} [lumaPhi] luminance factor of the denoiser setting how aggressive the denoiser is on areas with different luminance
  * @property {Number} [steps] number of steps a SSGI ray can maximally do to find an object it intersected (and thus reflects)
  * @property {Number} [refineSteps] once we had our ray intersect something, we need to find the exact point in space it intersected and thus it reflects; this can be done through binary search with the given number of maximum steps
@@ -38,6 +39,7 @@ export const defaultSSGIOptions = {
 	depthPhi: 2,
 	normalPhi: 50,
 	roughnessPhi: 50,
+	specularPhi: 50,
 	envBlur: 0.5,
 	importanceSampling: true,
 	steps: 20,

@@ -176,9 +176,9 @@ void main() {
         if (reset)
           accumulatedTexel[i].a = 0.0;
 
-        float maxValue = fullAccumulate ? mix(1.0, blend, moveFactor) : blend;
+        float maxValue = fullAccumulate ? 1. : blend;
         if (fullAccumulate && reprojectedUvSpecular[i].x > 0.)
-          maxValue = 0.975;
+          maxValue = max(0.975, blend);
 
         float roughnessMaximum = 0.25;
 
