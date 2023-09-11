@@ -351,18 +351,18 @@ const initScene = async () => {
 		mode: "ssgi",
 		distance: 2.170000000000011,
 		thickness: 4.999999999999997,
-		blend: 0.9899999999999999,
+		blend: 0.975,
 		denoiseIterations: 1,
 		denoiseKernel: 3,
 		denoiseDiffuse: 25,
 		denoiseSpecular: 25.54,
-		radius: 8,
+		radius: 16,
 		phi: 0.5109999999999979,
-		lumaPhi: 21.196,
-		depthPhi: 7.609000000000001,
+		lumaPhi: 25.543,
+		depthPhi: 7.155734338404329e-16,
 		normalPhi: 40.217,
 		roughnessPhi: 28.261,
-		specularPhi: 3.532999999999999,
+		specularPhi: 13.315,
 		envBlur: 0,
 		importanceSampling: true,
 		steps: 20,
@@ -498,7 +498,7 @@ const initScene = async () => {
 		fxaaPass = new POSTPROCESSING.EffectPass(camera, fxaaEffect)
 
 		taaPass = new TAAPass(camera)
-		composer.addPass(taaPass)
+		// composer.addPass(taaPass)
 
 		if (!isAoDemo) {
 			if (fps >= 256) {

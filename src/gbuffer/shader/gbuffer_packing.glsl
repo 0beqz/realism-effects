@@ -1,20 +1,20 @@
-uniform highp sampler2D gBufferTexture;
+uniform sampler2D gBufferTexture;
 
 struct Material {
-  highp vec4 diffuse;
-  highp vec3 normal;
-  highp float roughness;
-  highp float metalness;
-  highp vec3 emissive;
+  vec4 diffuse;
+  vec3 normal;
+  float roughness;
+  float metalness;
+  vec3 emissive;
 };
 
-#define ONE_MINUS_EPSILON 0.999999
+#define ONE_SAFE 0.999999
 
 const float c_precision = 256.0;
 const float c_precisionp1 = c_precision + 1.0;
 
 // source: http://emmettmcquinn.com/blog/graphics/2012/11/07/float-packing.html
-highp float color2float(in highp vec3 color) {
+float color2float(in vec3 color) {
   color = clamp(color, 0.0, 1.0);
   return floor(color.r * c_precision + 0.5) +
          floor(color.b * c_precision + 0.5) * c_precisionp1 +
@@ -22,7 +22,7 @@ highp float color2float(in highp vec3 color) {
 }
 
 // source: http://emmettmcquinn.com/blog/graphics/2012/11/07/float-packing.html
-highp vec3 float2color(in highp float value) {
+vec3 float2color(in float value) {
   vec3 color;
   color.r = mod(value, c_precisionp1) / c_precision;
   color.b = mod(floor(value / c_precisionp1), c_precisionp1) / c_precision;
@@ -32,8 +32,8 @@ highp vec3 float2color(in highp float value) {
 
 // source:
 // https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/
-highp vec2 OctWrap(highp vec2 v) {
-  highp vec2 w = 1.0 - abs(v.yx);
+vec2 OctWrap(vec2 v) {
+  vec2 w = 1.0 - abs(v.yx);
   if (v.x < 0.0)
     w.x = -w.x;
   if (v.y < 0.0)
@@ -41,7 +41,7 @@ highp vec2 OctWrap(highp vec2 v) {
   return w;
 }
 
-highp vec2 encodeOctWrap(highp vec3 n) {
+vec2 encodeOctWrap(vec3 n) {
   n /= (abs(n.x) + abs(n.y) + abs(n.z));
   n.xy = n.z > 0.0 ? n.xy : OctWrap(n.xy);
   n.xy = n.xy * 0.5 + 0.5;
@@ -50,37 +50,37 @@ highp vec2 encodeOctWrap(highp vec3 n) {
 
 // source:
 // https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/
-highp vec3 decodeOctWrap(highp vec2 f) {
+vec3 decodeOctWrap(vec2 f) {
   f = f * 2.0 - 1.0;
 
   // https://twitter.com/Stubbesaurus/status/937994790553227264
-  highp vec3 n = vec3(f.x, f.y, 1.0 - abs(f.x) - abs(f.y));
-  highp float t = max(-n.z, 0.0);
+  vec3 n = vec3(f.x, f.y, 1.0 - abs(f.x) - abs(f.y));
+  float t = max(-n.z, 0.0);
   n.x += n.x >= 0.0 ? -t : t;
   n.y += n.y >= 0.0 ? -t : t;
   return normalize(n);
 }
 
-highp float packNormal(highp vec3 normal) {
+float packNormal(vec3 normal) {
   return uintBitsToFloat(packHalf2x16(encodeOctWrap(normal)));
 }
 
-highp vec3 unpackNormal(highp float packedNormal) {
+vec3 unpackNormal(float packedNormal) {
   return decodeOctWrap(unpackHalf2x16(floatBitsToUint(packedNormal)));
 }
 
 // not used, results in severe precision loss and artifacts on Metal backends
-// highp float packVec2(highp vec2 value) {
+//  float packVec2( vec2 value) {
 //   return uintBitsToFloat(packHalf2x16(value));
 // }
 
 // not used, results in severe precision loss and artifacts on Metal backends
-// highp vec2 unpackVec2(highp float packedValue) {
+//  vec2 unpackVec2( float packedValue) {
 //   return unpackHalf2x16(floatBitsToUint(packedValue));
 // }
 
-highp vec4 packTwoVec4(highp vec4 v1, highp vec4 v2) {
-  highp vec4 encoded = vec4(0.0);
+vec4 packTwoVec4(vec4 v1, vec4 v2) {
+  vec4 encoded = vec4(0.0);
 
   encoded.r = uintBitsToFloat(packHalf2x16(v1.rg));
   encoded.g = uintBitsToFloat(packHalf2x16(v1.ba));
@@ -90,7 +90,7 @@ highp vec4 packTwoVec4(highp vec4 v1, highp vec4 v2) {
   return encoded;
 }
 
-void unpackTwoVec4(highp vec4 encoded, out highp vec4 v1, out highp vec4 v2) {
+void unpackTwoVec4(vec4 encoded, out vec4 v1, out vec4 v2) {
   v1.rg = unpackHalf2x16(floatBitsToUint(encoded.r));
   v1.ba = unpackHalf2x16(floatBitsToUint(encoded.g));
 
@@ -100,10 +100,10 @@ void unpackTwoVec4(highp vec4 encoded, out highp vec4 v1, out highp vec4 v2) {
 
 // source:
 // https://community.khronos.org/t/addition-of-two-hdr-rgbe-values/55669/2
-highp vec4 encodeRGBE8(highp vec3 rgb) {
-  highp vec4 vEncoded;
-  highp float maxComponent = max(max(rgb.r, rgb.g), rgb.b);
-  highp float fExp = ceil(log2(maxComponent));
+vec4 encodeRGBE8(vec3 rgb) {
+  vec4 vEncoded;
+  float maxComponent = max(max(rgb.r, rgb.g), rgb.b);
+  float fExp = ceil(log2(maxComponent));
   vEncoded.rgb = rgb / exp2(fExp);
   vEncoded.a = (fExp + 128.0) / 255.0;
   return vEncoded;
@@ -111,24 +111,24 @@ highp vec4 encodeRGBE8(highp vec3 rgb) {
 
 // source:
 // https://community.khronos.org/t/addition-of-two-hdr-rgbe-values/55669/2
-highp vec3 decodeRGBE8(highp vec4 rgbe) {
-  highp vec3 vDecoded;
-  highp float fExp = rgbe.a * 255.0 - 128.0;
+vec3 decodeRGBE8(vec4 rgbe) {
+  vec3 vDecoded;
+  float fExp = rgbe.a * 255.0 - 128.0;
   vDecoded = rgbe.rgb * exp2(fExp);
   return vDecoded;
 }
 
-highp float vec4ToFloat(highp vec4 vec) {
-  highp uvec4 v = uvec4(vec * 255.0);
-  highp uint value = (v.a << 24u) | (v.b << 16u) | (v.g << 8u) | (v.r);
+float vec4ToFloat(vec4 vec) {
+  uvec4 v = uvec4(vec * 255.0);
+  uint value = (v.a << 24u) | (v.b << 16u) | (v.g << 8u) | (v.r);
 
   return uintBitsToFloat(value);
 }
 
-highp vec4 floatToVec4(highp float f) {
-  highp uint value = floatBitsToUint(f);
+vec4 floatToVec4(float f) {
+  uint value = floatBitsToUint(f);
 
-  highp vec4 v;
+  vec4 v;
   v.r = float(value & 0xFFu) / 255.0;
   v.g = float((value >> 8u) & 0xFFu) / 255.0;
   v.b = float((value >> 16u) & 0xFFu) / 255.0;
@@ -137,18 +137,17 @@ highp vec4 floatToVec4(highp float f) {
   return v;
 }
 
-highp vec4 packGBuffer(highp vec4 diffuse, highp vec3 normal,
-                       highp float roughness, highp float metalness,
-                       highp vec3 emissive) {
-  highp vec4 gBuffer;
+vec4 packGBuffer(vec4 diffuse, vec3 normal, float roughness, float metalness,
+                 vec3 emissive) {
+  vec4 gBuffer;
 
   // clamp diffuse to [0;1[
   // has to be done as otherwise we get blue instead of white on Metal backends
-  diffuse = clamp(diffuse, vec4(0.), vec4(ONE_MINUS_EPSILON));
+  diffuse = clamp(diffuse, vec4(0.), vec4(ONE_SAFE));
 
-  // clamp roughness and metalness to [0;1]
-  roughness = clamp(roughness, 0.0, ONE_MINUS_EPSILON);
-  metalness = clamp(metalness, 0.0, ONE_MINUS_EPSILON);
+  // clamp roughness and metalness to [0;1[
+  roughness = clamp(roughness, 0.0, ONE_SAFE);
+  metalness = clamp(metalness, 0.0, ONE_SAFE);
 
   gBuffer.r = vec4ToFloat(diffuse);
   gBuffer.g = packNormal(normal);
@@ -162,18 +161,19 @@ highp vec4 packGBuffer(highp vec4 diffuse, highp vec3 normal,
 }
 
 // loading a material from a packed g-buffer
-Material getMaterial(sampler2D gBufferTexture, highp vec2 uv) {
-  highp vec4 gBuffer = textureLod(gBufferTexture, uv, 0.0);
+Material getMaterial(sampler2D gBufferTexture, vec2 uv) {
+  vec4 gBuffer = textureLod(gBufferTexture, uv, 0.0);
 
-  highp vec4 diffuse = floatToVec4(gBuffer.r);
-  highp vec3 normal = unpackNormal(gBuffer.g);
+  vec4 diffuse = floatToVec4(gBuffer.r);
+  diffuse = clamp(diffuse, vec4(0.), vec4(ONE_SAFE));
+  vec3 normal = unpackNormal(gBuffer.g);
 
   // using float2color instead of unpackVec2 as the latter results in severe
   // precision loss and artifacts on Metal backends
-  highp vec3 roughnessMetalness = float2color(gBuffer.b);
-  highp float roughness = roughnessMetalness.r;
-  highp float metalness = roughnessMetalness.g;
-  highp vec3 emissive = decodeRGBE8(floatToVec4(gBuffer.a));
+  vec3 roughnessMetalness = float2color(gBuffer.b);
+  float roughness = clamp(roughnessMetalness.r, 0., ONE_SAFE);
+  float metalness = clamp(roughnessMetalness.g, 0., ONE_SAFE);
+  vec3 emissive = decodeRGBE8(floatToVec4(gBuffer.a));
 
   return Material(diffuse, normal, roughness, metalness, emissive);
 }

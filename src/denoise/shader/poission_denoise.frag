@@ -70,7 +70,7 @@ float centerDepth;
 vec3 centerWorldPos;
 float centerLumDiffuse;
 float centerLumSpecular;
-float roughnessSpecularFactor;
+float specularFactor;
 float w, w2;
 struct Neighbor {
   vec4 texel;
@@ -131,9 +131,7 @@ Neighbor getNeighborWeight(vec2 neighborUv, bool isDiffuseGi) {
   } else {
     wBasic = mix(wBasic, exp(-normalDiff * 10.), w2);
     float wSpec = w2 * pow(wBasic * exp(-lumaDiff2 * lumaPhi), phi / w2);
-
-    wSpec *= exp(roughnessSpecularFactor *
-                 (-distanceToCenter * 10. - normalDiff) * specularPhi);
+    wSpec = pow(wSpec, 1. + specularPhi * specularFactor);
 
     wSpec = min(wSpec, 1.);
 
@@ -182,7 +180,7 @@ void main() {
   normal = unpackNormal(depthVelocityTexel.b);
 #endif
 
-  roughnessSpecularFactor = centerMat.roughness * centerMat.roughness;
+  specularFactor = 1. - centerMat.roughness;
 
   // ! todo: increase denoiser aggressiveness by distance
 
@@ -194,8 +192,11 @@ void main() {
 
   centerWorldPos = getWorldPos(centerDepth, vUv);
 
+  float roughnessRadius =
+      mix(sqrt(centerMat.roughness), 1., 0.5 * (1. - centerMat.metalness));
+
   vec4 random = blueNoise();
-  float r = 1. + sqrt(random.a) * exp(-(a + a2) * 0.01) * radius;
+  float r = sqrt(random.a) * exp(-(a + a2) * 0.01) * radius * roughnessRadius;
 
   // rotate the poisson disk
   float angle = random.r * 2. * PI;
