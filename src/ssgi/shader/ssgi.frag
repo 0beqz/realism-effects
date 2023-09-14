@@ -313,8 +313,7 @@ void main() {
 #if mode == MODE_SSGI
   gl_FragColor = packTwoVec4(gDiffuse, gSpecular);
 #else
-  gl_FragColor = gSpecuvscode - file
-      : // vscode-app/c:/Users/a/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/code/electron-sandbox/workbench/workbench.htmllar;
+  gl_FragColor = gSpecular;
 #endif
 }
 
@@ -411,6 +410,15 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal,
   if (reprojectedUv.x >= 0.0 && reprojectedUv.x <= 1.0 &&
       reprojectedUv.y >= 0.0 && reprojectedUv.y <= 1.0) {
     vec4 reprojectedGI = textureLod(accumulatedTexture, reprojectedUv, 0.);
+
+    float pixelAge = reprojectedGI.a;
+
+    float saturation = 1. / (pixelAge + 1.);
+    saturation = mix(saturation, 1., roughness);
+
+    // saturate reprojected GI by the saturation value
+    reprojectedGI.rgb = mix(vec3(luminance(reprojectedGI.rgb)),
+                            reprojectedGI.rgb, saturation * 0.75 + 0.25);
 
     SSGI = reprojectedGI.rgb;
   }
