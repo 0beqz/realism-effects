@@ -205,7 +205,8 @@ vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength) {
   reprojectedHitPoint.xyz /= reprojectedHitPoint.w;
   reprojectedHitPoint.xy = reprojectedHitPoint.xy * 0.5 + 0.5;
 
-  return reprojectedHitPoint.xy;
+  float roughnessFactor = max(0., roughness - 0.375) / 0.625;
+  return mix(reprojectedHitPoint.xy, vUv - velocity, roughnessFactor);
 }
 
 vec3 getReprojectedUV(const float depth, const vec3 worldPos, const vec3 worldNormal, const float rayLength) {

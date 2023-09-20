@@ -383,6 +383,7 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
   vec2 reprojectedUv = coords.xy - velocity.xy;
 
   vec3 SSGI;
+  vec3 envColor = getEnvColor(l, worldPos, roughness, isDiffuseSample, isEnvSample);
 
   // check if the reprojected coordinates are within the screen
   if (reprojectedUv.x >= 0.0 && reprojectedUv.x <= 1.0 && reprojectedUv.y >= 0.0 && reprojectedUv.y <= 1.0) {
@@ -390,7 +391,7 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
 
     // check for self-occlusion
     if (dot(worldNormal, hitNormal) == 1.0) {
-      return getEnvColor(l, worldPos, roughness, isDiffuseSample, isEnvSample);
+      return envColor;
     }
 
     vec4 reprojectedGI = textureLod(accumulatedTexture, reprojectedUv, 0.);
@@ -404,6 +405,15 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
     reprojectedGI.rgb = mix(vec3(luminance(reprojectedGI.rgb)), reprojectedGI.rgb, saturation * 0.75 + 0.25);
 
     SSGI = reprojectedGI.rgb;
+
+    // source: https://imanolfotia.com/blog/1
+    vec2 dCoords = smoothstep(0.2, 0.6, abs(vec2(0.5, 0.5) - coords.xy));
+    float screenEdgeFactor = clamp(1.0 - (dCoords.x + dCoords.y), 0.0, 1.0);
+
+    SSGI = mix(envColor, SSGI, screenEdgeFactor);
+
+  } else {
+    return envColor;
   }
 
   if (allowMissedRays) {
@@ -430,9 +440,6 @@ vec2 RayMarch(inout vec3 dir, inout vec3 hitPos, vec4 random) {
     // use slower increments for the first few steps to sharpen contact shadows
     float m = exp(pow(float(i) / 4.0, 0.05)) - 2.0;
     hitPos += dir * min(m, 1.);
-
-    if (hitPos.z > 0.0)
-      return INVALID_RAY_COORDS;
 
     uv = viewSpaceToScreenSpace(hitPos);
 

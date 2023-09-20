@@ -152,10 +152,12 @@ void main() {
         float maxValue = fullAccumulate ? mix(1., blend, moveFactor) : blend;
 
         float roughnessMaximum = 0.25;
+        bool didReprojectHitPoint = reprojectedUvSpecular.z > 0.0;
+        float hitPointFactor = didReprojectHitPoint ? 0.25 : 1.;
 
-        if (reprojectSpecular[i] && roughness < roughnessMaximum) {
+        if (!didReprojectHitPoint && reprojectSpecular[i] && roughness < roughnessMaximum) {
           float maxRoughnessValue = mix(0.5, maxValue, roughness / roughnessMaximum);
-          maxValue = mix(maxValue, maxRoughnessValue, moveFactor);
+          maxValue = mix(maxValue, maxRoughnessValue, moveFactor * hitPointFactor);
         }
 
         temporalReprojectMix = min(accumBlend, maxValue);
