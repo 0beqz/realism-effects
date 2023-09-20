@@ -82,16 +82,17 @@ void main() {
 
   // reprojecting
   float rayLength = inputTexel[1].a;
-  vec2 reprojectedUvDiffuse = getReprojectedUV(depth, worldPos, worldNormal, 0.0);
-  vec2 reprojectedUvSpecular = rayLength == 0.0 ? reprojectedUvDiffuse : getReprojectedUV(depth, worldPos, worldNormal, rayLength);
+  vec3 reprojectedUvDiffuse = getReprojectedUV(depth, worldPos, worldNormal, 0.0);
+  vec3 reprojectedUvSpecular = rayLength == 0.0 ? reprojectedUvDiffuse : getReprojectedUV(depth, worldPos, worldNormal, rayLength);
 
 #pragma unroll_loop_start
   for (int i = 0; i < textureCount; i++) {
     {
-      vec2 uv = reprojectSpecular[i] ? reprojectedUvSpecular : reprojectedUvDiffuse;
+      vec2 uv = reprojectSpecular[i] ? reprojectedUvSpecular.xy : reprojectedUvDiffuse.xy;
+      float confidence = reprojectSpecular[i] ? reprojectedUvSpecular.z : reprojectedUvDiffuse.z;
 
       // check if any reprojection was successful
-      if (uv.x == -1.0) { // invalid UV
+      if (confidence == 0.0) { // invalid UV
         accumulatedTexel[i] = vec4(inputTexel[i].rgb, 0.0);
       } else {
         accumulatedTexel[i] = sampleReprojectedTexture(accumulatedTexture[i], uv);
@@ -130,6 +131,8 @@ void main() {
 #pragma unroll_loop_start
   for (int i = 0; i < textureCount; i++) {
     {
+      float confidence = reprojectSpecular[i] ? reprojectedUvSpecular.z : reprojectedUvDiffuse.z;
+
       if (constantBlend) {
         temporalReprojectMix = accumulatedTexel[i].a == 0.0 ? 0.0 : blend;
       } else {
@@ -142,9 +145,9 @@ void main() {
 
         // if we reproject from oblique angles to straight angles, we
         // get stretching and need to counteract it
-        accumulatedTexel[i].a = mix(accumulatedTexel[i].a, 0.0, angleMix * accumBlend);
+        // accumulatedTexel[i].a = mix(accumulatedTexel[i].a, 0.0, angleMix * accumBlend);
 
-        accumBlend = 1. - 1. / (accumulatedTexel[i].a + 1.0);
+        // accumBlend = 1. - 1. / (accumulatedTexel[i].a + 1.0);
 
         float maxValue = fullAccumulate ? mix(1., blend, moveFactor) : blend;
 

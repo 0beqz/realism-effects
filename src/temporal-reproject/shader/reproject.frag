@@ -130,24 +130,24 @@ void getVelocityNormalDepth(inout vec2 dilatedUv, out vec2 vel, out vec3 normal,
 #define VELOCITY_DISTANCE 0.005
 #define WORLD_DISTANCE 2.
 
-bool planeDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos, const vec3 worldNormal, const float distFactor) {
+float planeDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos, const vec3 worldNormal, const float distFactor) {
   vec3 toCurrent = worldPos - lastWorldPos;
   float distToPlane = abs(dot(toCurrent, worldNormal));
 
-  return distToPlane > PLANE_DISTANCE * distFactor;
+  return distToPlane / PLANE_DISTANCE * distFactor;
 }
 
-bool velocityDisocclusionCheck(const vec2 velocity, const vec2 lastVelocity, const float distFactor) {
-  return length(velocity - lastVelocity) > VELOCITY_DISTANCE * distFactor;
+float velocityDisocclusionCheck(const vec2 velocity, const vec2 lastVelocity, const float distFactor) {
+  return length(velocity - lastVelocity) / VELOCITY_DISTANCE * distFactor;
 }
 
-bool worldDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos, const float distFactor) {
-  return length(worldPos - lastWorldPos) > WORLD_DISTANCE * distFactor;
+float worldDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos, const float distFactor) {
+  return length(worldPos - lastWorldPos) / WORLD_DISTANCE * distFactor;
 }
 
-bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const vec3 worldNormal, const bool isHitPoint) {
+float validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const vec3 worldNormal, const bool isHitPoint) {
   if (reprojectedUv.x > 1.0 || reprojectedUv.x < 0.0 || reprojectedUv.y > 1.0 || reprojectedUv.y < 0.0)
-    return false;
+    return 0.;
 
   vec2 dilatedReprojectedUv = reprojectedUv;
   vec2 lastVelocity = vec2(0.0);
@@ -174,16 +174,15 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const 
   float viewZ = abs(getViewZ(depth));
   float distFactor = 1. + 1. / (viewZ + 1.0);
 
-  if (velocityDisocclusionCheck(velocity, lastVelocity, distFactor))
-    return false;
+  float disoccl = 0.;
 
-  if (planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal, distFactor))
-    return false;
+  disoccl += velocityDisocclusionCheck(velocity, lastVelocity, distFactor);
+  disoccl += planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal, distFactor);
+  disoccl += worldDistanceDisocclusionCheck(worldPos, lastWorldPos, distFactor);
 
-  if (worldDistanceDisocclusionCheck(worldPos, lastWorldPos, distFactor))
-    return false;
+  disoccl = min(disoccl / 3., 1.);
 
-  return true;
+  return 1. - disoccl;
 }
 
 vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength) {
@@ -209,27 +208,20 @@ vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength) {
   return reprojectedHitPoint.xy;
 }
 
-vec2 getReprojectedUV(const float depth, const vec3 worldPos, const vec3 worldNormal, const float rayLength) {
+vec3 getReprojectedUV(const float depth, const vec3 worldPos, const vec3 worldNormal, const float rayLength) {
   // hit point reprojection
   if (rayLength != 0.0) {
     vec2 reprojectedUv = reprojectHitPoint(worldPos, rayLength);
 
-    if (validateReprojectedUV(reprojectedUv, worldPos, worldNormal, true)) {
-      return reprojectedUv;
-    }
-
-    return vec2(-1.);
+    float confidence = validateReprojectedUV(reprojectedUv, worldPos, worldNormal, true);
+    return vec3(reprojectedUv, confidence);
   }
 
   // reprojection using motion vectors
   vec2 reprojectedUv = vUv - velocity;
 
-  if (validateReprojectedUV(reprojectedUv, worldPos, worldNormal, false)) {
-    return reprojectedUv;
-  }
-
-  // invalid reprojection
-  return vec2(-1.);
+  float confidence = validateReprojectedUV(reprojectedUv, worldPos, worldNormal, false);
+  return vec3(reprojectedUv, confidence);
 }
 
 vec4 SampleTextureCatmullRom(const sampler2D tex, const vec2 uv, const vec2 resolution) {
