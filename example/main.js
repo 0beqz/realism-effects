@@ -353,7 +353,7 @@ const initScene = async () => {
 		mode: "ssgi",
 		distance: 2.170000000000011,
 		thickness: 4.999999999999997,
-		blend: 0.95,
+		blend: 1,
 		denoiseIterations: 1,
 		denoiseKernel: 3,
 		denoiseDiffuse: 25,

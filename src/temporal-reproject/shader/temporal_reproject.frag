@@ -92,27 +92,24 @@ void main() {
       float confidence = reprojectSpecular[i] ? reprojectedUvSpecular.z : reprojectedUvDiffuse.z;
 
       // check if any reprojection was successful
-      if (confidence == 0.0) { // invalid UV
-        accumulatedTexel[i] = vec4(inputTexel[i].rgb, 0.0);
-      } else {
-        accumulatedTexel[i] = sampleReprojectedTexture(accumulatedTexture[i], uv);
-        transformColor(accumulatedTexel[i].rgb);
 
-        if (textureSampledThisFrame[i]) {
-          accumulatedTexel[i].a++; // add one more frame
+      accumulatedTexel[i] = sampleReprojectedTexture(accumulatedTexture[i], uv);
+      transformColor(accumulatedTexel[i].rgb);
 
-          if (neighborhoodClamp[i]) {
-            vec3 clampedColor = accumulatedTexel[i].rgb;
+      if (textureSampledThisFrame[i]) {
+        accumulatedTexel[i].a++; // add one more frame
 
-            clampNeighborhood(inputTexture[i], clampedColor, inputTexel[i].rgb, neighborhoodClampRadius);
+        if (neighborhoodClamp[i]) {
+          vec3 clampedColor = accumulatedTexel[i].rgb;
 
-            float clampIntensity = neighborhoodClampIntensity * (reprojectSpecular[i] ? (1. - roughness) : 1.0);
+          clampNeighborhood(inputTexture[i], clampedColor, inputTexel[i].rgb, neighborhoodClampRadius);
 
-            accumulatedTexel[i].rgb = mix(accumulatedTexel[i].rgb, clampedColor, clampIntensity);
-          }
-        } else {
-          inputTexel[i].rgb = accumulatedTexel[i].rgb;
+          float clampIntensity = neighborhoodClampIntensity * (reprojectSpecular[i] ? (1. - roughness) : 1.0);
+
+          accumulatedTexel[i].rgb = mix(accumulatedTexel[i].rgb, clampedColor, clampIntensity);
         }
+      } else {
+        inputTexel[i].rgb = accumulatedTexel[i].rgb;
       }
 
       texIndex++;
@@ -132,6 +129,7 @@ void main() {
   for (int i = 0; i < textureCount; i++) {
     {
       float confidence = reprojectSpecular[i] ? reprojectedUvSpecular.z : reprojectedUvDiffuse.z;
+      confidence = pow(confidence, 0.25);
 
       if (constantBlend) {
         temporalReprojectMix = accumulatedTexel[i].a == 0.0 ? 0.0 : blend;
@@ -142,6 +140,8 @@ void main() {
           accumulatedTexel[i].a = 0.0;
 
         float accumBlend = 1. - 1. / (accumulatedTexel[i].a + 1.0);
+
+        accumBlend = mix(0., accumBlend, confidence);
 
         // if we reproject from oblique angles to straight angles, we
         // get stretching and need to counteract it
