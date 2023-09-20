@@ -153,7 +153,7 @@ void main() {
 
         float roughnessMaximum = 0.25;
 
-        if (reprojectSpecular[i] && roughness < roughnessMaximum && (rayLength > 10.0e3 || reprojectedUvSpecular.x < 0.)) {
+        if (reprojectSpecular[i] && roughness < roughnessMaximum) {
           float maxRoughnessValue = mix(0.5, maxValue, roughness / roughnessMaximum);
           maxValue = mix(maxValue, maxRoughnessValue, moveFactor);
         }

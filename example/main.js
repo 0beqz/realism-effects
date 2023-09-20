@@ -16,7 +16,10 @@ import {
 	MeshNormalMaterial,
 	NearestFilter,
 	Object3D,
-	Vector3
+	Vector3,
+	PlaneGeometry,
+	Mesh,
+	MeshStandardMaterial
 } from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader"
@@ -735,6 +738,19 @@ const setupAsset = asset => {
 	if (pointsObj.children.length > 0) {
 		pointsObj.removeFromParent()
 	}
+
+	const ground = new Mesh(
+		new PlaneGeometry(10000, 10000),
+		new MeshStandardMaterial({
+			metalness: 1,
+			roughness: 0
+		})
+	)
+
+	ground.rotation.x = -Math.PI / 2
+	ground.receiveShadow = true
+	ground.updateMatrixWorld()
+	scene.add(ground)
 
 	if (lastScene) {
 		lastScene.removeFromParent()

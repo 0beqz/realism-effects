@@ -22,9 +22,10 @@ export default class Denoiser {
 			logTransform: true,
 			copyTextures: !options.denoise,
 			reprojectSpecular: [false, true],
-			neighborhoodClamp: [false, true],
+			neighborhoodClamp: [false, false],
 			neighborhoodClampRadius: 2,
-			neighborhoodClampIntensity: 0.5
+			neighborhoodClampIntensity: 0.5,
+			...options
 		})
 
 		this.temporalReprojectPass.setTextures(texture)

@@ -16,8 +16,7 @@ const float c_precisionp1 = c_precision + 1.0;
 // source: http://emmettmcquinn.com/blog/graphics/2012/11/07/float-packing.html
 float color2float(in vec3 color) {
   color = clamp(color, 0.0, 1.0);
-  return floor(color.r * c_precision + 0.5) +
-         floor(color.b * c_precision + 0.5) * c_precisionp1 +
+  return floor(color.r * c_precision + 0.5) + floor(color.b * c_precision + 0.5) * c_precisionp1 +
          floor(color.g * c_precision + 0.5) * c_precisionp1 * c_precisionp1;
 }
 
@@ -61,13 +60,9 @@ vec3 decodeOctWrap(vec2 f) {
   return normalize(n);
 }
 
-float packNormal(vec3 normal) {
-  return uintBitsToFloat(packHalf2x16(encodeOctWrap(normal)));
-}
+float packNormal(vec3 normal) { return uintBitsToFloat(packHalf2x16(encodeOctWrap(normal))); }
 
-vec3 unpackNormal(float packedNormal) {
-  return decodeOctWrap(unpackHalf2x16(floatBitsToUint(packedNormal)));
-}
+vec3 unpackNormal(float packedNormal) { return decodeOctWrap(unpackHalf2x16(floatBitsToUint(packedNormal))); }
 
 // not used, results in severe precision loss and artifacts on Metal backends
 //  float packVec2( vec2 value) {
@@ -137,8 +132,7 @@ vec4 floatToVec4(float f) {
   return v;
 }
 
-vec4 packGBuffer(vec4 diffuse, vec3 normal, float roughness, float metalness,
-                 vec3 emissive) {
+vec4 packGBuffer(vec4 diffuse, vec3 normal, float roughness, float metalness, vec3 emissive) {
   vec4 gBuffer;
 
   // clamp diffuse to [0;1[
@@ -178,3 +172,5 @@ Material getMaterial(sampler2D gBufferTexture, vec2 uv) {
 
   return Material(diffuse, normal, roughness, metalness, emissive);
 }
+
+vec3 getNormal(sampler2D gBufferTexture, vec2 uv) { return unpackNormal(textureLod(gBufferTexture, uv, 0.0).g); }

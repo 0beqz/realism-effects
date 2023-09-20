@@ -56,7 +56,7 @@ export class SSGIEffect extends Effect {
 			options.neighborhoodClamp = true
 		} else if (options.mode === "ssgi") {
 			options.reprojectSpecular = [false, true]
-			options.neighborhoodClamp = [true, true]
+			options.neighborhoodClamp = [false, true]
 		}
 
 		this.ssgiPass = new SSGIPass(this, options)

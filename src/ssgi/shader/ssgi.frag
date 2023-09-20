@@ -73,10 +73,12 @@ struct RayTracingResult {
 
 // !todo: refactor functions
 // RayTracingResult doSample(const vec3 viewPos, const vec3 viewDir, const vec3
-// viewNormal, const vec3 worldPosition, const vec4 random, Material mat,
+// viewNormal, const vec3 worldPos, const vec4 random, Material mat,
 // RayTracingInfo info);
 
-vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, const vec3 worldPosition, const float metalness, const float roughness,
+vec3 worldNormal;
+
+vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, const vec3 worldPos, const float metalness, const float roughness,
               const bool isDiffuseSample, const bool isEnvSample, const float NoV, const float NoL, const float NoH, const float LoH, const float VoH,
               const vec4 random, inout vec3 l, inout vec3 hitPos, out bool isMissedRay, out vec3 brdf, out float pdf);
 
@@ -110,9 +112,9 @@ void main() {
   vec3 viewPos = getViewPosition(viewZ);
 
   vec3 viewDir = normalize(viewPos);
-  vec3 worldNormal = mat.normal;
+  worldNormal = mat.normal;
   vec3 viewNormal = normalize((vec4(worldNormal, 0.) * cameraMatrixWorld).xyz);
-  vec3 worldPos = vec4(vec4(viewPos, 1.) * viewMatrix).xyz;
+  vec3 worldPos = (cameraMatrixWorld * vec4(viewPos, 1.)).xyz;
 
   vec3 n = viewNormal; // view-space normal
   vec3 v = -viewDir;   // incoming vector
@@ -298,7 +300,44 @@ void main() {
 #endif
 }
 
-vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, const vec3 worldPosition, const float metalness, const float roughness,
+vec3 getEnvColor(vec3 l, vec3 worldPos, float roughness, bool isDiffuseSample, bool isEnvSample) {
+  vec3 envMapSample;
+#ifdef USE_ENVMAP
+  // world-space reflected ray
+  vec3 reflectedWS = normalize((vec4(l, 0.) * viewMatrix).xyz);
+
+#ifdef BOX_PROJECTED_ENV_MAP
+  reflectedWS = parallaxCorrectNormal(reflectedWS.xyz, envMapSize, envMapPosition, worldPos);
+  reflectedWS = normalize(reflectedWS.xyz);
+#endif
+
+  float mip = envBlur * maxEnvMapMipLevel;
+
+  if (!isDiffuseSample && roughness < 0.15)
+    mip *= roughness / 0.15;
+
+  envMapSample = sampleEquirectEnvMapColor(reflectedWS, envMapInfo.map, mip);
+
+  float maxEnvLum = isEnvSample ? 100.0 : 25.0;
+
+  if (maxEnvLum != 0.0) {
+    // we won't deal with calculating direct sun light from the env map as it
+    // is too noisy
+    float envLum = luminance(envMapSample);
+
+    if (envLum > maxEnvLum) {
+      envMapSample *= maxEnvLum / envLum;
+    }
+  }
+
+  return envMapSample;
+#else
+  // if we don't have an environment map, just return black
+  return vec3(0.0);
+#endif
+}
+
+vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, const vec3 worldPos, const float metalness, const float roughness,
               const bool isDiffuseSample, const bool isEnvSample, const float NoV, const float NoL, const float NoH, const float LoH, const float VoH,
               const vec4 random, inout vec3 l, inout vec3 hitPos, out bool isMissedRay, out vec3 brdf, out float pdf) {
   float cosTheta = max(0.0, dot(viewNormal, l));
@@ -320,13 +359,10 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
 
   hitPos = viewPos;
 
-#if steps == 0
-  hitPos += l;
+  // don't raymarch if the point is very far away otherwise there'll be artifacts like self occlusion
+  float cameraDistance = length(hitPos);
 
-  vec2 coords = viewSpaceToScreenSpace(hitPos);
-#else
   vec2 coords = RayMarch(l, hitPos, random);
-#endif
 
   bool allowMissedRays = false;
 #ifdef missedRays
@@ -338,41 +374,8 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
   vec3 envMapSample = vec3(0.);
 
   // inisEnvSample ray, use environment lighting as fallback
-  if (isMissedRay || allowMissedRays) {
-#ifdef USE_ENVMAP
-    // world-space reflected ray
-    vec3 reflectedWS = normalize((vec4(l, 0.) * viewMatrix).xyz);
-
-#ifdef BOX_PROJECTED_ENV_MAP
-    reflectedWS = parallaxCorrectNormal(reflectedWS.xyz, envMapSize, envMapPosition, worldPosition);
-    reflectedWS = normalize(reflectedWS.xyz);
-#endif
-
-    float mip = envBlur * maxEnvMapMipLevel;
-
-    if (!isDiffuseSample && roughness < 0.15)
-      mip *= roughness / 0.15;
-
-    envMapSample = sampleEquirectEnvMapColor(reflectedWS, envMapInfo.map, mip);
-
-    float maxEnvLum = isEnvSample ? 100.0 : 25.0;
-
-    if (maxEnvLum != 0.0) {
-      // we won't deal with calculating direct sun light from the env map as it
-      // is too noisy
-      float envLum = luminance(envMapSample);
-
-      if (envLum > maxEnvLum) {
-        envMapSample *= maxEnvLum / envLum;
-      }
-    }
-
-    return envMapSample;
-#else
-    // if we don't have an environment map, just return black
-    return vec3(0.0);
-#endif
-  }
+  if (isMissedRay || allowMissedRays)
+    return getEnvColor(l, worldPos, roughness, isDiffuseSample, isEnvSample);
 
   // reproject the coords from the last frame
   vec4 velocity = textureLod(velocityTexture, coords.xy, 0.0);
@@ -383,6 +386,13 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
 
   // check if the reprojected coordinates are within the screen
   if (reprojectedUv.x >= 0.0 && reprojectedUv.x <= 1.0 && reprojectedUv.y >= 0.0 && reprojectedUv.y <= 1.0) {
+    vec3 hitNormal = getNormal(gBufferTexture, coords.xy);
+
+    // check for self-occlusion
+    if (dot(worldNormal, hitNormal) == 1.0) {
+      return getEnvColor(l, worldPos, roughness, isDiffuseSample, isEnvSample);
+    }
+
     vec4 reprojectedGI = textureLod(accumulatedTexture, reprojectedUv, 0.);
 
     float pixelAge = reprojectedGI.a;
@@ -427,9 +437,9 @@ vec2 RayMarch(inout vec3 dir, inout vec3 hitPos, vec4 random) {
     uv = viewSpaceToScreenSpace(hitPos);
 
     float unpackedDepth = textureLod(depthTexture, uv, 0.0).r;
-    float depth = getViewZ(unpackedDepth);
+    float z = getViewZ(unpackedDepth);
 
-    rayHitDepthDifference = depth - hitPos.z;
+    rayHitDepthDifference = z - hitPos.z;
 
     if (rayHitDepthDifference >= 0.0 && rayHitDepthDifference < thickness) {
 #if refineSteps == 0
@@ -457,10 +467,10 @@ vec2 BinarySearch(inout vec3 dir, inout vec3 hitPos) {
   for (int i = 0; i < refineSteps; i++) {
     uv = viewSpaceToScreenSpace(hitPos);
 
-    float unpackedDepth = unpackRGBAToDepth(textureLod(depthTexture, uv, 0.0));
-    float depth = getViewZ(unpackedDepth);
+    float unpackedDepth = textureLod(depthTexture, uv, 0.0).r;
+    float z = getViewZ(unpackedDepth);
 
-    rayHitDepthDifference = depth - hitPos.z;
+    rayHitDepthDifference = z - hitPos.z;
 
     dir *= 0.5;
     hitPos += rayHitDepthDifference > 0.0 ? -dir : dir;
