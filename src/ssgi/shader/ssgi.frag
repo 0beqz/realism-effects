@@ -34,9 +34,9 @@ uniform EquirectHdrInfo envMapInfo;
 #define EPSILON 0.00001
 #define ONE_MINUS_EPSILON 1.0 - EPSILON
 
-float nearMinusFar;
-float nearMulFar;
-float farMinusNear;
+uniform float nearMinusFar;
+uniform float nearMulFar;
+uniform float farMinusNear;
 vec2 invTexSize;
 
 #define MODE_SSGI 0
@@ -76,17 +76,11 @@ struct RayTracingResult {
 // viewNormal, const vec3 worldPosition, const vec4 random, Material mat,
 // RayTracingInfo info);
 
-vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal,
-              const vec3 worldPosition, const float metalness,
-              const float roughness, const bool isDiffuseSample,
-              const bool isEnvMisSample, const float NoV, const float NoL,
-              const float NoH, const float LoH, const float VoH,
-              const vec4 random, inout vec3 l, inout vec3 hitPos,
-              out bool isMissedRay, out vec3 brdf, out float pdf);
+vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, const vec3 worldPosition, const float metalness, const float roughness,
+              const bool isDiffuseSample, const bool isEnvMisSample, const float NoV, const float NoL, const float NoH, const float LoH,
+              const float VoH, const vec4 random, inout vec3 l, inout vec3 hitPos, out bool isMissedRay, out vec3 brdf, out float pdf);
 
-void calculateAngles(inout vec3 h, inout vec3 l, inout vec3 v, inout vec3 n,
-                     inout float NoL, inout float NoH, inout float LoH,
-                     inout float VoH) {
+void calculateAngles(inout vec3 h, inout vec3 l, inout vec3 v, inout vec3 n, inout float NoL, inout float NoH, inout float LoH, inout float VoH) {
   h = normalize(v + l); // half vector
 
   NoL = clamp(dot(n, l), EPSILON, ONE_MINUS_EPSILON);
@@ -105,15 +99,9 @@ void main() {
   }
 
   Material mat = getMaterial(gBufferTexture, vUv);
+  float roughnessSq = clamp(mat.roughness * mat.roughness, 0.000001, 1.0);
 
   invTexSize = 1. / resolution;
-
-  mat.roughness = clamp(mat.roughness * mat.roughness, 0.000001, 1.0);
-
-  // pre-calculated variables for the "fastGetViewZ" function
-  // nearMinusFar = cameraNear - cameraFar;
-  // nearMulFar = cameraNear * cameraFar;
-  // farMinusNear = cameraFar - cameraNear;
 
   // view-space depth
   float viewZ = getViewZ(unpackedDepth);
@@ -123,9 +111,7 @@ void main() {
 
   vec3 viewDir = normalize(viewPos);
   vec3 worldNormal = mat.normal;
-
   vec3 viewNormal = normalize((vec4(worldNormal, 0.) * cameraMatrixWorld).xyz);
-
   vec3 worldPos = vec4(vec4(viewPos, 1.) * viewMatrix).xyz;
 
   vec3 n = viewNormal; // view-space normal
@@ -147,14 +133,13 @@ void main() {
   // fresnel f0
   vec3 f0 = mix(vec3(0.04), mat.diffuse.rgb, mat.metalness);
 
-  float NoL, NoH, LoH, VoH, diffW, specW, invW, pdf, envPdf, diffuseSamples,
-      specularSamples, envMisProbability, envMisMultiplier;
+  float NoL, NoH, LoH, VoH, diffW, specW, invW, pdf, envPdf, diffuseSamples, specularSamples, envMisProbability, envMisMultiplier;
   bool isDiffuseSample, isEnvMisSample, isMissedRay;
 
   random = blueNoise();
   // Disney BRDF and sampling source: https://www.shadertoy.com/view/cll3R4
   // calculate GGX reflection ray
-  H = SampleGGXVNDF(V, mat.roughness, mat.roughness, random.r, random.g);
+  H = SampleGGXVNDF(V, roughnessSq, roughnessSq, random.r, random.g);
   if (H.z < 0.0)
     H = -H;
 
@@ -190,13 +175,15 @@ void main() {
 #endif
 
   envMisDir = vec3(0.0);
+  envPdf = 1.;
+  envMisMultiplier = 1.;
 
 #ifdef importanceSampling
   envPdf = sampleEquirectProbability(envMapInfo, random.rg, envMisDir);
   envMisDir = normalize((vec4(envMisDir, 0.) * cameraMatrixWorld).xyz);
 
   envMisProbability = 0.5 + dot(envMisDir, viewNormal) * 0.5;
-  envMisProbability *= sqrt(mat.roughness);
+  envMisProbability *= mat.roughness;
   isEnvMisSample = random.a < envMisProbability;
 
   envMisMultiplier = 1. / (1. - envMisProbability);
@@ -206,17 +193,10 @@ void main() {
 
     l = envMisDir;
     calculateAngles(h, l, v, n, NoL, NoH, LoH, VoH);
-  } else {
-    envPdf = 0.0001;
   }
-#else
-  envPdf = 0.0;
-  envMisMultiplier = 1.;
 #endif
 
-  vec3 diffuseRay = isEnvMisSample
-                        ? envMisDir
-                        : cosineSampleHemisphere(viewNormal, random.rg);
+  vec3 diffuseRay = isEnvMisSample ? envMisDir : cosineSampleHemisphere(viewNormal, random.rg);
   vec3 specularRay = (isEnvMisSample && mat.roughness >= 0.025) ? envMisDir : l;
 
 // optional diffuse ray
@@ -226,9 +206,8 @@ void main() {
 
     calculateAngles(h, l, v, n, NoL, NoH, LoH, VoH);
 
-    gi = doSample(viewPos, viewDir, viewNormal, worldPos, mat.metalness,
-                  mat.roughness, isDiffuseSample, isEnvMisSample, NoV, NoL, NoH,
-                  LoH, VoH, random, l, hitPos, isMissedRay, brdf, pdf);
+    gi = doSample(viewPos, viewDir, viewNormal, worldPos, mat.metalness, roughnessSq, isDiffuseSample, isEnvMisSample, NoV, NoL, NoH, LoH, VoH,
+                  random, l, hitPos, isMissedRay, brdf, pdf);
 
     gi *= brdf;
 
@@ -253,9 +232,8 @@ void main() {
     calculateAngles(h, l, v, n, NoL, NoH, LoH, VoH);
   }
 
-  gi = doSample(viewPos, viewDir, viewNormal, worldPos, mat.metalness,
-                mat.roughness, isDiffuseSample, isEnvMisSample, NoV, NoL, NoH,
-                LoH, VoH, random, l, hitPos, isMissedRay, brdf, pdf);
+  gi = doSample(viewPos, viewDir, viewNormal, worldPos, mat.metalness, roughnessSq, isDiffuseSample, isEnvMisSample, NoV, NoL, NoH, LoH, VoH, random,
+                l, hitPos, isMissedRay, brdf, pdf);
 
   gi *= brdf;
 
@@ -272,8 +250,6 @@ void main() {
   specularSamples++;
 
   specularGI = mix(specularGI, gi, 1. / specularSamples);
-
-  mat.roughness = sqrt(mat.roughness);
 
 #ifdef useDirectLight
   vec3 directLight = textureLod(directLightTexture, vUv, 0.).rgb;
@@ -317,18 +293,13 @@ void main() {
 #endif
 }
 
-vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal,
-              const vec3 worldPosition, const float metalness,
-              const float roughness, const bool isDiffuseSample,
-              const bool isEnvMisSample, const float NoV, const float NoL,
-              const float NoH, const float LoH, const float VoH,
-              const vec4 random, inout vec3 l, inout vec3 hitPos,
-              out bool isMissedRay, out vec3 brdf, out float pdf) {
+vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, const vec3 worldPosition, const float metalness, const float roughness,
+              const bool isDiffuseSample, const bool isEnvMisSample, const float NoV, const float NoL, const float NoH, const float LoH,
+              const float VoH, const vec4 random, inout vec3 l, inout vec3 hitPos, out bool isMissedRay, out vec3 brdf, out float pdf) {
   float cosTheta = max(0.0, dot(viewNormal, l));
 
   if (isDiffuseSample) {
-    vec3 diffuseBrdf =
-        vec3(evalDisneyDiffuse(NoL, NoV, LoH, roughness, metalness));
+    vec3 diffuseBrdf = vec3(evalDisneyDiffuse(NoL, NoV, LoH, roughness, metalness));
     pdf = NoL / M_PI;
 
     brdf = diffuseBrdf;
@@ -368,8 +339,7 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal,
     vec3 reflectedWS = normalize((vec4(l, 0.) * viewMatrix).xyz);
 
 #ifdef BOX_PROJECTED_ENV_MAP
-    reflectedWS = parallaxCorrectNormal(reflectedWS.xyz, envMapSize,
-                                        envMapPosition, worldPosition);
+    reflectedWS = parallaxCorrectNormal(reflectedWS.xyz, envMapSize, envMapPosition, worldPosition);
     reflectedWS = normalize(reflectedWS.xyz);
 #endif
 
@@ -407,8 +377,7 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal,
   vec3 SSGI;
 
   // check if the reprojected coordinates are within the screen
-  if (reprojectedUv.x >= 0.0 && reprojectedUv.x <= 1.0 &&
-      reprojectedUv.y >= 0.0 && reprojectedUv.y <= 1.0) {
+  if (reprojectedUv.x >= 0.0 && reprojectedUv.x <= 1.0 && reprojectedUv.y >= 0.0 && reprojectedUv.y <= 1.0) {
     vec4 reprojectedGI = textureLod(accumulatedTexture, reprojectedUv, 0.);
 
     float pixelAge = reprojectedGI.a;
@@ -417,8 +386,7 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal,
     saturation = mix(saturation, 1., roughness);
 
     // saturate reprojected GI by the saturation value
-    reprojectedGI.rgb = mix(vec3(luminance(reprojectedGI.rgb)),
-                            reprojectedGI.rgb, saturation * 0.75 + 0.25);
+    reprojectedGI.rgb = mix(vec3(luminance(reprojectedGI.rgb)), reprojectedGI.rgb, saturation * 0.75 + 0.25);
 
     SSGI = reprojectedGI.rgb;
   }

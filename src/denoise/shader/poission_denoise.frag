@@ -35,8 +35,7 @@ vec3 getWorldPos(float depth, vec2 coord) {
   return worldSpacePosition.xyz;
 }
 
-float distToPlane(const vec3 worldPos, const vec3 neighborWorldPos,
-                  const vec3 worldNormal) {
+float distToPlane(const vec3 worldPos, const vec3 neighborWorldPos, const vec3 worldNormal) {
   vec3 toCurrent = worldPos - neighborWorldPos;
   float distToPlane = abs(dot(toCurrent, worldNormal));
 
@@ -56,8 +55,7 @@ void toDenoiseSpace(inout vec3 color) { color = log(color + 1.); }
 
 void toLinearSpace(inout vec3 color) { color = exp(color) - 1.; }
 
-void evaluateNeighbor(const vec4 neighborTexel, inout vec3 denoised,
-                      inout float totalWeight, const float wBasic) {
+void evaluateNeighbor(const vec4 neighborTexel, inout vec3 denoised, inout float totalWeight, const float wBasic) {
   float w = min(1., wBasic);
 
   denoised += w * neighborTexel.rgb;
@@ -98,16 +96,14 @@ Neighbor getNeighborWeight(vec2 neighborUv, bool isDiffuseGi) {
   Material neighborMat = getMaterial(gBufferTexture, neighborUv);
   vec3 neighborNormal = neighborMat.normal;
 #else
-  vec3 neighborDepthVelocityTexel =
-      textureLod(normalTexture, neighborUv, 0.).xyz;
+  vec3 neighborDepthVelocityTexel = textureLod(normalTexture, neighborUv, 0.).xyz;
   vec3 neighborNormal = unpackNormal(neighborDepthVelocityTexel.b);
 #endif
 
   vec3 neighborWorldPos = getWorldPos(neighborDepth, neighborUv);
 
   float normalDiff = 1. - max(dot(normal, neighborNormal), 0.);
-  float depthDiff =
-      10. * distToPlane(centerWorldPos, neighborWorldPos, centerMat.normal);
+  float depthDiff = 10. * distToPlane(centerWorldPos, neighborWorldPos, centerMat.normal);
 
   float lumaDiff = mix(abs(centerLumDiffuse - neighborLuminance), 0., w);
   float lumaDiff2 = mix(abs(centerLumSpecular - neighborLuminance2), 0., w2);
@@ -115,8 +111,7 @@ Neighbor getNeighborWeight(vec2 neighborUv, bool isDiffuseGi) {
 #ifdef GBUFFER_TEXTURE
   float roughnessDiff = abs(centerMat.roughness - neighborMat.roughness);
 
-  float wBasic = exp(-normalDiff * normalPhi - depthDiff * depthPhi -
-                     roughnessDiff * roughnessPhi);
+  float wBasic = exp(-normalDiff * normalPhi - depthDiff * depthPhi - roughnessDiff * roughnessPhi);
 #else
   float wBasic = exp(-normalDiff * normalPhi - depthDiff * depthPhi);
 #endif
@@ -181,6 +176,7 @@ void main() {
 #endif
 
   specularFactor = 1. - centerMat.roughness;
+  specularFactor *= specularFactor;
 
   // ! todo: increase denoiser aggressiveness by distance
 
@@ -191,9 +187,10 @@ void main() {
   vec3 denoisedSpecular = centerSpecularGi.rgb;
 
   centerWorldPos = getWorldPos(centerDepth, vUv);
+  vec3 cameraPos = cameraMatrixWorld[3].xyz;
+  float distanceToCamera = distance(centerWorldPos, cameraPos);
 
-  float roughnessRadius =
-      mix(sqrt(centerMat.roughness), 1., 0.5 * (1. - centerMat.metalness));
+  float roughnessRadius = mix(sqrt(centerMat.roughness), 1., 0.5 * (1. - centerMat.metalness));
 
   vec4 random = blueNoise();
   float r = sqrt(random.a) * exp(-(a + a2) * 0.01) * radius * roughnessRadius;
@@ -202,8 +199,9 @@ void main() {
   float angle = random.r * 2. * PI;
   float s = sin(angle), c = cos(angle);
   mat2 rm = mat2(c, -s, s, c);
+  rm *= r * 25.0 / distanceToCamera;
 
-  rm *= r;
+  // todo: denoise in world space not in screen space
 
   for (int i = 0; i < 8; i++) {
     vec2 offset = rm * poissonDisk[i];
@@ -213,11 +211,9 @@ void main() {
     Neighbor neighborDiffuse = getNeighborWeight(neighborUv, true);
     Neighbor neighborSpecular = getNeighborWeight(neighborUv, false);
 
-    evaluateNeighbor(neighborDiffuse.texel, denoisedDiffuse, totalWeight,
-                     neighborDiffuse.weight);
+    evaluateNeighbor(neighborDiffuse.texel, denoisedDiffuse, totalWeight, neighborDiffuse.weight);
 
-    evaluateNeighbor(neighborSpecular.texel, denoisedSpecular, totalWeight2,
-                     neighborSpecular.weight);
+    evaluateNeighbor(neighborSpecular.texel, denoisedSpecular, totalWeight2, neighborSpecular.weight);
   }
 
   denoisedDiffuse /= totalWeight;

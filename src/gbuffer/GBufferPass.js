@@ -18,7 +18,7 @@ export class GBufferPass extends Pass {
 		this._scene = scene
 		this._camera = camera
 
-		this.initMRTRenderTarget()
+		this.initGBufferRenderTarget()
 	}
 
 	get texture() {
@@ -29,7 +29,7 @@ export class GBufferPass extends Pass {
 		return this.renderTarget.depthTexture
 	}
 
-	initMRTRenderTarget() {
+	initGBufferRenderTarget() {
 		this.renderTarget = new WebGLRenderTarget(1, 1, {
 			minFilter: NearestFilter,
 			magFilter: NearestFilter,
@@ -52,7 +52,7 @@ export class GBufferPass extends Pass {
 		this.renderTarget.dispose()
 	}
 
-	setMRTMaterialInScene() {
+	setGBufferMaterialInScene() {
 		this.visibleMeshes = getVisibleChildren(this._scene)
 
 		// const cameraMoved = didCameraMove(this._camera, this.lastCameraPosition, this.lastCameraQuaternion)
@@ -60,32 +60,30 @@ export class GBufferPass extends Pass {
 		for (const c of this.visibleMeshes) {
 			const originalMaterial = c.material
 
-			let [cachedOriginalMaterial, mrtMaterial] = this.cachedMaterials.get(c) || []
+			let [cachedOriginalMaterial, gBufferMaterial] = this.cachedMaterials.get(c) || []
 
 			// init a new material if the original material changed or if the cached material is missing
 			if (originalMaterial !== cachedOriginalMaterial) {
-				if (mrtMaterial) mrtMaterial.dispose()
+				if (gBufferMaterial) gBufferMaterial.dispose()
 
-				mrtMaterial = createGBufferMaterial(originalMaterial)
+				gBufferMaterial = createGBufferMaterial(originalMaterial)
 
-				this.cachedMaterials.set(c, [originalMaterial, mrtMaterial])
+				this.cachedMaterials.set(c, [originalMaterial, gBufferMaterial])
 			}
 
-			// mrtMaterial.uniforms.resolution.value.set(this.renderTarget.width, this.renderTarget.height)
-			// mrtMaterial.uniforms.frame.value = this.frame
-			// mrtMaterial.uniforms.cameraMoved.value = cameraMoved
+			// gBufferMaterial.uniforms.resolution.value.set(this.renderTarget.width, this.renderTarget.height)
+			// gBufferMaterial.uniforms.frame.value = this.frame
+			// gBufferMaterial.uniforms.cameraMoved.value = cameraMoved
 
 			c.visible = isChildMaterialRenderable(c, originalMaterial)
 
-			copyPropsToGBufferMaterial(originalMaterial, mrtMaterial)
+			copyPropsToGBufferMaterial(originalMaterial, gBufferMaterial)
 
-			// todo: implement selection
-
-			c.material = mrtMaterial
+			c.material = gBufferMaterial
 		}
 	}
 
-	unsetMRTMaterialInScene() {
+	unsetGBufferMaterialInScene() {
 		for (const c of this.visibleMeshes) {
 			const [originalMaterial] = this.cachedMaterials.get(c)
 
@@ -100,12 +98,12 @@ export class GBufferPass extends Pass {
 
 		this._scene.background = backgroundColor
 
-		this.setMRTMaterialInScene()
+		this.setGBufferMaterialInScene()
 
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this._scene, this._camera)
 
-		this.unsetMRTMaterialInScene()
+		this.unsetGBufferMaterialInScene()
 
 		// reset state
 		this.lastCameraPosition.copy(this._camera.position)

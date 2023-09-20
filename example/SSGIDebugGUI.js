@@ -67,7 +67,7 @@ export class SSGIDebugGUI {
 
 		denoiseFolder.addInput(params, "specularPhi", {
 			min: 0,
-			max: 25,
+			max: 5,
 			step: 0.001
 		})
 

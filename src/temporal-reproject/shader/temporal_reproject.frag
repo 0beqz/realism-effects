@@ -47,11 +47,9 @@ void main() {
 
   vec4 encodedGI = textureLod(inputTexture[0], vUv, 0.0);
 
-  inputTexel[0] = vec4(unpackHalf2x16(floatBitsToUint(encodedGI.r)),
-                       unpackHalf2x16(floatBitsToUint(encodedGI.g)));
+  inputTexel[0] = vec4(unpackHalf2x16(floatBitsToUint(encodedGI.r)), unpackHalf2x16(floatBitsToUint(encodedGI.g)));
 
-  inputTexel[1] = vec4(unpackHalf2x16(floatBitsToUint(encodedGI.b)),
-                       unpackHalf2x16(floatBitsToUint(encodedGI.a)));
+  inputTexel[1] = vec4(unpackHalf2x16(floatBitsToUint(encodedGI.b)), unpackHalf2x16(floatBitsToUint(encodedGI.a)));
 
   textureSampledThisFrame[0] = inputTexel[0].r >= 0.;
   textureSampledThisFrame[1] = inputTexel[1].r >= 0.;
@@ -73,83 +71,51 @@ void main() {
   texIndex = 0;
 
   float movement = dot(velocity, velocity);
-  float moveFactor = min(movement / 0.000000001, 1.);
+  float moveFactor = min(movement / 0.00000001, 1.);
 
-  vec3 worldPos = screenSpaceToWorldSpace(dilatedUv, depth, cameraMatrixWorld,
-                                          projectionMatrixInverse);
+  vec3 worldPos = screenSpaceToWorldSpace(dilatedUv, depth, cameraMatrixWorld, projectionMatrixInverse);
   flatness = getFlatness(worldPos, worldNormal);
   vec3 viewPos = (viewMatrix * vec4(worldPos, 1.0)).xyz;
   viewDir = normalize(viewPos);
   vec3 viewNormal = (viewMatrix * vec4(worldNormal, 0.0)).xyz;
-
-  // get the angle between the view direction and the normal
   viewAngle = dot(-viewDir, viewNormal);
 
-  vec2 reprojectedUvDiffuse = vec2(-10.0);
-  vec2 reprojectedUvSpecular[textureCount];
-  bool didReproject;
-  bool reprojectHitPoint;
-  float rayLength;
+  // reprojecting
+  float rayLength = inputTexel[1].a;
+  vec2 reprojectedUvDiffuse = getReprojectedUV(depth, worldPos, worldNormal, 0.0);
+  vec2 reprojectedUvSpecular = rayLength == 0.0 ? reprojectedUvDiffuse : getReprojectedUV(depth, worldPos, worldNormal, rayLength);
 
 #pragma unroll_loop_start
   for (int i = 0; i < textureCount; i++) {
-    rayLength = inputTexel[i].a;
-    reprojectHitPoint = reprojectSpecular[i] && rayLength > 0.0;
+    {
+      vec2 uv = reprojectSpecular[i] ? reprojectedUvSpecular : reprojectedUvDiffuse;
 
-    // specular (hit point reprojection)
-    if (reprojectHitPoint) {
-      reprojectedUvSpecular[i] =
-          getReprojectedUV(depth, worldPos, worldNormal, rayLength);
-    } else {
-      // init to -1 to signify that reprojection failed
-      reprojectedUvSpecular[i] = vec2(-1.0);
-    }
-
-    reprojectedUvDiffuse = getReprojectedUV(depth, worldPos, worldNormal, 0.0);
-
-    // choose which UV coordinates to use for reprojecion
-    didReproject =
-        reprojectedUvSpecular[i].x >= 0.0 || reprojectedUvDiffuse.x >= 0.0;
-
-    // check if any reprojection was successful
-    if (!didReproject) { // invalid UV
-      // reprojection was not successful -> reset to the input texel
-      accumulatedTexel[i] = vec4(inputTexel[i].rgb, 0.0);
-
-    } else {
-      if (reprojectHitPoint && reprojectedUvSpecular[i].x >= 0.0) {
-        accumulatedTexel[i] = sampleReprojectedTexture(
-            accumulatedTexture[i], reprojectedUvSpecular[i]);
+      // check if any reprojection was successful
+      if (uv.x == -1.0) { // invalid UV
+        accumulatedTexel[i] = vec4(inputTexel[i].rgb, 0.0);
       } else {
-        accumulatedTexel[i] = sampleReprojectedTexture(accumulatedTexture[i],
-                                                       reprojectedUvDiffuse);
-      }
+        accumulatedTexel[i] = sampleReprojectedTexture(accumulatedTexture[i], uv);
+        transformColor(accumulatedTexel[i].rgb);
 
-      transformColor(accumulatedTexel[i].rgb);
+        if (textureSampledThisFrame[i]) {
+          accumulatedTexel[i].a++; // add one more frame
 
-      if (textureSampledThisFrame[i]) {
-        accumulatedTexel[i].a++; // add one more frame
+          if (neighborhoodClamp[i]) {
+            vec3 clampedColor = accumulatedTexel[i].rgb;
 
-        if (neighborhoodClamp[i]) {
-          vec3 clampedColor = accumulatedTexel[i].rgb;
+            clampNeighborhood(inputTexture[i], clampedColor, inputTexel[i].rgb, neighborhoodClampRadius);
 
-          clampNeighborhood(inputTexture[i], clampedColor, inputTexel[i].rgb,
-                            neighborhoodClampRadius);
+            float clampIntensity = neighborhoodClampIntensity * (reprojectSpecular[i] ? (1. - roughness) : 1.0);
 
-          float clampIntensity =
-              neighborhoodClampIntensity *
-              (reprojectSpecular[i] ? (1. - roughness) : 1.0);
-
-          // ! todo: find good neighborhood clamp intensity
-          accumulatedTexel[i].rgb =
-              mix(accumulatedTexel[i].rgb, clampedColor, clampIntensity);
+            accumulatedTexel[i].rgb = mix(accumulatedTexel[i].rgb, clampedColor, clampIntensity);
+          }
+        } else {
+          inputTexel[i].rgb = accumulatedTexel[i].rgb;
         }
-      } else {
-        inputTexel[i].rgb = accumulatedTexel[i].rgb;
       }
-    }
 
-    texIndex++;
+      texIndex++;
+    }
   }
 #pragma unroll_loop_end
 
@@ -169,26 +135,23 @@ void main() {
       } else {
         temporalReprojectMix = blend;
 
-        // if we reproject from oblique angles to straight angles, we get
-        // stretching and need to counteract it
-        accumulatedTexel[i].a = mix(accumulatedTexel[i].a, 0.0, angleMix);
+        // if we reproject from oblique angles to straight angles, we
+        // get stretching and need to counteract it
+        // accumulatedTexel[i].a = mix(accumulatedTexel[i].a, 0.0, angleMix);
 
         if (reset)
           accumulatedTexel[i].a = 0.0;
 
-        float maxValue = fullAccumulate ? 1. : blend;
+        float maxValue = fullAccumulate ? mix(1., blend, moveFactor) : blend;
 
         float roughnessMaximum = 0.25;
 
-        if (reprojectSpecular[i] && roughness < roughnessMaximum &&
-            (rayLength > 10.0e3 || reprojectedUvSpecular[i].x < 0.)) {
-          float maxRoughnessValue =
-              mix(0.5, maxValue, roughness / roughnessMaximum);
+        if (reprojectSpecular[i] && roughness < roughnessMaximum && (rayLength > 10.0e3 || reprojectedUvSpecular.x < 0.)) {
+          float maxRoughnessValue = mix(0.5, maxValue, roughness / roughnessMaximum);
           maxValue = mix(maxValue, maxRoughnessValue, moveFactor);
         }
 
-        temporalReprojectMix =
-            min(1. - 1. / (accumulatedTexel[i].a + 1.0), maxValue);
+        temporalReprojectMix = min(1. - 1. / (accumulatedTexel[i].a + 1.0), maxValue);
 
         // float lumDiff = min(abs(luminance(inputTexel[i].rgb) -
         //                         luminance(accumulatedTexel[i].rgb)),
@@ -200,8 +163,7 @@ void main() {
         //                            100000000., 1.));
       }
 
-      outputColor =
-          mix(inputTexel[i].rgb, accumulatedTexel[i].rgb, temporalReprojectMix);
+      outputColor = mix(inputTexel[i].rgb, accumulatedTexel[i].rgb, temporalReprojectMix);
 
       // calculate the alpha from temporalReprojectMix
       accumulatedTexel[i].a = 1. / (1. - temporalReprojectMix) - 1.;

@@ -59,6 +59,8 @@ window.scene = scene
 const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.01, 250)
 // const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.01, 250)
 
+window.camera = camera
+
 // const w = window.innerWidth
 // const h = window.innerHeight
 // const camera = new THREE.OrthographicCamera(w / -2 / 100, w / 2 / 100, h / 2 / 100, h / -2 / 100, 0.01, 250)
@@ -461,6 +463,10 @@ const initScene = async () => {
 	ssgiEffect = new SSGIEffect(composer, scene, camera, { ...options, velocityDepthNormalPass })
 	window.ssgiEffect = ssgiEffect
 
+	// scene.traverse(c => {
+	// 	if (c.name === "Object_2") ssgiEffect.selection.add(c)
+	// })
+
 	gui2 = new SSGIDebugGUI(ssgiEffect, options)
 	gui2.pane.containerElem_.style.left = "8px"
 	gui2.pane.containerElem_.style.top = "56px"
@@ -820,7 +826,6 @@ const setupAsset = asset => {
 			}
 
 			c.material.transparent = false
-
 			// const lm = c.material.emissiveMap
 			// c.material.emissiveMap = null
 			// c.material.emissive = new Color(0x000000)

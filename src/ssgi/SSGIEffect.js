@@ -62,7 +62,8 @@ export class SSGIEffect extends Effect {
 		this.ssgiPass = new SSGIPass(this, options)
 		this.denoiser = new Denoiser(scene, camera, this.ssgiPass.texture, {
 			gBufferPass: this.ssgiPass.gBufferPass,
-			velocityDepthNormalPass: options.velocityDepthNormalPass
+			velocityDepthNormalPass: options.velocityDepthNormalPass,
+			...options
 		})
 
 		this.lastSize = {

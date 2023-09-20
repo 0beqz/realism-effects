@@ -2,6 +2,7 @@ import { Pass } from "postprocessing"
 import { FloatType, NearestFilter, WebGLRenderTarget } from "three"
 import { GBufferPass } from "../../gbuffer/GBufferPass.js"
 import { SSGIMaterial } from "../material/SSGIMaterial.js"
+import { getVisibleChildren } from "../../utils/SceneUtils.js"
 
 export class SSGIPass extends Pass {
 	needsSwap = false
@@ -47,11 +48,6 @@ export class SSGIPass extends Pass {
 		return this.renderTarget.texture
 	}
 
-	get specularTexture() {
-		const index = "specularOnly" in this.fullscreenMaterial.defines ? 0 : 1
-		return this.renderTarget.texture[index]
-	}
-
 	setSize(width, height) {
 		this.renderTarget.setSize(width * this.ssgiEffect.resolutionScale, height * this.ssgiEffect.resolutionScale)
 		this.gBufferPass.setSize(width, height)
@@ -71,13 +67,23 @@ export class SSGIPass extends Pass {
 	render(renderer) {
 		this.frame = (this.frame + this.ssgiEffect.spp) % 4096
 
+		const { mask } = this._camera.layers
+		const hasSelection = this.ssgiEffect.selection.size > 0
+
+		this._camera.layers.set(hasSelection ? this.ssgiEffect.selection.layer : 0)
+
 		// render G-Buffers
 		this.gBufferPass.render(renderer)
+
+		// this._camera.layers.set(mask)
 
 		// update uniforms
 		this.fullscreenMaterial.uniforms.frame.value = this.frame
 		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
 		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far
+		this.fullscreenMaterial.uniforms.nearMinusFar.value = this._camera.near - this._camera.far
+		this.fullscreenMaterial.uniforms.farMinusNear.value = this._camera.far - this._camera.near
+		this.fullscreenMaterial.uniforms.nearMulFar.value = this._camera.near * this._camera.far
 		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.ssgiEffect.denoiser.texture
 
 		renderer.setRenderTarget(this.renderTarget)

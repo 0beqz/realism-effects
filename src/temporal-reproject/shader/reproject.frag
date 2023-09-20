@@ -24,11 +24,8 @@ float getViewZ(const in float depth) {
 #endif
 }
 
-vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth,
-                             mat4 curMatrixWorld,
-                             const mat4 projMatrixInverse) {
-  vec4 ndc =
-      vec4((uv.x - 0.5) * 2.0, (uv.y - 0.5) * 2.0, (depth - 0.5) * 2.0, 1.0);
+vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth, mat4 curMatrixWorld, const mat4 projMatrixInverse) {
+  vec4 ndc = vec4((uv.x - 0.5) * 2.0, (uv.y - 0.5) * 2.0, (depth - 0.5) * 2.0, 1.0);
 
   vec4 clip = projMatrixInverse * ndc;
   vec4 view = curMatrixWorld * (clip / clip.w);
@@ -56,9 +53,7 @@ void undoColorTransform(inout vec3 color) { color = exp(color) - 1.; }
 #define undoColorTransform
 #endif
 
-void getNeighborhoodAABB(const sampler2D tex, const int clampRadius,
-                         inout vec3 minNeighborColor,
-                         inout vec3 maxNeighborColor) {
+void getNeighborhoodAABB(const sampler2D tex, const int clampRadius, inout vec3 minNeighborColor, inout vec3 maxNeighborColor) {
   vec4 t1, t2;
 
   for (int x = -clampRadius; x <= clampRadius; x++) {
@@ -78,8 +73,7 @@ void getNeighborhoodAABB(const sampler2D tex, const int clampRadius,
   }
 }
 
-void clampNeighborhood(const sampler2D tex, inout vec3 color, vec3 inputColor,
-                       const int clampRadius) {
+void clampNeighborhood(const sampler2D tex, inout vec3 color, vec3 inputColor, const int clampRadius) {
   undoColorTransform(inputColor);
   vec3 minNeighborColor = inputColor;
   vec3 maxNeighborColor = inputColor;
@@ -92,8 +86,7 @@ void clampNeighborhood(const sampler2D tex, inout vec3 color, vec3 inputColor,
   color = clamp(color, minNeighborColor, maxNeighborColor);
 }
 
-void getVelocityNormalDepth(inout vec2 dilatedUv, out vec2 vel, out vec3 normal,
-                            out float depth) {
+void getVelocityNormalDepth(inout vec2 dilatedUv, out vec2 vel, out vec3 normal, out float depth) {
   vec2 centerUv = dilatedUv;
 
 #ifdef dilation
@@ -137,31 +130,23 @@ void getVelocityNormalDepth(inout vec2 dilatedUv, out vec2 vel, out vec3 normal,
 #define VELOCITY_DISTANCE 0.005
 #define WORLD_DISTANCE 2.
 
-bool planeDistanceDisocclusionCheck(const vec3 worldPos,
-                                    const vec3 lastWorldPos,
-                                    const vec3 worldNormal,
-                                    const float distFactor) {
+bool planeDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos, const vec3 worldNormal, const float distFactor) {
   vec3 toCurrent = worldPos - lastWorldPos;
   float distToPlane = abs(dot(toCurrent, worldNormal));
 
   return distToPlane > PLANE_DISTANCE * distFactor;
 }
 
-bool velocityDisocclusionCheck(const vec2 velocity, const vec2 lastVelocity,
-                               const float distFactor) {
+bool velocityDisocclusionCheck(const vec2 velocity, const vec2 lastVelocity, const float distFactor) {
   return length(velocity - lastVelocity) > VELOCITY_DISTANCE * distFactor;
 }
 
-bool worldDistanceDisocclusionCheck(const vec3 worldPos,
-                                    const vec3 lastWorldPos,
-                                    const float distFactor) {
+bool worldDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos, const float distFactor) {
   return length(worldPos - lastWorldPos) > WORLD_DISTANCE * distFactor;
 }
 
-bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos,
-                           const vec3 worldNormal, const bool isHitPoint) {
-  if (reprojectedUv.x > 1.0 || reprojectedUv.x < 0.0 || reprojectedUv.y > 1.0 ||
-      reprojectedUv.y < 0.0)
+bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const vec3 worldNormal, const bool isHitPoint) {
+  if (reprojectedUv.x > 1.0 || reprojectedUv.x < 0.0 || reprojectedUv.y > 1.0 || reprojectedUv.y < 0.0)
     return false;
 
   vec2 dilatedReprojectedUv = reprojectedUv;
@@ -169,11 +154,8 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos,
   vec3 lastWorldNormal = vec3(0.0);
   float lastDepth = 0.0;
 
-  getVelocityNormalDepth(dilatedReprojectedUv, lastVelocity, lastWorldNormal,
-                         lastDepth);
-  vec3 lastWorldPos = screenSpaceToWorldSpace(dilatedReprojectedUv, lastDepth,
-                                              prevCameraMatrixWorld,
-                                              prevProjectionMatrixInverse);
+  getVelocityNormalDepth(dilatedReprojectedUv, lastVelocity, lastWorldNormal, lastDepth);
+  vec3 lastWorldPos = screenSpaceToWorldSpace(dilatedReprojectedUv, lastDepth, prevCameraMatrixWorld, prevProjectionMatrixInverse);
 
   vec3 lastViewPos = (prevViewMatrix * vec4(lastWorldPos, 1.0)).xyz;
 
@@ -195,8 +177,7 @@ bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos,
   if (velocityDisocclusionCheck(velocity, lastVelocity, distFactor))
     return false;
 
-  if (planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal,
-                                     distFactor))
+  if (planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal, distFactor))
     return false;
 
   if (worldDistanceDisocclusionCheck(worldPos, lastWorldPos, distFactor))
@@ -220,8 +201,7 @@ vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength) {
 
   vec3 parallaxHitPoint = cameraPos + cameraRay * rayLength;
 
-  vec4 reprojectedHitPoint =
-      prevProjectionMatrix * prevViewMatrix * vec4(parallaxHitPoint, 1.0);
+  vec4 reprojectedHitPoint = prevProjectionMatrix * prevViewMatrix * vec4(parallaxHitPoint, 1.0);
 
   reprojectedHitPoint.xyz /= reprojectedHitPoint.w;
   reprojectedHitPoint.xy = reprojectedHitPoint.xy * 0.5 + 0.5;
@@ -229,8 +209,7 @@ vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength) {
   return reprojectedHitPoint.xy;
 }
 
-vec2 getReprojectedUV(const float depth, const vec3 worldPos,
-                      const vec3 worldNormal, const float rayLength) {
+vec2 getReprojectedUV(const float depth, const vec3 worldPos, const vec3 worldNormal, const float rayLength) {
   // hit point reprojection
   if (rayLength != 0.0) {
     vec2 reprojectedUv = reprojectHitPoint(worldPos, rayLength);
@@ -253,8 +232,7 @@ vec2 getReprojectedUV(const float depth, const vec3 worldPos,
   return vec2(-1.);
 }
 
-vec4 SampleTextureCatmullRom(const sampler2D tex, const vec2 uv,
-                             const vec2 resolution) {
+vec4 SampleTextureCatmullRom(const sampler2D tex, const vec2 uv, const vec2 resolution) {
   // We're going to sample a a 4x4 grid of texels surrounding the target UV
   // coordinate. We'll do this by rounding down the sample location to get the
   // exact center of our "starting" texel. The starting texel will be at

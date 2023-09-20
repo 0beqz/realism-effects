@@ -171,8 +171,9 @@ Material getMaterial(sampler2D gBufferTexture, vec2 uv) {
   // using float2color instead of unpackVec2 as the latter results in severe
   // precision loss and artifacts on Metal backends
   vec3 roughnessMetalness = float2color(gBuffer.b);
-  float roughness = clamp(roughnessMetalness.r, 0., ONE_SAFE);
-  float metalness = clamp(roughnessMetalness.g, 0., ONE_SAFE);
+  float roughness = clamp(roughnessMetalness.r, 0., 1.);
+  float metalness = clamp(roughnessMetalness.g, 0., 1.);
+
   vec3 emissive = decodeRGBE8(floatToVec4(gBuffer.a));
 
   return Material(diffuse, normal, roughness, metalness, emissive);
