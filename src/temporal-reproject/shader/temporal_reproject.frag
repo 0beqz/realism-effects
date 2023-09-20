@@ -135,12 +135,16 @@ void main() {
       } else {
         temporalReprojectMix = blend;
 
-        // if we reproject from oblique angles to straight angles, we
-        // get stretching and need to counteract it
-        // accumulatedTexel[i].a = mix(accumulatedTexel[i].a, 0.0, angleMix);
-
         if (reset)
           accumulatedTexel[i].a = 0.0;
+
+        float accumBlend = 1. - 1. / (accumulatedTexel[i].a + 1.0);
+
+        // if we reproject from oblique angles to straight angles, we
+        // get stretching and need to counteract it
+        accumulatedTexel[i].a = mix(accumulatedTexel[i].a, 0.0, angleMix * accumBlend);
+
+        accumBlend = 1. - 1. / (accumulatedTexel[i].a + 1.0);
 
         float maxValue = fullAccumulate ? mix(1., blend, moveFactor) : blend;
 
@@ -151,7 +155,7 @@ void main() {
           maxValue = mix(maxValue, maxRoughnessValue, moveFactor);
         }
 
-        temporalReprojectMix = min(1. - 1. / (accumulatedTexel[i].a + 1.0), maxValue);
+        temporalReprojectMix = min(accumBlend, maxValue);
 
         // float lumDiff = min(abs(luminance(inputTexel[i].rgb) -
         //                         luminance(accumulatedTexel[i].rgb)),

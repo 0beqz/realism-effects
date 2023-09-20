@@ -58,7 +58,7 @@ struct RayTracingInfo {
   float LoH;            // dot(l, h)
   float VoH;            // dot(v, h)
   bool isDiffuseSample; // whether the sample is diffuse or specular
-  bool isEnvMisSample;  // whether the sample is importance sampled from the env
+  bool isEnvSample;     // whether the sample is importance sampled from the env
                         // map
 };
 
@@ -77,8 +77,8 @@ struct RayTracingResult {
 // RayTracingInfo info);
 
 vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, const vec3 worldPosition, const float metalness, const float roughness,
-              const bool isDiffuseSample, const bool isEnvMisSample, const float NoV, const float NoL, const float NoH, const float LoH,
-              const float VoH, const vec4 random, inout vec3 l, inout vec3 hitPos, out bool isMissedRay, out vec3 brdf, out float pdf);
+              const bool isDiffuseSample, const bool isEnvSample, const float NoV, const float NoL, const float NoH, const float LoH, const float VoH,
+              const vec4 random, inout vec3 l, inout vec3 hitPos, out bool isMissedRay, out vec3 brdf, out float pdf);
 
 void calculateAngles(inout vec3 h, inout vec3 l, inout vec3 v, inout vec3 n, inout float NoL, inout float NoH, inout float LoH, inout float VoH) {
   h = normalize(v + l); // half vector
@@ -133,8 +133,8 @@ void main() {
   // fresnel f0
   vec3 f0 = mix(vec3(0.04), mat.diffuse.rgb, mat.metalness);
 
-  float NoL, NoH, LoH, VoH, diffW, specW, invW, pdf, envPdf, diffuseSamples, specularSamples, envMisProbability, envMisMultiplier;
-  bool isDiffuseSample, isEnvMisSample, isMissedRay;
+  float NoL, NoH, LoH, VoH, diffW, specW, invW, pdf, envPdf, diffuseSamples, specularSamples;
+  bool isDiffuseSample, isEnvSample, isMissedRay;
 
   random = blueNoise();
   // Disney BRDF and sampling source: https://www.shadertoy.com/view/cll3R4
@@ -174,30 +174,40 @@ void main() {
   isDiffuseSample = false;
 #endif
 
+  struct EnvMisSample {
+    float pdf;
+    float probability;
+    bool isEnvSample;
+  };
+
+  EnvMisSample ems;
+  ems.pdf = 1.;
+
   envMisDir = vec3(0.0);
   envPdf = 1.;
-  envMisMultiplier = 1.;
 
 #ifdef importanceSampling
-  envPdf = sampleEquirectProbability(envMapInfo, random.rg, envMisDir);
+  ems.pdf = sampleEquirectProbability(envMapInfo, random.rg, envMisDir);
   envMisDir = normalize((vec4(envMisDir, 0.) * cameraMatrixWorld).xyz);
 
-  envMisProbability = 0.5 + dot(envMisDir, viewNormal) * 0.5;
-  envMisProbability *= mat.roughness;
-  isEnvMisSample = random.a < envMisProbability;
+  ems.probability = dot(envMisDir, viewNormal);
+  ems.probability *= mat.roughness;
+  ems.probability = min(ONE_MINUS_EPSILON, ems.probability);
 
-  envMisMultiplier = 1. / (1. - envMisProbability);
+  ems.isEnvSample = random.a < ems.probability;
 
-  if (isEnvMisSample) {
-    envPdf /= 1. - envMisProbability;
+  if (ems.isEnvSample) {
+    ems.pdf /= 1. - ems.probability;
 
     l = envMisDir;
     calculateAngles(h, l, v, n, NoL, NoH, LoH, VoH);
+  } else {
+    ems.pdf = 1. - ems.probability;
   }
 #endif
 
-  vec3 diffuseRay = isEnvMisSample ? envMisDir : cosineSampleHemisphere(viewNormal, random.rg);
-  vec3 specularRay = (isEnvMisSample && mat.roughness >= 0.025) ? envMisDir : l;
+  vec3 diffuseRay = ems.isEnvSample ? envMisDir : cosineSampleHemisphere(viewNormal, random.rg);
+  vec3 specularRay = ems.isEnvSample ? envMisDir : l;
 
 // optional diffuse ray
 #if mode == MODE_SSGI
@@ -206,18 +216,17 @@ void main() {
 
     calculateAngles(h, l, v, n, NoL, NoH, LoH, VoH);
 
-    gi = doSample(viewPos, viewDir, viewNormal, worldPos, mat.metalness, roughnessSq, isDiffuseSample, isEnvMisSample, NoV, NoL, NoH, LoH, VoH,
+    gi = doSample(viewPos, viewDir, viewNormal, worldPos, mat.metalness, roughnessSq, isDiffuseSample, ems.isEnvSample, NoV, NoL, NoH, LoH, VoH,
                   random, l, hitPos, isMissedRay, brdf, pdf);
 
     gi *= brdf;
 
-    if (isEnvMisSample) {
-      gi *= misHeuristic(envPdf, pdf);
-      gi /= envPdf;
+    if (ems.isEnvSample) {
+      gi *= misHeuristic(ems.pdf, pdf);
     } else {
       gi /= pdf;
-      gi *= envMisMultiplier;
     }
+    gi /= ems.pdf;
 
     diffuseSamples++;
 
@@ -227,23 +236,19 @@ void main() {
 
   // specular ray (traced every frame)
   l = specularRay;
+  calculateAngles(h, l, v, n, NoL, NoH, LoH, VoH);
 
-  if (isEnvMisSample) {
-    calculateAngles(h, l, v, n, NoL, NoH, LoH, VoH);
-  }
-
-  gi = doSample(viewPos, viewDir, viewNormal, worldPos, mat.metalness, roughnessSq, isDiffuseSample, isEnvMisSample, NoV, NoL, NoH, LoH, VoH, random,
+  gi = doSample(viewPos, viewDir, viewNormal, worldPos, mat.metalness, roughnessSq, isDiffuseSample, ems.isEnvSample, NoV, NoL, NoH, LoH, VoH, random,
                 l, hitPos, isMissedRay, brdf, pdf);
 
   gi *= brdf;
 
-  if (isEnvMisSample) {
-    gi *= misHeuristic(envPdf, pdf);
-    gi /= envPdf;
+  if (ems.isEnvSample) {
+    gi *= misHeuristic(ems.pdf, pdf);
   } else {
     gi /= pdf;
-    gi *= envMisMultiplier;
   }
+  gi /= ems.pdf;
 
   specularHitPos = hitPos;
 
@@ -294,8 +299,8 @@ void main() {
 }
 
 vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, const vec3 worldPosition, const float metalness, const float roughness,
-              const bool isDiffuseSample, const bool isEnvMisSample, const float NoV, const float NoL, const float NoH, const float LoH,
-              const float VoH, const vec4 random, inout vec3 l, inout vec3 hitPos, out bool isMissedRay, out vec3 brdf, out float pdf) {
+              const bool isDiffuseSample, const bool isEnvSample, const float NoV, const float NoL, const float NoH, const float LoH, const float VoH,
+              const vec4 random, inout vec3 l, inout vec3 hitPos, out bool isMissedRay, out vec3 brdf, out float pdf) {
   float cosTheta = max(0.0, dot(viewNormal, l));
 
   if (isDiffuseSample) {
@@ -332,7 +337,7 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
 
   vec3 envMapSample = vec3(0.);
 
-  // inisEnvMisSample ray, use environment lighting as fallback
+  // inisEnvSample ray, use environment lighting as fallback
   if (isMissedRay || allowMissedRays) {
 #ifdef USE_ENVMAP
     // world-space reflected ray
@@ -350,7 +355,7 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
 
     envMapSample = sampleEquirectEnvMapColor(reflectedWS, envMapInfo.map, mip);
 
-    float maxEnvLum = isEnvMisSample ? 100.0 : 25.0;
+    float maxEnvLum = isEnvSample ? 100.0 : 25.0;
 
     if (maxEnvLum != 0.0) {
       // we won't deal with calculating direct sun light from the env map as it

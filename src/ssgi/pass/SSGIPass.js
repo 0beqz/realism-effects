@@ -2,7 +2,6 @@ import { Pass } from "postprocessing"
 import { FloatType, NearestFilter, WebGLRenderTarget } from "three"
 import { GBufferPass } from "../../gbuffer/GBufferPass.js"
 import { SSGIMaterial } from "../material/SSGIMaterial.js"
-import { getVisibleChildren } from "../../utils/SceneUtils.js"
 
 export class SSGIPass extends Pass {
 	needsSwap = false
@@ -75,7 +74,7 @@ export class SSGIPass extends Pass {
 		// render G-Buffers
 		this.gBufferPass.render(renderer)
 
-		// this._camera.layers.set(mask)
+		this._camera.layers.mask = mask
 
 		// update uniforms
 		this.fullscreenMaterial.uniforms.frame.value = this.frame
