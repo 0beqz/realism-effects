@@ -31,6 +31,36 @@ uniform bool reset;
 #include <packing>
 #include <reproject>
 
+void reproject(inout vec4 inp, inout vec4 acc, sampler2D accumulatedTexture, inout vec3 uvc, inout bool wasSampled, bool doNeighborhoodClamp,
+               bool doReprojectSpecular) {
+  vec2 uv = uvc.xy;
+  float confidence = uvc.z;
+
+  // check if any reprojection was successful
+  if (reset) { // invalid UV
+    acc = vec4(inp.rgb, 0.0);
+  } else {
+    acc = sampleReprojectedTexture(accumulatedTexture, uv);
+    transformColor(acc.rgb);
+
+    if (wasSampled) {
+      acc.a++; // add one more frame
+
+      // if (doNeighborhoodClamp) {
+      //   vec3 clampedColor = acc.rgb;
+
+      //   clampNeighborhood(clampedColor, inp.rgb, neighborhoodClampRadius);
+
+      //   float clampIntensity = neighborhoodClampIntensity * (doReprojectSpecular ? (1. - roughness) : 1.0);
+
+      //   // acc.rgb = mix(acc.rgb, clampedColor, clampIntensity);
+      // }
+    } else {
+      inp.rgb = acc.rgb;
+    }
+  }
+}
+
 void main() {
   vec2 dilatedUv = vUv;
   getVelocityNormalDepth(dilatedUv, velocity, worldNormal, depth);
@@ -88,31 +118,8 @@ void main() {
 #pragma unroll_loop_start
   for (int i = 0; i < textureCount; i++) {
     {
-      vec2 uv = reprojectSpecular[i] ? reprojectedUvSpecular.xy : reprojectedUvDiffuse.xy;
-      float confidence = reprojectSpecular[i] ? reprojectedUvSpecular.z : reprojectedUvDiffuse.z;
-
-      // check if any reprojection was successful
-
-      accumulatedTexel[i] = sampleReprojectedTexture(accumulatedTexture[i], uv);
-      transformColor(accumulatedTexel[i].rgb);
-
-      if (textureSampledThisFrame[i]) {
-        accumulatedTexel[i].a++; // add one more frame
-
-        if (neighborhoodClamp[i]) {
-          vec3 clampedColor = accumulatedTexel[i].rgb;
-
-          clampNeighborhood(inputTexture[i], clampedColor, inputTexel[i].rgb, neighborhoodClampRadius);
-
-          float clampIntensity = neighborhoodClampIntensity * (reprojectSpecular[i] ? (1. - roughness) : 1.0);
-
-          accumulatedTexel[i].rgb = mix(accumulatedTexel[i].rgb, clampedColor, clampIntensity);
-        }
-      } else {
-        inputTexel[i].rgb = accumulatedTexel[i].rgb;
-      }
-
-      texIndex++;
+      vec3 uvc = reprojectSpecular[i] ? reprojectedUvSpecular : reprojectedUvDiffuse;
+      reproject(inputTexel[i], accumulatedTexel[i], accumulatedTexture[i], uvc, textureSampledThisFrame[i], true, false);
     }
   }
 #pragma unroll_loop_end
