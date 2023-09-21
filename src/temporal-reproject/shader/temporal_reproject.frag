@@ -151,12 +151,12 @@ void main() {
 
         float maxValue = fullAccumulate ? mix(1., blend, moveFactor) : blend;
 
-        float roughnessMaximum = 0.25;
+        // float roughnessMaximum = 0.25;
 
-        if (reprojectSpecular[i] && rayLength == 0. && roughness < roughnessMaximum) {
-          float maxRoughnessValue = mix(0.5, maxValue, roughness / roughnessMaximum);
-          maxValue = mix(maxValue, maxRoughnessValue, moveFactor);
-        }
+        // if (reprojectSpecular[i] && rayLength == 0. && roughness < roughnessMaximum) {
+        //   float maxRoughnessValue = mix(0.8, maxValue, roughness / roughnessMaximum);
+        //   maxValue = mix(maxValue, maxRoughnessValue, moveFactor);
+        // }
 
         temporalReprojectMix = min(accumBlend, maxValue);
 

@@ -1,7 +1,7 @@
 import { getGPUTier } from "detect-gpu"
 import dragDrop from "drag-drop"
 import * as POSTPROCESSING from "postprocessing"
-import { SSGIEffect, TRAAEffect } from "realism-effects"
+import { SSGIEffect, SSREffect, TRAAEffect } from "realism-effects"
 import Stats from "stats-gl"
 import * as THREE from "three"
 import {
@@ -464,6 +464,7 @@ const initScene = async () => {
 	})
 
 	ssgiEffect = new SSGIEffect(composer, scene, camera, { ...options, velocityDepthNormalPass })
+	// ssgiEffect = new SSREffect(composer, scene, camera, { velocityDepthNormalPass })
 	window.ssgiEffect = ssgiEffect
 
 	// scene.traverse(c => {
@@ -739,18 +740,18 @@ const setupAsset = asset => {
 		pointsObj.removeFromParent()
 	}
 
-	const ground = new Mesh(
-		new PlaneGeometry(10000, 10000),
-		new MeshStandardMaterial({
-			metalness: 1,
-			roughness: 0
-		})
-	)
+	// const ground = new Mesh(
+	// 	new PlaneGeometry(10000, 10000),
+	// 	new MeshStandardMaterial({
+	// 		metalness: 1,
+	// 		roughness: 0
+	// 	})
+	// )
 
-	ground.rotation.x = -Math.PI / 2
-	ground.receiveShadow = true
-	ground.updateMatrixWorld()
-	scene.add(ground)
+	// ground.rotation.x = -Math.PI / 2
+	// ground.receiveShadow = true
+	// ground.updateMatrixWorld()
+	// scene.add(ground)
 
 	if (lastScene) {
 		lastScene.removeFromParent()
