@@ -255,5 +255,3 @@ float getFlatness(vec3 g, vec3 rp) {
 
   return clamp(wfcurvature, 0., 1.);
 }
-
-#define saturate(a) clamp(a, 0., 1.)

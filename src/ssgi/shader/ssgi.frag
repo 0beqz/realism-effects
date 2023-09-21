@@ -432,7 +432,7 @@ vec2 RayMarch(inout vec3 dir, inout vec3 hitPos, vec4 random) {
 
   dir *= rayDistance / float(steps);
 
-  hitPos += dir * random.b;
+  hitPos += dir * random.b * 3.0;
 
   vec2 uv;
 
