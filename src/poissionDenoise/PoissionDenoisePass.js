@@ -26,6 +26,7 @@ const defaultPoissonBlurOptions = {
 	depthPhi: 2,
 	normalPhi: 3.25,
 	samples: 16,
+	distance: 2,
 	normalTexture: null
 }
 
@@ -51,6 +52,7 @@ export class PoissionDenoisePass extends Pass {
 				lumaPhi: { value: 5.0 },
 				depthPhi: { value: 5.0 },
 				normalPhi: { value: 5.0 },
+				distance: { value: 1.0 },
 				resolution: { value: new Vector2() },
 				blueNoiseTexture: { value: null },
 				index: { value: 0 },
@@ -74,7 +76,8 @@ export class PoissionDenoisePass extends Pass {
 		uniforms["cameraMatrixWorld"].value = camera.matrixWorld
 		uniforms["depthPhi"].value = options.depthPhi
 		uniforms["normalPhi"].value = options.normalPhi
-
+		uniforms["distance"].value = options.distance
+		
 		if (options.normalTexture) {
 			uniforms["normalTexture"] = { value : options.normalTexture }
 		} else {

@@ -115,7 +115,7 @@ void main() {
         float distSample = linearize_depth(sampleDepth, cameraNear, cameraFar);
         float distWorld = linearize_depth(offset.z, cameraNear, cameraFar);
 
-        float rangeCheck = smoothstep(0.0, 1.0, aoDistance / (aoDistance * abs(distSample - distWorld)));
+        float rangeCheck = smoothstep(0.0, 1.0, aoDistance / abs(distSample - distWorld));
         rangeCheck = pow(rangeCheck, distancePower);
         float weight = dot(sampleDirection, normal);
 
