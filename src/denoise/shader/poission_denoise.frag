@@ -51,9 +51,9 @@ vec2 viewSpaceToScreenSpace(const vec3 position) {
   return projectedCoord.xy;
 }
 
-void toDenoiseSpace(inout vec3 color) { color = log(color + 1.); }
+void toDenoiseSpace(inout vec3 color) { color = atan(color); }
 
-void toLinearSpace(inout vec3 color) { color = exp(color) - 1.; }
+void toLinearSpace(inout vec3 color) { color = tan(color); }
 
 void evaluateNeighbor(const vec4 neighborTexel, inout vec3 denoised, inout float totalWeight, const float wBasic) {
   float w = min(1., wBasic);

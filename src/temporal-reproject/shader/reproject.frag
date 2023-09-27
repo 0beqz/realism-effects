@@ -1,12 +1,10 @@
 // #define VISUALIZE_DISOCCLUSIONS
 
 vec2 dilatedUv;
-int texIndex;
 vec2 velocity;
 vec3 worldNormal;
 float depth;
 float flatness;
-vec3 debugVec3;
 float viewAngle;
 float angleMix;
 float roughness = 0.0;
@@ -53,7 +51,8 @@ void undoColorTransform(inout vec3 color) { color = exp(color) - 1.; }
 #define undoColorTransform
 #endif
 
-void getNeighborhoodAABB(const sampler2D tex, const int clampRadius, inout vec3 minNeighborColor, inout vec3 maxNeighborColor) {
+void getNeighborhoodAABB(const sampler2D tex, const int clampRadius, inout vec3 minNeighborColor, inout vec3 maxNeighborColor,
+                         const bool isSpecular) {
   vec4 t1, t2;
 
   for (int x = -clampRadius; x <= clampRadius; x++) {
@@ -65,7 +64,7 @@ void getNeighborhoodAABB(const sampler2D tex, const int clampRadius, inout vec3 
 
       unpackTwoVec4(packedNeighborTexel, t1, t2);
 
-      vec4 neighborTexel = texIndex == 0 ? t1 : t2;
+      vec4 neighborTexel = isSpecular ? t2 : t1;
 
       minNeighborColor = min(neighborTexel.rgb, minNeighborColor);
       maxNeighborColor = max(neighborTexel.rgb, maxNeighborColor);
@@ -73,12 +72,12 @@ void getNeighborhoodAABB(const sampler2D tex, const int clampRadius, inout vec3 
   }
 }
 
-void clampNeighborhood(const sampler2D tex, inout vec3 color, vec3 inputColor, const int clampRadius) {
+void clampNeighborhood(const sampler2D tex, inout vec3 color, vec3 inputColor, const int clampRadius, const bool isSpecular) {
   undoColorTransform(inputColor);
   vec3 minNeighborColor = inputColor;
   vec3 maxNeighborColor = inputColor;
 
-  getNeighborhoodAABB(tex, clampRadius, minNeighborColor, maxNeighborColor);
+  getNeighborhoodAABB(tex, clampRadius, minNeighborColor, maxNeighborColor, isSpecular);
 
   transformColor(minNeighborColor);
   transformColor(maxNeighborColor);
@@ -290,16 +289,4 @@ float getFlatness(vec3 worldPosition, vec3 worldNormal) {
   return clamp(wfcurvature, 0., 1.);
 }
 
-// source: https://www.shadertoy.com/view/stSfW1
-vec2 sampleBlocky(vec2 p) {
-  p /= invTexSize;
-  vec2 seam = floor(p + 0.5);
-  p = seam + clamp((p - seam) / fwidth(p), -0.5, 0.5);
-  return p * invTexSize;
-}
-
-vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv) {
-  vec4 blocky = SampleTextureCatmullRom(tex, reprojectedUv, 1. / invTexSize);
-
-  return blocky;
-}
+vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv) { return SampleTextureCatmullRom(tex, reprojectedUv, 1. / invTexSize); }

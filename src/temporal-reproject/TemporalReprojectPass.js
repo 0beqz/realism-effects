@@ -28,7 +28,6 @@ export const defaultTemporalReprojectPassOptions = {
 	depthDistance: 2,
 	worldDistance: 4,
 	reprojectSpecular: false,
-	temporalReprojectCustomComposeShader: null,
 	renderTarget: null,
 	copyTextures: true
 }
@@ -68,7 +67,7 @@ export class TemporalReprojectPass extends Pass {
 			(texture, index) => (texture.name = "TemporalReprojectPass.accumulatedTexture" + index)
 		)
 
-		this.fullscreenMaterial = new TemporalReprojectMaterial(textureCount, options.temporalReprojectCustomComposeShader)
+		this.fullscreenMaterial = new TemporalReprojectMaterial(textureCount)
 		this.fullscreenMaterial.defines.textureCount = textureCount
 
 		if (options.dilation) this.fullscreenMaterial.defines.dilation = ""
@@ -161,7 +160,7 @@ export class TemporalReprojectPass extends Pass {
 	}
 
 	reset() {
-		this.fullscreenMaterial.uniforms.reset.value = true
+		this.fullscreenMaterial.uniforms.keepData.value = 0
 	}
 
 	render(renderer) {
@@ -189,7 +188,7 @@ export class TemporalReprojectPass extends Pass {
 
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)
-		this.fullscreenMaterial.uniforms.reset.value = false
+		this.fullscreenMaterial.uniforms.keepData.value = 1
 
 		for (let i = 0; i < this.textureCount; i++) {
 			let copyAccumulatedTexture = null

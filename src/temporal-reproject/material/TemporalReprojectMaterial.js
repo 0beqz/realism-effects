@@ -9,17 +9,10 @@ import gbuffer_packing from "../../gbuffer/shader/gbuffer_packing.glsl"
 import { unrollLoops } from "../../ssgi/utils/Utils"
 
 export class TemporalReprojectMaterial extends ShaderMaterial {
-	constructor(textureCount = 1, temporalReprojectCustomComposeShader = "") {
+	constructor(textureCount = 1) {
 		let finalFragmentShader = fragmentShader
 			.replace("#include <reproject>", reproject)
 			.replace("#include <gbuffer_packing>", gbuffer_packing)
-
-		if (typeof temporalReprojectCustomComposeShader === "string") {
-			finalFragmentShader = finalFragmentShader.replace(
-				"temporalReprojectCustomComposeShader",
-				temporalReprojectCustomComposeShader
-			)
-		}
 
 		let definitions = ""
 		for (let i = 0; i < textureCount; i++) {
@@ -65,7 +58,7 @@ export class TemporalReprojectMaterial extends ShaderMaterial {
 				neighborhoodClampIntensity: new Uniform(0),
 				constantBlend: new Uniform(false),
 				fullAccumulate: new Uniform(false),
-				reset: new Uniform(false),
+				keepData: new Uniform(1),
 				delta: new Uniform(0),
 				invTexSize: new Uniform(new Vector2()),
 				projectionMatrix: new Uniform(new Matrix4()),
@@ -93,10 +86,6 @@ export class TemporalReprojectMaterial extends ShaderMaterial {
 		for (let i = 0; i < textureCount; i++) {
 			this.uniforms["inputTexture" + i] = new Uniform(null)
 			this.uniforms["accumulatedTexture" + i] = new Uniform(null)
-		}
-
-		if (typeof temporalReprojectCustomComposeShader === "string") {
-			this.defines.useTemporalReprojectCustomComposeShader = ""
 		}
 	}
 }
