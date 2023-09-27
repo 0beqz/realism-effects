@@ -1,6 +1,6 @@
 varying vec2 vUv;
 
-uniform sampler2D depthTexture;
+uniform highp sampler2D depthTexture;
 
 uniform mat4 projectionViewMatrix;
 uniform int frame;
