@@ -3,13 +3,13 @@ import { Pass } from "postprocessing"
 import { FloatType, GLSL3, ShaderMaterial, Vector2, WebGLMultipleRenderTargets } from "three"
 // eslint-disable-next-line camelcase
 
-import vertexShader from "../../utils/shader/basic.vert"
 import gbuffer_packing from "../../gbuffer/shader/gbuffer_packing.glsl"
+import vertexShader from "../../utils/shader/basic.vert"
 
+import { GBufferPass } from "../../gbuffer/GBufferPass"
 import { useBlueNoise } from "../../utils/BlueNoiseUtils"
 import fragmentShader from "../shader/poission_denoise.frag"
 import { generateDenoiseSamples, generatePoissonDiskConstant } from "../utils/PoissonUtils"
-import { GBufferPass } from "../../gbuffer/GBufferPass"
 
 const finalFragmentShader = fragmentShader.replace("#include <gbuffer_packing>", gbuffer_packing)
 

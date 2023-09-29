@@ -123,13 +123,8 @@ export class TemporalReprojectPass extends Pass {
 		this.velocityDepthNormalPass = velocityDepthNormalPass
 	}
 
-	setTextures(textures) {
-		if (!Array.isArray(textures)) textures = [textures]
-
-		for (let i = 0; i < textures.length; i++) {
-			const texture = textures[i]
-			this.fullscreenMaterial.uniforms["inputTexture" + i] = new Uniform(texture)
-		}
+	setTexture(texture) {
+		this.fullscreenMaterial.uniforms.inputTexture.value = texture
 	}
 
 	dispose() {

@@ -5,6 +5,7 @@ import { NoColorSpace, NearestFilter, RepeatWrapping, TextureLoader, Uniform, Ve
 import motion_blur from "./shader/motion_blur.frag"
 
 import blueNoiseImage from "./../utils/blue_noise_rgba.png"
+import { setupBlueNoise } from "../utils/BlueNoiseUtils"
 
 // https://www.nvidia.com/docs/io/8230/gdc2003_openglshadertricks.pdf
 // http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html
@@ -18,13 +19,20 @@ export class MotionBlurEffect extends Effect {
 	constructor(velocityPass, options = defaultOptions) {
 		options = { ...defaultOptions, ...options }
 
-		super("MotionBlurEffect", motion_blur, {
+		const { fragmentShader, uniforms } = setupBlueNoise(motion_blur)
+
+		// convert the uniforms from type { uniform: value,... } to type ["uniform", value,...]
+		const formattedUniforms = []
+		for (const key of Object.keys(uniforms)) {
+			formattedUniforms.push([key, uniforms[key]])
+		}
+
+		super("MotionBlurEffect", fragmentShader, {
 			type: "MotionBlurMaterial",
 			uniforms: new Map([
+				...formattedUniforms,
 				["inputTexture", new Uniform(null)],
 				["velocityTexture", new Uniform(velocityPass.texture)],
-				["blueNoiseTexture", new Uniform(null)],
-				["blueNoiseSize", new Uniform(new Vector2())],
 				["resolution", new Uniform(new Vector2())],
 				["intensity", new Uniform(1)],
 				["jitter", new Uniform(1)],

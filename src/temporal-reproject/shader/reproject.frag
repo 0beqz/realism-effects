@@ -1,14 +1,9 @@
 // #define VISUALIZE_DISOCCLUSIONS
 
-vec2 dilatedUv;
-vec2 velocity;
-vec3 worldNormal;
-float depth;
-float flatness;
-float viewAngle;
-float angleMix;
-float roughness = 0.0;
-vec3 viewDir;
+vec2 dilatedUv, velocity;
+vec3 worldNormal, worldPos, viewDir;
+float depth, flatness, viewAngle, angleMix, rayLength = 0.0;
+float roughness = 1.0;
 
 #define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
 
@@ -60,7 +55,7 @@ void getNeighborhoodAABB(const sampler2D tex, const int clampRadius, inout vec3 
       vec2 offset = vec2(x, y) * invTexSize;
       vec2 neighborUv = vUv + offset;
 
-      vec4 packedNeighborTexel = textureLod(inputTexture0, neighborUv, 0.0);
+      vec4 packedNeighborTexel = textureLod(inputTexture, neighborUv, 0.0);
 
       unpackTwoVec4(packedNeighborTexel, t1, t2);
 
@@ -204,13 +199,12 @@ vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength) {
   reprojectedHitPoint.xyz /= reprojectedHitPoint.w;
   reprojectedHitPoint.xy = reprojectedHitPoint.xy * 0.5 + 0.5;
 
-  float roughnessFactor = max(0., roughness - 0.375) / 0.625;
-  return mix(reprojectedHitPoint.xy, vUv - velocity, roughnessFactor);
+  return reprojectedHitPoint.xy;
 }
 
-vec3 getReprojectedUV(const float depth, const vec3 worldPos, const vec3 worldNormal, const float rayLength) {
+vec3 getReprojectedUV(const bool doReprojectSpecular, const float depth, const vec3 worldPos, const vec3 worldNormal) {
   // hit point reprojection
-  if (rayLength != 0.0) {
+  if (doReprojectSpecular) {
     vec2 reprojectedUv = reprojectHitPoint(worldPos, rayLength);
 
     float confidence = validateReprojectedUV(reprojectedUv, worldPos, worldNormal, true);

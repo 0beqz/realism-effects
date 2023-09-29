@@ -32,6 +32,7 @@ export class SSGIEffect extends Effect {
 	isUsingRenderPass = true
 
 	constructor(composer, scene, camera, options) {
+		console.log(options.mode)
 		options = { ...defaultSSGIOptions, ...options }
 
 		super("SSGIEffect", ssgi_compose, {
@@ -54,10 +55,13 @@ export class SSGIEffect extends Effect {
 		if (options.mode === "ssr") {
 			options.reprojectSpecular = true
 			options.neighborhoodClamp = true
+			options.inputType = "specular"
 		} else if (options.mode === "ssgi") {
 			options.reprojectSpecular = [false, true]
 			options.neighborhoodClamp = [false, true]
 		}
+
+		console.log(options.mode)
 
 		this.ssgiPass = new SSGIPass(this, options)
 		this.denoiser = new Denoiser(scene, camera, this.ssgiPass.texture, {

@@ -17,7 +17,6 @@ export class TemporalReprojectMaterial extends ShaderMaterial {
 		let definitions = ""
 		for (let i = 0; i < textureCount; i++) {
 			definitions += /* glsl */ `
-				uniform sampler2D inputTexture${i};
 				uniform sampler2D accumulatedTexture${i};
 
 				layout(location = ${i}) out vec4 gOutput${i};
@@ -26,13 +25,6 @@ export class TemporalReprojectMaterial extends ShaderMaterial {
 
 		finalFragmentShader = definitions + finalFragmentShader.replaceAll("textureCount", textureCount)
 		finalFragmentShader = unrollLoops(finalFragmentShader)
-
-		const matches = finalFragmentShader.matchAll(/inputTexture\[\s*[0-9]+\s*]/g)
-
-		for (const [key] of matches) {
-			const number = key.replace(/[^0-9]/g, "")
-			finalFragmentShader = finalFragmentShader.replace(key, "inputTexture" + number)
-		}
 
 		const matches2 = finalFragmentShader.matchAll(/accumulatedTexture\[\s*[0-9]+\s*]/g)
 
@@ -51,6 +43,7 @@ export class TemporalReprojectMaterial extends ShaderMaterial {
 		super({
 			type: "TemporalReprojectMaterial",
 			uniforms: {
+				inputTexture: new Uniform(null),
 				velocityTexture: new Uniform(null),
 				depthTexture: new Uniform(null),
 				lastVelocityTexture: new Uniform(null),

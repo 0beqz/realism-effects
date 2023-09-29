@@ -4,7 +4,6 @@ import { GBufferPass } from "../../gbuffer/GBufferPass.js"
 import { SSGIMaterial } from "../material/SSGIMaterial.js"
 
 export class SSGIPass extends Pass {
-	needsSwap = false
 	defaultFragmentShader = ""
 	frame = 21483
 

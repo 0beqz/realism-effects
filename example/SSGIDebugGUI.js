@@ -37,7 +37,7 @@ export class SSGIDebugGUI {
 
 		denoiseFolder.addInput(params, "phi", {
 			min: 0,
-			max: 1,
+			max: 10,
 			step: 0.001
 		})
 
@@ -128,7 +128,7 @@ export class SSGIDebugGUI {
 				const json = {}
 
 				for (const prop of Object.keys(SSGIEffect.DefaultOptions)) {
-					if (prop === "outputTexture") continue
+					if (prop === "outputTexture" || prop === "mode") continue
 					json[prop] = ssgiEffect[prop]
 				}
 

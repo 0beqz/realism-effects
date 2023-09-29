@@ -1,7 +1,7 @@
 import { getGPUTier } from "detect-gpu"
 import dragDrop from "drag-drop"
 import * as POSTPROCESSING from "postprocessing"
-import { SSGIEffect, SSREffect, TRAAEffect } from "realism-effects"
+import { MotionBlurEffect, SSGIEffect, SSREffect, TRAAEffect } from "realism-effects"
 import Stats from "stats-gl"
 import * as THREE from "three"
 import {
@@ -16,10 +16,7 @@ import {
 	MeshNormalMaterial,
 	NearestFilter,
 	Object3D,
-	Vector3,
-	PlaneGeometry,
-	Mesh,
-	MeshStandardMaterial
+	Vector3
 } from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader"
@@ -353,7 +350,6 @@ const initScene = async () => {
 	fps = gpuTier.fps
 
 	const options = {
-		mode: "ssgi",
 		distance: 2.170000000000011,
 		thickness: 4.999999999999997,
 		blend: 1,
@@ -362,12 +358,12 @@ const initScene = async () => {
 		denoiseDiffuse: 25,
 		denoiseSpecular: 25.54,
 		radius: 16,
-		phi: 0.5109999999999979,
-		lumaPhi: 25.543,
-		depthPhi: 7.155734338404329e-16,
+		phi: 0.4569999999999979,
+		lumaPhi: 8.152,
+		depthPhi: 6.522000000000001,
 		normalPhi: 40.217,
 		roughnessPhi: 28.261,
-		specularPhi: 13.315,
+		specularPhi: 0.9779999999999993,
 		envBlur: 0,
 		importanceSampling: true,
 		steps: 20,

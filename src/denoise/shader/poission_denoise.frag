@@ -22,7 +22,26 @@ layout(location = 1) out vec4 gOutput1;
 #include <common>
 #include <gbuffer_packing>
 
-#define luminance(a) pow(dot(vec3(0.2125, 0.7154, 0.0721), a), 0.125);
+#define luminance(a) pow(dot(vec3(0.2125, 0.7154, 0.0721), a), 0.125)
+
+Material centerMat;
+vec3 normal;
+float centerDepth;
+vec3 centerWorldPos;
+float specularFactor;
+struct Neighbor {
+  vec4 texel;
+  float weight;
+};
+
+struct InputTexel {
+  vec3 rgb;
+  float a;
+  float luminance;
+  float w;
+  float totalWeight;
+  bool isSpecular;
+};
 
 vec3 getWorldPos(float depth, vec2 coord) {
   float z = depth * 2.0 - 1.0;
@@ -51,46 +70,23 @@ vec2 viewSpaceToScreenSpace(const vec3 position) {
   return projectedCoord.xy;
 }
 
-void toDenoiseSpace(inout vec3 color) { color = atan(color); }
+void toDenoiseSpace(inout vec3 color) {}
 
-void toLinearSpace(inout vec3 color) { color = tan(color); }
+void toLinearSpace(inout vec3 color) {}
 
-void evaluateNeighbor(const vec4 neighborTexel, inout vec3 denoised, inout float totalWeight, const float wBasic) {
-  float w = min(1., wBasic);
+void evaluateNeighbor(inout InputTexel inp, inout Neighbor neighbor) {
+  // abort here as otherwise we'd lose too much precision
+  if (neighbor.weight < 0.01)
+    return;
 
-  denoised += w * neighborTexel.rgb;
-  totalWeight += w;
+  inp.rgb += neighbor.weight * neighbor.texel.rgb;
+  inp.totalWeight += neighbor.weight;
 }
 
-Material centerMat;
-vec3 normal;
-float centerDepth;
-vec3 centerWorldPos;
-float centerLumDiffuse;
-float centerLumSpecular;
-float specularFactor;
-float w, w2;
-struct Neighbor {
-  vec4 texel;
-  float weight;
-};
-
-Neighbor getNeighborWeight(vec2 neighborUv, bool isDiffuseGi) {
+Neighbor[2] getNeighborWeight(inout InputTexel[2] inputs, inout vec2 neighborUv) {
   float neighborDepth = textureLod(depthTexture, neighborUv, 0.0).r;
   if (neighborDepth == 1.0)
-    return Neighbor(vec4(0.), 0.);
-
-  float distanceToCenter = length(vUv - neighborUv) + 1.;
-  distanceToCenter = pow(distanceToCenter, 8.) - 1.;
-
-  vec4 neighborDiffuseGi = textureLod(inputTexture, neighborUv, 0.);
-  vec4 neighborSpecularGi = textureLod(inputTexture2, neighborUv, 0.);
-
-  toDenoiseSpace(neighborDiffuseGi.rgb);
-  toDenoiseSpace(neighborSpecularGi.rgb);
-
-  float neighborLuminance = luminance(neighborDiffuseGi.rgb);
-  float neighborLuminance2 = luminance(neighborSpecularGi.rgb);
+    return Neighbor[2](Neighbor(vec4(0.), 0.), Neighbor(vec4(0.), 0.));
 
 #ifdef GBUFFER_TEXTURE
   Material neighborMat = getMaterial(gBufferTexture, neighborUv);
@@ -105,9 +101,6 @@ Neighbor getNeighborWeight(vec2 neighborUv, bool isDiffuseGi) {
   float normalDiff = 1. - max(dot(normal, neighborNormal), 0.);
   float depthDiff = 10. * distToPlane(centerWorldPos, neighborWorldPos, centerMat.normal);
 
-  float lumaDiff = mix(abs(centerLumDiffuse - neighborLuminance), 0., w);
-  float lumaDiff2 = mix(abs(centerLumSpecular - neighborLuminance2), 0., w2);
-
 #ifdef GBUFFER_TEXTURE
   float roughnessDiff = abs(centerMat.roughness - neighborMat.roughness);
 
@@ -116,25 +109,59 @@ Neighbor getNeighborWeight(vec2 neighborUv, bool isDiffuseGi) {
   float wBasic = exp(-normalDiff * normalPhi - depthDiff * depthPhi);
 #endif
 
-  if (isDiffuseGi) {
-    wBasic = mix(wBasic, exp(-normalDiff * 10.), w);
-    float wDiff = w * pow(wBasic * exp(-lumaDiff * lumaPhi), phi / w);
+  float sw = exp(-normalDiff * 5.);
 
-    wDiff = min(wDiff, 1.);
+  bool[2] isSpecular = bool[](false, true);
+  Neighbor[2] neighbors;
 
-    return Neighbor(neighborDiffuseGi, wDiff);
-  } else {
-    wBasic = mix(wBasic, exp(-normalDiff * 10.), w2);
-    float wSpec = w2 * pow(wBasic * exp(-lumaDiff2 * lumaPhi), phi / w2);
-    wSpec = pow(wSpec, 1. + specularPhi * specularFactor);
+  for (int i = 0; i < 2; i++) {
+    vec4 t;
+    if (isSpecular[i]) {
+      t = textureLod(inputTexture2, neighborUv, 0.);
+    } else {
+      t = textureLod(inputTexture, neighborUv, 0.);
+    }
 
-    wSpec = min(wSpec, 1.);
+    toDenoiseSpace(t.rgb);
 
-    return Neighbor(neighborSpecularGi, wSpec);
+    float lumaDiff = abs(inputs[i].luminance - luminance(t.rgb));
+    float lumaFactor = exp(-lumaDiff * lumaPhi * (1. - inputs[i].w));
+
+    wBasic = mix(wBasic, sw, inputs[i].w);
+
+    // calculate the final weight of the neighbor
+    // float w = mix(wBasic, sw, inputs[i].w);
+    float w = wBasic;
+    w = inputs[i].w * pow(w * lumaFactor, phi / inputs[i].w);
+
+    if (isSpecular[i])
+      w *= exp(-specularFactor * specularPhi) * sw;
+
+    neighbors[i] = Neighbor(t, w);
   }
+
+  return neighbors;
+}
+
+vec3 getNormal(Material centerMat) {
+#ifdef GBUFFER_TEXTURE
+  return centerMat.normal;
+#else
+  vec3 depthVelocityTexel = textureLod(normalTexture, vUv, 0.).xyz;
+  return unpackNormal(depthVelocityTexel.b);
+#endif
 }
 
 const vec2 poissonDisk[8] = POISSON_DISK_SAMPLES;
+
+void outputTexel(inout vec4 outputFrag, InputTexel inp) {
+  inp.rgb /= inp.totalWeight;
+
+  toLinearSpace(inp.rgb);
+
+  outputFrag.rgb = inp.rgb;
+  outputFrag.a = inp.a;
+}
 
 void main() {
   centerDepth = textureLod(depthTexture, vUv, 0.).r;
@@ -144,47 +171,36 @@ void main() {
     return;
   }
 
-  vec4 centerDiffuseGi = textureLod(inputTexture, vUv, 0.0);
-  vec4 centerSpecularGi = textureLod(inputTexture2, vUv, 0.0);
+  InputTexel[2] inputs;
 
-  float a = centerDiffuseGi.a;
-  float a2 = centerSpecularGi.a;
+  for (int i = 0; i < 2; i++) {
+    vec4 t;
+    if (i == 0) {
+      t = textureLod(inputTexture, vUv, 0.);
+    } else {
+      t = textureLod(inputTexture2, vUv, 0.);
+    }
 
-  if (a + a2 > 512.) {
-    discard;
-    return;
+    InputTexel inp = InputTexel(t.rgb, t.a, luminance(t.rgb), 1. / pow(t.a + 1., 0.6), 1., i == 1);
+
+    inputs[i] = inp;
   }
 
-  // the weights w, w2 are used to make the denoiser more aggressive the
-  // younger the pixel is
-  w = 1. / sqrt(a + 1.);
-  w2 = 1. / sqrt(a2 + 1.);
+  // if (inputs[0].a + inputs[1].a > 512.) {
+  //   gOutput0 = vec4(inputs[0].rgb, inputs[0].a);
+  //   gOutput1 = vec4(inputs[1].rgb, inputs[1].a);
 
-  toDenoiseSpace(centerDiffuseGi.rgb);
-  toDenoiseSpace(centerSpecularGi.rgb);
+  //   return;
+  // }
 
-  centerLumDiffuse = luminance(centerDiffuseGi.rgb);
-  centerLumSpecular = luminance(centerSpecularGi.rgb);
+  // convert all values of inputs to denoise space
+  for (int i = 0; i < 2; i++)
+    toDenoiseSpace(inputs[i].rgb);
 
   centerMat = getMaterial(gBufferTexture, vUv);
+  normal = getNormal(centerMat);
 
-#ifdef GBUFFER_TEXTURE
-  normal = centerMat.normal;
-#else
-  vec3 depthVelocityTexel = textureLod(normalTexture, vUv, 0.).xyz;
-  normal = unpackNormal(depthVelocityTexel.b);
-#endif
-
-  specularFactor = 1. - centerMat.roughness;
-  specularFactor *= specularFactor;
-
-  // ! todo: increase denoiser aggressiveness by distance
-
-  float totalWeight = 1.;
-  float totalWeight2 = 1.;
-
-  vec3 denoisedDiffuse = centerDiffuseGi.rgb;
-  vec3 denoisedSpecular = centerSpecularGi.rgb;
+  specularFactor = max(0., 4. * (1. - centerMat.roughness / 0.25));
 
   centerWorldPos = getWorldPos(centerDepth, vUv);
   vec3 cameraPos = cameraMatrixWorld[3].xyz;
@@ -193,7 +209,7 @@ void main() {
   float roughnessRadius = mix(sqrt(centerMat.roughness), 1., 0.5 * (1. - centerMat.metalness));
 
   vec4 random = blueNoise();
-  float r = sqrt(random.a) * exp(-(a + a2) * 0.01) * radius * roughnessRadius;
+  float r = sqrt(random.a) * exp(-(inputs[0].a + inputs[1].a) * 0.01) * radius * roughnessRadius;
 
   // rotate the poisson disk
   float angle = random.r * 2. * PI;
@@ -201,27 +217,18 @@ void main() {
   mat2 rm = mat2(c, -s, s, c);
   rm *= r * 25.0 / distanceToCamera;
 
-  // todo: denoise in world space not in screen space
-
   for (int i = 0; i < 8; i++) {
     vec2 offset = rm * poissonDisk[i];
-
     vec2 neighborUv = vUv + offset;
 
-    Neighbor neighborDiffuse = getNeighborWeight(neighborUv, true);
-    Neighbor neighborSpecular = getNeighborWeight(neighborUv, false);
+    Neighbor[2] neighbors = getNeighborWeight(inputs, neighborUv);
 
-    evaluateNeighbor(neighborDiffuse.texel, denoisedDiffuse, totalWeight, neighborDiffuse.weight);
-
-    evaluateNeighbor(neighborSpecular.texel, denoisedSpecular, totalWeight2, neighborSpecular.weight);
+    for (int j = 0; j < 2; j++)
+      evaluateNeighbor(inputs[j], neighbors[j]);
   }
 
-  denoisedDiffuse /= totalWeight;
-  denoisedSpecular /= totalWeight2;
+  // inputs[0].rgb = vec3(specularFactor);
 
-  toLinearSpace(denoisedDiffuse);
-  toLinearSpace(denoisedSpecular);
-
-  gOutput0 = vec4(denoisedDiffuse, centerDiffuseGi.a);
-  gOutput1 = vec4(denoisedSpecular, centerSpecularGi.a);
+  outputTexel(gOutput0, inputs[0]);
+  outputTexel(gOutput1, inputs[1]);
 }

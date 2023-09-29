@@ -5,10 +5,14 @@ import { PoissionDenoisePass } from "./pass/PoissionDenoisePass"
 
 const defaultDenosierOptions = {
 	denoiseMode: "full", // can be "full" | "full_temporal" | "denoised" | "temporal"
+	inputType: "diffuseSpecular", // can be "diffuseSpecular" | "diffuse" | "specular"
 	gBufferPass: null,
 	velocityDepthNormalPass: null
 }
 
+// a spatio-temporal denoiser
+// temporal: temporal reprojection to reproject previous frames
+// spatial: poisson denoiser to denoise the current frame recurrently
 export default class Denoiser {
 	constructor(scene, camera, texture, options = defaultDenosierOptions) {
 		options = { ...defaultDenosierOptions, ...options }
@@ -17,8 +21,11 @@ export default class Denoiser {
 		this.velocityDepthNormalPass = options.velocityDepthNormalPass ?? new VelocityDepthNormalPass(scene, camera)
 		this.isOwnVelocityDepthNormalPass = !options.velocityDepthNormalPass
 
-		this.temporalReprojectPass = new TemporalReprojectPass(scene, camera, this.velocityDepthNormalPass, 2, {
+		const textureCount = options.inputType === "diffuseSpecular" ? 2 : 1
+
+		this.temporalReprojectPass = new TemporalReprojectPass(scene, camera, this.velocityDepthNormalPass, textureCount, {
 			fullAccumulate: true,
+
 			logTransform: true,
 			copyTextures: !options.denoise,
 			reprojectSpecular: [false, true],
@@ -28,8 +35,8 @@ export default class Denoiser {
 			...options
 		})
 
-		this.temporalReprojectPass.setTextures(texture)
-		const textures = this.temporalReprojectPass.renderTarget.texture.slice(0, 2)
+		this.temporalReprojectPass.setTexture(texture)
+		const textures = this.temporalReprojectPass.renderTarget.texture.slice(0, textureCount)
 
 		if (this.options.denoiseMode === "full" || this.options.denoiseMode === "denoised") {
 			this.denoisePass = new PoissionDenoisePass(camera, textures)
@@ -48,6 +55,9 @@ export default class Denoiser {
 				options.gBufferPass.renderTarget.depthTexture
 			)
 		}
+
+		this.temporalReprojectPass.fullscreenMaterial.defines.inputType =
+			["diffuseSpecular", "diffuse", "specular"].indexOf(options.inputType) ?? 1
 	}
 
 	get texture() {
