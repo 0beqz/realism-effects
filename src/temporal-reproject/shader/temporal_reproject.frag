@@ -136,6 +136,10 @@ void computeReprojectedUv(float depth, vec3 worldPos, vec3 worldNormal) {
 
 #if inputType == DIFFUSE_SPECULAR || inputType == SPECULAR
   reprojectedUvSpecular = rayLength == 0.0 ? reprojectedUvDiffuse : getReprojectedUV(true, depth, worldPos, worldNormal);
+
+  if (reprojectedUvSpecular.x == -1.0) {
+    reprojectedUvSpecular = reprojectedUvDiffuse;
+  }
 #endif
 }
 

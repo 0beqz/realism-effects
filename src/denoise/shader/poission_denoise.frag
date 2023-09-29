@@ -28,7 +28,7 @@ Material centerMat;
 vec3 normal;
 float centerDepth;
 vec3 centerWorldPos;
-float specularFactor;
+float glossiness;
 struct Neighbor {
   vec4 texel;
   float weight;
@@ -70,9 +70,9 @@ vec2 viewSpaceToScreenSpace(const vec3 position) {
   return projectedCoord.xy;
 }
 
-void toDenoiseSpace(inout vec3 color) {}
+void toDenoiseSpace(inout vec3 color) { color = log(color + 1.); }
 
-void toLinearSpace(inout vec3 color) {}
+void toLinearSpace(inout vec3 color) { color = exp(color) - 1.; }
 
 void evaluateNeighbor(inout InputTexel inp, inout Neighbor neighbor) {
   // abort here as otherwise we'd lose too much precision
@@ -126,16 +126,12 @@ Neighbor[2] getNeighborWeight(inout InputTexel[2] inputs, inout vec2 neighborUv)
 
     float lumaDiff = abs(inputs[i].luminance - luminance(t.rgb));
     float lumaFactor = exp(-lumaDiff * lumaPhi * (1. - inputs[i].w));
+    float specularFactor = isSpecular[i] ? exp(-glossiness * specularPhi) : 1.;
 
-    wBasic = mix(wBasic, sw, inputs[i].w);
+    float w = specularFactor * mix(wBasic, sw, inputs[i].w);
 
     // calculate the final weight of the neighbor
-    // float w = mix(wBasic, sw, inputs[i].w);
-    float w = wBasic;
     w = inputs[i].w * pow(w * lumaFactor, phi / inputs[i].w);
-
-    if (isSpecular[i])
-      w *= exp(-specularFactor * specularPhi) * sw;
 
     neighbors[i] = Neighbor(t, w);
   }
@@ -181,17 +177,17 @@ void main() {
       t = textureLod(inputTexture2, vUv, 0.);
     }
 
-    InputTexel inp = InputTexel(t.rgb, t.a, luminance(t.rgb), 1. / pow(t.a + 1., 0.6), 1., i == 1);
+    InputTexel inp = InputTexel(t.rgb, t.a, luminance(t.rgb), 1. / pow(t.a + 1., 0.675), 1., i == 1);
 
     inputs[i] = inp;
   }
 
-  // if (inputs[0].a + inputs[1].a > 512.) {
-  //   gOutput0 = vec4(inputs[0].rgb, inputs[0].a);
-  //   gOutput1 = vec4(inputs[1].rgb, inputs[1].a);
+  if (inputs[1].a > 512.) {
+    gOutput0 = vec4(inputs[0].rgb, inputs[0].a);
+    gOutput1 = vec4(inputs[1].rgb, inputs[1].a);
 
-  //   return;
-  // }
+    return;
+  }
 
   // convert all values of inputs to denoise space
   for (int i = 0; i < 2; i++)
@@ -200,7 +196,7 @@ void main() {
   centerMat = getMaterial(gBufferTexture, vUv);
   normal = getNormal(centerMat);
 
-  specularFactor = max(0., 4. * (1. - centerMat.roughness / 0.25));
+  glossiness = max(0., 4. * (1. - centerMat.roughness / 0.25));
 
   centerWorldPos = getWorldPos(centerDepth, vUv);
   vec3 cameraPos = cameraMatrixWorld[3].xyz;
