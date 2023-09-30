@@ -172,7 +172,7 @@ const lightParams = {
 const light = new DirectionalLight(0xffffff, lightParams.intensity)
 light.updateMatrixWorld()
 light.castShadow = true
-// scene.add(light)
+scene.add(light)
 
 // const fog = new THREE.FogExp2(0xffffff, 0.025)
 // scene.fog = fog
@@ -459,8 +459,11 @@ const initScene = async () => {
 		offset: 0.3
 	})
 
-	ssgiEffect = new SSGIEffect(composer, scene, camera, { ...options, velocityDepthNormalPass })
-	// ssgiEffect = new SSREffect(composer, scene, camera, { velocityDepthNormalPass })
+	// ssgiEffect = new SSGIEffect(composer, scene, camera, { ...options, velocityDepthNormalPass })
+	ssgiEffect = new SSREffect(composer, scene, camera, {
+		denoiseMode: "full_temporal",
+		velocityDepthNormalPass
+	})
 	window.ssgiEffect = ssgiEffect
 
 	// scene.traverse(c => {

@@ -23,19 +23,25 @@ export default class Denoiser {
 
 		const textureCount = options.inputType === "diffuseSpecular" ? 2 : 1
 
-		this.temporalReprojectPass = new TemporalReprojectPass(scene, camera, this.velocityDepthNormalPass, textureCount, {
-			fullAccumulate: true,
+		this.temporalReprojectPass = new TemporalReprojectPass(
+			scene,
+			camera,
+			this.velocityDepthNormalPass,
+			texture,
+			textureCount,
+			{
+				fullAccumulate: true,
 
-			logTransform: true,
-			copyTextures: !options.denoise,
-			reprojectSpecular: [false, true],
-			neighborhoodClamp: [false, false],
-			neighborhoodClampRadius: 2,
-			neighborhoodClampIntensity: 0.5,
-			...options
-		})
+				logTransform: true,
+				copyTextures: !options.denoise,
+				reprojectSpecular: [false, true],
+				neighborhoodClamp: [false, false],
+				neighborhoodClampRadius: 2,
+				neighborhoodClampIntensity: 0.5,
+				...options
+			}
+		)
 
-		this.temporalReprojectPass.setTexture(texture)
 		const textures = this.temporalReprojectPass.renderTarget.texture.slice(0, textureCount)
 
 		if (this.options.denoiseMode === "full" || this.options.denoiseMode === "denoised") {
@@ -45,16 +51,15 @@ export default class Denoiser {
 			this.temporalReprojectPass.overrideAccumulatedTextures = this.denoisePass.renderTargetB.texture
 		}
 
-		if (options.denoiseMode === "full" || options.denoiseMode === "full_temporal") {
-			const composerInputTextures = options.denoiseMode === "full" ? this.denoisePass.texture : textures
+		const composerInputTextures = options.denoiseMode === "full" ? this.denoisePass.texture : textures
 
-			this.denoiserComposePass = new DenoiserComposePass(
-				camera,
-				composerInputTextures,
-				options.gBufferPass.texture,
-				options.gBufferPass.renderTarget.depthTexture
-			)
-		}
+		this.denoiserComposePass = new DenoiserComposePass(
+			camera,
+			composerInputTextures,
+			options.gBufferPass.texture,
+			options.gBufferPass.renderTarget.depthTexture,
+			options
+		)
 
 		this.temporalReprojectPass.fullscreenMaterial.defines.inputType =
 			["diffuseSpecular", "diffuse", "specular"].indexOf(options.inputType) ?? 1
@@ -88,9 +93,13 @@ export default class Denoiser {
 		this.denoiserComposePass?.dispose()
 	}
 
-	denoise(renderer) {
+	render(renderer, inputBuffer = null) {
 		if (this.isOwnVelocityDepthNormalPass) this.velocityDepthNormalPass.render(renderer)
 		this.temporalReprojectPass.render(renderer)
+
+		if (this.options.inputType !== "diffuseSpecular") {
+			this.denoiserComposePass.fullscreenMaterial.uniforms.sceneTexture.value = inputBuffer.texture
+		}
 
 		this.denoisePass?.render(renderer)
 		this.denoiserComposePass?.render(renderer)

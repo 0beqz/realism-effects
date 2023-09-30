@@ -19,17 +19,13 @@ vec3 getViewPosition(float viewZ) {
   return p;
 }
 
-vec3 F_Schlick(const vec3 f0, const float theta) {
-  return f0 + (1. - f0) * pow(1.0 - theta, 5.);
-}
+vec3 F_Schlick(const vec3 f0, const float theta) { return f0 + (1. - f0) * pow(1.0 - theta, 5.); }
 
-vec3 SampleGGXVNDF(const vec3 V, const float ax, const float ay, const float r1,
-                   const float r2) {
+vec3 SampleGGXVNDF(const vec3 V, const float ax, const float ay, const float r1, const float r2) {
   vec3 Vh = normalize(vec3(ax * V.x, ay * V.y, V.z));
 
   float lensq = Vh.x * Vh.x + Vh.y * Vh.y;
-  vec3 T1 = lensq > 0. ? vec3(-Vh.y, Vh.x, 0.) * inversesqrt(lensq)
-                       : vec3(1., 0., 0.);
+  vec3 T1 = lensq > 0. ? vec3(-Vh.y, Vh.x, 0.) * inversesqrt(lensq) : vec3(1., 0., 0.);
   vec3 T2 = cross(Vh, T1);
 
   float r = sqrt(r1);
@@ -50,17 +46,11 @@ void Onb(const vec3 N, inout vec3 T, inout vec3 B) {
   B = cross(N, T);
 }
 
-vec3 ToLocal(const vec3 X, const vec3 Y, const vec3 Z, const vec3 V) {
-  return vec3(dot(V, X), dot(V, Y), dot(V, Z));
-}
+vec3 ToLocal(const vec3 X, const vec3 Y, const vec3 Z, const vec3 V) { return vec3(dot(V, X), dot(V, Y), dot(V, Z)); }
 
-vec3 ToWorld(const vec3 X, const vec3 Y, const vec3 Z, const vec3 V) {
-  return V.x * X + V.y * Y + V.z * Z;
-}
+vec3 ToWorld(const vec3 X, const vec3 Y, const vec3 Z, const vec3 V) { return V.x * X + V.y * Y + V.z * Z; }
 
-vec3 constructGlobalIllumination(vec3 diffuseGi, vec3 specularGi,
-                                 vec3 cameraRay, vec3 viewNormal, vec3 diffuse,
-                                 vec3 emissive, float roughness,
+vec3 constructGlobalIllumination(vec3 diffuseGi, vec3 specularGi, vec3 cameraRay, vec3 viewNormal, vec3 diffuse, vec3 emissive, float roughness,
                                  float metalness) {
   roughness *= roughness;
 
@@ -107,15 +97,14 @@ vec3 constructGlobalIllumination(vec3 diffuseGi, vec3 specularGi,
   vec3 f0 = mix(vec3(0.04), diffuse, metalness);
   vec3 F = F_Schlick(f0, VoH);
 
-  vec3 diffuseLightingColor = diffuseColor;
-  vec3 diffuseComponent =
-      diffuse * (1. - metalness) * (1. - F) * diffuseLightingColor;
+#if inputType != TYPE_SPECULAR
+  vec3 diffuseComponent = diffuse * (1. - metalness) * (1. - F) * diffuseColor;
+#else
+  vec3 diffuseComponent = textureLod(sceneTexture, vUv, 0.).rgb;
+#endif
 
   vec3 specularLightingColor = specularColor;
   vec3 specularComponent = specularLightingColor * F;
-
-  // ! todo: fix direct light
-  // vec3 directLight = textureLod(directLightTexture, vUv, 0.).rgb;
 
   vec3 globalIllumination = diffuseComponent + specularComponent + emissive;
 

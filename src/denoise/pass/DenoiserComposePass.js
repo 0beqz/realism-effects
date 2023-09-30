@@ -6,7 +6,7 @@ import basicVertexShader from "../../utils/shader/basic.vert"
 import ssgi_poisson_compose_functions from "../shader/denoiser_compose_functions.glsl"
 
 export class DenoiserComposePass extends Pass {
-	constructor(camera, textures, gBufferTexture, depthTexture) {
+	constructor(camera, textures, gBufferTexture, depthTexture, options = {}) {
 		super("DenoiserComposePass")
 
 		this._camera = camera
@@ -18,9 +18,22 @@ export class DenoiserComposePass extends Pass {
 
 		this.renderTarget.texture.name = "DenoiserComposePass.Texture"
 
+		let diffuseGiTexture
+		let specularGiTexture
+
+		if (options.inputType === "diffuseSpecular") {
+			diffuseGiTexture = textures[0]
+			specularGiTexture = textures[1]
+		} else if (options.inputType === "diffuse") {
+			diffuseGiTexture = textures[0]
+		} else if (options.inputType === "specular") {
+			specularGiTexture = textures[0]
+		}
+
 		this.fullscreenMaterial = new ShaderMaterial({
 			fragmentShader: /* glsl */ `
             varying vec2 vUv;
+            uniform sampler2D sceneTexture;
             uniform sampler2D depthTexture;
             uniform sampler2D diffuseGiTexture;
             uniform sampler2D specularGiTexture;
@@ -32,6 +45,10 @@ export class DenoiserComposePass extends Pass {
 
             #include <common>
             #include <packing>
+
+			#define TYPE_DIFFUSE_SPECULAR 0
+			#define TYPE_DIFFUSE 1
+			#define TYPE_SPECULAR 2
 
             ${gbuffer_packing}
             ${ssgi_poisson_compose_functions}
@@ -67,6 +84,7 @@ export class DenoiserComposePass extends Pass {
             `,
 			vertexShader: basicVertexShader,
 			uniforms: {
+				sceneTexture: { value: null },
 				viewMatrix: { value: camera.matrixWorldInverse },
 				cameraMatrixWorld: { value: camera.matrixWorld },
 				projectionMatrix: { value: camera.projectionMatrix },
@@ -75,8 +93,11 @@ export class DenoiserComposePass extends Pass {
 				cameraFar: { value: camera.far },
 				gBufferTexture: { value: gBufferTexture },
 				depthTexture: { value: depthTexture },
-				diffuseGiTexture: { value: textures[0] },
-				specularGiTexture: { value: textures[1] }
+				diffuseGiTexture: { value: diffuseGiTexture },
+				specularGiTexture: { value: specularGiTexture }
+			},
+			defines: {
+				inputType: ["diffuseSpecular", "diffuse", "specular"].indexOf(options.inputType) ?? 0
 			},
 			blending: NoBlending,
 			depthWrite: false,

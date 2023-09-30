@@ -11,20 +11,15 @@ import { CubeToEquirectEnvPass } from "./pass/CubeToEquirectEnvPass.js"
 import { SSGIPass } from "./pass/SSGIPass.js"
 /* eslint-disable camelcase */
 import Denoiser from "../denoise/Denoiser.js"
+import { GBufferDebugPass } from "../gbuffer/debug/GBufferDebugPass.js"
 import { getVisibleChildren } from "../gbuffer/utils/GBufferUtils.js"
 import { isChildMaterialRenderable } from "../utils/SceneUtils.js"
 import { defaultSSGIOptions } from "./SSGIOptions"
 import ssgi_compose from "./shader/ssgi_compose.frag"
-import {
-	createGlobalDisableIblIradianceUniform,
-	createGlobalDisableIblRadianceUniform,
-	getMaxMipLevel
-} from "./utils/Utils.js"
-import { GBufferDebugPass } from "../gbuffer/debug/GBufferDebugPass.js"
+import { createGlobalDisableIblRadianceUniform, getMaxMipLevel } from "./utils/Utils.js"
 
 const { render } = RenderPass.prototype
 
-const globalIblIrradianceDisabledUniform = createGlobalDisableIblIradianceUniform()
 const globalIblRadianceDisabledUniform = createGlobalDisableIblRadianceUniform()
 
 export class SSGIEffect extends Effect {
@@ -32,7 +27,6 @@ export class SSGIEffect extends Effect {
 	isUsingRenderPass = true
 
 	constructor(composer, scene, camera, options) {
-		console.log(options.mode)
 		options = { ...defaultSSGIOptions, ...options }
 
 		super("SSGIEffect", ssgi_compose, {
@@ -60,8 +54,6 @@ export class SSGIEffect extends Effect {
 			options.reprojectSpecular = [false, true]
 			options.neighborhoodClamp = [false, true]
 		}
-
-		console.log(options.mode)
 
 		this.ssgiPass = new SSGIPass(this, options)
 		this.denoiser = new Denoiser(scene, camera, this.ssgiPass.texture, {
@@ -357,7 +349,7 @@ export class SSGIEffect extends Effect {
 
 		this.ssgiPass.render(renderer)
 		this.gBufferDebugPass?.render(renderer)
-		this.denoiser.denoise(renderer)
+		this.denoiser.render(renderer, inputBuffer)
 
 		this.uniforms.get("inputTexture").value = this.outputTexture[0] ?? this.outputTexture
 		this.uniforms.get("sceneTexture").value = sceneBuffer.texture
@@ -368,8 +360,7 @@ export class SSGIEffect extends Effect {
 
 		const fullGi = !this.diffuseOnly && !this.specularOnly
 
-		globalIblIrradianceDisabledUniform.value = fullGi || this.diffuseOnly === true
-		globalIblRadianceDisabledUniform.value = fullGi || this.specularOnly == true
+		globalIblRadianceDisabledUniform.value = true
 
 		cancelAnimationFrame(this.rAF2)
 		cancelAnimationFrame(this.rAF)

@@ -2,17 +2,13 @@
 import {
 	Clock,
 	FramebufferTexture,
-	HalfFloatType,
 	LinearFilter,
 	Matrix4,
 	Quaternion,
-	RGBAFormat,
-	Uniform,
 	Vector2,
 	Vector3,
 	WebGLMultipleRenderTargets
 } from "three"
-import { CopyPass } from "../ssgi/pass/CopyPass"
 import { jitter } from "../taa/TAAUtils"
 import { TemporalReprojectMaterial } from "./material/TemporalReprojectMaterial"
 
@@ -48,7 +44,14 @@ export class TemporalReprojectPass extends Pass {
 		quaternion: new Quaternion()
 	}
 
-	constructor(scene, camera, velocityDepthNormalPass, textureCount = 1, options = defaultTemporalReprojectPassOptions) {
+	constructor(
+		scene,
+		camera,
+		velocityDepthNormalPass,
+		texture,
+		textureCount,
+		options = defaultTemporalReprojectPassOptions
+	) {
 		super("TemporalReprojectPass")
 
 		this._scene = scene
@@ -59,7 +62,7 @@ export class TemporalReprojectPass extends Pass {
 		this.renderTarget = new WebGLMultipleRenderTargets(1, 1, textureCount, {
 			minFilter: LinearFilter,
 			magFilter: LinearFilter,
-			type: HalfFloatType,
+			type: texture.type,
 			depthBuffer: false
 		})
 
@@ -95,19 +98,6 @@ export class TemporalReprojectPass extends Pass {
 		this.fullscreenMaterial.uniforms.prevProjectionMatrix.value = camera.projectionMatrix.clone()
 		this.fullscreenMaterial.uniforms.prevProjectionMatrixInverse.value = camera.projectionMatrixInverse.clone()
 
-		if (options.copyTextures) {
-			// init copy pass to save the accumulated textures and the textures from the last frame
-			this.copyPass = new CopyPass(textureCount)
-
-			for (let i = 0; i < textureCount; i++) {
-				const accumulatedTexture = this.copyPass.renderTarget.texture[i]
-				accumulatedTexture.type = HalfFloatType
-				accumulatedTexture.minFilter = LinearFilter
-				accumulatedTexture.magFilter = LinearFilter
-				accumulatedTexture.needsUpdate = true
-			}
-		}
-
 		this.fullscreenMaterial.uniforms.velocityTexture.value = velocityDepthNormalPass.renderTarget.texture
 		this.fullscreenMaterial.uniforms.depthTexture.value = velocityDepthNormalPass.depthTexture
 
@@ -121,9 +111,7 @@ export class TemporalReprojectPass extends Pass {
 
 		this.options = options
 		this.velocityDepthNormalPass = velocityDepthNormalPass
-	}
 
-	setTexture(texture) {
 		this.fullscreenMaterial.uniforms.inputTexture.value = texture
 	}
 
@@ -131,22 +119,23 @@ export class TemporalReprojectPass extends Pass {
 		super.dispose()
 
 		this.renderTarget.dispose()
-		this.copyPass?.dispose()
 		this.fullscreenMaterial.dispose()
 	}
 
 	setSize(width, height) {
 		this.renderTarget.setSize(width, height)
-		this.copyPass?.setSize(width, height)
 
 		this.fullscreenMaterial.uniforms.invTexSize.value.set(1 / width, 1 / height)
 
 		this.framebufferTexture?.dispose()
 
-		this.framebufferTexture = new FramebufferTexture(width, height, RGBAFormat)
-		this.framebufferTexture.type = HalfFloatType
+		const inputTexture = this.fullscreenMaterial.uniforms.inputTexture.value
+
+		this.framebufferTexture = new FramebufferTexture(width, height, inputTexture.format)
+		this.framebufferTexture.type = inputTexture.type
 		this.framebufferTexture.minFilter = LinearFilter
 		this.framebufferTexture.magFilter = LinearFilter
+
 		this.framebufferTexture.needsUpdate = true
 	}
 
@@ -186,24 +175,13 @@ export class TemporalReprojectPass extends Pass {
 		this.fullscreenMaterial.uniforms.keepData.value = 1
 
 		for (let i = 0; i < this.textureCount; i++) {
-			let copyAccumulatedTexture = null
-
-			if (this.copyPass) {
-				this.copyPass.fullscreenMaterial.uniforms["inputTexture" + i].value = this.renderTarget.texture[i]
-
-				copyAccumulatedTexture =
-					this.renderTarget.texture.length > 1 ? this.copyPass.renderTarget.texture[i] : this.framebufferTexture
-			}
-
-			const accumulatedTexture =
-				this.overrideAccumulatedTextures.length === 0 ? copyAccumulatedTexture : this.overrideAccumulatedTextures[i]
+			const accumulatedTexture = this.overrideAccumulatedTextures[i] ?? this.framebufferTexture
 			this.fullscreenMaterial.uniforms["accumulatedTexture" + i].value = accumulatedTexture
 		}
 
-		if (this.renderTarget.texture.length > 1) {
-			this.copyPass?.render(renderer)
-		} else {
-			if (this.options.copyTextures) renderer.copyFramebufferToTexture(tmpVec2, this.framebufferTexture)
+		if (this.overrideAccumulatedTextures.length === 0) {
+			this.framebufferTexture.needsUpdate = true
+			renderer.copyFramebufferToTexture(tmpVec2, this.framebufferTexture)
 		}
 
 		// save last transformations

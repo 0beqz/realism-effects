@@ -68,43 +68,6 @@ export const createGlobalDisableIblRadianceUniform = () => {
 	return globalIblRadianceDisabledUniform
 }
 
-export const createGlobalDisableIblIradianceUniform = () => {
-	if (!ShaderChunk.envmap_physical_pars_fragment.includes("iblIrradianceDisabled")) {
-		ShaderChunk.envmap_physical_pars_fragment = ShaderChunk.envmap_physical_pars_fragment.replace(
-			"vec3 getIBLIrradiance( const in vec3 normal ) {",
-			/* glsl */ `
-			uniform bool iblIrradianceDisabled;
-		
-			vec3 getIBLIrradiance( const in vec3 normal ) {
-			 if(iblIrradianceDisabled) return vec3(0.);
-			`
-		)
-	}
-
-	if ("iblIrradianceDisabled" in ShaderLib.physical.uniforms) {
-		return ShaderLib.physical.uniforms["iblIrradianceDisabled"]
-	}
-
-	const globalIblIrradianceDisabledUniform = {
-		value: false
-	}
-
-	ShaderLib.physical.uniforms.iblIrradianceDisabled = globalIblIrradianceDisabledUniform
-
-	const { clone } = UniformsUtils
-	UniformsUtils.clone = uniforms => {
-		const result = clone(uniforms)
-
-		if ("iblIrradianceDisabled" in uniforms) {
-			result.iblIrradianceDisabled = globalIblIrradianceDisabledUniform
-		}
-
-		return result
-	}
-
-	return globalIblIrradianceDisabledUniform
-}
-
 // source: https://github.com/mrdoob/three.js/blob/b9bc47ab1978022ab0947a9bce1b1209769b8d91/src/renderers/webgl/WebGLProgram.js#L228
 // Unroll Loops
 
