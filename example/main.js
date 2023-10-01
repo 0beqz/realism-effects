@@ -172,12 +172,14 @@ const lightParams = {
 const light = new DirectionalLight(0xffffff, lightParams.intensity)
 light.updateMatrixWorld()
 light.castShadow = true
-scene.add(light)
+// scene.add(light)
 
 // const fog = new THREE.FogExp2(0xffffff, 0.025)
 // scene.fog = fog
 
-if (scene.getObjectByProperty("isDirectionalLight", true)) {
+const useRenderPass = false
+
+if (useRenderPass || scene.getObjectByProperty("isDirectionalLight", true)) {
 	const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
 	composer.addPass(renderPass)
 }
@@ -358,12 +360,12 @@ const initScene = async () => {
 		denoiseDiffuse: 25,
 		denoiseSpecular: 25.54,
 		radius: 16,
-		phi: 0.3799999999999979,
+		phi: 0.5979999999999979,
 		lumaPhi: 8.152,
 		depthPhi: 6.522000000000001,
 		normalPhi: 40.217,
 		roughnessPhi: 28.261,
-		specularPhi: 0.9779999999999993,
+		specularPhi: 2.771999999999999,
 		envBlur: 0,
 		importanceSampling: true,
 		steps: 20,
@@ -459,11 +461,11 @@ const initScene = async () => {
 		offset: 0.3
 	})
 
-	// ssgiEffect = new SSGIEffect(composer, scene, camera, { ...options, velocityDepthNormalPass })
-	ssgiEffect = new SSREffect(composer, scene, camera, {
-		denoiseMode: "full_temporal",
-		velocityDepthNormalPass
-	})
+	ssgiEffect = new SSGIEffect(composer, scene, camera, { ...options, velocityDepthNormalPass })
+	// ssgiEffect = new SSREffect(composer, scene, camera, {
+	// 	denoiseMode: "full_temporal",
+	// 	velocityDepthNormalPass
+	// })
 	window.ssgiEffect = ssgiEffect
 
 	// scene.traverse(c => {

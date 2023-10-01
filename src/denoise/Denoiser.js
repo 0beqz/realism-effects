@@ -36,8 +36,8 @@ export default class Denoiser {
 				copyTextures: !options.denoise,
 				reprojectSpecular: [false, true],
 				neighborhoodClamp: [false, false],
-				neighborhoodClampRadius: 2,
-				neighborhoodClampIntensity: 0.5,
+				neighborhoodClampRadius: 1,
+				neighborhoodClampIntensity: 0.35,
 				...options
 			}
 		)

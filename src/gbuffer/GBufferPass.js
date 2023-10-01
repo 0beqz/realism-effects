@@ -31,9 +31,9 @@ export class GBufferPass extends Pass {
 
 	initGBufferRenderTarget() {
 		this.renderTarget = new WebGLRenderTarget(1, 1, {
+			type: FloatType,
 			minFilter: NearestFilter,
-			magFilter: NearestFilter,
-			type: FloatType
+			magFilter: NearestFilter
 		})
 
 		this.renderTarget.texture.name = "GBufferPass.Texture"

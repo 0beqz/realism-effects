@@ -44,8 +44,6 @@ export class SSGIEffect extends Effect {
 		this._camera = camera
 		this.composer = composer
 
-		if (!composer.depthTexture) composer.createDepthTexture()
-
 		if (options.mode === "ssr") {
 			options.reprojectSpecular = true
 			options.neighborhoodClamp = true

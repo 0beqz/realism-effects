@@ -70,10 +70,6 @@ vec2 viewSpaceToScreenSpace(const vec3 position) {
   return projectedCoord.xy;
 }
 
-void toDenoiseSpace(inout vec3 color) { color = log(color + 1.); }
-
-void toLinearSpace(inout vec3 color) { color = exp(color) - 1.; }
-
 void evaluateNeighbor(inout InputTexel inp, inout Neighbor neighbor) {
   // abort here as otherwise we'd lose too much precision
   if (neighbor.weight < 0.01)
@@ -84,17 +80,18 @@ void evaluateNeighbor(inout InputTexel inp, inout Neighbor neighbor) {
 }
 
 Neighbor[2] getNeighborWeight(inout InputTexel[2] inputs, inout vec2 neighborUv) {
-  float neighborDepth = textureLod(depthTexture, neighborUv, 0.0).r;
-  if (neighborDepth == 1.0)
-    return Neighbor[2](Neighbor(vec4(0.), 0.), Neighbor(vec4(0.), 0.));
-
 #ifdef GBUFFER_TEXTURE
   Material neighborMat = getMaterial(gBufferTexture, neighborUv);
   vec3 neighborNormal = neighborMat.normal;
+  float neighborDepth = textureLod(depthTexture, neighborUv, 0.0).r;
 #else
   vec3 neighborDepthVelocityTexel = textureLod(normalTexture, neighborUv, 0.).xyz;
   vec3 neighborNormal = unpackNormal(neighborDepthVelocityTexel.b);
+  float neighborDepth = neighborDepthVelocityTexel.a;
 #endif
+
+  if (neighborDepth == 1.0)
+    return Neighbor[2](Neighbor(vec4(0.), 0.), Neighbor(vec4(0.), 0.));
 
   vec3 neighborWorldPos = getWorldPos(neighborDepth, neighborUv);
 
@@ -122,8 +119,6 @@ Neighbor[2] getNeighborWeight(inout InputTexel[2] inputs, inout vec2 neighborUv)
       t = textureLod(inputTexture, neighborUv, 0.);
     }
 
-    toDenoiseSpace(t.rgb);
-
     float lumaDiff = abs(inputs[i].luminance - luminance(t.rgb));
     float lumaFactor = exp(-lumaDiff * lumaPhi * (1. - inputs[i].w));
     float specularFactor = isSpecular[i] ? exp(-glossiness * specularPhi) : 1.;
@@ -131,7 +126,7 @@ Neighbor[2] getNeighborWeight(inout InputTexel[2] inputs, inout vec2 neighborUv)
     float w = specularFactor * mix(wBasic, sw, inputs[i].w);
 
     // calculate the final weight of the neighbor
-    w = inputs[i].w * pow(w * lumaFactor, phi / inputs[i].w);
+    w = inputs[i].w * pow(w * lumaFactor, 0.5 / inputs[i].w);
 
     neighbors[i] = Neighbor(t, w);
   }
@@ -152,8 +147,6 @@ const vec2 poissonDisk[8] = POISSON_DISK_SAMPLES;
 
 void outputTexel(inout vec4 outputFrag, InputTexel inp) {
   inp.rgb /= inp.totalWeight;
-
-  toLinearSpace(inp.rgb);
 
   outputFrag.rgb = inp.rgb;
   outputFrag.a = inp.a;
@@ -177,7 +170,10 @@ void main() {
       t = textureLod(inputTexture2, vUv, 0.);
     }
 
-    InputTexel inp = InputTexel(t.rgb, t.a, luminance(t.rgb), 1. / pow(t.a + 1., 0.675), 1., i == 1);
+    bool isSpecular = i == 1;
+    float wF = phi;
+
+    InputTexel inp = InputTexel(t.rgb, t.a, luminance(t.rgb), 1. / pow(t.a + 1., wF), 1., i == 1);
 
     inputs[i] = inp;
   }
@@ -188,10 +184,6 @@ void main() {
 
     return;
   }
-
-  // convert all values of inputs to denoise space
-  for (int i = 0; i < 2; i++)
-    toDenoiseSpace(inputs[i].rgb);
 
   centerMat = getMaterial(gBufferTexture, vUv);
   normal = getNormal(centerMat);

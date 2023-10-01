@@ -137,6 +137,11 @@ export class TemporalReprojectPass extends Pass {
 		this.framebufferTexture.magFilter = LinearFilter
 
 		this.framebufferTexture.needsUpdate = true
+
+		for (let i = 0; i < this.textureCount; i++) {
+			const accumulatedTexture = this.overrideAccumulatedTextures[i] ?? this.framebufferTexture
+			this.fullscreenMaterial.uniforms["accumulatedTexture" + i].value = accumulatedTexture
+		}
 	}
 
 	get texture() {
@@ -172,12 +177,8 @@ export class TemporalReprojectPass extends Pass {
 
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)
-		this.fullscreenMaterial.uniforms.keepData.value = 1
 
-		for (let i = 0; i < this.textureCount; i++) {
-			const accumulatedTexture = this.overrideAccumulatedTextures[i] ?? this.framebufferTexture
-			this.fullscreenMaterial.uniforms["accumulatedTexture" + i].value = accumulatedTexture
-		}
+		this.fullscreenMaterial.uniforms.keepData.value = 1
 
 		if (this.overrideAccumulatedTextures.length === 0) {
 			this.framebufferTexture.needsUpdate = true

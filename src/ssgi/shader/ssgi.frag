@@ -71,6 +71,12 @@ struct RayTracingResult {
   float pdf;        // pdf value
 };
 
+struct EnvMisSample {
+  float pdf;
+  float probability;
+  bool isEnvSample;
+};
+
 // !todo: refactor functions
 // RayTracingResult doSample(const vec3 viewPos, const vec3 viewDir, const vec3
 // viewNormal, const vec3 worldPos, const vec4 random, Material mat,
@@ -176,12 +182,6 @@ void main() {
   isDiffuseSample = false;
 #endif
 
-  struct EnvMisSample {
-    float pdf;
-    float probability;
-    bool isEnvSample;
-  };
-
   EnvMisSample ems;
   ems.pdf = 1.;
 
@@ -276,7 +276,6 @@ void main() {
   // calculate world-space ray length used for reprojecting hit points instead
   // of screen-space pixels in the temporal reproject pass
   float rayLength = 0.0;
-
   vec4 hitPosWS;
 
   if (isMissedRay) {
@@ -343,7 +342,7 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
   float cosTheta = max(0.0, dot(viewNormal, l));
 
   if (isDiffuseSample) {
-    vec3 diffuseBrdf = vec3(evalDisneyDiffuse(NoL, NoV, LoH, roughness, metalness));
+    vec3 diffuseBrdf = evalDisneyDiffuse(NoL, NoV, LoH, roughness, metalness);
     pdf = NoL / M_PI;
 
     brdf = diffuseBrdf;

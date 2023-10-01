@@ -50,18 +50,18 @@ void accumulate(inout vec4 outputColor, inout vec4 inp, inout vec4 acc, inout fl
   float accumBlend = 1. - 1. / (acc.a + 1.0);
   accumBlend = mix(0., accumBlend, confidence);
 
-  float maxValue = 0.9925;
+  float maxValue = 1.;
 
   // clamp to 0.9925 otherwise the image turns darker over time, possibly due to precision issues
   // maxValue *= min(0.9925, maxValue);
   maxValue *= keepData;
 
-  const float roughnessMaximum = 0.25;
+  // const float roughnessMaximum = 0.25;
 
-  if (doReprojectSpecular && roughness >= 0.0 && roughness < roughnessMaximum) {
-    float maxRoughnessValue = mix(0.8, maxValue, roughness / roughnessMaximum);
-    maxValue = mix(maxValue, maxRoughnessValue, moveFactor);
-  }
+  // if (doReprojectSpecular && roughness >= 0.0 && roughness < roughnessMaximum) {
+  //   float maxRoughnessValue = mix(0.8, maxValue, roughness / roughnessMaximum);
+  //   maxValue = mix(maxValue, maxRoughnessValue, moveFactor);
+  // }
 
   float temporalReprojectMix = min(accumBlend, maxValue);
 
