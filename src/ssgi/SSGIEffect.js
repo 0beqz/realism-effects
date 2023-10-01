@@ -358,8 +358,6 @@ export class SSGIEffect extends Effect {
 
 		for (const c of hideMeshes) c.visible = true
 
-		const fullGi = !this.diffuseOnly && !this.specularOnly
-
 		globalIblRadianceDisabledUniform.value = true
 
 		cancelAnimationFrame(this.rAF2)
@@ -368,7 +366,6 @@ export class SSGIEffect extends Effect {
 
 		this.rAF = requestAnimationFrame(() => {
 			this.rAF2 = requestAnimationFrame(() => {
-				globalIblIrradianceDisabledUniform.value = false
 				globalIblRadianceDisabledUniform.value = false
 			})
 		})

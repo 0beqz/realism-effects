@@ -53,20 +53,22 @@ export default class Denoiser {
 
 		const composerInputTextures = options.denoiseMode === "full" ? this.denoisePass.texture : textures
 
-		this.denoiserComposePass = new DenoiserComposePass(
-			camera,
-			composerInputTextures,
-			options.gBufferPass.texture,
-			options.gBufferPass.renderTarget.depthTexture,
-			options
-		)
+		if (options.denoiseMode.startsWith("full")) {
+			this.denoiserComposePass = new DenoiserComposePass(
+				camera,
+				composerInputTextures,
+				options.gBufferPass.texture,
+				options.gBufferPass.renderTarget.depthTexture,
+				options
+			)
+		}
 
 		this.temporalReprojectPass.fullscreenMaterial.defines.inputType =
 			["diffuseSpecular", "diffuse", "specular"].indexOf(options.inputType) ?? 1
 	}
 
 	get texture() {
-		if (this.options.denoiseMode === "full" || this.options.denoiseMode === "full_temporal") {
+		if (this.options.denoiseMode.startsWith("full")) {
 			return this.denoiserComposePass.texture
 		} else if (this.options.denoiseMode === "denoised") {
 			return this.denoisePass.texture
@@ -98,7 +100,7 @@ export default class Denoiser {
 		this.temporalReprojectPass.render(renderer)
 
 		if (this.options.inputType !== "diffuseSpecular") {
-			this.denoiserComposePass.fullscreenMaterial.uniforms.sceneTexture.value = inputBuffer.texture
+			this.denoiserComposePass?.setSceneTexture(inputBuffer.texture)
 		}
 
 		this.denoisePass?.render(renderer)

@@ -50,7 +50,7 @@ void accumulate(inout vec4 outputColor, inout vec4 inp, inout vec4 acc, inout fl
   float accumBlend = 1. - 1. / (acc.a + 1.0);
   accumBlend = mix(0., accumBlend, confidence);
 
-  float maxValue = fullAccumulate ? mix(1., blend, moveFactor) : blend;
+  float maxValue = 0.9925;
 
   // clamp to 0.9925 otherwise the image turns darker over time, possibly due to precision issues
   // maxValue *= min(0.9925, maxValue);
@@ -58,7 +58,7 @@ void accumulate(inout vec4 outputColor, inout vec4 inp, inout vec4 acc, inout fl
 
   const float roughnessMaximum = 0.25;
 
-  if (doReprojectSpecular && roughness < roughnessMaximum) {
+  if (doReprojectSpecular && roughness >= 0.0 && roughness < roughnessMaximum) {
     float maxRoughnessValue = mix(0.8, maxValue, roughness / roughnessMaximum);
     maxValue = mix(maxValue, maxRoughnessValue, moveFactor);
   }
@@ -72,8 +72,6 @@ void accumulate(inout vec4 outputColor, inout vec4 inp, inout vec4 acc, inout fl
   outputColor.a = acc.a;
 
   undoColorTransform(outputColor.rgb);
-
-  // outputColor.rgb = vec3(confidence);
 }
 
 // this function reprojects the input texture to the current frame
@@ -99,7 +97,7 @@ void reproject(inout vec4 inp, inout vec4 acc, sampler2D accumulatedTexture, ino
 
     clampNeighborhood(inputTexture, clampedColor, inp.rgb, neighborhoodClampRadius, doReprojectSpecular);
 
-    float clampIntensity = neighborhoodClampIntensity * (doReprojectSpecular ? (1. - roughness) : 1.0);
+    float clampIntensity = neighborhoodClampIntensity * (doReprojectSpecular && roughness >= 0. ? (1. - roughness) : 1.0);
 
     acc.rgb = mix(acc.rgb, clampedColor, clampIntensity);
   }

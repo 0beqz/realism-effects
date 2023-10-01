@@ -120,6 +120,10 @@ export class DenoiserComposePass extends Pass {
 		this.renderTarget.setSize(width, height)
 	}
 
+	setSceneTexture(texture) {
+		this.fullscreenMaterial.uniforms.sceneTexture.value = texture
+	}
+
 	render(renderer) {
 		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
 		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far

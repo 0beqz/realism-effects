@@ -3,7 +3,7 @@
 vec2 dilatedUv, velocity;
 vec3 worldNormal, worldPos, viewDir;
 float depth, flatness, viewAngle, angleMix, rayLength = 0.0;
-float roughness = 1.0;
+float roughness = -1.0;
 
 #define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
 
@@ -55,11 +55,13 @@ void getNeighborhoodAABB(const sampler2D tex, const int clampRadius, inout vec3 
       vec2 offset = vec2(x, y) * invTexSize;
       vec2 neighborUv = vUv + offset;
 
+#if inputType == DIFFUSE_SPECULAR
       vec4 packedNeighborTexel = textureLod(inputTexture, neighborUv, 0.0);
-
       unpackTwoVec4(packedNeighborTexel, t1, t2);
-
       vec4 neighborTexel = isSpecular ? t2 : t1;
+#else
+      vec4 neighborTexel = textureLod(inputTexture, neighborUv, 0.0);
+#endif
 
       minNeighborColor = min(neighborTexel.rgb, minNeighborColor);
       maxNeighborColor = max(neighborTexel.rgb, maxNeighborColor);
@@ -218,57 +220,50 @@ vec3 getReprojectedUV(const bool doReprojectSpecular, const float depth, const v
   return vec3(reprojectedUv, confidence);
 }
 
-vec4 SampleTextureCatmullRom(const sampler2D tex, const vec2 uv, const vec2 resolution) {
-  // We're going to sample a a 4x4 grid of texels surrounding the target UV
-  // coordinate. We'll do this by rounding down the sample location to get the
-  // exact center of our "starting" texel. The starting texel will be at
-  // location [1, 1] in the grid, where [0, 0] is the top left corner.
-  vec2 samplePos = uv * resolution;
-  vec2 texPos1 = floor(samplePos - 0.5f) + 0.5f;
+// source: https://www.shadertoy.com/view/styXDh
+vec4 BiCubicCatmullRom5Tap(sampler2D tex, vec2 P) {
+  vec2 Weight[3];
+  vec2 Sample[3];
 
-  // Compute the fractional offset from our starting texel to our original
-  // sample location, which we'll feed into the Catmull-Rom spline function to
-  // get our filter weights.
-  vec2 f = samplePos - texPos1;
+  vec2 UV = P / invTexSize;
+  vec2 tc = floor(UV - 0.5) + 0.5;
+  vec2 f = UV - tc;
+  vec2 f2 = f * f;
+  vec2 f3 = f2 * f;
 
-  // Compute the Catmull-Rom weights using the fractional offset that we
-  // calculated earlier. These equations are pre-expanded based on our knowledge
-  // of where the texels will be located, which lets us avoid having to evaluate
-  // a piece-wise function.
-  vec2 w0 = f * (-0.5f + f * (1.0 - 0.5f * f));
-  vec2 w1 = 1.0 + f * f * (-2.5f + 1.5f * f);
-  vec2 w2 = f * (0.5f + f * (2.0 - 1.5f * f));
-  vec2 w3 = f * f * (-0.5f + 0.5f * f);
+  vec2 w0 = f2 - 0.5 * (f3 + f);
+  vec2 w1 = 1.5 * f3 - 2.5 * f2 + vec2(1.);
+  vec2 w3 = 0.5 * (f3 - f2);
+  vec2 w2 = vec2(1.) - w0 - w1 - w3;
 
-  // Work out weighting factors and sampling offsets that will let us use
-  // bilinear filtering to simultaneously evaluate the middle 2 samples from the
-  // 4x4 grid.
-  vec2 w12 = w1 + w2;
-  vec2 offset12 = w2 / (w1 + w2);
+  Weight[0] = w0;
+  Weight[1] = w1 + w2;
+  Weight[2] = w3;
 
-  // Compute the final UV coordinates we'll use for sampling the texture
-  vec2 texPos0 = texPos1 - 1.;
-  vec2 texPos3 = texPos1 + 2.;
-  vec2 texPos12 = texPos1 + offset12;
+  Sample[0] = tc - vec2(1.);
+  Sample[1] = tc + w2 / Weight[1];
+  Sample[2] = tc + vec2(2.);
 
-  texPos0 /= resolution;
-  texPos3 /= resolution;
-  texPos12 /= resolution;
+  Sample[0] *= invTexSize;
+  Sample[1] *= invTexSize;
+  Sample[2] *= invTexSize;
 
-  vec4 result = vec4(0.0);
-  result += textureLod(tex, vec2(texPos0.x, texPos0.y), 0.0) * w0.x * w0.y;
-  result += textureLod(tex, vec2(texPos12.x, texPos0.y), 0.0) * w12.x * w0.y;
-  result += textureLod(tex, vec2(texPos3.x, texPos0.y), 0.0) * w3.x * w0.y;
-  result += textureLod(tex, vec2(texPos0.x, texPos12.y), 0.0) * w0.x * w12.y;
-  result += textureLod(tex, vec2(texPos12.x, texPos12.y), 0.0) * w12.x * w12.y;
-  result += textureLod(tex, vec2(texPos3.x, texPos12.y), 0.0) * w3.x * w12.y;
-  result += textureLod(tex, vec2(texPos0.x, texPos3.y), 0.0) * w0.x * w3.y;
-  result += textureLod(tex, vec2(texPos12.x, texPos3.y), 0.0) * w12.x * w3.y;
-  result += textureLod(tex, vec2(texPos3.x, texPos3.y), 0.0) * w3.x * w3.y;
+  float sampleWeight[5];
+  sampleWeight[0] = Weight[1].x * Weight[0].y;
+  sampleWeight[1] = Weight[0].x * Weight[1].y;
+  sampleWeight[2] = Weight[1].x * Weight[1].y;
+  sampleWeight[3] = Weight[2].x * Weight[1].y;
+  sampleWeight[4] = Weight[1].x * Weight[2].y;
 
-  result = max(result, vec4(0.));
+  vec4 Ct = texture(tex, vec2(Sample[1].x, Sample[0].y)) * sampleWeight[0];
+  vec4 Cl = texture(tex, vec2(Sample[0].x, Sample[1].y)) * sampleWeight[1];
+  vec4 Cc = texture(tex, vec2(Sample[1].x, Sample[1].y)) * sampleWeight[2];
+  vec4 Cr = texture(tex, vec2(Sample[2].x, Sample[1].y)) * sampleWeight[3];
+  vec4 Cb = texture(tex, vec2(Sample[1].x, Sample[2].y)) * sampleWeight[4];
 
-  return result;
+  float WeightMultiplier = 1. / (sampleWeight[0] + sampleWeight[1] + sampleWeight[2] + sampleWeight[3] + sampleWeight[4]);
+
+  return max((Ct + Cl + Cc + Cr + Cb) * WeightMultiplier, vec4(0.));
 }
 
 // source:
@@ -283,4 +278,4 @@ float getFlatness(vec3 worldPosition, vec3 worldNormal) {
   return clamp(wfcurvature, 0., 1.);
 }
 
-vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv) { return SampleTextureCatmullRom(tex, reprojectedUv, 1. / invTexSize); }
+vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv) { return BiCubicCatmullRom5Tap(tex, reprojectedUv); }
