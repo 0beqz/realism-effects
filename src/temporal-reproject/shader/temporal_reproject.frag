@@ -45,7 +45,7 @@ void accumulate(inout vec4 outputColor, inout vec4 inp, inout vec4 acc, inout fl
 
   vec2 reprojectedUv = reprojectedUvConfidence.xy;
   float confidence = reprojectedUvConfidence.z;
-  confidence = pow(confidence, 0.25);
+  confidence = pow(confidence, 0.5);
 
   float accumBlend = 1. - 1. / (acc.a + 1.0);
   accumBlend = mix(0., accumBlend, confidence);
@@ -56,17 +56,18 @@ void accumulate(inout vec4 outputColor, inout vec4 inp, inout vec4 acc, inout fl
   // maxValue *= min(0.9925, maxValue);
   maxValue *= keepData;
 
-  // const float roughnessMaximum = 0.25;
+  const float roughnessMaximum = 0.1;
 
-  // if (doReprojectSpecular && roughness >= 0.0 && roughness < roughnessMaximum) {
-  //   float maxRoughnessValue = mix(0.8, maxValue, roughness / roughnessMaximum);
-  //   maxValue = mix(maxValue, maxRoughnessValue, moveFactor);
-  // }
+  if (doReprojectSpecular && roughness >= 0.0 && roughness < roughnessMaximum) {
+    float maxRoughnessValue = mix(0.8, maxValue, roughness / roughnessMaximum);
+    maxValue = mix(maxValue, maxRoughnessValue, moveFactor);
+  }
 
   float temporalReprojectMix = min(accumBlend, maxValue);
 
   // calculate the alpha from temporalReprojectMix
   acc.a = 1. / (1. - temporalReprojectMix) - 1.;
+  acc.a = min(65536., acc.a);
 
   outputColor.rgb = mix(inp.rgb, acc.rgb, temporalReprojectMix);
   outputColor.a = acc.a;

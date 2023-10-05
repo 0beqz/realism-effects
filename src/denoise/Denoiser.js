@@ -37,7 +37,7 @@ export default class Denoiser {
 				reprojectSpecular: [false, true],
 				neighborhoodClamp: [false, false],
 				neighborhoodClampRadius: 1,
-				neighborhoodClampIntensity: 0.35,
+				neighborhoodClampIntensity: 0.25,
 				...options
 			}
 		)

@@ -1,4 +1,4 @@
-﻿import { DataTexture, FloatType, RGBAFormat, ShaderChunk, ShaderLib, UniformsUtils, Vector4 } from "three"
+﻿import { ShaderChunk, ShaderLib, UniformsUtils, Vector4 } from "three"
 
 export const generateCubeUVSize = parameters => {
 	const imageHeight = parameters.envMapCubeUVHeight

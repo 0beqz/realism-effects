@@ -175,6 +175,7 @@ light.castShadow = true
 // scene.add(light)
 
 // const fog = new THREE.FogExp2(0xffffff, 0.025)
+// const fog = new THREE.Fog(0xffffff, 10, 10.0001)
 // scene.fog = fog
 
 const useRenderPass = false
@@ -219,7 +220,6 @@ const initEnvMap = async envMap => {
 	scene.environment?.dispose()
 	envMap.mapping = EquirectangularReflectionMapping
 	scene.environment = envMap
-	scene.background = traaTest ? new Color(0x4c7fe5) : null
 	setEnvMesh(envMap)
 }
 
@@ -247,7 +247,7 @@ const setEnvMesh = envMap => {
 		envMesh.updateMatrixWorld()
 		// scene.add(envMesh)
 
-		const skyBlueColor = new Color(0x4c7fe5)
+		const skyBlueColor = new Color(0x90b4f5)
 		scene.background = skyBlueColor
 
 		if (taaPass) taaPass.needsUpdate = true
@@ -352,8 +352,8 @@ const initScene = async () => {
 	fps = gpuTier.fps
 
 	const options = {
-		distance: 2.170000000000011,
-		thickness: 4.999999999999997,
+		distance: 5.980000000000011,
+		thickness: 2.829999999999997,
 		blend: 1,
 		denoiseIterations: 1,
 		denoiseKernel: 3,
@@ -741,17 +741,17 @@ const setupAsset = asset => {
 		pointsObj.removeFromParent()
 	}
 
-	// const ground = new Mesh(
-	// 	new PlaneGeometry(10000, 10000),
-	// 	new MeshStandardMaterial({
-	// 		metalness: 1,
-	// 		roughness: 0
-	// 	})
-	// )
+	const ground = new THREE.Mesh(
+		new THREE.PlaneGeometry(100, 100),
+		new THREE.MeshStandardMaterial({
+			metalness: 0,
+			roughness: 0
+		})
+	)
 
-	// ground.rotation.x = -Math.PI / 2
-	// ground.receiveShadow = true
-	// ground.updateMatrixWorld()
+	ground.rotation.x = -Math.PI / 2
+	ground.receiveShadow = true
+	ground.updateMatrixWorld()
 	// scene.add(ground)
 
 	if (lastScene) {

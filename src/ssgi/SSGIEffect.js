@@ -1,9 +1,11 @@
 ﻿import { Effect, RenderPass, Selection } from "postprocessing"
 import {
+	Color,
 	LinearFilter,
 	LinearMipMapLinearFilter,
 	NoToneMapping,
 	SRGBColorSpace,
+	ShaderChunk,
 	Uniform,
 	WebGLRenderTarget
 } from "three"
@@ -29,15 +31,37 @@ export class SSGIEffect extends Effect {
 	constructor(composer, scene, camera, options) {
 		options = { ...defaultSSGIOptions, ...options }
 
-		super("SSGIEffect", ssgi_compose, {
+		let fragmentShader = ssgi_compose.replace(
+			"#include <fog_pars_fragment>",
+			ShaderChunk.fog_pars_fragment.replace("varying", "")
+		)
+
+		// delete the line starting with gl_FragColor using a regex
+		fragmentShader = fragmentShader.replace(
+			"#include <fog_fragment>",
+			ShaderChunk.fog_fragment.replace(/.*gl_FragColor.*/g, "")
+		)
+
+		const defines = new Map()
+		if (scene.fog) defines.set("USE_FOG", "")
+		if (scene.fog?.isFogExp2) defines.set("FOG_EXP2", "")
+
+		super("SSGIEffect", fragmentShader, {
 			type: "FinalSSGIMaterial",
 			uniforms: new Map([
 				["inputTexture", new Uniform(null)],
 				["sceneTexture", new Uniform(null)],
 				["depthTexture", new Uniform(null)],
 				["isDebug", new Uniform(false)],
+				["fogColor", new Uniform(new Color())],
+				["fogNear", new Uniform(0)],
+				["fogFar", new Uniform(0)],
+				["fogDensity", new Uniform(0)],
+				["cameraNear", new Uniform(0)],
+				["cameraFar", new Uniform(0)],
 				["toneMapping", new Uniform(NoToneMapping)]
-			])
+			]),
+			defines: new Map([["PERSPECTIVE_CAMERA", camera.isPerspectiveCamera ? "1" : "0"], ...defines])
 		})
 
 		this._scene = scene
@@ -353,6 +377,17 @@ export class SSGIEffect extends Effect {
 		this.uniforms.get("sceneTexture").value = sceneBuffer.texture
 		this.uniforms.get("depthTexture").value = this.ssgiPass.gBufferPass.depthTexture
 		this.uniforms.get("toneMapping").value = renderer.toneMapping
+
+		// update the fog uniforms
+		if (this._scene.fog) {
+			this.uniforms.get("fogColor").value = this._scene.fog.color
+			this.uniforms.get("fogNear").value = this._scene.fog.near
+			this.uniforms.get("fogFar").value = this._scene.fog.far
+			this.uniforms.get("fogDensity").value = this._scene.fog.density
+
+			this.uniforms.get("cameraNear").value = this._camera.near
+			this.uniforms.get("cameraFar").value = this._camera.far
+		}
 
 		for (const c of hideMeshes) c.visible = true
 

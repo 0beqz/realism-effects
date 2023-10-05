@@ -171,9 +171,7 @@ void main() {
     }
 
     bool isSpecular = i == 1;
-    float wF = phi;
-
-    InputTexel inp = InputTexel(t.rgb, t.a, luminance(t.rgb), 1. / pow(t.a + 1., wF), 1., i == 1);
+    InputTexel inp = InputTexel(t.rgb, t.a, luminance(t.rgb), 1. / pow(t.a + 1., phi), 1., i == 1);
 
     inputs[i] = inp;
   }
@@ -197,10 +195,10 @@ void main() {
   float roughnessRadius = mix(sqrt(centerMat.roughness), 1., 0.5 * (1. - centerMat.metalness));
 
   vec4 random = blueNoise();
-  float r = sqrt(random.a) * exp(-(inputs[0].a + inputs[1].a) * 0.01) * radius * roughnessRadius;
+  float r = sqrt(random.r) * exp(-(inputs[0].a + inputs[1].a) * 0.01) * radius * roughnessRadius;
 
   // rotate the poisson disk
-  float angle = random.r * 2. * PI;
+  float angle = random.g * 2. * PI;
   float s = sin(angle), c = cos(angle);
   mat2 rm = mat2(c, -s, s, c);
   rm *= r * 25.0 / distanceToCamera;

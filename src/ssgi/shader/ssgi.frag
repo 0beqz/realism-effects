@@ -8,8 +8,6 @@ uniform sampler2D directLightTexture;
 uniform mat4 projectionMatrix;
 uniform mat4 projectionMatrixInverse;
 uniform mat4 cameraMatrixWorld;
-uniform float cameraNear;
-uniform float cameraFar;
 
 uniform float maxEnvMapMipLevel;
 
@@ -18,6 +16,12 @@ uniform float thickness;
 uniform float envBlur;
 
 uniform vec2 resolution;
+
+uniform float cameraNear;
+uniform float cameraFar;
+uniform float nearMinusFar;
+uniform float nearMulFar;
+uniform float farMinusNear;
 
 struct EquirectHdrInfo {
   sampler2D marginalWeights;
@@ -34,9 +38,6 @@ uniform EquirectHdrInfo envMapInfo;
 #define EPSILON 0.00001
 #define ONE_MINUS_EPSILON 1.0 - EPSILON
 
-uniform float nearMinusFar;
-uniform float nearMulFar;
-uniform float farMinusNear;
 vec2 invTexSize;
 
 #define MODE_SSGI 0
@@ -97,12 +98,14 @@ void calculateAngles(inout vec3 h, inout vec3 l, inout vec3 v, inout vec3 n, ino
   VoH = clamp(dot(v, h), EPSILON, ONE_MINUS_EPSILON);
 }
 
+vec3 worldPos;
+
 void main() {
   float unpackedDepth = textureLod(depthTexture, vUv, 0.0).r;
 
   // filter out background
   if (unpackedDepth == 1.0) {
-    discard;
+    gl_FragColor = vec4(vec3(0.), 1.);
     return;
   }
 
@@ -120,7 +123,7 @@ void main() {
   vec3 viewDir = normalize(viewPos);
   worldNormal = mat.normal;
   vec3 viewNormal = normalize((vec4(worldNormal, 0.) * cameraMatrixWorld).xyz);
-  vec3 worldPos = (cameraMatrixWorld * vec4(viewPos, 1.)).xyz;
+  worldPos = (cameraMatrixWorld * vec4(viewPos, 1.)).xyz;
 
   vec3 n = viewNormal; // view-space normal
   vec3 v = -viewDir;   // incoming vector
@@ -277,6 +280,7 @@ void main() {
   // of screen-space pixels in the temporal reproject pass
   float rayLength = 0.0;
   vec4 hitPosWS;
+  vec3 cameraPosWS = cameraMatrixWorld[3].xyz;
 
   if (isMissedRay) {
     rayLength = 10.0e4;
@@ -285,8 +289,6 @@ void main() {
     hitPosWS = cameraMatrixWorld * vec4(specularHitPos, 1.0);
 
     // get the camera position in world-space from the camera matrix
-    vec3 cameraPosWS = cameraMatrixWorld[3].xyz;
-
     rayLength = distance(cameraPosWS, hitPosWS.xyz);
   }
 
@@ -373,7 +375,7 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
   vec3 envMapSample = vec3(0.);
 
   // inisEnvSample ray, use environment lighting as fallback
-  if (isMissedRay || allowMissedRays)
+  if (isMissedRay && !allowMissedRays)
     return getEnvColor(l, worldPos, roughness, isDiffuseSample, isEnvSample);
 
   // reproject the coords from the last frame
@@ -390,6 +392,7 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
 
     // check for self-occlusion
     if (dot(worldNormal, hitNormal) == 1.0) {
+      isMissedRay = true;
       return envColor;
     }
 
@@ -431,14 +434,14 @@ vec2 RayMarch(inout vec3 dir, inout vec3 hitPos, vec4 random) {
 
   dir *= rayDistance / float(steps);
 
-  hitPos += dir * random.b * 3.0;
+  float m = 0.5 + random.b;
 
   vec2 uv;
 
   for (int i = 1; i < steps; i++) {
-    // use slower increments for the first few steps to sharpen contact shadows
-    float m = exp(pow(float(i) / 4.0, 0.05)) - 2.0;
-    hitPos += dir * min(m, 1.);
+    // use slower increments for the first few steps to sharpen contact shadows: https://www.desmos.com/calculator/8cvzy4kdeb
+    float cs = 1. - exp(-0.25 * pow(float(i) + random.b - 0.5, 2.));
+    hitPos += dir * cs;
 
     uv = viewSpaceToScreenSpace(hitPos);
 

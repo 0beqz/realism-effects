@@ -1,7 +1,7 @@
 import { Vector2 } from "three"
 
 export function generateDenoiseSamples(texelSize) {
-	const sqr2 = 2 ** 0.5
+	const sqrt2 = 2 ** 0.5
 
 	// by Nvidia ReBLUR, for distribution see: https://www.desmos.com/calculator/abaqyvswem
 	let samples = [
@@ -9,10 +9,10 @@ export function generateDenoiseSamples(texelSize) {
 		new Vector2(0, -1),
 		new Vector2(1, 0),
 		new Vector2(0, 1),
-		new Vector2(-0.25 * sqr2, -0.25 * sqr2),
-		new Vector2(0.25 * sqr2, -0.25 * sqr2),
-		new Vector2(0.25 * sqr2, 0.25 * sqr2),
-		new Vector2(-0.25 * sqr2, 0.25 * sqr2)
+		new Vector2(-0.25 * sqrt2, -0.25 * sqrt2),
+		new Vector2(0.25 * sqrt2, -0.25 * sqrt2),
+		new Vector2(0.25 * sqrt2, 0.25 * sqrt2),
+		new Vector2(-0.25 * sqrt2, 0.25 * sqrt2)
 	]
 
 	samples = samples.map(sample => sample.multiply(texelSize))
