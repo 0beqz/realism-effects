@@ -196,12 +196,6 @@ export class SSGIEffect extends Effect {
 
 							this.ssgiPass.fullscreenMaterial.needsUpdate = needsUpdate
 							this.reset()
-
-							break
-
-						case "blend":
-							this.denoiser.temporalReprojectPass.fullscreenMaterial.uniforms[key].value = value
-							this.reset()
 							break
 
 						case "distance":

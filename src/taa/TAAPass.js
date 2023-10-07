@@ -1,17 +1,17 @@
 import { Pass } from "postprocessing"
 import {
+	FloatType,
 	FramebufferTexture,
-	HalfFloatType,
 	Quaternion,
 	RGBAFormat,
 	ShaderMaterial,
 	Vector3,
 	WebGLRenderTarget
 } from "three"
+import { didCameraMove } from "../utils/SceneUtils"
 import vertexShader from "../utils/shader/basic.vert"
 import { jitter } from "./TAAUtils"
 import taa from "./shader/taa.frag"
-import { didCameraMove } from "../utils/SceneUtils"
 
 export class TAAPass extends Pass {
 	accumulatedTexture = null
@@ -24,7 +24,7 @@ export class TAAPass extends Pass {
 	renderToScreen = true
 
 	renderTarget = new WebGLRenderTarget(1, 1, {
-		type: HalfFloatType,
+		type: FloatType,
 		depthBuffer: false
 	})
 
@@ -78,7 +78,7 @@ export class TAAPass extends Pass {
 			jitter(width, height, this._camera, this.frame)
 		}
 
-		this.fullscreenMaterial.uniforms.cameraNotMovedFrames.value = cameraMoved ? 0 : (cameraNotMovedFrames + 1) % 4096
+		this.fullscreenMaterial.uniforms.cameraNotMovedFrames.value = cameraMoved ? 0 : (cameraNotMovedFrames + 1) % 0xffff
 
 		this.lastCameraPosition.copy(this._camera.position)
 		this.lastCameraQuaternion.copy(this._camera.quaternion)

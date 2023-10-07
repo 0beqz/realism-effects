@@ -6,7 +6,6 @@
  * @property {Number} [thickness] maximum depth difference between a ray and the particular depth at its screen position before refining with binary search; higher values will result in better performance
  * @property {Number} [envBlur] higher values will result in lower mipmaps being sampled which will cause less noise but also less detail regarding environment lighting
  * @property {Number} [importanceSampling] whether to use importance sampling for the environment map
- * @property {Number} [blend] a value between 0 and 1 to set how much the last frame's SSGI should be blended in; higher values will result in less noisy SSGI when moving the camera but a more smeary look
  * @property {Number} [denoiseIterations] how many times the denoise filter runs, more iterations will denoise the frame better but need more performance
  * @property {Number} [radius] the radius of the denoiser, higher values will result in less noise on less detailled surfaces but more noise on detailled surfaces
  * @property {Number} [depthPhi] depth factor of the denoiser, higher values will use neighboring areas with different depth values more resulting in less noise but loss of details
@@ -28,7 +27,6 @@ export const defaultSSGIOptions = {
 	mode: "ssgi",
 	distance: 10,
 	thickness: 10,
-	blend: 0.9,
 	denoiseIterations: 1,
 	denoiseKernel: 2,
 	denoiseDiffuse: 10,

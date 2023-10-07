@@ -28,9 +28,6 @@ export class SSGIDebugGUI {
 		generalFolder.addInput(params, "envBlur", { min: 0, max: 1, step: 0.01 })
 		generalFolder.addInput(params, "importanceSampling")
 
-		const temporalReprojectionFolder = pane.addFolder({ title: "Temporal Reprojection" })
-
-		temporalReprojectionFolder.addInput(params, "blend", { min: 0, max: 1, step: 0.001 })
 		const denoiseFolder = pane.addFolder({ title: "Denoise" })
 		denoiseFolder.addInput(params, "denoiseIterations", { min: 0, max: 5, step: 1 })
 		denoiseFolder.addInput(params, "radius", { min: 0, max: 32, step: 1 })
@@ -81,7 +78,7 @@ export class SSGIDebugGUI {
 		const resolutionFolder = pane.addFolder({ title: "Resolution", expanded: false })
 		resolutionFolder.addInput(params, "resolutionScale", { min: 0.25, max: 1, step: 0.25 })
 
-		const textures = [
+		let textures = [
 			ssgiEffect.ssgiPass.renderTarget.texture,
 			ssgiEffect.ssgiPass.gBufferPass.renderTarget.depthTexture,
 			ssgiEffect.denoiser.velocityDepthNormalPass.renderTarget.texture
@@ -93,8 +90,6 @@ export class SSGIDebugGUI {
 
 		if (ssgiEffect.denoiser.denoisePass) {
 			textures.push(
-				ssgiEffect.denoiser.denoisePass.renderTargetA.texture[0],
-				ssgiEffect.denoiser.denoisePass.renderTargetA.texture[1],
 				ssgiEffect.denoiser.denoisePass.renderTargetB.texture[0],
 				ssgiEffect.denoiser.denoisePass.renderTargetB.texture[1]
 			)
@@ -104,6 +99,7 @@ export class SSGIDebugGUI {
 
 		// turn textures into an object with names
 		const textureObject = {}
+		textures = textures.filter(tex => !!tex)
 		textures.forEach(tex => (textureObject[tex.name] = tex.name))
 
 		const modes = ["diffuse", "alpha", "normal", "roughness", "metalness", "emissive"]

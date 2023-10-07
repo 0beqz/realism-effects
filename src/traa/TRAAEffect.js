@@ -7,7 +7,6 @@ import { getVisibleChildren } from "../utils/SceneUtils.js"
 import { isGroundProjectedEnv } from "../utils/SceneUtils.js"
 
 const defaultTRAAOptions = {
-	blend: 0.8,
 	dilation: true,
 	logTransform: true,
 	neighborhoodClampRadius: 2,

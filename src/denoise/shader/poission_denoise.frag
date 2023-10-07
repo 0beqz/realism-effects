@@ -79,7 +79,7 @@ void evaluateNeighbor(inout InputTexel inp, inout Neighbor neighbor) {
   inp.totalWeight += neighbor.weight;
 }
 
-Neighbor[2] getNeighborWeight(inout InputTexel[2] inputs, inout vec2 neighborUv) {
+void getNeighborWeight(inout InputTexel[textureCount] inputs, Neighbor[textureCount] neighbors, inout vec2 neighborUv) {
 #ifdef GBUFFER_TEXTURE
   Material neighborMat = getMaterial(gBufferTexture, neighborUv);
   vec3 neighborNormal = neighborMat.normal;
@@ -91,7 +91,7 @@ Neighbor[2] getNeighborWeight(inout InputTexel[2] inputs, inout vec2 neighborUv)
 #endif
 
   if (neighborDepth == 1.0)
-    return Neighbor[2](Neighbor(vec4(0.), 0.), Neighbor(vec4(0.), 0.));
+    return;
 
   vec3 neighborWorldPos = getWorldPos(neighborDepth, neighborUv);
 
@@ -108,12 +108,9 @@ Neighbor[2] getNeighborWeight(inout InputTexel[2] inputs, inout vec2 neighborUv)
 
   float sw = exp(-normalDiff * 5.);
 
-  bool[2] isSpecular = bool[](false, true);
-  Neighbor[2] neighbors;
-
-  for (int i = 0; i < 2; i++) {
+  for (int i = 0; i < textureCount; i++) {
     vec4 t;
-    if (isSpecular[i]) {
+    if (isTextureSpecular[i]) {
       t = textureLod(inputTexture2, neighborUv, 0.);
     } else {
       t = textureLod(inputTexture, neighborUv, 0.);
@@ -121,7 +118,7 @@ Neighbor[2] getNeighborWeight(inout InputTexel[2] inputs, inout vec2 neighborUv)
 
     float lumaDiff = abs(inputs[i].luminance - luminance(t.rgb));
     float lumaFactor = exp(-lumaDiff * lumaPhi * (1. - inputs[i].w));
-    float specularFactor = isSpecular[i] ? exp(-glossiness * specularPhi) : 1.;
+    float specularFactor = isTextureSpecular[i] ? exp(-glossiness * specularPhi) : 1.;
 
     float w = specularFactor * mix(wBasic, sw, inputs[i].w);
 
@@ -130,8 +127,6 @@ Neighbor[2] getNeighborWeight(inout InputTexel[2] inputs, inout vec2 neighborUv)
 
     neighbors[i] = Neighbor(t, w);
   }
-
-  return neighbors;
 }
 
 vec3 getNormal(Material centerMat) {
@@ -160,9 +155,10 @@ void main() {
     return;
   }
 
-  InputTexel[2] inputs;
+  InputTexel[textureCount] inputs;
 
-  for (int i = 0; i < 2; i++) {
+  float maxAlpha = 0.;
+  for (int i = 0; i < textureCount; i++) {
     vec4 t;
     if (i == 0) {
       t = textureLod(inputTexture, vUv, 0.);
@@ -170,16 +166,18 @@ void main() {
       t = textureLod(inputTexture2, vUv, 0.);
     }
 
-    bool isSpecular = i == 1;
-    InputTexel inp = InputTexel(t.rgb, t.a, luminance(t.rgb), 1. / pow(t.a + 1., phi), 1., i == 1);
+    InputTexel inp = InputTexel(t.rgb, t.a, luminance(t.rgb), 1. / pow(t.a + 1., phi), 1., isTextureSpecular[i]);
+    maxAlpha = max(maxAlpha, inp.a);
 
     inputs[i] = inp;
   }
 
-  if (inputs[1].a > 512.) {
+  if (maxAlpha > 512.) {
     gOutput0 = vec4(inputs[0].rgb, inputs[0].a);
-    gOutput1 = vec4(inputs[1].rgb, inputs[1].a);
 
+#if textureCount == 2
+    gOutput1 = vec4(inputs[1].rgb, inputs[1].a);
+#endif
     return;
   }
 
@@ -195,7 +193,7 @@ void main() {
   float roughnessRadius = mix(sqrt(centerMat.roughness), 1., 0.5 * (1. - centerMat.metalness));
 
   vec4 random = blueNoise();
-  float r = sqrt(random.r) * exp(-(inputs[0].a + inputs[1].a) * 0.01) * radius * roughnessRadius;
+  float r = sqrt(random.r) * exp(-maxAlpha * 0.01) * radius * roughnessRadius;
 
   // rotate the poisson disk
   float angle = random.g * 2. * PI;
@@ -207,14 +205,18 @@ void main() {
     vec2 offset = rm * poissonDisk[i];
     vec2 neighborUv = vUv + offset;
 
-    Neighbor[2] neighbors = getNeighborWeight(inputs, neighborUv);
+    Neighbor[textureCount] neighbors;
+    getNeighborWeight(inputs, neighbors, neighborUv);
 
-    for (int j = 0; j < 2; j++)
+    for (int j = 0; j < textureCount; j++)
       evaluateNeighbor(inputs[j], neighbors[j]);
   }
 
   // inputs[0].rgb = vec3(specularFactor);
 
   outputTexel(gOutput0, inputs[0]);
+
+#if textureCount == 2
   outputTexel(gOutput1, inputs[1]);
+#endif
 }

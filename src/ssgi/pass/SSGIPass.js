@@ -50,7 +50,7 @@ export class SSGIPass extends Pass {
 
 	setSize(width, height) {
 		this.renderTarget.setSize(width * this.ssgiEffect.resolutionScale, height * this.ssgiEffect.resolutionScale)
-		this.gBufferPass.setSize(width, height)
+		this.gBufferPass.setSize(width * this.ssgiEffect.resolutionScale, height * this.ssgiEffect.resolutionScale)
 
 		this.fullscreenMaterial.uniforms.resolution.value.set(this.renderTarget.width, this.renderTarget.height)
 	}

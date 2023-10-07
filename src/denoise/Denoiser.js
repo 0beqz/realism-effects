@@ -45,13 +45,13 @@ export default class Denoiser {
 		const textures = this.temporalReprojectPass.renderTarget.texture.slice(0, textureCount)
 
 		if (this.options.denoiseMode === "full" || this.options.denoiseMode === "denoised") {
-			this.denoisePass = new PoissionDenoisePass(camera, textures)
+			this.denoisePass = new PoissionDenoisePass(camera, textures, options)
 			this.denoisePass.setGBufferPass(options.gBufferPass ?? this.velocityDepthNormalPass)
 
 			this.temporalReprojectPass.overrideAccumulatedTextures = this.denoisePass.renderTargetB.texture
 		}
 
-		const composerInputTextures = options.denoiseMode === "full" ? this.denoisePass.texture : textures
+		const composerInputTextures = this.denoisePass.texture
 
 		if (options.denoiseMode.startsWith("full")) {
 			this.denoiserComposePass = new DenoiserComposePass(
@@ -68,13 +68,15 @@ export default class Denoiser {
 	}
 
 	get texture() {
-		if (this.options.denoiseMode.startsWith("full")) {
-			return this.denoiserComposePass.texture
-		} else if (this.options.denoiseMode === "denoised") {
-			return this.denoisePass.texture
+		switch (this.options.denoiseMode) {
+			case "full":
+			case "full_temporal":
+				return this.denoiserComposePass.texture
+			case "denoised":
+				return this.denoisePass.texture
+			case "temporal":
+				return this.temporalReprojectPass.texture
 		}
-
-		return this.temporalReprojectPass.texture
 	}
 
 	reset() {

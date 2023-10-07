@@ -178,7 +178,7 @@ light.castShadow = true
 // const fog = new THREE.Fog(0xffffff, 10, 10.0001)
 // scene.fog = fog
 
-const useRenderPass = false
+const useRenderPass = true
 
 if (useRenderPass || scene.getObjectByProperty("isDirectionalLight", true)) {
 	const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
@@ -354,7 +354,6 @@ const initScene = async () => {
 	const options = {
 		distance: 5.980000000000011,
 		thickness: 2.829999999999997,
-		blend: 1,
 		denoiseIterations: 1,
 		denoiseKernel: 3,
 		denoiseDiffuse: 25,
@@ -463,7 +462,7 @@ const initScene = async () => {
 
 	ssgiEffect = new SSGIEffect(composer, scene, camera, { ...options, velocityDepthNormalPass })
 	// ssgiEffect = new SSREffect(composer, scene, camera, {
-	// 	denoiseMode: "full_temporal",
+	// 	denoiseMode: "full",
 	// 	velocityDepthNormalPass
 	// })
 	window.ssgiEffect = ssgiEffect
@@ -843,7 +842,8 @@ const setupAsset = asset => {
 				c.material.map.magFilter = NearestFilter
 			}
 
-			c.material.transparent = false
+			// c.material.transparent = true
+			// c.material.opacity = 0.25
 			// const lm = c.material.emissiveMap
 			// c.material.emissiveMap = null
 			// c.material.emissive = new Color(0x000000)

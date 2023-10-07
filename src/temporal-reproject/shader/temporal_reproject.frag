@@ -6,9 +6,7 @@ uniform sampler2D velocityTexture;
 uniform sampler2D depthTexture;
 uniform sampler2D lastVelocityTexture;
 
-uniform float blend;
 uniform float neighborhoodClampIntensity;
-uniform bool constantBlend;
 uniform bool fullAccumulate;
 uniform vec2 invTexSize;
 uniform float cameraNear;

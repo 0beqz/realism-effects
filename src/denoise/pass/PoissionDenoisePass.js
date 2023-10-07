@@ -19,7 +19,8 @@ const defaultPoissonBlurOptions = {
 	phi: 0.5,
 	lumaPhi: 5,
 	depthPhi: 2,
-	normalPhi: 3.25
+	normalPhi: 3.25,
+	inputType: "diffuseSpecular" // can be "diffuseSpecular", "diffuse" or "specular"
 }
 
 export class PoissionDenoisePass extends Pass {
@@ -32,6 +33,12 @@ export class PoissionDenoisePass extends Pass {
 		options = { ...defaultPoissonBlurOptions, ...options }
 
 		this.textures = textures
+
+		let isTextureSpecular = [false, true]
+		if (options.inputType === "diffuse") isTextureSpecular = [false, false]
+		if (options.inputType === "specular") isTextureSpecular = [true, true]
+
+		const textureCount = options.inputType === "diffuseSpecular" ? 2 : 1
 
 		this.fullscreenMaterial = new ShaderMaterial({
 			fragmentShader: finalFragmentShader,
@@ -55,6 +62,10 @@ export class PoissionDenoisePass extends Pass {
 				specularPhi: { value: defaultPoissonBlurOptions.specularPhi },
 				resolution: { value: new Vector2() }
 			},
+			defines: {
+				textureCount,
+				isTextureSpecular: "bool[2](" + isTextureSpecular.join(",") + ")"
+			},
 			glslVersion: GLSL3
 		})
 
@@ -65,15 +76,15 @@ export class PoissionDenoisePass extends Pass {
 			depthBuffer: false
 		}
 
-		this.renderTargetA = new WebGLMultipleRenderTargets(1, 1, 2, renderTargetOptions)
-		this.renderTargetB = new WebGLMultipleRenderTargets(1, 1, 2, renderTargetOptions)
+		this.renderTargetA = new WebGLMultipleRenderTargets(1, 1, textureCount, renderTargetOptions)
+		this.renderTargetB = new WebGLMultipleRenderTargets(1, 1, textureCount, renderTargetOptions)
 
 		// give the textures of renderTargetA and renderTargetB names
-		this.renderTargetA.texture[0].name = "PoissionDenoisePass.diffuse"
-		this.renderTargetA.texture[1].name = "PoissionDenoisePass.specular"
+		this.renderTargetB.texture[0].name = "PoissionDenoisePass." + (isTextureSpecular[0] ? "specular" : "diffuse")
 
-		this.renderTargetB.texture[0].name = "PoissionDenoisePass.diffuse"
-		this.renderTargetB.texture[1].name = "PoissionDenoisePass.specular"
+		if (textureCount > 1) {
+			this.renderTargetB.texture[1].name = "PoissionDenoisePass." + (isTextureSpecular[1] ? "specular" : "diffuse")
+		}
 
 		const { uniforms } = this.fullscreenMaterial
 

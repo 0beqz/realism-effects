@@ -1,25 +1,14 @@
 ﻿/* eslint-disable camelcase */
 import { MeshPhysicalMaterial, Vector2 } from "three"
 import gbuffer_packing from "../shader/gbuffer_packing.glsl"
+import { setupBlueNoise } from "../../utils/BlueNoiseUtils"
 
 class GBufferMaterial extends MeshPhysicalMaterial {
 	onBeforeCompile(shader) {
-		// todo: add blue noise texture
-		shader.uniforms.blueNoiseTexture = { value: null }
-		shader.uniforms.blueNoiseRepeat = { value: new Vector2(1, 1) }
+		this.uniforms = shader.uniforms
+
 		shader.uniforms.resolution = { value: new Vector2(1, 1) }
-		shader.uniforms.cameraMoved = { value: false }
-
-		const vertexShader = shader.vertexShader.replace(
-			"void main() {",
-			/* glsl */ `
-            varying vec2 screenUv;
-            void main() {
-                screenUv = gl_Position.xy * 0.5 + 0.5;
-            `
-		)
-
-		shader.vertexShader = vertexShader
+		shader.uniforms.cameraNotMovedFrames = { value: 0 }
 
 		// delete all includes that have the pattern "#include <lights_something>"
 		shader.vertexShader = shader.vertexShader.replace(/#include <lights_.*>/g, "")
@@ -37,6 +26,14 @@ class GBufferMaterial extends MeshPhysicalMaterial {
 		shader.vertexShader = shader.vertexShader.replace(/#include <lightmap.*>/g, "")
 		shader.fragmentShader = shader.fragmentShader.replace(/#include <lightmap.*>/g, "")
 
+		// delete all includes that have the pattern "#include <alphahash...>"
+		shader.vertexShader = shader.vertexShader.replace(/#include <alphahash.*>/g, "")
+		shader.fragmentShader = shader.fragmentShader.replace(/#include <alphahash.*>/g, "")
+
+		// delete all includes that have the pattern "#include <alphatest...>"
+		shader.vertexShader = shader.vertexShader.replace(/#include <alphatest.*>/g, "")
+		shader.fragmentShader = shader.fragmentShader.replace(/#include <alphatest.*>/g, "")
+
 		// remove opaque_fragment include
 		shader.fragmentShader = shader.fragmentShader.replace("#include <opaque_fragment>", "")
 
@@ -50,13 +47,36 @@ class GBufferMaterial extends MeshPhysicalMaterial {
 			.replace(
 				"void main() {",
 				/* glsl */ `
+			#define vUv gl_FragCoord.xy
             uniform vec2 resolution;
-            uniform bool cameraMoved;
-            varying vec2 screenUv;
+            uniform float cameraNotMovedFrames;
 
             ${gbuffer_packing}
 
             void main() {
+					float a = opacity;
+
+					#ifdef USE_ALPHAMAP
+						a *= texture2D( alphaMap, vAlphaMapUv ).g;
+					#endif
+
+					if (cameraNotMovedFrames == 0.) {
+						if(a < 0.5) {
+							discard;
+							return;
+						}
+
+						a = 1.;
+					} else if (a != 1.) {
+						float aStep = a > 0.5 ? 1. : 0.;
+						a = mix(a, aStep, (1. / (cameraNotMovedFrames * 0.1 + 1.)));
+
+						vec4 noise = blueNoise();
+						if (noise.x > a) {
+							discard;
+							return;
+						}
+					}
         `
 			)
 			.replace(
@@ -70,6 +90,10 @@ class GBufferMaterial extends MeshPhysicalMaterial {
 
             gl_FragColor = gBuffer;`
 			)
+
+		const { uniforms, fragmentShader } = setupBlueNoise(shader.fragmentShader)
+		shader.uniforms = { ...shader.uniforms, ...uniforms }
+		shader.fragmentShader = fragmentShader
 	}
 }
 
@@ -86,7 +110,9 @@ export function createGBufferMaterial(originalMaterial) {
 let props = Object.keys(gBufferMaterial)
 
 // delete the ones that start with "_"
-props = props.filter(key => !key.startsWith("_") && !key.startsWith("is") && key !== "uuid" && key !== "type")
+props = props.filter(
+	key => !key.startsWith("_") && !key.startsWith("is") && key !== "uuid" && key !== "type" && key !== "transparent"
+)
 
 // this function attempts to copy all the props from the original material to the new GBufferMaterial
 function copyAllPropsToGBufferMaterial(originalMaterial, gBufferMaterial) {

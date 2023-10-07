@@ -1,6 +1,6 @@
 import { Pass } from "postprocessing"
 import { Color, DepthTexture, FloatType, NearestFilter, Quaternion, Vector3, WebGLRenderTarget } from "three"
-import { getVisibleChildren, isChildMaterialRenderable } from "../utils/SceneUtils.js"
+import { didCameraMove, getVisibleChildren, isChildMaterialRenderable } from "../utils/SceneUtils.js"
 import { copyPropsToGBufferMaterial, createGBufferMaterial } from "./material/GBufferMaterial.js"
 
 const backgroundColor = new Color(0)
@@ -55,7 +55,7 @@ export class GBufferPass extends Pass {
 	setGBufferMaterialInScene() {
 		this.visibleMeshes = getVisibleChildren(this._scene)
 
-		// const cameraMoved = didCameraMove(this._camera, this.lastCameraPosition, this.lastCameraQuaternion)
+		const cameraMoved = didCameraMove(this._camera, this.lastCameraPosition, this.lastCameraQuaternion)
 
 		for (const c of this.visibleMeshes) {
 			const originalMaterial = c.material
@@ -73,7 +73,12 @@ export class GBufferPass extends Pass {
 
 			// gBufferMaterial.uniforms.resolution.value.set(this.renderTarget.width, this.renderTarget.height)
 			// gBufferMaterial.uniforms.frame.value = this.frame
-			// gBufferMaterial.uniforms.cameraMoved.value = cameraMoved
+
+			if (gBufferMaterial.uniforms) {
+				gBufferMaterial.uniforms.cameraNotMovedFrames.value = cameraMoved
+					? 0
+					: (gBufferMaterial.uniforms.cameraNotMovedFrames.value + 1) % 0xffff
+			}
 
 			c.visible = isChildMaterialRenderable(c, originalMaterial)
 

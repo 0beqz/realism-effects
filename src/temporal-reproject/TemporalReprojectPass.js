@@ -13,9 +13,7 @@ import { jitter } from "../taa/TAAUtils"
 import { TemporalReprojectMaterial } from "./material/TemporalReprojectMaterial"
 
 export const defaultTemporalReprojectPassOptions = {
-	blend: 0.9,
 	dilation: false,
-	constantBlend: false,
 	fullAccumulate: false,
 	neighborhoodClamp: false,
 	neighborhoodClampRadius: 1,
@@ -82,8 +80,6 @@ export class TemporalReprojectPass extends Pass {
 		this.fullscreenMaterial.defines.depthDistance = options.depthDistance.toPrecision(5)
 		this.fullscreenMaterial.defines.worldDistance = options.worldDistance.toPrecision(5)
 
-		this.fullscreenMaterial.uniforms.blend.value = options.blend
-		this.fullscreenMaterial.uniforms.constantBlend.value = options.constantBlend
 		this.fullscreenMaterial.uniforms.fullAccumulate.value = options.fullAccumulate
 		this.fullscreenMaterial.uniforms.neighborhoodClampIntensity.value = options.neighborhoodClampIntensity
 
