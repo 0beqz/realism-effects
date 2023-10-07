@@ -178,7 +178,7 @@ light.castShadow = true
 // const fog = new THREE.Fog(0xffffff, 10, 10.0001)
 // scene.fog = fog
 
-const useRenderPass = true
+const useRenderPass = false
 
 if (useRenderPass || scene.getObjectByProperty("isDirectionalLight", true)) {
 	const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
@@ -359,8 +359,8 @@ const initScene = async () => {
 		denoiseDiffuse: 25,
 		denoiseSpecular: 25.54,
 		radius: 16,
-		phi: 0.5979999999999979,
-		lumaPhi: 8.152,
+		phi: 0.1,
+		lumaPhi: 25.543,
 		depthPhi: 6.522000000000001,
 		normalPhi: 40.217,
 		roughnessPhi: 28.261,

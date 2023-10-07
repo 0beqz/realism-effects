@@ -1,7 +1,6 @@
 varying vec2 vUv;
 
 uniform sampler2D inputTexture;
-uniform sampler2D inputTexture2;
 uniform sampler2D depthTexture;
 uniform sampler2D normalTexture; // optional, in case no gBufferTexture is used
 uniform mat4 projectionMatrix;
@@ -17,22 +16,21 @@ uniform float specularPhi;
 uniform vec2 resolution;
 
 layout(location = 0) out vec4 gOutput0;
+
+#if textureCount == 2
+uniform sampler2D inputTexture2;
 layout(location = 1) out vec4 gOutput1;
+#endif
 
 #include <common>
 #include <gbuffer_packing>
 
 #define luminance(a) pow(dot(vec3(0.2125, 0.7154, 0.0721), a), 0.125)
 
-Material centerMat;
+Material mat;
 vec3 normal;
-float centerDepth;
-vec3 centerWorldPos;
+float depth;
 float glossiness;
-struct Neighbor {
-  vec4 texel;
-  float weight;
-};
 
 struct InputTexel {
   vec3 rgb;
@@ -43,32 +41,10 @@ struct InputTexel {
   bool isSpecular;
 };
 
-vec3 getWorldPos(float depth, vec2 coord) {
-  float z = depth * 2.0 - 1.0;
-  vec4 clipSpacePosition = vec4(coord * 2.0 - 1.0, z, 1.0);
-  vec4 viewSpacePosition = projectionMatrixInverse * clipSpacePosition;
-
-  // Perspective division
-  vec4 worldSpacePosition = cameraMatrixWorld * viewSpacePosition;
-  worldSpacePosition.xyz /= worldSpacePosition.w;
-  return worldSpacePosition.xyz;
-}
-
-float distToPlane(const vec3 worldPos, const vec3 neighborWorldPos, const vec3 worldNormal) {
-  vec3 toCurrent = worldPos - neighborWorldPos;
-  float distToPlane = abs(dot(toCurrent, worldNormal));
-
-  return distToPlane;
-}
-
-vec2 viewSpaceToScreenSpace(const vec3 position) {
-  vec4 projectedCoord = projectionMatrix * vec4(position, 1.0);
-  projectedCoord.xy /= projectedCoord.w;
-  // [-1, 1] --> [0, 1] (NDC to screen position)
-  projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;
-
-  return projectedCoord.xy;
-}
+struct Neighbor {
+  vec4 texel;
+  float weight;
+};
 
 void evaluateNeighbor(inout InputTexel inp, inout Neighbor neighbor) {
   // abort here as otherwise we'd lose too much precision
@@ -79,7 +55,7 @@ void evaluateNeighbor(inout InputTexel inp, inout Neighbor neighbor) {
   inp.totalWeight += neighbor.weight;
 }
 
-void getNeighborWeight(inout InputTexel[textureCount] inputs, Neighbor[textureCount] neighbors, inout vec2 neighborUv) {
+void getNeighborWeight(inout InputTexel[textureCount] inputs, inout Neighbor[textureCount] neighbors, inout vec2 neighborUv) {
 #ifdef GBUFFER_TEXTURE
   Material neighborMat = getMaterial(gBufferTexture, neighborUv);
   vec3 neighborNormal = neighborMat.normal;
@@ -93,13 +69,11 @@ void getNeighborWeight(inout InputTexel[textureCount] inputs, Neighbor[textureCo
   if (neighborDepth == 1.0)
     return;
 
-  vec3 neighborWorldPos = getWorldPos(neighborDepth, neighborUv);
-
   float normalDiff = 1. - max(dot(normal, neighborNormal), 0.);
-  float depthDiff = 10. * distToPlane(centerWorldPos, neighborWorldPos, centerMat.normal);
+  float depthDiff = 10000. * abs(depth - neighborDepth);
 
 #ifdef GBUFFER_TEXTURE
-  float roughnessDiff = abs(centerMat.roughness - neighborMat.roughness);
+  float roughnessDiff = abs(mat.roughness - neighborMat.roughness);
 
   float wBasic = exp(-normalDiff * normalPhi - depthDiff * depthPhi - roughnessDiff * roughnessPhi);
 #else
@@ -110,28 +84,30 @@ void getNeighborWeight(inout InputTexel[textureCount] inputs, Neighbor[textureCo
 
   for (int i = 0; i < textureCount; i++) {
     vec4 t;
+    float specularFactor = 1.;
+
     if (isTextureSpecular[i]) {
       t = textureLod(inputTexture2, neighborUv, 0.);
+      specularFactor = exp(-glossiness * specularPhi);
     } else {
       t = textureLod(inputTexture, neighborUv, 0.);
     }
 
     float lumaDiff = abs(inputs[i].luminance - luminance(t.rgb));
-    float lumaFactor = exp(-lumaDiff * lumaPhi * (1. - inputs[i].w));
-    float specularFactor = isTextureSpecular[i] ? exp(-glossiness * specularPhi) : 1.;
+    float lumaFactor = exp(-lumaDiff * lumaPhi);
 
-    float w = specularFactor * mix(wBasic, sw, inputs[i].w);
+    float w = specularFactor * mix(wBasic * lumaFactor, sw, inputs[i].w);
 
     // calculate the final weight of the neighbor
-    w = inputs[i].w * pow(w * lumaFactor, 0.5 / inputs[i].w);
+    w *= inputs[i].w;
 
     neighbors[i] = Neighbor(t, w);
   }
 }
 
-vec3 getNormal(Material centerMat) {
+vec3 getNormal(Material mat) {
 #ifdef GBUFFER_TEXTURE
-  return centerMat.normal;
+  return mat.normal;
 #else
   vec3 depthVelocityTexel = textureLod(normalTexture, vUv, 0.).xyz;
   return unpackNormal(depthVelocityTexel.b);
@@ -148,9 +124,9 @@ void outputTexel(inout vec4 outputFrag, InputTexel inp) {
 }
 
 void main() {
-  centerDepth = textureLod(depthTexture, vUv, 0.).r;
+  depth = textureLod(depthTexture, vUv, 0.).r;
 
-  if (centerDepth == 1.0) {
+  if (depth == 1.0) {
     discard;
     return;
   }
@@ -166,7 +142,12 @@ void main() {
       t = textureLod(inputTexture2, vUv, 0.);
     }
 
-    InputTexel inp = InputTexel(t.rgb, t.a, luminance(t.rgb), 1. / pow(t.a + 1., phi), 1., isTextureSpecular[i]);
+    // check: https://www.desmos.com/calculator/gp9bylydht for graphs
+    // float age = 1. / log(pow(t.a, 0.2 * (t.a + 4.)) + 3. + t.a);
+    float age = 1. / (log(pow(t.a, phi * (t.a + 10.)) + 1. + t.a) + 1.);
+    // float age = 1. / (t.a + 1.);
+
+    InputTexel inp = InputTexel(t.rgb, t.a, luminance(t.rgb), age, 1., isTextureSpecular[i]);
     maxAlpha = max(maxAlpha, inp.a);
 
     inputs[i] = inp;
@@ -181,25 +162,19 @@ void main() {
     return;
   }
 
-  centerMat = getMaterial(gBufferTexture, vUv);
-  normal = getNormal(centerMat);
+  mat = getMaterial(gBufferTexture, vUv);
+  normal = getNormal(mat);
+  glossiness = max(0., 4. * (1. - mat.roughness / 0.25));
 
-  glossiness = max(0., 4. * (1. - centerMat.roughness / 0.25));
-
-  centerWorldPos = getWorldPos(centerDepth, vUv);
-  vec3 cameraPos = cameraMatrixWorld[3].xyz;
-  float distanceToCamera = distance(centerWorldPos, cameraPos);
-
-  float roughnessRadius = mix(sqrt(centerMat.roughness), 1., 0.5 * (1. - centerMat.metalness));
+  float roughnessRadius = mix(sqrt(mat.roughness), 1., 0.5 * (1. - mat.metalness));
 
   vec4 random = blueNoise();
-  float r = sqrt(random.r) * exp(-maxAlpha * 0.01) * radius * roughnessRadius;
+  float r = radius * roughnessRadius * sqrt(random.r) * exp(-maxAlpha * 0.01);
 
   // rotate the poisson disk
   float angle = random.g * 2. * PI;
   float s = sin(angle), c = cos(angle);
-  mat2 rm = mat2(c, -s, s, c);
-  rm *= r * 25.0 / distanceToCamera;
+  mat2 rm = mat2(c, -s, s, c) * r;
 
   for (int i = 0; i < 8; i++) {
     vec2 offset = rm * poissonDisk[i];
@@ -211,8 +186,6 @@ void main() {
     for (int j = 0; j < textureCount; j++)
       evaluateNeighbor(inputs[j], neighbors[j]);
   }
-
-  // inputs[0].rgb = vec3(specularFactor);
 
   outputTexel(gOutput0, inputs[0]);
 
