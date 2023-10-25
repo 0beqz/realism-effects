@@ -157,9 +157,13 @@ void main() {
   getTexels(inputTexel, textureSampledThisFrame);
 
   // ! todo: find better solution
+
   if (textureCount > 1 && depth == 1.0) {
-    gOutput[0] = max(inputTexel[0], vec4(0.));
-    gOutput[1] = max(inputTexel[1], vec4(0.));
+#pragma unroll_loop_start
+    for (int i = 0; i < textureCount; i++) {
+      gOutput[i] = max(inputTexel[i], vec4(0.));
+    }
+#pragma unroll_loop_end
     return;
   }
 
