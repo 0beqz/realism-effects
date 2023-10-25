@@ -105,7 +105,8 @@ void main() {
 
   // filter out background
   if (unpackedDepth == 1.0) {
-    gl_FragColor = vec4(vec3(0.), 1.);
+    vec4 directLight = textureLod(directLightTexture, vUv, 0.0);
+    gl_FragColor = packTwoVec4(directLight, directLight);
     return;
   }
 

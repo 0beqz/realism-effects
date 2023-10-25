@@ -4,6 +4,7 @@ import {
 	FramebufferTexture,
 	LinearFilter,
 	Matrix4,
+	NearestFilter,
 	Quaternion,
 	Vector2,
 	Vector3,
@@ -58,8 +59,8 @@ export class TemporalReprojectPass extends Pass {
 		options = { ...defaultTemporalReprojectPassOptions, ...options }
 
 		this.renderTarget = new WebGLMultipleRenderTargets(1, 1, textureCount, {
-			minFilter: LinearFilter,
-			magFilter: LinearFilter,
+			minFilter: NearestFilter,
+			magFilter: NearestFilter,
 			type: texture.type,
 			depthBuffer: false
 		})

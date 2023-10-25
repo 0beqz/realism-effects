@@ -51,7 +51,7 @@ export default class Denoiser {
 			this.temporalReprojectPass.overrideAccumulatedTextures = this.denoisePass.renderTargetB.texture
 		}
 
-		const composerInputTextures = this.denoisePass.texture
+		const composerInputTextures = this.denoisePass?.texture ?? textures
 
 		if (options.denoiseMode.startsWith("full")) {
 			this.denoiserComposePass = new DenoiserComposePass(

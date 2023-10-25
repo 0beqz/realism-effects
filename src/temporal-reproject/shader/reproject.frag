@@ -85,41 +85,11 @@ void clampNeighborhood(const sampler2D tex, inout vec3 color, vec3 inputColor, c
 void getVelocityNormalDepth(inout vec2 dilatedUv, out vec2 vel, out vec3 normal, out float depth) {
   vec2 centerUv = dilatedUv;
 
-#ifdef dilation
-  float closestDepth = 0.0;
-  vec4 closestVelocityTexel = vec4(0.0);
-
-  for (int x = -1; x <= 1; x++) {
-    for (int y = -1; y <= 1; y++) {
-      vec2 offset = vec2(x, y) * invTexSize;
-      vec2 neighborUv = centerUv + offset;
-
-      vec4 velocityTexel = textureLod(velocityTexture, neighborUv, 0.0);
-      float neighborDepth = velocityTexel.a;
-
-      if (x == 0 && y == 0) {
-        vel = velocityTexel.rg;
-      }
-
-      if (neighborDepth > closestDepth) {
-        closestDepth = neighborDepth;
-        closestVelocityTexel = velocityTexel;
-
-        dilatedUv = neighborUv;
-      }
-    }
-  }
-
-  normal = unpackNormal(closestVelocityTexel.b);
-  depth = closestDepth;
-
-#else
   vec4 velocityTexel = textureLod(velocityTexture, centerUv, 0.0);
 
   vel = velocityTexel.rg;
   normal = unpackNormal(velocityTexel.b);
   depth = velocityTexel.a;
-#endif
 }
 
 #define PLANE_DISTANCE 10.
@@ -183,11 +153,11 @@ float validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const
 
 vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength) {
 #ifndef PERSPECTIVE_CAMERA
-  return vUv - velocity;
+  return vec2(-1.);
 #endif
 
   if (rayLength > 10.0e3) {
-    return vUv - velocity;
+    return vec2(-1.);
   }
 
   vec3 cameraRay = rayOrig - cameraPos;

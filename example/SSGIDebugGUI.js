@@ -34,7 +34,7 @@ export class SSGIDebugGUI {
 
 		denoiseFolder.addInput(params, "phi", {
 			min: 0,
-			max: 1,
+			max: 0.3,
 			step: 0.001
 		})
 

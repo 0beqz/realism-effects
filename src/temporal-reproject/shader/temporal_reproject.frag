@@ -43,7 +43,7 @@ void accumulate(inout vec4 outputColor, inout vec4 inp, inout vec4 acc, inout fl
 
   vec2 reprojectedUv = reprojectedUvConfidence.xy;
   float confidence = reprojectedUvConfidence.z;
-  confidence = pow(confidence, 0.5);
+  confidence = pow(confidence, 0.125);
 
   float accumBlend = 1. - 1. / (acc.a + 1.0);
   accumBlend = mix(0., accumBlend, confidence);
@@ -54,7 +54,7 @@ void accumulate(inout vec4 outputColor, inout vec4 inp, inout vec4 acc, inout fl
   // maxValue *= min(0.9925, maxValue);
   maxValue *= keepData;
 
-  const float roughnessMaximum = 0.1;
+  const float roughnessMaximum = 0.025;
 
   if (doReprojectSpecular && roughness >= 0.0 && roughness < roughnessMaximum) {
     float maxRoughnessValue = mix(0.8, maxValue, roughness / roughnessMaximum);
@@ -69,7 +69,6 @@ void accumulate(inout vec4 outputColor, inout vec4 inp, inout vec4 acc, inout fl
 
   outputColor.rgb = mix(inp.rgb, acc.rgb, temporalReprojectMix);
   outputColor.a = acc.a;
-
   undoColorTransform(outputColor.rgb);
 }
 
@@ -80,7 +79,6 @@ void reproject(inout vec4 inp, inout vec4 acc, sampler2D accumulatedTexture, ino
   vec3 uvc = doReprojectSpecular ? reprojectedUvSpecular : reprojectedUvDiffuse;
 
   vec2 uv = uvc.xy;
-  float confidence = uvc.z;
   acc = sampleReprojectedTexture(accumulatedTexture, uv);
   transformColor(acc.rgb);
 
@@ -132,7 +130,7 @@ void computeReprojectedUv(float depth, vec3 worldPos, vec3 worldNormal) {
   reprojectedUvDiffuse = getReprojectedUV(false, depth, worldPos, worldNormal);
 
 #if inputType == DIFFUSE_SPECULAR || inputType == SPECULAR
-  reprojectedUvSpecular = rayLength == 0.0 ? reprojectedUvDiffuse : getReprojectedUV(true, depth, worldPos, worldNormal);
+  reprojectedUvSpecular = getReprojectedUV(true, depth, worldPos, worldNormal);
 
   if (reprojectedUvSpecular.x == -1.0) {
     reprojectedUvSpecular = reprojectedUvDiffuse;
@@ -153,16 +151,17 @@ void main() {
   vec2 dilatedUv = vUv;
   getVelocityNormalDepth(dilatedUv, velocity, worldNormal, depth);
 
-  // ! todo: find better solution
-  if (textureCount > 1 && depth == 1.0) {
-    discard;
-    return;
-  }
-
   vec4 inputTexel[textureCount], accumulatedTexel[textureCount];
   bool textureSampledThisFrame[textureCount];
 
   getTexels(inputTexel, textureSampledThisFrame);
+
+  // ! todo: find better solution
+  if (textureCount > 1 && depth == 1.0) {
+    gOutput[0] = max(inputTexel[0], vec4(0.));
+    gOutput[1] = max(inputTexel[1], vec4(0.));
+    return;
+  }
 
   computeGVariables(dilatedUv, depth);
   getRoughnessRayLength(inputTexel);
