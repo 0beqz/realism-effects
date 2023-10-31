@@ -230,6 +230,17 @@ If you'd like, you could also buy me a coffee:
 - Time Machine (from TRAA demo scene): [vertexmonster](https://sketchfab.com/vertexmonster)
 - Golden Knight: [FrancisLam](https://sketchfab.com/francislam)
 
+## Possible Future Work
+#### Screen Space Horizon GI
+- Paper: https://arxiv.org/pdf/2301.11376.pdf
+- Shadertoy Demo: https://www.shadertoy.com/view/dsGBzW
+- Reddit Demos with author information: https://www.reddit.com/r/GraphicsProgramming/comments/17k4hpr/screen_space_horizon_gi/
+
+#### Screen Space Contact Shadows
+- Article discussing implementation: https://panoskarabelas.com/posts/screen_space_shadows/
+- Presentation video from SCC: https://youtu.be/btWy-BAERoY?t=1933
+- Example code and presentation from SCC: https://www.bendstudio.com/blog/inside-bend-screen-space-shadows/
+
 ## Resources
 
 ### Tracing in screen-space
