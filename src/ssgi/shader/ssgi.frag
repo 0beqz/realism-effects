@@ -361,9 +361,6 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
 
   hitPos = viewPos;
 
-  // don't raymarch if the point is very far away otherwise there'll be artifacts like self occlusion
-  float cameraDistance = length(hitPos);
-
   vec2 coords = RayMarch(l, hitPos, random);
 
   bool allowMissedRays = false;
@@ -413,7 +410,7 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
     vec2 dCoords = smoothstep(0.2, 0.6, abs(vec2(0.5, 0.5) - coords.xy));
     float screenEdgeFactor = clamp(1.0 - (dCoords.x + dCoords.y), 0.0, 1.0);
 
-    SSGI = mix(envColor, SSGI, screenEdgeFactor);
+    // SSGI = mix(envColor, SSGI, screenEdgeFactor);
 
   } else {
     return envColor;

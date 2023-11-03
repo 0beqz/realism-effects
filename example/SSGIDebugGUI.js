@@ -4,65 +4,66 @@ import { Pane } from "tweakpane"
 
 export class SSGIDebugGUI {
 	constructor(ssgiEffect, params = SSGIEffect.DefaultOptions) {
+		params = { ...SSGIEffect.DefaultOptions, ...params }
 		const pane = new Pane()
 		this.pane = pane
 		pane.containerElem_.style.userSelect = "none"
 		pane.containerElem_.style.width = "380px"
 
 		pane.on("change", ev => {
-			const { presetKey } = ev
+			const name = ev.target.controller.labelController.props.valMap_.label.value_
 
-			ssgiEffect[presetKey] = ev.value
+			ssgiEffect[name] = ev.value
 		})
 
 		params = { ...SSGIEffect.DefaultOptions, ...params }
 
 		const generalFolder = pane.addFolder({ title: "General" })
-		generalFolder.addInput(params, "distance", { min: 0.001, max: 50, step: 0.01 })
-		generalFolder.addInput(params, "thickness", {
+		generalFolder.addBinding(params, "distance", { min: 0.001, max: 50, step: 0.01 })
+		generalFolder.addBinding(params, "thickness", {
 			min: 0,
 			max: 10,
 			step: 0.01
 		})
 
-		generalFolder.addInput(params, "envBlur", { min: 0, max: 1, step: 0.01 })
-		generalFolder.addInput(params, "importanceSampling")
+		generalFolder.addBinding(params, "envBlur", { min: 0, max: 1, step: 0.01 })
+		generalFolder.addBinding(params, "importanceSampling")
 
 		const denoiseFolder = pane.addFolder({ title: "Denoise" })
-		denoiseFolder.addInput(params, "denoiseIterations", { min: 0, max: 5, step: 1 })
-		denoiseFolder.addInput(params, "radius", { min: 0, max: 32, step: 1 })
+		denoiseFolder.addBinding(params, "denoiseIterations", { min: 0, max: 5, step: 1 })
+		denoiseFolder.addBinding(params, "radius", { min: 0, max: 32, step: 1 })
 
-		denoiseFolder.addInput(params, "phi", {
+		denoiseFolder.addBinding(params, "phi", {
 			min: 0,
 			max: 0.3,
 			step: 0.001
 		})
 
-		denoiseFolder.addInput(params, "depthPhi", {
+		denoiseFolder.addBinding(params, "depthPhi", {
 			min: 0,
 			max: 50,
 			step: 0.001
 		})
 
-		denoiseFolder.addInput(params, "normalPhi", {
+		denoiseFolder.addBinding(params, "normalPhi", {
 			min: 0,
 			max: 100,
 			step: 0.001
 		})
 
-		denoiseFolder.addInput(params, "roughnessPhi", {
+		denoiseFolder.addBinding(params, "roughnessPhi", {
 			min: 0,
 			max: 100,
 			step: 0.001
 		})
 
-		denoiseFolder.addInput(params, "lumaPhi", {
+		denoiseFolder.addBinding(params, "lumaPhi", {
 			min: 0,
 			max: 50,
 			step: 0.001
 		})
 
-		denoiseFolder.addInput(params, "specularPhi", {
+		denoiseFolder.addBinding(params, "specularPhi", {
 			min: 0,
 			max: 5,
 			step: 0.001
@@ -70,13 +71,13 @@ export class SSGIDebugGUI {
 
 		const definesFolder = pane.addFolder({ title: "Tracing" })
 
-		definesFolder.addInput(params, "steps", { min: 0, max: 256, step: 1 })
-		definesFolder.addInput(params, "refineSteps", { min: 0, max: 16, step: 1 })
-		definesFolder.addInput(params, "spp", { min: 1, max: 32, step: 1 })
-		definesFolder.addInput(params, "missedRays")
+		definesFolder.addBinding(params, "steps", { min: 0, max: 256, step: 1 })
+		definesFolder.addBinding(params, "refineSteps", { min: 0, max: 16, step: 1 })
+		definesFolder.addBinding(params, "spp", { min: 1, max: 32, step: 1 })
+		definesFolder.addBinding(params, "missedRays")
 
 		const resolutionFolder = pane.addFolder({ title: "Resolution", expanded: false })
-		resolutionFolder.addInput(params, "resolutionScale", { min: 0.25, max: 1, step: 0.25 })
+		resolutionFolder.addBinding(params, "resolutionScale", { min: 0.25, max: 1, step: 0.25 })
 
 		let textures = [
 			ssgiEffect.ssgiPass.renderTarget.texture,
@@ -109,7 +110,7 @@ export class SSGIDebugGUI {
 
 		const debugFolder = pane.addFolder({ title: "Debug", expanded: false })
 		debugFolder
-			.addInput(textureDebugParams, "Texture", {
+			.addBinding(textureDebugParams, "Texture", {
 				options: textureObject
 			})
 			.on("change", ev => {

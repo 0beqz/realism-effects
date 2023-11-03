@@ -25,6 +25,6 @@
 		"realism-effects": "^1.0.2",
 		"stats-gl": "^1.0.4",
 		"three": "^0.156.0",
-		"tweakpane": "^3.1.0"
+		"tweakpane": "^4.0.1"
 	}
 }

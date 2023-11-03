@@ -367,10 +367,10 @@ tslib@^2.4.0:
   resolved "https://registry.npmjs.org/tslib/-/tslib-2.4.0.tgz"
   integrity sha512-d6xOpEDfsi2CZVlPQzGeux8XMwLT9hssAsaPYExaQMuYskwb+x1x7J371tWlbBdWHroy99KnVB6qIkUbs5X3UQ==
 
-tweakpane@^3.1.0:
-  version "3.1.0"
-  resolved "https://registry.npmjs.org/tweakpane/-/tweakpane-3.1.0.tgz"
-  integrity sha512-PGAp/LPQdHwzL7/iAW4lV1p9iPQTti7YMjMWO48CoYjvZRS59RmgQnhEGzKzqST1JnmOYmQUjTe8bdhlZRJs5A==
+tweakpane@^4.0.1:
+  version "4.0.1"
+  resolved "https://registry.npmjs.org/tweakpane/-/tweakpane-4.0.1.tgz"
+  integrity sha512-1JmmGbF4h2zuFbpN1XfIWcV0kLbBUgSXpR1QtW19vJFx44asnCrufRSvd69OItOFMEWgbVtoiWM2uDPUEUKcMQ==
 
 universalify@^2.0.0:
   version "2.0.0"

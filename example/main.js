@@ -29,6 +29,7 @@ import { TAAPass } from "../src/taa/TAAPass"
 import { VelocityDepthNormalPass } from "../src/temporal-reproject/pass/VelocityDepthNormalPass"
 import { SSGIDebugGUI } from "./SSGIDebugGUI"
 import "./style.css"
+import GradualBackgroundEffect from "../src/gradual-background/GradualBackgroundEffect"
 
 let traaEffect
 let traaPass
@@ -388,7 +389,7 @@ const initScene = async () => {
 	const aaFolder = pane.addFolder({ title: "Anti-aliasing", expanded: false })
 
 	aaFolder
-		.addInput(guiParams, "Method", {
+		.addBinding(guiParams, "Method", {
 			options: {
 				TRAA: "TRAA",
 
@@ -403,6 +404,7 @@ const initScene = async () => {
 		})
 
 	const modelNames = [
+		"squid_game",
 		"amg",
 		"chevrolet",
 		"clay_bust_study",
@@ -412,7 +414,6 @@ const initScene = async () => {
 		"flashbang_grenade",
 		"motorbike",
 		"statue",
-		"squid_game",
 		"swordsman"
 	]
 
@@ -426,7 +427,7 @@ const initScene = async () => {
 
 	const assetsFolder = pane.addFolder({ title: "Assets" })
 	assetsFolder
-		.addInput(sceneParams, "Environment", {
+		.addBinding(sceneParams, "Environment", {
 			options: envObject
 		})
 		.on("change", ev => {
@@ -439,11 +440,16 @@ const initScene = async () => {
 			rgbeLoader.load("hdr/" + ev.value + "_1k.hdr", initEnvMap)
 		})
 
+	let curModel = modelNames[0]
+
 	assetsFolder
-		.addInput(sceneParams, "Model", {
+		.addBinding(sceneParams, "Model", {
 			options: modelObject
 		})
 		.on("change", ev => {
+			if (ev.value === curModel) return
+			curModel = ev.value
+
 			gltflLoader.load(ev.value + ".optimized.glb", setupAsset)
 		})
 
@@ -485,7 +491,14 @@ const initScene = async () => {
 			if (fps >= 256) {
 				const sharpnessEffect = new SharpnessEffect({ sharpness: 0.75 })
 
-				composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, vignetteEffect, lutEffect))
+				const depthTexture = ssgiEffect.depthTexture
+
+				const bgColor = new Color(0xffffff)
+
+				const gradualBackgroundEffect = new GradualBackgroundEffect(camera, depthTexture, bgColor, 5)
+				composer.addPass(
+					new POSTPROCESSING.EffectPass(camera, ssgiEffect, vignetteEffect, gradualBackgroundEffect, lutEffect)
+				)
 
 				// const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass, {
 				// 	intensity: 1

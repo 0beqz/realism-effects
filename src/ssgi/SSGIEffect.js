@@ -337,6 +337,10 @@ export class SSGIEffect extends Effect {
 		}
 	}
 
+	get depthTexture() {
+		return this.ssgiPass.gBufferPass.depthTexture
+	}
+
 	update(renderer, inputBuffer) {
 		this.keepEnvMapUpdated(renderer)
 
