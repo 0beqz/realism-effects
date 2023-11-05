@@ -506,7 +506,9 @@ const initScene = async () => {
 
 				composer.addPass(new POSTPROCESSING.EffectPass(camera, sharpnessEffect))
 			} else {
-				composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, vignetteEffect, lutEffect))
+				composer.addPass(
+					new POSTPROCESSING.EffectPass(camera, ssgiEffect, toneMappingEffect, vignetteEffect, lutEffect)
+				)
 				loadFiles--
 			}
 		}
