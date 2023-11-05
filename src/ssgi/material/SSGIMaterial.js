@@ -1,5 +1,5 @@
 ﻿/* eslint-disable camelcase */
-import { Matrix4, NoBlending, ShaderMaterial, Uniform, Vector2, Vector3 } from "three"
+import { Color, Matrix4, NoBlending, ShaderMaterial, Uniform, Vector2, Vector3 } from "three"
 import vertexShader from "../../utils/shader/basic.vert"
 import fragmentShader from "../shader/ssgi.frag"
 import ssgi_utils from "../shader/ssgi_utils.frag"
@@ -36,6 +36,7 @@ export class SSGIMaterial extends ShaderMaterial {
 				envMapInfo: { value: new EquirectHdrInfoUniform() },
 				envMapPosition: new Uniform(new Vector3()),
 				envMapSize: new Uniform(new Vector3()),
+				backgroundColor: new Uniform(new Color()),
 				resolution: new Uniform(new Vector2()),
 				blueNoiseRepeat: new Uniform(new Vector2())
 			},

@@ -1,14 +1,12 @@
 ﻿uniform sampler2D inputTexture;
 uniform sampler2D sceneTexture;
 uniform sampler2D depthTexture;
-uniform int toneMapping;
 uniform bool isDebug;
 
 uniform float cameraNear;
 uniform float cameraFar;
 
 #include <fog_pars_fragment>
-#include <tonemapping_pars_fragment>
 
 // source: https://github.com/mrdoob/three.js/blob/79ea10830dfc97b6c0a7e29d217c7ff04c081095/examples/jsm/shaders/BokehShader.js#L66
 float getViewZ(const in float depth) {
@@ -41,30 +39,6 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 
     ssgiClr = mix(ssgiClr, fogColor, fogFactor);
 #endif
-
-    switch (toneMapping) {
-    case 1:
-      ssgiClr = LinearToneMapping(ssgiClr);
-      break;
-
-    case 2:
-      ssgiClr = ReinhardToneMapping(ssgiClr);
-      break;
-
-    case 3:
-      ssgiClr = OptimizedCineonToneMapping(ssgiClr);
-      break;
-
-    case 4:
-      ssgiClr = ACESFilmicToneMapping(ssgiClr);
-      break;
-
-    case 5:
-      ssgiClr = CustomToneMapping(ssgiClr);
-      break;
-    }
-
-    ssgiClr *= toneMappingExposure;
   }
 
   outputColor = vec4(ssgiClr, 1.0);

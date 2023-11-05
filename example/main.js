@@ -29,7 +29,7 @@ import { TAAPass } from "../src/taa/TAAPass"
 import { VelocityDepthNormalPass } from "../src/temporal-reproject/pass/VelocityDepthNormalPass"
 import { SSGIDebugGUI } from "./SSGIDebugGUI"
 import "./style.css"
-import GradualBackgroundEffect from "../src/gradual-background/GradualBackgroundEffect"
+import { GradualBackgroundEffect } from "../src/gradual-background/GradualBackgroundEffect"
 
 let traaEffect
 let traaPass
@@ -378,7 +378,7 @@ const initScene = async () => {
 	const velocityDepthNormalPass = new VelocityDepthNormalPass(scene, camera)
 	composer.addPass(velocityDepthNormalPass)
 	renderer.toneMapping = THREE.ACESFilmicToneMapping
-	renderer.toneMappingExposure = 1.3
+	renderer.toneMappingExposure = 1.5
 
 	traaEffect = new TRAAEffect(scene, camera, velocityDepthNormalPass)
 
@@ -468,7 +468,7 @@ const initScene = async () => {
 
 	ssgiEffect = new SSGIEffect(composer, scene, camera, { ...options, velocityDepthNormalPass })
 	// ssgiEffect = new SSREffect(composer, scene, camera, {
-	// 	denoiseMode: "full",
+	// 	denoiseMode: "full_temporal",
 	// 	velocityDepthNormalPass
 	// })
 	window.ssgiEffect = ssgiEffect
@@ -487,18 +487,18 @@ const initScene = async () => {
 	new POSTPROCESSING.LUT3dlLoader().load("lut.3dl").then(lutTexture => {
 		const lutEffect = new POSTPROCESSING.LUT3DEffect(lutTexture)
 
+		const toneMappingEffect = new POSTPROCESSING.ToneMappingEffect()
+		toneMappingEffect.mode = POSTPROCESSING.ToneMappingMode.ACES_FILMIC
+
 		if (!traaTest) {
 			if (fps >= 256) {
 				const sharpnessEffect = new SharpnessEffect({ sharpness: 0.75 })
 
-				const depthTexture = ssgiEffect.depthTexture
+				// const depthTexture = ssgiEffect.depthTexture
+				// const bgColor = new Color(0xffffff)
 
-				const bgColor = new Color(0xffffff)
-
-				const gradualBackgroundEffect = new GradualBackgroundEffect(camera, depthTexture, bgColor, 5)
-				composer.addPass(
-					new POSTPROCESSING.EffectPass(camera, ssgiEffect, vignetteEffect, gradualBackgroundEffect, lutEffect)
-				)
+				// const gradualBackgroundEffect = new GradualBackgroundEffect(camera, depthTexture, bgColor, 51)
+				composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, toneMappingEffect))
 
 				// const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass, {
 				// 	intensity: 1

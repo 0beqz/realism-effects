@@ -9,6 +9,7 @@ import { PoissionDenoisePass } from "./denoise/pass/PoissionDenoisePass"
 import { HBAOEffect } from "./hbao/HBAOEffect"
 import { TAAPass } from "./taa/TAAPass"
 import { SharpnessEffect } from "./sharpness/SharpnessEffect"
+import { GradualBackgroundEffect } from "./gradual-background/GradualBackgroundEffect"
 
 export {
 	SSGIEffect,
@@ -21,5 +22,6 @@ export {
 	TemporalReprojectPass,
 	PoissionDenoisePass,
 	HBAOEffect,
-	SharpnessEffect
+	SharpnessEffect,
+	GradualBackgroundEffect
 }

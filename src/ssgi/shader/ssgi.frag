@@ -4,6 +4,7 @@ uniform sampler2D accumulatedTexture;
 uniform sampler2D depthTexture;
 uniform sampler2D velocityTexture;
 uniform sampler2D directLightTexture;
+uniform vec3 backgroundColor;
 
 uniform mat4 projectionMatrix;
 uniform mat4 projectionMatrixInverse;
@@ -406,12 +407,13 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
 
     SSGI = reprojectedGI.rgb;
 
-    // source: https://imanolfotia.com/blog/1
-    vec2 dCoords = smoothstep(0.2, 0.6, abs(vec2(0.5, 0.5) - coords.xy));
-    float screenEdgeFactor = clamp(1.0 - (dCoords.x + dCoords.y), 0.0, 1.0);
+    float aspect = resolution.x / resolution.y;
 
-    // SSGI = mix(envColor, SSGI, screenEdgeFactor);
+    float border = 0.2;
+    float borderFactor = smoothstep(0.0, border, coords.x) * smoothstep(1.0, 1.0 - border, coords.x) * smoothstep(0.0, border, coords.y) *
+                         smoothstep(1.0, 1.0 - border, coords.y);
 
+    SSGI = mix(envColor, SSGI, borderFactor);
   } else {
     return envColor;
   }

@@ -1,7 +1,7 @@
 import { Effect } from "postprocessing"
 
 // create a postprocessing.js effect class with all the required methods such as update()
-export default class GradualBackgroundEffect extends Effect {
+export class GradualBackgroundEffect extends Effect {
 	constructor(camera, depthTexture, backgroundColor, maxDistance = 5) {
 		const fragmentShader = /* glsl */ `
         uniform sampler2D depthTexture;
@@ -40,7 +40,7 @@ export default class GradualBackgroundEffect extends Effect {
             vec3 viewPos = getViewPosition(viewZ);
             vec3 worldPos = (cameraMatrixWorld * vec4(viewPos, 1.)).xyz;
             float distToCenter = length(worldPos.xz) + max(0., -worldPos.y);
-            float fade = clamp(pow(distToCenter, 2.) * 0.1 - maxDistance, 0., 1.);
+            float fade = clamp(pow(distToCenter, 0.1) * 15.0 - maxDistance, 0., 1.);
 
             vec3 color = mix(inputColor.rgb, backgroundColor, fade);
 

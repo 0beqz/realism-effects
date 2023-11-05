@@ -1,8 +1,9 @@
 import { Pass } from "postprocessing"
-import { FloatType, HalfFloatType, LinearFilter, NearestFilter, WebGLRenderTarget } from "three"
+import { Color, FloatType, HalfFloatType, LinearFilter, NearestFilter, WebGLRenderTarget } from "three"
 import { GBufferPass } from "../../gbuffer/GBufferPass.js"
 import { SSGIMaterial } from "../material/SSGIMaterial.js"
 
+const blackColor = new Color(0)
 export class SSGIPass extends Pass {
 	defaultFragmentShader = ""
 	frame = 21483
@@ -85,6 +86,8 @@ export class SSGIPass extends Pass {
 		this.fullscreenMaterial.uniforms.farMinusNear.value = this._camera.far - this._camera.near
 		this.fullscreenMaterial.uniforms.nearMulFar.value = this._camera.near * this._camera.far
 		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.ssgiEffect.denoiser.texture
+		const bgColor = this._scene.background instanceof Color ? this._scene.background : blackColor
+		this.fullscreenMaterial.uniforms.backgroundColor.value.copy(bgColor)
 
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)

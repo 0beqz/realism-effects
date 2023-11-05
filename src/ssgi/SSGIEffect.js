@@ -3,7 +3,6 @@ import {
 	Color,
 	LinearFilter,
 	LinearMipMapLinearFilter,
-	NoToneMapping,
 	SRGBColorSpace,
 	ShaderChunk,
 	Uniform,
@@ -58,8 +57,7 @@ export class SSGIEffect extends Effect {
 				["fogFar", new Uniform(0)],
 				["fogDensity", new Uniform(0)],
 				["cameraNear", new Uniform(0)],
-				["cameraFar", new Uniform(0)],
-				["toneMapping", new Uniform(NoToneMapping)]
+				["cameraFar", new Uniform(0)]
 			]),
 			defines: new Map([["PERSPECTIVE_CAMERA", camera.isPerspectiveCamera ? "1" : "0"], ...defines])
 		})
@@ -374,7 +372,6 @@ export class SSGIEffect extends Effect {
 		this.uniforms.get("inputTexture").value = this.outputTexture[0] ?? this.outputTexture
 		this.uniforms.get("sceneTexture").value = sceneBuffer.texture
 		this.uniforms.get("depthTexture").value = this.ssgiPass.gBufferPass.depthTexture
-		this.uniforms.get("toneMapping").value = renderer.toneMapping
 
 		// update the fog uniforms
 		if (this._scene.fog) {
