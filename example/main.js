@@ -30,6 +30,7 @@ import { VelocityDepthNormalPass } from "../src/temporal-reproject/pass/Velocity
 import { SSGIDebugGUI } from "./SSGIDebugGUI"
 import "./style.css"
 import { GradualBackgroundEffect } from "../src/gradual-background/GradualBackgroundEffect"
+import { SparkleEffect } from "../src/sparkle/SparkleEffect"
 
 let traaEffect
 let traaPass
@@ -495,16 +496,18 @@ const initScene = async () => {
 				const sharpnessEffect = new SharpnessEffect({ sharpness: 0.75 })
 
 				// const depthTexture = ssgiEffect.depthTexture
+				const gBufferPass = ssgiEffect.ssgiPass.gBufferPass
 				// const bgColor = new Color(0xffffff)
 
 				// const gradualBackgroundEffect = new GradualBackgroundEffect(camera, depthTexture, bgColor, 51)
+				const sparkleEffect = new SparkleEffect(camera, gBufferPass)
 				composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, toneMappingEffect))
 
 				// const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass, {
 				// 	intensity: 1
 				// })
 
-				composer.addPass(new POSTPROCESSING.EffectPass(camera, sharpnessEffect))
+				composer.addPass(new POSTPROCESSING.EffectPass(camera, sharpnessEffect, sparkleEffect))
 			} else {
 				composer.addPass(
 					new POSTPROCESSING.EffectPass(camera, ssgiEffect, toneMappingEffect, vignetteEffect, lutEffect)

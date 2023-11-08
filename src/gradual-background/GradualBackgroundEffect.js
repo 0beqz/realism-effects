@@ -1,9 +1,6 @@
 import { Effect } from "postprocessing"
 
-// create a postprocessing.js effect class with all the required methods such as update()
-export class GradualBackgroundEffect extends Effect {
-	constructor(camera, depthTexture, backgroundColor, maxDistance = 5) {
-		const fragmentShader = /* glsl */ `
+const fragmentShader = /* glsl */ `
         uniform sampler2D depthTexture;
         uniform mat4 projectionMatrix;
         uniform mat4 projectionMatrixInverse;
@@ -46,8 +43,9 @@ export class GradualBackgroundEffect extends Effect {
 
             outputColor = vec4(color, 1.);
         }
-        `
-
+`
+export class GradualBackgroundEffect extends Effect {
+	constructor(camera, depthTexture, backgroundColor, maxDistance = 5) {
 		super("GradualBackgroundEffect", fragmentShader, {
 			uniforms: new Map([
 				["projectionMatrix", { value: camera.projectionMatrix }],

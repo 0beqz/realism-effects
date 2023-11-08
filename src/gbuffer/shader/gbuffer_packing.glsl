@@ -173,4 +173,6 @@ Material getMaterial(sampler2D gBufferTexture, vec2 uv) {
   return Material(diffuse, normal, roughness, metalness, emissive);
 }
 
+Material getMaterial(vec2 uv) { return getMaterial(gBufferTexture, uv); }
+
 vec3 getNormal(sampler2D gBufferTexture, vec2 uv) { return unpackNormal(textureLod(gBufferTexture, uv, 0.0).g); }

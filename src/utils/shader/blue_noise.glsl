@@ -35,8 +35,10 @@ ivec2 shift2(ivec2 size) {
 
 // needs a uniform called "resolution" with the size of the render target
 vec4 blueNoise(vec2 uv, int index) {
-  rng_initialize(vUv * resolution, index);
+  if (index == 0)
+    return textureLod(blueNoiseTexture, uv * resolution / blueNoiseSize, 0.0);
 
+  rng_initialize(vUv * resolution, index);
   vec4 blueNoise = texelFetch(blueNoiseTexture, shift2(ivec2(blueNoiseSize)), 0);
 
   return blueNoise;
