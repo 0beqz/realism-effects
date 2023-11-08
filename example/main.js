@@ -163,7 +163,7 @@ if (isAoDemo) {
 	controls.target.set(0, 3, 0)
 }
 
-const composer = new POSTPROCESSING.EffectComposer(renderer)
+const composer = new POSTPROCESSING.EffectComposer(renderer, { frameBufferType: THREE.HalfFloatType })
 
 const lightParams = {
 	yaw: 55,
@@ -457,9 +457,9 @@ const initScene = async () => {
 	const bloomEffect = new POSTPROCESSING.BloomEffect({
 		intensity: 1,
 		mipmapBlur: true,
-		luminanceSmoothing: 0.5,
+		luminanceSmoothing: 11.25,
 		luminanceThreshold: 0.75,
-		kernelSize: POSTPROCESSING.KernelSize.HUGE
+		kernelSize: POSTPROCESSING.KernelSize.MEDIUM
 	})
 
 	const vignetteEffect = new POSTPROCESSING.VignetteEffect({
@@ -508,6 +508,7 @@ const initScene = async () => {
 				// })
 
 				composer.addPass(new POSTPROCESSING.EffectPass(camera, sharpnessEffect, sparkleEffect))
+				composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect))
 			} else {
 				composer.addPass(
 					new POSTPROCESSING.EffectPass(camera, ssgiEffect, toneMappingEffect, vignetteEffect, lutEffect)
