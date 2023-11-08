@@ -71,14 +71,14 @@ const fragShader = /* glsl */ `
 
         // using world normal and world position, determine how much the surface is facing the camera
         float facing = max(dot(-viewDir, viewNormal), 0.);
-        facing = pow(facing, 5.);
+        facing = pow(facing, 4.);
         
         float bn = blueNoise(normalize(worldPos).xz * 2.).a;
 
         // facing = mix(facing, bn, 0.1);
 
-        float noise = n4rand_ss(normalize(worldPos).xz * 1000.) * n4rand_ss(normalize(mat.normal).zy * 100.);
-        noise = pow(noise, 5.);
+        float noise = n4rand_ss(normalize(worldPos).xz * 1000. + mat.normal.xz * 500.);
+        noise = pow(noise, 10.);
 
         float lum = luminance(inputColor.rgb);
         lum = mix(lum, 1., mat.metalness * 0.1);
@@ -86,9 +86,13 @@ const fragShader = /* glsl */ `
         // lum is 0 at 0.9 and 1 at 1.0
         lum = smoothstep(0.15, 1., lum);
 
+        float secSparkleNoise = pow(n4rand_ss(viewNormal.zx * 10000.), 40.) * 0.1;
+
+        // noise = mix(noise * 10. * pow(facing, 10.), secSparkleNoise * 0.01, 0.5);
+
         float sparkleFactor = noise * lum * facing * glossiness;
 
-        vec3 color = inputColor.rgb + sparkleFactor * 500.;
+        vec3 color = inputColor.rgb + mat.diffuse.rgb * sparkleFactor * 1000.;
         outputColor = vec4(vec3(color), outputColor.a);
     }
 `
