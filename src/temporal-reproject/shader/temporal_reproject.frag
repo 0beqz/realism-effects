@@ -6,6 +6,7 @@ uniform sampler2D velocityTexture;
 uniform sampler2D depthTexture;
 uniform sampler2D lastVelocityTexture;
 
+uniform float maxBlend;
 uniform float neighborhoodClampIntensity;
 uniform bool fullAccumulate;
 uniform vec2 invTexSize;
@@ -43,16 +44,12 @@ void accumulate(inout vec4 outputColor, inout vec4 inp, inout vec4 acc, inout fl
 
   vec2 reprojectedUv = reprojectedUvConfidence.xy;
   float confidence = reprojectedUvConfidence.z;
-  confidence = pow(confidence, 0.125);
+  confidence = pow(confidence, confidencePower);
 
   float accumBlend = 1. - 1. / (acc.a + 1.0);
   accumBlend = mix(0., accumBlend, confidence);
 
-  float maxValue = 1.;
-
-  // clamp to 0.9925 otherwise the image turns darker over time, possibly due to precision issues
-  // maxValue *= min(0.9925, maxValue);
-  maxValue *= keepData;
+  float maxValue = maxBlend * keepData; // keepData is a flag that is either 1 or 0 when we call reset()
 
   const float roughnessMaximum = 0.025;
 
@@ -70,28 +67,33 @@ void accumulate(inout vec4 outputColor, inout vec4 inp, inout vec4 acc, inout fl
   outputColor.rgb = mix(inp.rgb, acc.rgb, temporalReprojectMix);
   outputColor.a = acc.a;
   undoColorTransform(outputColor.rgb);
+  // outputColor.rgb = vec3(confidence);
 }
 
 // this function reprojects the input texture to the current frame
 // it calculates a confidence value for the reprojection by which the input texture is blended with the accumulated texture
 void reproject(inout vec4 inp, inout vec4 acc, sampler2D accumulatedTexture, inout bool wasSampled, bool doNeighborhoodClamp,
                bool doReprojectSpecular) {
+  // Get the reprojected UV coordinate.
   vec3 uvc = doReprojectSpecular ? reprojectedUvSpecular : reprojectedUvDiffuse;
-
   vec2 uv = uvc.xy;
+
+  // Sample the accumulated texture.
   acc = sampleReprojectedTexture(accumulatedTexture, uv);
   transformColor(acc.rgb);
 
+  // If we haven't sampled before, simply use the sample.
   if (!wasSampled) {
     inp.rgb = acc.rgb;
     return;
   }
 
-  acc.a++; // add one more frame
+  // Add one more frame.
+  acc.a++;
 
+  // Apply neighborhood clamping, if enabled.
   if (doNeighborhoodClamp) {
     vec3 clampedColor = acc.rgb;
-
     clampNeighborhood(inputTexture, clampedColor, inp.rgb, neighborhoodClampRadius, doReprojectSpecular);
 
     float clampIntensity = neighborhoodClampIntensity * (doReprojectSpecular && roughness >= 0. ? (1. - roughness) : 1.0);
@@ -119,10 +121,9 @@ void getTexels(inout vec4 inputTexel[textureCount], inout bool sampledThisFrame[
 
 void computeGVariables(vec2 dilatedUv, float depth) {
   worldPos = screenSpaceToWorldSpace(dilatedUv, depth, cameraMatrixWorld, projectionMatrixInverse);
-  flatness = getFlatness(worldPos, worldNormal);
   vec3 viewPos = (viewMatrix * vec4(worldPos, 1.0)).xyz;
   viewDir = normalize(viewPos);
-  vec3 viewNormal = (viewMatrix * vec4(worldNormal, 0.0)).xyz;
+  vec3 viewNormal = (vec4(worldNormal, 0.0) * viewMatrix).xyz;
   viewAngle = dot(-viewDir, viewNormal);
 }
 

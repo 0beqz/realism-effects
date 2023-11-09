@@ -62,9 +62,6 @@ export default class Denoiser {
 				options
 			)
 		}
-
-		this.temporalReprojectPass.fullscreenMaterial.defines.inputType =
-			["diffuseSpecular", "diffuse", "specular"].indexOf(options.inputType) ?? 1
 	}
 
 	get texture() {

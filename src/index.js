@@ -10,6 +10,7 @@ import { HBAOEffect } from "./hbao/HBAOEffect"
 import { TAAPass } from "./taa/TAAPass"
 import { SharpnessEffect } from "./sharpness/SharpnessEffect"
 import { GradualBackgroundEffect } from "./gradual-background/GradualBackgroundEffect"
+import { SparkleEffect } from "./sparkle/SparkleEffect"
 
 export {
 	SSGIEffect,
@@ -23,5 +24,6 @@ export {
 	PoissionDenoisePass,
 	HBAOEffect,
 	SharpnessEffect,
-	GradualBackgroundEffect
+	GradualBackgroundEffect,
+	SparkleEffect
 }

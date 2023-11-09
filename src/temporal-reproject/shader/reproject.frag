@@ -2,7 +2,7 @@
 
 vec2 dilatedUv, velocity;
 vec3 worldNormal, worldPos, viewDir;
-float depth, flatness, viewAngle, angleMix, rayLength = 0.0;
+float depth, flatness, viewAngle, rayLength = 0.0;
 float roughness = -1.0;
 
 #define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
@@ -46,16 +46,24 @@ void undoColorTransform(inout vec3 color) { color = exp(color) - 1.; }
 #define undoColorTransform
 #endif
 
+// Extract the minimum and maximum color values from the neighborhood of the current pixel.
+// The neighborhood is defined by the clampRadius.
+// The neighborhood is in a square centered around the current pixel.
+// The neighborhood does not include the current pixel.
 void getNeighborhoodAABB(const sampler2D tex, const int clampRadius, inout vec3 minNeighborColor, inout vec3 maxNeighborColor,
                          const bool isSpecular) {
-  vec4 t1, t2;
 
+  // For each pixel in the neighborhood of the current pixel...
   for (int x = -clampRadius; x <= clampRadius; x++) {
     for (int y = -clampRadius; y <= clampRadius; y++) {
+      // Calculate the offset of the current pixel relative to the current pixel.
       vec2 offset = vec2(x, y) * invTexSize;
+      // Calculate the texture coordinate of the current pixel.
       vec2 neighborUv = vUv + offset;
 
+      // Get the current pixel's color.
 #if inputType == DIFFUSE_SPECULAR
+      vec4 t1, t2;
       vec4 packedNeighborTexel = textureLod(inputTexture, neighborUv, 0.0);
       unpackTwoVec4(packedNeighborTexel, t1, t2);
       vec4 neighborTexel = isSpecular ? t2 : t1;
@@ -63,6 +71,7 @@ void getNeighborhoodAABB(const sampler2D tex, const int clampRadius, inout vec3 
       vec4 neighborTexel = textureLod(inputTexture, neighborUv, 0.0);
 #endif
 
+      // Update the minimum and maximum color values for the current pixel's neighborhood.
       minNeighborColor = min(neighborTexel.rgb, minNeighborColor);
       maxNeighborColor = max(neighborTexel.rgb, maxNeighborColor);
     }
@@ -74,6 +83,7 @@ void clampNeighborhood(const sampler2D tex, inout vec3 color, vec3 inputColor, c
   vec3 minNeighborColor = inputColor;
   vec3 maxNeighborColor = inputColor;
 
+  // Find the AABB of the neighborhood.
   getNeighborhoodAABB(tex, clampRadius, minNeighborColor, maxNeighborColor, isSpecular);
 
   transformColor(minNeighborColor);
@@ -97,17 +107,21 @@ void getVelocityNormalDepth(inout vec2 dilatedUv, out vec2 vel, out vec3 normal,
 #define WORLD_DISTANCE 10.
 
 float planeDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos, const vec3 worldNormal, const float distFactor) {
+  // Calculate distance to plane
   vec3 toCurrent = worldPos - lastWorldPos;
   float distToPlane = abs(dot(toCurrent, worldNormal));
 
+  // Return the distance to the plane scaled by the distFactor
   return distToPlane / PLANE_DISTANCE * distFactor;
 }
 
 float velocityDisocclusionCheck(const vec2 velocity, const vec2 lastVelocity, const float distFactor) {
+  // Calculate the distance between the current and last velocity
   return length(velocity - lastVelocity) / VELOCITY_DISTANCE * distFactor;
 }
 
 float worldDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos, const float distFactor) {
+  // Calculate the distance between the current and last world position
   return length(worldPos - lastWorldPos) / WORLD_DISTANCE * distFactor;
 }
 
@@ -126,16 +140,11 @@ float validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const
   vec3 lastViewPos = (prevViewMatrix * vec4(lastWorldPos, 1.0)).xyz;
 
   vec3 lastViewDir = normalize(lastViewPos);
-  vec3 lastViewNormal = (prevViewMatrix * vec4(lastWorldNormal, 0.0)).xyz;
+  vec3 lastViewNormal = (vec4(lastWorldNormal, 0.0) * prevViewMatrix).xyz;
 
   // get the angle between the view direction and the normal
   float lastViewAngle = dot(-lastViewDir, lastViewNormal);
-
-  // angleDiff will be higher, the more we try to reproject pixels from a steep
-  // angle onto a surface with a low angle which results in undesired stretching
-  angleMix = abs(lastViewAngle - viewAngle) * 25.;
-  angleMix = mix(0., angleMix, sqrt(flatness));
-  angleMix = min(angleMix, 1.);
+  float angleMix = abs(lastViewAngle - viewAngle);
 
   float viewZ = abs(getViewZ(depth));
   float distFactor = 1. + 1. / (viewZ + 1.0);
@@ -146,28 +155,30 @@ float validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const
   disoccl += planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal, distFactor);
   disoccl += worldDistanceDisocclusionCheck(worldPos, lastWorldPos, distFactor);
 
-  disoccl = min(disoccl / 3., 1.);
+  // disoccl = min(disoccl / 3., 1.);
 
-  return 1. - disoccl;
+  float confidence = 1. - min(disoccl, 1.);
+  confidence *= 1. - pow(angleMix, 4.);
+
+  return confidence;
 }
 
 vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength) {
-#ifndef PERSPECTIVE_CAMERA
-  return vec2(-1.);
-#endif
-
+  // Check if the ray is too long, if it is return -1
   if (rayLength > 10.0e3) {
     return vec2(-1.);
   }
 
-  vec3 cameraRay = rayOrig - cameraPos;
+  // Find the direction of the ray
+  vec3 cameraRay = normalize(rayOrig - cameraPos);
 
-  cameraRay = normalize(cameraRay);
-
+  // Find the position of the hit point
   vec3 parallaxHitPoint = cameraPos + cameraRay * rayLength;
 
+  // Reproject the hit point into the previous frame
   vec4 reprojectedHitPoint = prevProjectionMatrix * prevViewMatrix * vec4(parallaxHitPoint, 1.0);
 
+  // Convert to screen space coordinates
   reprojectedHitPoint.xyz /= reprojectedHitPoint.w;
   reprojectedHitPoint.xy = reprojectedHitPoint.xy * 0.5 + 0.5;
 
@@ -175,19 +186,19 @@ vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength) {
 }
 
 vec3 getReprojectedUV(const bool doReprojectSpecular, const float depth, const vec3 worldPos, const vec3 worldNormal) {
-  // hit point reprojection
   if (doReprojectSpecular) {
+    // hit point reprojection
     vec2 reprojectedUv = reprojectHitPoint(worldPos, rayLength);
 
     float confidence = validateReprojectedUV(reprojectedUv, worldPos, worldNormal, true);
     return vec3(reprojectedUv, confidence);
+  } else {
+    // reprojection using motion vectors
+    vec2 reprojectedUv = vUv - velocity;
+
+    float confidence = validateReprojectedUV(reprojectedUv, worldPos, worldNormal, false);
+    return vec3(reprojectedUv, confidence);
   }
-
-  // reprojection using motion vectors
-  vec2 reprojectedUv = vUv - velocity;
-
-  float confidence = validateReprojectedUV(reprojectedUv, worldPos, worldNormal, false);
-  return vec3(reprojectedUv, confidence);
 }
 
 // source: https://www.shadertoy.com/view/styXDh
@@ -234,18 +245,6 @@ vec4 BiCubicCatmullRom5Tap(sampler2D tex, vec2 P) {
   float WeightMultiplier = 1. / (sampleWeight[0] + sampleWeight[1] + sampleWeight[2] + sampleWeight[3] + sampleWeight[4]);
 
   return max((Ct + Cl + Cc + Cr + Cb) * WeightMultiplier, vec4(0.));
-}
-
-// source:
-// http://rodolphe-vaillant.fr/entry/118/curvature-of-a-distance-field-implicit-surface
-float getFlatness(vec3 worldPosition, vec3 worldNormal) {
-  vec3 gw = fwidth(worldPosition);
-  vec3 pw = fwidth(worldNormal);
-
-  float wfcurvature = length(gw) / length(pw);
-  wfcurvature = smoothstep(0.0, 30., wfcurvature);
-
-  return clamp(wfcurvature, 0., 1.);
 }
 
 vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv) { return BiCubicCatmullRom5Tap(tex, reprojectedUv); }

@@ -19,12 +19,14 @@ export const defaultTemporalReprojectPassOptions = {
 	neighborhoodClamp: false,
 	neighborhoodClampRadius: 1,
 	neighborhoodClampIntensity: 1,
+	maxBlend: 1,
 	logTransform: false,
 	depthDistance: 2,
 	worldDistance: 4,
 	reprojectSpecular: false,
 	renderTarget: null,
-	copyTextures: true
+	copyTextures: true,
+	confidencePower: 0.125
 }
 
 const tmpProjectionMatrix = new Matrix4()
@@ -83,6 +85,7 @@ export class TemporalReprojectPass extends Pass {
 
 		this.fullscreenMaterial.uniforms.fullAccumulate.value = options.fullAccumulate
 		this.fullscreenMaterial.uniforms.neighborhoodClampIntensity.value = options.neighborhoodClampIntensity
+		this.fullscreenMaterial.uniforms.maxBlend.value = options.maxBlend
 
 		this.fullscreenMaterial.uniforms.projectionMatrix.value = camera.projectionMatrix.clone()
 		this.fullscreenMaterial.uniforms.projectionMatrixInverse.value = camera.projectionMatrixInverse.clone()
@@ -98,6 +101,9 @@ export class TemporalReprojectPass extends Pass {
 		this.fullscreenMaterial.uniforms.velocityTexture.value = velocityDepthNormalPass.renderTarget.texture
 		this.fullscreenMaterial.uniforms.depthTexture.value = velocityDepthNormalPass.depthTexture
 
+		this.fullscreenMaterial.defines.inputType =
+			["diffuseSpecular", "diffuse", "specular"].indexOf(options.inputType) ?? 1
+
 		for (const opt of ["reprojectSpecular", "neighborhoodClamp"]) {
 			let value = options[opt]
 
@@ -105,6 +111,8 @@ export class TemporalReprojectPass extends Pass {
 
 			this.fullscreenMaterial.defines[opt] = /* glsl */ `bool[](${value.join(", ")})`
 		}
+
+		this.fullscreenMaterial.defines.confidencePower = options.confidencePower.toPrecision(5)
 
 		this.options = options
 		this.velocityDepthNormalPass = velocityDepthNormalPass
@@ -139,6 +147,10 @@ export class TemporalReprojectPass extends Pass {
 			const accumulatedTexture = this.overrideAccumulatedTextures[i] ?? this.framebufferTexture
 			this.fullscreenMaterial.uniforms["accumulatedTexture" + i].value = accumulatedTexture
 		}
+	}
+
+	setInputTexture(texture, index = 0) {
+		this.fullscreenMaterial.uniforms["inputTexture" + index].value = texture
 	}
 
 	get texture() {

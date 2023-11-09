@@ -501,7 +501,15 @@ const initScene = async () => {
 
 				// const gradualBackgroundEffect = new GradualBackgroundEffect(camera, depthTexture, bgColor, 51)
 				const sparkleEffect = new SparkleEffect(camera, gBufferPass)
-				composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, toneMappingEffect))
+				// composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, toneMappingEffect))
+
+				// add a render pass
+				composer.addPass(new POSTPROCESSING.RenderPass(scene, camera))
+
+				traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
+
+				taaPass = new TAAPass(camera)
+				composer.addPass(traaPass)
 
 				// const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass, {
 				// 	intensity: 1
@@ -517,8 +525,6 @@ const initScene = async () => {
 			}
 		}
 
-		traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
-
 		const smaaEffect = new POSTPROCESSING.SMAAEffect()
 
 		smaaPass = new POSTPROCESSING.EffectPass(camera, smaaEffect)
@@ -526,12 +532,9 @@ const initScene = async () => {
 		const fxaaEffect = new POSTPROCESSING.FXAAEffect()
 		fxaaPass = new POSTPROCESSING.EffectPass(camera, fxaaEffect)
 
-		taaPass = new TAAPass(camera)
-		// composer.addPass(taaPass)
-
 		if (!isAoDemo) {
 			if (fps >= 256) {
-				setAA("SMAA")
+				// setAA("SMAA")
 				resize()
 			} else {
 				setAA("FXAA")

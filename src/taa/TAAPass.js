@@ -5,6 +5,7 @@ import {
 	Quaternion,
 	RGBAFormat,
 	ShaderMaterial,
+	Vector2,
 	Vector3,
 	WebGLRenderTarget
 } from "three"
@@ -37,7 +38,8 @@ export class TAAPass extends Pass {
 			uniforms: {
 				inputTexture: { value: null },
 				acculumatedTexture: { value: null },
-				cameraNotMovedFrames: { value: 0 }
+				cameraNotMovedFrames: { value: 0 },
+				invTexSize: { value: new Vector2(1, 1) }
 			},
 			toneMapped: false,
 			depthWrite: false,
@@ -66,6 +68,7 @@ export class TAAPass extends Pass {
 		this.frame = (this.frame + 1) % 4096
 
 		this.fullscreenMaterial.uniforms.inputTexture.value = inputBuffer.texture
+		this.fullscreenMaterial.uniforms.invTexSize.value.set(1 / inputBuffer.width, 1 / inputBuffer.height)
 
 		// check if the camera has moved by comparing the camera's world matrix and projection matrix
 		const cameraMoved =
@@ -75,10 +78,10 @@ export class TAAPass extends Pass {
 		const cameraNotMovedFrames = this.fullscreenMaterial.uniforms.cameraNotMovedFrames.value
 		if (cameraNotMovedFrames > 0) {
 			const { width, height } = this.framebufferTexture.image
-			jitter(width, height, this._camera, this.frame)
+			jitter(width, height, this._camera, this.frame, 1)
 		}
 
-		this.fullscreenMaterial.uniforms.cameraNotMovedFrames.value = cameraMoved ? 0 : (cameraNotMovedFrames + 1) % 0xffff
+		this.fullscreenMaterial.uniforms.cameraNotMovedFrames.value = cameraMoved ? 0 : (cameraNotMovedFrames + 1) % 4096
 
 		this.lastCameraPosition.copy(this._camera.position)
 		this.lastCameraQuaternion.copy(this._camera.quaternion)
