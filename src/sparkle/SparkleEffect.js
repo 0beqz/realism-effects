@@ -48,7 +48,7 @@ const fragShader = /* glsl */ `
 
         float depth = velocityTexel.a;
 
-        if(depth == 0.) {
+        if(depth == 0. || depth == 1.) {
             outputColor = inputColor;
             return;
         }
