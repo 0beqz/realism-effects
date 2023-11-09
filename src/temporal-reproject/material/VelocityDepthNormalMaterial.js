@@ -102,9 +102,14 @@ export const velocity_uniforms = {
 }
 
 export class VelocityDepthNormalMaterial extends ShaderMaterial {
-	constructor() {
+	constructor(camera) {
 		super({
-			uniforms: UniformsUtils.clone(velocity_uniforms),
+			uniforms: {
+				...UniformsUtils.clone(velocity_uniforms),
+				...{
+					cameraMatrixWorld: { value: camera.matrixWorld }
+				}
+			},
 			vertexShader: /* glsl */ `
 					#include <common>
 					#include <uv_pars_vertex>
@@ -146,6 +151,8 @@ export class VelocityDepthNormalMaterial extends ShaderMaterial {
 
                     }`,
 			fragmentShader: /* glsl */ `
+					uniform mat4 cameraMatrixWorld;
+
 					varying vec3 vViewPosition;
 
 					${velocity_fragment_pars}
@@ -183,7 +190,7 @@ export class VelocityDepthNormalMaterial extends ShaderMaterial {
                     	#include <normal_fragment_maps>
 
 						${velocity_fragment_main}
-						vec3 worldNormal = normalize((viewMatrix * vec4(normal, 0.)).xyz);
+						vec3 worldNormal = normalize((cameraMatrixWorld * vec4(normal, 0.)).xyz);
 						gl_FragColor.b = packNormal(worldNormal);
 						gl_FragColor.a = fragCoordZ;
                     }`

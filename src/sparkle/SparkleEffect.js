@@ -8,8 +8,10 @@ const fragShader = /* glsl */ `
     ${gbuffer_packing}
 
     uniform sampler2D depthTexture;
+    uniform sampler2D velocityTexture;
     uniform mat4 projectionMatrix;
     uniform mat4 projectionMatrixInverse;
+    uniform mat4 viewMatrix;
     uniform mat4 cameraMatrixWorld;
     uniform vec3 backgroundColor;
     uniform float spread;
@@ -42,11 +44,17 @@ const fragShader = /* glsl */ `
     }
 
     void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
-        float depth = textureLod(depthTexture, uv, 0.).r;
+        vec4 velocityTexel = textureLod(velocityTexture, uv, 0.0);
+
+        float depth = velocityTexel.a;
+
         if(depth == 0.) {
             outputColor = inputColor;
             return;
         }
+
+        vec3 normal = unpackNormal(velocityTexel.b);
+        vec3 viewNormal = normalize((viewMatrix * vec4(normal, 0.)).xyz);
 
         // get the world position from the depth texture
         float viewZ = getViewZ(depth);
@@ -64,11 +72,6 @@ const fragShader = /* glsl */ `
 
         float dist = length(worldPos - cameraPos);
         float distFactor = exp(-dist * 0.005);
-        
-        Material mat = getMaterial(uv);
-        float glossiness = 1. - mat.roughness;
-
-        vec3 viewNormal = normalize((inverse(cameraMatrixWorld) * vec4(mat.normal, 0.)).xyz);
 
         // using world normal and world position, determine how much the surface is facing the camera
         float facing = max(dot(-viewDir, viewNormal), 0.);
@@ -76,8 +79,8 @@ const fragShader = /* glsl */ `
         
         // facing = mix(facing, bn, 0.1);
 
-        vec2 offset = normalize(worldPos).xz * 500. + mat.normal.xz * 100.;
-        vec2 offset2 = normalize(worldPos).xz * 1000.;
+        vec2 offset = normalize(worldPos).xz * 500. + normal.xz * 1000.;
+        vec2 offset2 = normal.xz * 1000.;
 
         float noise = nn(offset);
         float noise2 = nn(offset2);
@@ -87,14 +90,14 @@ const fragShader = /* glsl */ `
         float lum = luminance(inputColor.rgb);
         lum = smoothstep(0.15, 1., lum);
 
-        float sparkleFactor = (noise + noise2) * lum * facing * glossiness * distFactor * 50000. * intensity;
+        float sparkleFactor = (noise + noise2) * lum * facing * distFactor * 50000. * intensity;
 
-        vec3 color = inputColor.rgb + pow(mat.diffuse.rgb, vec3(2.)) * sparkleFactor;
-        outputColor = vec4(vec3(color), 1.);
+        vec3 color = inputColor.rgb + pow(inputColor.rgb, vec3(2.)) * sparkleFactor;
+        outputColor = vec4(color, 1.);
     }
 `
 export class SparkleEffect extends Effect {
-	constructor(camera, gBufferPass) {
+	constructor(camera, gBufferPass, velocityDepthNormalPass) {
 		const { uniforms, fragmentShader } = setupBlueNoise(fragShader)
 
 		// convert uniforms, so we can pass them to Map
@@ -108,8 +111,10 @@ export class SparkleEffect extends Effect {
 				["projectionMatrix", { value: camera.projectionMatrix }],
 				["projectionMatrixInverse", { value: camera.projectionMatrixInverse }],
 				["cameraMatrixWorld", { value: camera.matrixWorld }],
+				["viewMatrix", { value: camera.matrixWorldInverse }],
 				["depthTexture", { value: gBufferPass.depthTexture }],
 				["gBufferTexture", { value: gBufferPass.texture }],
+				["velocityTexture", { value: velocityDepthNormalPass.texture }],
 				["spread", { value: 1 }],
 				["intensity", { value: 1 }],
 				...uniformsMap

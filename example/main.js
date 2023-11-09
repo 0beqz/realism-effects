@@ -500,15 +500,14 @@ const initScene = async () => {
 				// const bgColor = new Color(0xffffff)
 
 				// const gradualBackgroundEffect = new GradualBackgroundEffect(camera, depthTexture, bgColor, 51)
-				const sparkleEffect = new SparkleEffect(camera, gBufferPass)
-				// composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, toneMappingEffect))
+				const sparkleEffect = new SparkleEffect(camera, gBufferPass, velocityDepthNormalPass)
+				sparkleEffect.setSpread(0.25)
+				composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, toneMappingEffect))
 
 				// add a render pass
-				composer.addPass(new POSTPROCESSING.RenderPass(scene, camera))
+				// composer.addPass(new POSTPROCESSING.RenderPass(scene, camera))
 
 				traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
-
-				taaPass = new TAAPass(camera)
 				composer.addPass(traaPass)
 
 				// const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass, {

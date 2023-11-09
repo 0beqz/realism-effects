@@ -101,7 +101,7 @@ export class VelocityDepthNormalPass extends Pass {
 			let [cachedOriginalMaterial, velocityDepthNormalMaterial] = this.cachedMaterials.get(c) || []
 
 			if (originalMaterial !== cachedOriginalMaterial) {
-				velocityDepthNormalMaterial = new VelocityDepthNormalMaterial()
+				velocityDepthNormalMaterial = new VelocityDepthNormalMaterial(this._camera)
 
 				copyNecessaryProps(originalMaterial, velocityDepthNormalMaterial)
 

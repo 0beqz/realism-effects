@@ -50,8 +50,8 @@ export class TRAAEffect extends Effect {
 	update(renderer, inputBuffer) {
 		if (!this.temporalReprojectPass) {
 			this.temporalReprojectPass = new TemporalReprojectPass(
-				scene,
-				camera,
+				this._scene,
+				this._camera,
 				this.velocityDepthNormalPass,
 				inputBuffer.texture,
 				1,
