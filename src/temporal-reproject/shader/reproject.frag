@@ -103,8 +103,8 @@ void getVelocityNormalDepth(inout vec2 dilatedUv, out vec2 vel, out vec3 normal,
 }
 
 #define PLANE_DISTANCE 10.
-#define VELOCITY_DISTANCE 0.01
 #define WORLD_DISTANCE 10.
+#define NORMAL_DISTANCE 10.
 
 float planeDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos, const vec3 worldNormal, const float distFactor) {
   // Calculate distance to plane
@@ -115,14 +115,14 @@ float planeDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPo
   return distToPlane / PLANE_DISTANCE * distFactor;
 }
 
-float velocityDisocclusionCheck(const vec2 velocity, const vec2 lastVelocity, const float distFactor) {
-  // Calculate the distance between the current and last velocity
-  return length(velocity - lastVelocity) / VELOCITY_DISTANCE * distFactor;
-}
-
 float worldDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos, const float distFactor) {
   // Calculate the distance between the current and last world position
   return length(worldPos - lastWorldPos) / WORLD_DISTANCE * distFactor;
+}
+
+float normalDisocclusionCheck(const vec3 worldNormal, const vec3 lastWorldNormal, const float distFactor) {
+  // Calculate the distance between the current and last world position
+  return min(1. - dot(worldNormal, lastWorldNormal), 1.) / NORMAL_DISTANCE * distFactor;
 }
 
 float validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const vec3 worldNormal, const bool isHitPoint) {
@@ -151,14 +151,13 @@ float validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const
 
   float disoccl = 0.;
 
-  disoccl += velocityDisocclusionCheck(velocity, lastVelocity, distFactor);
-  disoccl += planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal, distFactor);
   disoccl += worldDistanceDisocclusionCheck(worldPos, lastWorldPos, distFactor);
-
-  // disoccl = min(disoccl / 3., 1.);
+  disoccl += planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal, distFactor);
+  disoccl += normalDisocclusionCheck(worldNormal, lastWorldNormal, distFactor);
 
   float confidence = 1. - min(disoccl, 1.);
   confidence *= 1. - pow(angleMix, 4.);
+  confidence = max(confidence, 0.);
 
   return confidence;
 }

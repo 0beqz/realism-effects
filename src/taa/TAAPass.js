@@ -47,8 +47,6 @@ export class TAAPass extends Pass {
 		})
 
 		this._camera = camera
-		this.lastCameraMatrixWorld = camera.matrixWorld.clone()
-		this.lastCameraProjectionMatrix = camera.projectionMatrix.clone()
 	}
 
 	setSize(width, height) {

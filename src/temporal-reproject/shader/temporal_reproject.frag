@@ -49,7 +49,7 @@ void accumulate(inout vec4 outputColor, inout vec4 inp, inout vec4 acc, inout fl
   float accumBlend = 1. - 1. / (acc.a + 1.0);
   accumBlend = mix(0., accumBlend, confidence);
 
-  float maxValue = maxBlend * keepData; // keepData is a flag that is either 1 or 0 when we call reset()
+  float maxValue = (fullAccumulate ? 1. : maxBlend) * keepData; // keepData is a flag that is either 1 or 0 when we call reset()
 
   const float roughnessMaximum = 0.025;
 

@@ -34,6 +34,7 @@ import { SparkleEffect } from "../src/sparkle/SparkleEffect"
 
 let traaEffect
 let traaPass
+let taaPass
 let smaaPass
 let fxaaPass
 let ssgiEffect
@@ -42,7 +43,6 @@ let pane
 let gui2
 let envMesh
 let fps
-let taaPass
 const guiParams = {
 	Method: "TRAA",
 	Background: false
@@ -381,7 +381,9 @@ const initScene = async () => {
 	renderer.toneMapping = THREE.ACESFilmicToneMapping
 	renderer.toneMappingExposure = 1.5
 
-	traaEffect = new TRAAEffect(scene, camera, velocityDepthNormalPass)
+	traaEffect = new TRAAEffect(scene, camera, velocityDepthNormalPass, {
+		fullAccumulate: true
+	})
 
 	pane = new Pane()
 	pane.containerElem_.style.userSelect = "none"
@@ -483,7 +485,7 @@ const initScene = async () => {
 	gui2.pane.containerElem_.style.top = "56px"
 	if (traaTest) gui2.pane.element.style.visibility = "hidden"
 
-	gui2.pane.on("change", ev => (taaPass.needsUpdate = true))
+	gui2.pane.on("change", ev => taaPass && (taaPass.needsUpdate = true))
 
 	new POSTPROCESSING.LUT3dlLoader().load("lut.3dl").then(lutTexture => {
 		const lutEffect = new POSTPROCESSING.LUT3DEffect(lutTexture)
@@ -500,7 +502,7 @@ const initScene = async () => {
 				// const bgColor = new Color(0xffffff)
 
 				// const gradualBackgroundEffect = new GradualBackgroundEffect(camera, depthTexture, bgColor, 51)
-				const sparkleEffect = new SparkleEffect(camera, gBufferPass, velocityDepthNormalPass)
+				const sparkleEffect = new SparkleEffect(camera, velocityDepthNormalPass)
 				sparkleEffect.setSpread(0.25)
 				composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, toneMappingEffect))
 
@@ -735,7 +737,7 @@ document.addEventListener("keydown", ev => {
 		a.click() // Downloaded file
 	}
 
-	taaPass.needsUpdate = true
+	taaPass && (taaPass.needsUpdate = true)
 })
 
 dragDrop("body", files => {

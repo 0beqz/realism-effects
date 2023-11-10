@@ -12,6 +12,7 @@ import {
 } from "three"
 import { jitter } from "../taa/TAAUtils"
 import { TemporalReprojectMaterial } from "./material/TemporalReprojectMaterial"
+import { didCameraMove } from "../utils/SceneUtils"
 
 export const defaultTemporalReprojectPassOptions = {
 	dilation: false,
@@ -26,7 +27,7 @@ export const defaultTemporalReprojectPassOptions = {
 	reprojectSpecular: false,
 	renderTarget: null,
 	copyTextures: true,
-	confidencePower: 0.125
+	confidencePower: 1
 }
 
 const tmpProjectionMatrix = new Matrix4()
@@ -176,6 +177,13 @@ export class TemporalReprojectPass extends Pass {
 		this.fullscreenMaterial.uniforms.projectionMatrix.value.copy(this._camera.projectionMatrix)
 		this.fullscreenMaterial.uniforms.projectionMatrixInverse.value.copy(this._camera.projectionMatrixInverse)
 		this.fullscreenMaterial.uniforms.lastVelocityTexture.value = this.velocityDepthNormalPass.lastVelocityTexture
+
+		this.fullscreenMaterial.uniforms.fullAccumulate.value =
+			this.options.fullAccumulate &&
+			!didCameraMove(this._camera, this.lastCameraTransform.position, this.lastCameraTransform.quaternion)
+
+		this.lastCameraTransform.position.copy(this._camera.position)
+		this.lastCameraTransform.quaternion.copy(this._camera.quaternion)
 
 		if (this._camera.view) this._camera.view.enabled = true
 		this._camera.projectionMatrix.copy(tmpProjectionMatrix)

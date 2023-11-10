@@ -7,7 +7,6 @@ const fragShader = /* glsl */ `
 
     ${gbuffer_packing}
 
-    uniform sampler2D depthTexture;
     uniform sampler2D velocityTexture;
     uniform mat4 projectionMatrix;
     uniform mat4 projectionMatrixInverse;
@@ -79,25 +78,22 @@ const fragShader = /* glsl */ `
         
         // facing = mix(facing, bn, 0.1);
 
-        vec2 offset = normalize(worldPos).xz * 500. + normal.xz * 1000.;
-        vec2 offset2 = normal.xz * 1000.;
+        vec2 offset = normalize(worldPos).xz * 1000. + normal.xz * 500.;
 
         float noise = nn(offset);
-        float noise2 = nn(offset2);
         noise = pow(noise, 500. * spread);
-        noise2 = pow(noise2, 100. * spread) * 0.1;
 
         float lum = luminance(inputColor.rgb);
         lum = smoothstep(0.15, 1., lum);
 
-        float sparkleFactor = (noise + noise2) * lum * facing * distFactor * 50000. * intensity;
+        float sparkleFactor = noise * lum * facing * distFactor * 5000. * intensity;
 
-        vec3 color = inputColor.rgb + pow(inputColor.rgb, vec3(2.)) * sparkleFactor;
+        vec3 color = inputColor.rgb + pow(inputColor.rgb, vec3(4.)) * sparkleFactor;
         outputColor = vec4(color, 1.);
     }
 `
 export class SparkleEffect extends Effect {
-	constructor(camera, gBufferPass, velocityDepthNormalPass) {
+	constructor(camera, velocityDepthNormalPass) {
 		const { uniforms, fragmentShader } = setupBlueNoise(fragShader)
 
 		// convert uniforms, so we can pass them to Map
@@ -108,12 +104,10 @@ export class SparkleEffect extends Effect {
 
 		super("SparkleEffect", fragmentShader, {
 			uniforms: new Map([
-				["projectionMatrix", { value: camera.projectionMatrix }],
-				["projectionMatrixInverse", { value: camera.projectionMatrixInverse }],
+				["projectionMatrix", { value: camera.projectionMatrix.clone() }],
+				["projectionMatrixInverse", { value: camera.projectionMatrixInverse.clone() }],
 				["cameraMatrixWorld", { value: camera.matrixWorld }],
 				["viewMatrix", { value: camera.matrixWorldInverse }],
-				["depthTexture", { value: gBufferPass.depthTexture }],
-				["gBufferTexture", { value: gBufferPass.texture }],
 				["velocityTexture", { value: velocityDepthNormalPass.texture }],
 				["spread", { value: 1 }],
 				["intensity", { value: 1 }],
@@ -122,6 +116,17 @@ export class SparkleEffect extends Effect {
 		})
 
 		this._camera = camera
+	}
+
+	update() {
+		const { view } = this._camera
+		view && this._camera.clearViewOffset()
+
+		this.uniforms.get("projectionMatrix").value.copy(this._camera.projectionMatrix)
+		this.uniforms.get("projectionMatrixInverse").value.copy(this._camera.projectionMatrixInverse)
+
+		view &&
+			this._camera.setViewOffset(view.fullWidth, view.fullHeight, view.offsetX, view.offsetY, view.width, view.height)
 	}
 
 	setSpread(spread) {

@@ -390,10 +390,10 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
     vec3 hitNormal = getNormal(gBufferTexture, coords.xy);
 
     // check for self-occlusion
-    if (dot(worldNormal, hitNormal) == 1.0) {
-      isMissedRay = true;
-      return envColor;
-    }
+    // if (dot(worldNormal, hitNormal) == 1.0) {
+    //   isMissedRay = true;
+    //   return envColor;
+    // }
 
     vec4 reprojectedGI = textureLod(accumulatedTexture, reprojectedUv, 0.);
 
@@ -409,10 +409,11 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
 
     float aspect = resolution.x / resolution.y;
 
-    float border = 0.2;
+    float border = 0.15;
     float borderFactor = smoothstep(0.0, border, coords.x) * smoothstep(1.0, 1.0 - border, coords.x) * smoothstep(0.0, border, coords.y) *
                          smoothstep(1.0, 1.0 - border, coords.y);
 
+    borderFactor = sqrt(borderFactor);
     SSGI = mix(envColor, SSGI, borderFactor);
   } else {
     return envColor;
@@ -451,11 +452,12 @@ vec2 RayMarch(inout vec3 dir, inout vec3 hitPos, vec4 random) {
     rayHitDepthDifference = z - hitPos.z;
 
     if (rayHitDepthDifference >= 0.0 && rayHitDepthDifference < thickness) {
-#if refineSteps == 0
-      return uv;
-#else
-      return BinarySearch(dir, hitPos);
-#endif
+      if (refineSteps == 0) {
+        return uv;
+      } else {
+
+        return BinarySearch(dir, hitPos);
+      }
     }
   }
 
