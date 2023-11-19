@@ -11,6 +11,7 @@ import { TAAPass } from "./taa/TAAPass"
 import { SharpnessEffect } from "./sharpness/SharpnessEffect"
 import { GradualBackgroundEffect } from "./gradual-background/GradualBackgroundEffect"
 import { SparkleEffect } from "./sparkle/SparkleEffect"
+import { LensDistortionEffect } from "./lens-distortion/LensDistortionEffect"
 
 export {
 	SSGIEffect,
@@ -25,5 +26,6 @@ export {
 	HBAOEffect,
 	SharpnessEffect,
 	GradualBackgroundEffect,
-	SparkleEffect
+	SparkleEffect,
+	LensDistortionEffect
 }

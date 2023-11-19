@@ -56,7 +56,7 @@ export class DenoiserComposePass extends Pass {
             void main() {
                 float depth = textureLod(depthTexture, vUv, 0.).r;
 
-				if(depth == 0.){
+				if(depth == 1.){
 					discard;
 					return;
 				}

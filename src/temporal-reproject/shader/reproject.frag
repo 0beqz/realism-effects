@@ -2,8 +2,9 @@
 
 vec2 dilatedUv, velocity;
 vec3 worldNormal, worldPos, viewDir;
-float depth, flatness, viewAngle, rayLength = 0.0;
+float depth, flatness, viewAngle, rayLength = 0.0, angleMix;
 float roughness = -1.0;
+float moveFactor = 0.;
 
 #define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
 
@@ -102,8 +103,8 @@ void getVelocityNormalDepth(inout vec2 dilatedUv, out vec2 vel, out vec3 normal,
   depth = velocityTexel.a;
 }
 
-#define PLANE_DISTANCE 10.
-#define WORLD_DISTANCE 10.
+#define PLANE_DISTANCE 20.
+#define WORLD_DISTANCE 20.
 #define NORMAL_DISTANCE 10.
 
 float planeDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos, const vec3 worldNormal, const float distFactor) {
@@ -144,7 +145,7 @@ float validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const
 
   // get the angle between the view direction and the normal
   float lastViewAngle = dot(-lastViewDir, lastViewNormal);
-  float angleMix = abs(lastViewAngle - viewAngle);
+  angleMix = abs(lastViewAngle - viewAngle);
 
   float viewZ = abs(getViewZ(depth));
   float distFactor = 1. + 1. / (viewZ + 1.0);
@@ -153,11 +154,13 @@ float validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const
 
   disoccl += worldDistanceDisocclusionCheck(worldPos, lastWorldPos, distFactor);
   disoccl += planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal, distFactor);
-  disoccl += normalDisocclusionCheck(worldNormal, lastWorldNormal, distFactor);
+  // disoccl += normalDisocclusionCheck(worldNormal, lastWorldNormal, distFactor);
 
   float confidence = 1. - min(disoccl, 1.);
-  confidence *= 1. - pow(angleMix, 4.);
+  // confidence *= 1. - pow(angleMix, 2.);
   confidence = max(confidence, 0.);
+
+  confidence = pow(confidence, confidencePower);
 
   return confidence;
 }
@@ -235,11 +238,11 @@ vec4 BiCubicCatmullRom5Tap(sampler2D tex, vec2 P) {
   sampleWeight[3] = Weight[2].x * Weight[1].y;
   sampleWeight[4] = Weight[1].x * Weight[2].y;
 
-  vec4 Ct = texture(tex, vec2(Sample[1].x, Sample[0].y)) * sampleWeight[0];
-  vec4 Cl = texture(tex, vec2(Sample[0].x, Sample[1].y)) * sampleWeight[1];
-  vec4 Cc = texture(tex, vec2(Sample[1].x, Sample[1].y)) * sampleWeight[2];
-  vec4 Cr = texture(tex, vec2(Sample[2].x, Sample[1].y)) * sampleWeight[3];
-  vec4 Cb = texture(tex, vec2(Sample[1].x, Sample[2].y)) * sampleWeight[4];
+  vec4 Ct = textureLod(tex, vec2(Sample[1].x, Sample[0].y), 0.) * sampleWeight[0];
+  vec4 Cl = textureLod(tex, vec2(Sample[0].x, Sample[1].y), 0.) * sampleWeight[1];
+  vec4 Cc = textureLod(tex, vec2(Sample[1].x, Sample[1].y), 0.) * sampleWeight[2];
+  vec4 Cr = textureLod(tex, vec2(Sample[2].x, Sample[1].y), 0.) * sampleWeight[3];
+  vec4 Cb = textureLod(tex, vec2(Sample[1].x, Sample[2].y), 0.) * sampleWeight[4];
 
   float WeightMultiplier = 1. / (sampleWeight[0] + sampleWeight[1] + sampleWeight[2] + sampleWeight[3] + sampleWeight[4]);
 

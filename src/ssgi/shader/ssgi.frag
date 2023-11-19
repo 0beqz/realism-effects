@@ -390,10 +390,10 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
     vec3 hitNormal = getNormal(gBufferTexture, coords.xy);
 
     // check for self-occlusion
-    // if (dot(worldNormal, hitNormal) == 1.0) {
-    //   isMissedRay = true;
-    //   return envColor;
-    // }
+    if (dot(worldNormal, hitNormal) == 1.0) {
+      isMissedRay = true;
+      return envColor;
+    }
 
     vec4 reprojectedGI = textureLod(accumulatedTexture, reprojectedUv, 0.);
 
@@ -433,6 +433,8 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
 vec2 RayMarch(inout vec3 dir, inout vec3 hitPos, vec4 random) {
   float rayHitDepthDifference;
 
+  hitPos += dir * 0.05;
+
   dir *= rayDistance / float(steps);
 
   float m = 0.5 + random.b;
@@ -455,7 +457,6 @@ vec2 RayMarch(inout vec3 dir, inout vec3 hitPos, vec4 random) {
       if (refineSteps == 0) {
         return uv;
       } else {
-
         return BinarySearch(dir, hitPos);
       }
     }
@@ -484,7 +485,11 @@ vec2 BinarySearch(inout vec3 dir, inout vec3 hitPos) {
     rayHitDepthDifference = z - hitPos.z;
 
     dir *= 0.5;
-    hitPos += rayHitDepthDifference > 0.0 ? -dir : dir;
+    if (rayHitDepthDifference >= 0.0) {
+      hitPos -= dir;
+    } else {
+      hitPos += dir;
+    }
   }
 
   uv = viewSpaceToScreenSpace(hitPos);

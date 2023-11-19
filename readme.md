@@ -103,7 +103,6 @@ const options = {
 	importanceSampling: true,
 	steps: 20,
 	refineSteps: 5,
-	spp: 1,
 	resolutionScale: 1,
 	missedRays: false
 }
@@ -197,6 +196,8 @@ If you'd like, you could also buy me a coffee:
 
 - SSAO effect and PoissonDenoisePass: [N8programs](https://github.com/N8python) - GitHub Repo: [ssao](https://github.com/N8python/ssao)
 
+- Lens distortion shader: [Radial lens undistortion filtering](https://marcodiiga.github.io/radial-lens-undistortion-filtering)
+
 ### Demo Scene
 
 - Mercedes-Benz AMG-GT 2015: [Márcio Meireles](https://sketchfab.com/marciomeireles)
@@ -264,3 +265,7 @@ If you'd like, you could also buy me a coffee:
 
 - [Horizon-Based Indirect Lighting (HBIL)](https://drive.google.com/file/d/1fmceYuM5J2s8puNHZ9o4OF3YjqzIvmRR/view)
 - [Pyramid HBAO — a Scalable Horizon-based Ambient Occlusion Method](https://ceur-ws.org/Vol-3027/paper5.pdf)
+
+## Lens Distortion
+
+- [Realistic Lens Distortion Rendering](http://wscg.zcu.cz/WSCG2018/Poster/P83-full.PDF)

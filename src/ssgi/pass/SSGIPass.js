@@ -66,7 +66,7 @@ export class SSGIPass extends Pass {
 	}
 
 	render(renderer) {
-		this.frame = (this.frame + this.ssgiEffect.spp) % 4096
+		this.frame = (this.frame + 1) % 4096
 
 		const { mask } = this._camera.layers
 		const hasSelection = this.ssgiEffect.selection.size > 0

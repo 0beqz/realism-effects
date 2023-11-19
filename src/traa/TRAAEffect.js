@@ -12,7 +12,10 @@ export class TRAAEffect extends Effect {
 	constructor(scene, camera, velocityDepthNormalPass, options = defaultTemporalReprojectPassOptions) {
 		super("TRAAEffect", traa_compose, {
 			type: "FinalTRAAEffectMaterial",
-			uniforms: new Map([["inputTexture", new Uniform(null)]])
+			uniforms: new Map([
+				["inputTexture", new Uniform(null)],
+				["velocityTexture", new Uniform(velocityDepthNormalPass.texture)]
+			])
 		})
 
 		this._scene = scene
@@ -26,8 +29,7 @@ export class TRAAEffect extends Effect {
 				neighborhoodClamp: true,
 				neighborhoodClampIntensity: 1,
 				neighborhoodClampRadius: 1,
-				logTransform: true,
-				confidencePower: 4
+				logTransform: true
 			}
 		}
 

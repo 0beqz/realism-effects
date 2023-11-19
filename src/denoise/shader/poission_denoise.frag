@@ -46,6 +46,9 @@ struct Neighbor {
   float weight;
 };
 
+void transformColor(inout vec3 color) {}
+void undoColorTransform(inout vec3 color) {}
+
 void evaluateNeighbor(inout InputTexel inp, inout Neighbor neighbor) {
   // abort here as otherwise we'd lose too much precision
   if (neighbor.weight < 0.01)
@@ -80,7 +83,7 @@ void getNeighborWeight(inout InputTexel[textureCount] inputs, inout Neighbor[tex
   float wBasic = exp(-normalDiff * normalPhi - depthDiff * depthPhi);
 #endif
 
-  float sw = exp(-normalDiff * 5.);
+  float sw = exp((-normalDiff - depthDiff) * 2.5);
 
   for (int i = 0; i < textureCount; i++) {
     vec4 t;
@@ -92,6 +95,8 @@ void getNeighborWeight(inout InputTexel[textureCount] inputs, inout Neighbor[tex
     } else {
       t = textureLod(inputTexture, neighborUv, 0.);
     }
+
+    transformColor(t.rgb);
 
     float lumaDiff = abs(inputs[i].luminance - luminance(t.rgb));
     float lumaFactor = exp(-lumaDiff * lumaPhi);
@@ -118,6 +123,7 @@ const vec2 poissonDisk[8] = POISSON_DISK_SAMPLES;
 
 void outputTexel(inout vec4 outputFrag, InputTexel inp) {
   inp.rgb /= inp.totalWeight;
+  undoColorTransform(inp.rgb);
 
   outputFrag.rgb = inp.rgb;
   outputFrag.a = inp.a;
@@ -142,9 +148,11 @@ void main() {
       t = textureLod(inputTexture2, vUv, 0.);
     }
 
+    transformColor(t.rgb);
+
     // check: https://www.desmos.com/calculator/gp9bylydht for graphs
     // float age = 1. / log(pow(t.a, 0.2 * (t.a + 4.)) + 3. + t.a);
-    float age = 1. / (log(pow(t.a, phi * (t.a + 10.)) + 1. + t.a) + 1.);
+    float age = 1. / (log(pow(t.a, phi * (t.a + 1. / phi)) + 1. + t.a) + 1.);
     // float age = 1. / (t.a + 1.);
 
     InputTexel inp = InputTexel(t.rgb, t.a, luminance(t.rgb), age, 1., isTextureSpecular[i]);
@@ -154,10 +162,10 @@ void main() {
   }
 
   if (maxAlpha > 512.) {
-    gOutput0 = vec4(inputs[0].rgb, inputs[0].a);
+    outputTexel(gOutput0, inputs[0]);
 
 #if textureCount == 2
-    gOutput1 = vec4(inputs[1].rgb, inputs[1].a);
+    outputTexel(gOutput1, inputs[1]);
 #endif
     return;
   }

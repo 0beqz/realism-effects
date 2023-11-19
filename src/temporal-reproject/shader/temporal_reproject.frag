@@ -51,12 +51,12 @@ void accumulate(inout vec4 outputColor, inout vec4 inp, inout vec4 acc, inout fl
 
   float maxValue = (fullAccumulate ? 1. : maxBlend) * keepData; // keepData is a flag that is either 1 or 0 when we call reset()
 
-  const float roughnessMaximum = 0.025;
+  // const float roughnessMaximum = 0.025;
 
-  if (doReprojectSpecular && roughness >= 0.0 && roughness < roughnessMaximum) {
-    float maxRoughnessValue = mix(0.8, maxValue, roughness / roughnessMaximum);
-    maxValue = mix(maxValue, maxRoughnessValue, moveFactor);
-  }
+  // if (doReprojectSpecular && roughness >= 0.0 && roughness < roughnessMaximum) {
+  //   float maxRoughnessValue = mix(0.8, maxValue, roughness / roughnessMaximum);
+  //   maxValue = mix(maxValue, maxRoughnessValue, moveFactor);
+  // }
 
   float temporalReprojectMix = min(accumBlend, maxValue);
 
@@ -67,7 +67,7 @@ void accumulate(inout vec4 outputColor, inout vec4 inp, inout vec4 acc, inout fl
   outputColor.rgb = mix(inp.rgb, acc.rgb, temporalReprojectMix);
   outputColor.a = acc.a;
   undoColorTransform(outputColor.rgb);
-  // outputColor.rgb = vec3(confidence);
+  // outputColor.rgb = vec3(moveFactor);
 }
 
 // this function reprojects the input texture to the current frame
@@ -92,14 +92,22 @@ void reproject(inout vec4 inp, inout vec4 acc, sampler2D accumulatedTexture, ino
   acc.a++;
 
   // Apply neighborhood clamping, if enabled.
-  if (doNeighborhoodClamp) {
-    vec3 clampedColor = acc.rgb;
-    clampNeighborhood(inputTexture, clampedColor, inp.rgb, neighborhoodClampRadius, doReprojectSpecular);
+  vec3 clampedColor = acc.rgb;
+  clampNeighborhood(inputTexture, clampedColor, inp.rgb, neighborhoodClampRadius, doReprojectSpecular);
+  float r = doReprojectSpecular ? roughness : 1.0;
 
-    float clampIntensity = neighborhoodClampIntensity * (doReprojectSpecular && roughness >= 0. ? (1. - roughness) : 1.0);
+  float clampIntensity = mix(1., min(1., moveFactor * 50. + neighborhoodClampIntensity), uvc.z * r);
+  // moveFactor = clampIntensity;
 
-    acc.rgb = mix(acc.rgb, clampedColor, clampIntensity);
-  }
+  vec3 newColor = mix(acc.rgb, clampedColor, clampIntensity);
+
+  // check how much the color has changed
+  float colorDiff = min(length(newColor - acc.rgb), 1.);
+  // moveFactor = colorDiff;
+
+  acc.a *= 1. - colorDiff;
+
+  acc.rgb = newColor;
 }
 
 void preprocessInput(inout vec4 texel, inout bool sampledThisFrame) {
@@ -159,12 +167,8 @@ void main() {
 
   // ! todo: find better solution
 
-  if (textureCount > 1 && depth == 1.0) {
-#pragma unroll_loop_start
-    for (int i = 0; i < textureCount; i++) {
-      gOutput[i] = max(inputTexel[i], vec4(0.));
-    }
-#pragma unroll_loop_end
+  if (depth == 1.0 && fwidth(depth) == 0.0) {
+    discard;
     return;
   }
 
@@ -172,7 +176,7 @@ void main() {
   getRoughnessRayLength(inputTexel);
   computeReprojectedUv(depth, worldPos, worldNormal);
 
-  float moveFactor = min(dot(velocity, velocity) / 0.00000001, 1.);
+  moveFactor = dot(velocity, velocity) * 10000.;
 
 #pragma unroll_loop_start
   for (int i = 0; i < textureCount; i++) {

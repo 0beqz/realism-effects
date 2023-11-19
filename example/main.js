@@ -31,6 +31,7 @@ import { SSGIDebugGUI } from "./SSGIDebugGUI"
 import "./style.css"
 import { GradualBackgroundEffect } from "../src/gradual-background/GradualBackgroundEffect"
 import { SparkleEffect } from "../src/sparkle/SparkleEffect"
+import { LensDistortionEffect } from "../src/lens-distortion/LensDistortionEffect"
 
 let traaEffect
 let traaPass
@@ -361,17 +362,16 @@ const initScene = async () => {
 		denoiseDiffuse: 25,
 		denoiseSpecular: 25.54,
 		radius: 16,
-		phi: 0.1,
+		phi: 0.14,
 		lumaPhi: 25.543,
 		depthPhi: 6.522000000000001,
 		normalPhi: 40.217,
 		roughnessPhi: 28.261,
-		specularPhi: 2.771999999999999,
+		specularPhi: 1.7929999999999988,
 		envBlur: 0,
 		importanceSampling: true,
 		steps: 20,
 		refineSteps: 4,
-		spp: 1,
 		resolutionScale: 1,
 		missedRays: false
 	}
@@ -502,9 +502,13 @@ const initScene = async () => {
 				// const bgColor = new Color(0xffffff)
 
 				// const gradualBackgroundEffect = new GradualBackgroundEffect(camera, depthTexture, bgColor, 51)
-				const sparkleEffect = new SparkleEffect(camera, velocityDepthNormalPass)
-				sparkleEffect.setSpread(0.25)
+				// const sparkleEffect = new SparkleEffect(camera, velocityDepthNormalPass)
+				// sparkleEffect.setSpread(0.25)
 				composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, toneMappingEffect))
+
+				const lensDistortionEffect = new LensDistortionEffect({
+					aberration: 1
+				})
 
 				// add a render pass
 				// composer.addPass(new POSTPROCESSING.RenderPass(scene, camera))
@@ -516,7 +520,7 @@ const initScene = async () => {
 				// 	intensity: 1
 				// })
 
-				composer.addPass(new POSTPROCESSING.EffectPass(camera, sharpnessEffect, sparkleEffect))
+				composer.addPass(new POSTPROCESSING.EffectPass(camera, sharpnessEffect))
 				composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect))
 			} else {
 				composer.addPass(

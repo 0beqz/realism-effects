@@ -1,8 +1,7 @@
 import { Effect } from "postprocessing"
-import { setupBlueNoise } from "../utils/BlueNoiseUtils"
 import gbuffer_packing from "../gbuffer/shader/gbuffer_packing.glsl"
 
-const fragShader = /* glsl */ `
+const fragmentShader = /* glsl */ `
     #define luminance(c) dot(c.rgb, vec3(0.299, 0.587, 0.114))
 
     ${gbuffer_packing}
@@ -94,14 +93,6 @@ const fragShader = /* glsl */ `
 `
 export class SparkleEffect extends Effect {
 	constructor(camera, velocityDepthNormalPass) {
-		const { uniforms, fragmentShader } = setupBlueNoise(fragShader)
-
-		// convert uniforms, so we can pass them to Map
-		const uniformsMap = new Map()
-		Object.entries(uniforms).forEach(([key, value]) => {
-			uniformsMap.set(key, value)
-		})
-
 		super("SparkleEffect", fragmentShader, {
 			uniforms: new Map([
 				["projectionMatrix", { value: camera.projectionMatrix.clone() }],
@@ -110,8 +101,7 @@ export class SparkleEffect extends Effect {
 				["viewMatrix", { value: camera.matrixWorldInverse }],
 				["velocityTexture", { value: velocityDepthNormalPass.texture }],
 				["spread", { value: 1 }],
-				["intensity", { value: 1 }],
-				...uniformsMap
+				["intensity", { value: 1 }]
 			])
 		})
 
