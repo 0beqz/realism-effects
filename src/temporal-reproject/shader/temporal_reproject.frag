@@ -51,12 +51,12 @@ void accumulate(inout vec4 outputColor, inout vec4 inp, inout vec4 acc, inout fl
 
   float maxValue = (fullAccumulate ? 1. : maxBlend) * keepData; // keepData is a flag that is either 1 or 0 when we call reset()
 
-  // const float roughnessMaximum = 0.025;
+  const float roughnessMaximum = 0.05;
 
-  // if (doReprojectSpecular && roughness >= 0.0 && roughness < roughnessMaximum) {
-  //   float maxRoughnessValue = mix(0.8, maxValue, roughness / roughnessMaximum);
-  //   maxValue = mix(maxValue, maxRoughnessValue, moveFactor);
-  // }
+  if (doReprojectSpecular && roughness >= 0.0 && roughness < roughnessMaximum) {
+    float maxRoughnessValue = mix(0.8, maxValue, roughness / roughnessMaximum);
+    maxValue = mix(maxValue, maxRoughnessValue, moveFactor);
+  }
 
   float temporalReprojectMix = min(accumBlend, maxValue);
 
