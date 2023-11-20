@@ -35,7 +35,7 @@ export class SSGIDebugGUI {
 
 		denoiseFolder.addBinding(params, "phi", {
 			min: 0,
-			max: 0.3,
+			max: 1,
 			step: 0.001
 		})
 
@@ -64,8 +64,8 @@ export class SSGIDebugGUI {
 		})
 
 		denoiseFolder.addBinding(params, "specularPhi", {
-			min: 0,
-			max: 5,
+			min: -20,
+			max: 20,
 			step: 0.001
 		})
 

@@ -51,12 +51,12 @@ void accumulate(inout vec4 outputColor, inout vec4 inp, inout vec4 acc, inout fl
 
   float maxValue = (fullAccumulate ? 1. : maxBlend) * keepData; // keepData is a flag that is either 1 or 0 when we call reset()
 
-  const float roughnessMaximum = 0.05;
+  // const float roughnessMaximum = 0.25;
 
-  if (doReprojectSpecular && roughness >= 0.0 && roughness < roughnessMaximum) {
-    float maxRoughnessValue = mix(0.8, maxValue, roughness / roughnessMaximum);
-    maxValue = mix(maxValue, maxRoughnessValue, moveFactor);
-  }
+  // if (doReprojectSpecular && roughness >= 0.0 && roughness < roughnessMaximum) {
+  //   float maxRoughnessValue = mix(0., maxValue, roughness / roughnessMaximum);
+  //   maxValue = mix(maxValue, maxRoughnessValue, min(100. * moveFactor, 1.));
+  // }
 
   float temporalReprojectMix = min(accumBlend, maxValue);
 
@@ -93,10 +93,14 @@ void reproject(inout vec4 inp, inout vec4 acc, sampler2D accumulatedTexture, ino
 
   // Apply neighborhood clamping, if enabled.
   vec3 clampedColor = acc.rgb;
-  clampNeighborhood(inputTexture, clampedColor, inp.rgb, neighborhoodClampRadius, doReprojectSpecular);
+
+  int clampRadius = doReprojectSpecular && roughness < 0.25 ? 1 : 2;
+  clampNeighborhood(inputTexture, clampedColor, inp.rgb, clampRadius, doReprojectSpecular);
   float r = doReprojectSpecular ? roughness : 1.0;
 
-  float clampIntensity = mix(1., min(1., moveFactor * 50. + neighborhoodClampIntensity), uvc.z * r * (1. - angleMix));
+  float clampAggressiveness = min(1., uvc.z * r * (1. - angleMix));
+
+  float clampIntensity = mix(0., min(1., moveFactor * 50. + neighborhoodClampIntensity), clampAggressiveness);
   // moveFactor = clampIntensity;
 
   vec3 newColor = mix(acc.rgb, clampedColor, clampIntensity);
@@ -176,7 +180,7 @@ void main() {
   getRoughnessRayLength(inputTexel);
   computeReprojectedUv(depth, worldPos, worldNormal);
 
-  moveFactor = dot(velocity, velocity) * 10000.;
+  moveFactor = min(dot(velocity, velocity) * 10000., 1.);
 
 #pragma unroll_loop_start
   for (int i = 0; i < textureCount; i++) {

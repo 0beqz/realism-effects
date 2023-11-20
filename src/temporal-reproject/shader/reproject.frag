@@ -171,6 +171,8 @@ vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength) {
     return vec2(-1.);
   }
 
+  // todo: don't use hit point reprojection if the surface is too curvy
+
   // Find the direction of the ray
   vec3 cameraRay = normalize(rayOrig - cameraPos);
 

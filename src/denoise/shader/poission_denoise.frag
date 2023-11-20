@@ -31,6 +31,7 @@ Material mat;
 vec3 normal;
 float depth;
 float glossiness;
+float specularFactor;
 
 struct InputTexel {
   vec3 rgb;
@@ -83,15 +84,10 @@ void getNeighborWeight(inout InputTexel[textureCount] inputs, inout Neighbor[tex
   float wBasic = exp(-normalDiff * normalPhi - depthDiff * depthPhi);
 #endif
 
-  float sw = exp((-normalDiff - depthDiff) * 2.5);
-
   for (int i = 0; i < textureCount; i++) {
     vec4 t;
-    float specularFactor = 1.;
-
     if (isTextureSpecular[i]) {
       t = textureLod(inputTexture2, neighborUv, 0.);
-      specularFactor = exp(-glossiness * specularPhi);
     } else {
       t = textureLod(inputTexture, neighborUv, 0.);
     }
@@ -101,7 +97,11 @@ void getNeighborWeight(inout InputTexel[textureCount] inputs, inout Neighbor[tex
     float lumaDiff = abs(inputs[i].luminance - luminance(t.rgb));
     float lumaFactor = exp(-lumaDiff * lumaPhi);
 
-    float w = specularFactor * mix(wBasic * lumaFactor, sw, inputs[i].w);
+    float sw = exp((-normalDiff - depthDiff - lumaFactor) * 2.5);
+
+    float w = mix(wBasic * lumaFactor, sw, inputs[i].w);
+    if (isTextureSpecular[i])
+      w *= 1. * specularFactor;
 
     // calculate the final weight of the neighbor
     w *= inputs[i].w;
@@ -150,10 +150,9 @@ void main() {
 
     transformColor(t.rgb);
 
-    // check: https://www.desmos.com/calculator/gp9bylydht for graphs
-    // float age = 1. / log(pow(t.a, 0.2 * (t.a + 4.)) + 3. + t.a);
-    float age = 1. / (log(pow(t.a, phi * (t.a + 1. / phi)) + 1. + t.a) + 1.);
-    // float age = 1. / (t.a + 1.);
+    // check: https://www.desmos.com/calculator/qcx8huoszl for graphs
+    float a = min(t.a, 500.);
+    float age = 1. / log(exp(a * phi) + 2.);
 
     InputTexel inp = InputTexel(t.rgb, t.a, luminance(t.rgb), age, 1., isTextureSpecular[i]);
     maxAlpha = max(maxAlpha, inp.a);
@@ -161,23 +160,24 @@ void main() {
     inputs[i] = inp;
   }
 
-  if (maxAlpha > 512.) {
-    outputTexel(gOutput0, inputs[0]);
+  //   if (maxAlpha > 512.) {
+  //     outputTexel(gOutput0, inputs[0]);
 
-#if textureCount == 2
-    outputTexel(gOutput1, inputs[1]);
-#endif
-    return;
-  }
+  // #if textureCount == 2
+  //     outputTexel(gOutput1, inputs[1]);
+  // #endif
+  //     return;
+  //   }
 
   mat = getMaterial(gBufferTexture, vUv);
   normal = getNormal(mat);
   glossiness = max(0., 4. * (1. - mat.roughness / 0.25));
+  specularFactor = exp(-glossiness * specularPhi);
 
   float roughnessRadius = mix(sqrt(mat.roughness), 1., 0.5 * (1. - mat.metalness));
 
   vec4 random = blueNoise();
-  float r = radius * roughnessRadius * sqrt(random.r) * exp(-maxAlpha * 0.01);
+  float r = radius * roughnessRadius * sqrt(random.r);
 
   // rotate the poisson disk
   float angle = random.g * 2. * PI;
