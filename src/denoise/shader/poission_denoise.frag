@@ -97,11 +97,11 @@ void getNeighborWeight(inout InputTexel[textureCount] inputs, inout Neighbor[tex
     float lumaDiff = abs(inputs[i].luminance - luminance(t.rgb));
     float lumaFactor = exp(-lumaDiff * lumaPhi);
 
-    float sw = exp((-normalDiff - depthDiff - lumaFactor) * 2.5);
+    float sw = sqrt(wBasic);
 
     float w = mix(wBasic * lumaFactor, sw, inputs[i].w);
     if (isTextureSpecular[i])
-      w *= 1. * specularFactor;
+      w *= specularFactor;
 
     // calculate the final weight of the neighbor
     w *= inputs[i].w;
@@ -150,9 +150,8 @@ void main() {
 
     transformColor(t.rgb);
 
-    // check: https://www.desmos.com/calculator/qcx8huoszl for graphs
-    float a = min(t.a, 500.);
-    float age = 1. / log(exp(a * phi) + 2.);
+    // check: https://www.desmos.com/calculator/jurqfiigcf for graphs
+    float age = 1. / log(exp(t.a * phi) + 1.718281828459045); // e - 1
 
     InputTexel inp = InputTexel(t.rgb, t.a, luminance(t.rgb), age, 1., isTextureSpecular[i]);
     maxAlpha = max(maxAlpha, inp.a);
@@ -177,7 +176,7 @@ void main() {
   float roughnessRadius = mix(sqrt(mat.roughness), 1., 0.5 * (1. - mat.metalness));
 
   vec4 random = blueNoise();
-  float r = radius * roughnessRadius * sqrt(random.r);
+  float r = radius * roughnessRadius * sqrt(random.r) * exp(-maxAlpha * 0.01);
 
   // rotate the poisson disk
   float angle = random.g * 2. * PI;

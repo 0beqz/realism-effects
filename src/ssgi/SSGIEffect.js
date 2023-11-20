@@ -159,7 +159,7 @@ export class SSGIEffect extends Effect {
 						case "normalPhi":
 						case "roughnessPhi":
 						case "specularPhi":
-							if (this.denoiser.denoisePass && this.denoiser.denoisePass.fullscreenMaterial.uniforms[key]) {
+							if (this.denoiser.denoisePass?.fullscreenMaterial.uniforms[key]) {
 								this.denoiser.denoisePass.fullscreenMaterial.uniforms[key].value = value
 								this.reset()
 							}
