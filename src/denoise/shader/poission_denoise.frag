@@ -42,24 +42,10 @@ struct InputTexel {
   bool isSpecular;
 };
 
-struct Neighbor {
-  vec4 texel;
-  float weight;
-};
-
 void transformColor(inout vec3 color) {}
 void undoColorTransform(inout vec3 color) {}
 
-void evaluateNeighbor(inout InputTexel inp, inout Neighbor neighbor) {
-  // abort here as otherwise we'd lose too much precision
-  if (neighbor.weight < 0.01)
-    return;
-
-  inp.rgb += neighbor.weight * neighbor.texel.rgb;
-  inp.totalWeight += neighbor.weight;
-}
-
-void getNeighborWeight(inout InputTexel[textureCount] inputs, inout Neighbor[textureCount] neighbors, inout vec2 neighborUv) {
+void getNeighborWeight(inout InputTexel[textureCount] inputs, inout vec2 neighborUv) {
 #ifdef GBUFFER_TEXTURE
   Material neighborMat = getMaterial(gBufferTexture, neighborUv);
   vec3 neighborNormal = neighborMat.normal;
@@ -84,10 +70,15 @@ void getNeighborWeight(inout InputTexel[textureCount] inputs, inout Neighbor[tex
   float wBasic = exp(-normalDiff * normalPhi - depthDiff * depthPhi);
 #endif
 
+  float disocclW = sqrt(wBasic);
+
   for (int i = 0; i < textureCount; i++) {
+    float w = 1.0;
+
     vec4 t;
-    if (isTextureSpecular[i]) {
+    if (inputs[i].isSpecular) {
       t = textureLod(inputTexture2, neighborUv, 0.);
+      w *= specularFactor;
     } else {
       t = textureLod(inputTexture, neighborUv, 0.);
     }
@@ -97,16 +88,10 @@ void getNeighborWeight(inout InputTexel[textureCount] inputs, inout Neighbor[tex
     float lumaDiff = abs(inputs[i].luminance - luminance(t.rgb));
     float lumaFactor = exp(-lumaDiff * lumaPhi);
 
-    float sw = sqrt(wBasic);
+    w *= mix(wBasic * lumaFactor, disocclW, inputs[i].w) * inputs[i].w;
 
-    float w = mix(wBasic * lumaFactor, sw, inputs[i].w);
-    if (isTextureSpecular[i])
-      w *= specularFactor;
-
-    // calculate the final weight of the neighbor
-    w *= inputs[i].w;
-
-    neighbors[i] = Neighbor(t, w);
+    inputs[i].rgb += w * t.rgb;
+    inputs[i].totalWeight += w;
   }
 }
 
@@ -159,15 +144,6 @@ void main() {
     inputs[i] = inp;
   }
 
-  //   if (maxAlpha > 512.) {
-  //     outputTexel(gOutput0, inputs[0]);
-
-  // #if textureCount == 2
-  //     outputTexel(gOutput1, inputs[1]);
-  // #endif
-  //     return;
-  //   }
-
   mat = getMaterial(gBufferTexture, vUv);
   normal = getNormal(mat);
   glossiness = max(0., 4. * (1. - mat.roughness / 0.25));
@@ -187,11 +163,7 @@ void main() {
     vec2 offset = rm * poissonDisk[i];
     vec2 neighborUv = vUv + offset;
 
-    Neighbor[textureCount] neighbors;
-    getNeighborWeight(inputs, neighbors, neighborUv);
-
-    for (int j = 0; j < textureCount; j++)
-      evaluateNeighbor(inputs[j], neighbors[j]);
+    getNeighborWeight(inputs, neighborUv);
   }
 
   outputTexel(gOutput0, inputs[0]);

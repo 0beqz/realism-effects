@@ -73,9 +73,7 @@ export const velocity_fragment_pars = /* glsl */ `
 varying vec4 prevPosition;
 varying vec4 newPosition;
 
-#ifdef renderDepth
 varying vec2 vHighPrecisionZW;
-#endif
 `
 
 export const velocity_fragment_main = /* glsl */ `
@@ -84,9 +82,7 @@ vec2 pos1 = (newPosition.xy / newPosition.w) * 0.5 + 0.5;
 
 vec2 vel = pos1 - pos0;
 
-#ifdef renderDepth
 float fragCoordZ = 0.5 * vHighPrecisionZW[0] / vHighPrecisionZW[1] + 0.5;
-#endif
 
 gl_FragColor = vec4(vel.x, vel.y, 0., 0.);
 `
@@ -195,7 +191,5 @@ export class VelocityDepthNormalMaterial extends ShaderMaterial {
 						gl_FragColor.a = fragCoordZ;
                     }`
 		})
-
-		this.isVelocityMaterial = true
 	}
 }
