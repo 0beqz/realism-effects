@@ -1,5 +1,5 @@
 ﻿uniform sampler2D inputTexture;
-uniform sampler2D velocityTexture;
+uniform highp sampler2D velocityTexture;
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
   // todo: fix jittering issue

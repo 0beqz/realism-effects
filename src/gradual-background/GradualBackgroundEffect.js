@@ -1,7 +1,7 @@
 import { Effect } from "postprocessing"
 
 const fragmentShader = /* glsl */ `
-        uniform sampler2D depthTexture;
+        uniform highp sampler2D depthTexture;
         uniform mat4 projectionMatrix;
         uniform mat4 projectionMatrixInverse;
         uniform mat4 cameraMatrixWorld;

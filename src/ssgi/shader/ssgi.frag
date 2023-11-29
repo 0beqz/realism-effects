@@ -1,8 +1,8 @@
 ﻿varying vec2 vUv;
 
 uniform sampler2D accumulatedTexture;
-uniform sampler2D depthTexture;
-uniform sampler2D velocityTexture;
+uniform highp sampler2D depthTexture;
+uniform highp sampler2D velocityTexture;
 uniform sampler2D directLightTexture;
 uniform vec3 backgroundColor;
 
@@ -436,8 +436,6 @@ vec2 RayMarch(inout vec3 dir, inout vec3 hitPos, vec4 random) {
   hitPos += dir * 0.05;
 
   dir *= rayDistance / float(steps);
-
-  float m = 0.5 + random.b;
 
   vec2 uv;
 

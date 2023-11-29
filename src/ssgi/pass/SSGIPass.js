@@ -86,6 +86,7 @@ export class SSGIPass extends Pass {
 		this.fullscreenMaterial.uniforms.farMinusNear.value = this._camera.far - this._camera.near
 		this.fullscreenMaterial.uniforms.nearMulFar.value = this._camera.near * this._camera.far
 		this.fullscreenMaterial.uniforms.accumulatedTexture.value = this.ssgiEffect.denoiser.texture
+		this.fullscreenMaterial.uniforms.velocityTexture.value = this.ssgiEffect.velocityTexture
 		const bgColor = this._scene.background instanceof Color ? this._scene.background : blackColor
 		this.fullscreenMaterial.uniforms.backgroundColor.value.copy(bgColor)
 

@@ -34,7 +34,7 @@ export class DenoiserComposePass extends Pass {
 			fragmentShader: /* glsl */ `
             varying vec2 vUv;
             uniform sampler2D sceneTexture;
-            uniform sampler2D depthTexture;
+            uniform highp sampler2D depthTexture;
             uniform sampler2D diffuseGiTexture;
             uniform sampler2D specularGiTexture;
             uniform mat4 cameraMatrixWorld;

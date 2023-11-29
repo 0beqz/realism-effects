@@ -1,4 +1,4 @@
-uniform sampler2D gBufferTexture;
+uniform highp sampler2D gBufferTexture;
 
 struct Material {
   vec4 diffuse;
@@ -79,6 +79,7 @@ vec4 packTwoVec4(vec4 v1, vec4 v2) {
 
   encoded.r = uintBitsToFloat(packHalf2x16(v1.rg));
   encoded.g = uintBitsToFloat(packHalf2x16(v1.ba));
+
   encoded.b = uintBitsToFloat(packHalf2x16(v2.rg));
   encoded.a = uintBitsToFloat(packHalf2x16(v2.ba));
 

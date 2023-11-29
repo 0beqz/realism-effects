@@ -90,21 +90,17 @@ vec3 constructGlobalIllumination(vec3 diffuseGi, vec3 specularGi, vec3 cameraRay
   // frames
   float VoH = max(EPSILON, dot(v, h));
 
-  vec3 diffuseColor = diffuseGi;
-  vec3 specularColor = specularGi;
-
   // fresnel
   vec3 f0 = mix(vec3(0.04), diffuse, metalness);
   vec3 F = F_Schlick(f0, VoH);
 
 #if inputType != TYPE_SPECULAR
-  vec3 diffuseComponent = diffuse * (1. - metalness) * (1. - F) * diffuseColor;
+  vec3 diffuseComponent = diffuse * (1. - metalness) * (1. - F) * diffuseGi;
 #else
   vec3 diffuseComponent = textureLod(sceneTexture, vUv, 0.).rgb;
 #endif
 
-  vec3 specularLightingColor = specularColor;
-  vec3 specularComponent = specularLightingColor * F;
+  vec3 specularComponent = specularGi * F;
 
   vec3 globalIllumination = diffuseComponent + specularComponent + emissive;
 

@@ -1,6 +1,6 @@
 ﻿uniform sampler2D inputTexture;
 uniform sampler2D sceneTexture;
-uniform sampler2D depthTexture;
+uniform highp sampler2D depthTexture;
 uniform bool isDebug;
 
 uniform float cameraNear;
@@ -18,7 +18,6 @@ float getViewZ(const in float depth) {
 }
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
-  outputColor = vec4(vec3(0., 1., 0.), 1.);
   if (isDebug) {
     outputColor = textureLod(inputTexture, uv, 0.);
     return;

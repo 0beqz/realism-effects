@@ -40,7 +40,6 @@ vec2 viewSpaceToScreenSpace(const vec3 position, const mat4 projMatrix) {
 // idea from:
 // https://www.elopezr.com/temporal-aa-and-the-quest-for-the-holy-trail/
 void transformColor(inout vec3 color) { color = log(color + 1.); }
-
 void undoColorTransform(inout vec3 color) { color = exp(color) - 1.; }
 #else
 #define transformColor
@@ -72,9 +71,11 @@ void getNeighborhoodAABB(const sampler2D tex, const int clampRadius, inout vec3 
       vec4 neighborTexel = textureLod(inputTexture, neighborUv, 0.0);
 #endif
 
-      // Update the minimum and maximum color values for the current pixel's neighborhood.
-      minNeighborColor = min(neighborTexel.rgb, minNeighborColor);
-      maxNeighborColor = max(neighborTexel.rgb, maxNeighborColor);
+      if (neighborTexel.r >= 0.) {
+        // Update the minimum and maximum color values for the current pixel's neighborhood.
+        minNeighborColor = min(neighborTexel.rgb, minNeighborColor);
+        maxNeighborColor = max(neighborTexel.rgb, maxNeighborColor);
+      }
     }
   }
 }
@@ -186,7 +187,10 @@ vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength) {
   reprojectedHitPoint.xyz /= reprojectedHitPoint.w;
   reprojectedHitPoint.xy = reprojectedHitPoint.xy * 0.5 + 0.5;
 
-  return reprojectedHitPoint.xy;
+  vec2 diffuseUv = vUv - velocity.xy;
+  float m = min(max(0., roughness - 0.25) / 0.25, 1.);
+
+  return mix(reprojectedHitPoint.xy, diffuseUv, m);
 }
 
 vec3 getReprojectedUV(const bool doReprojectSpecular, const float depth, const vec3 worldPos, const vec3 worldNormal) {

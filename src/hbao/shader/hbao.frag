@@ -1,6 +1,6 @@
 varying vec2 vUv;
 
-uniform sampler2D depthTexture;
+uniform highp sampler2D depthTexture;
 
 uniform mat4 projectionViewMatrix;
 uniform int frame;
@@ -18,16 +18,13 @@ uniform float thickness;
 // HBAO Utils
 #include <hbao_utils>
 
-float getOcclusion(const vec3 cameraPosition, const vec3 worldPos,
-                   const vec3 worldNormal, const float depth, const int seed,
+float getOcclusion(const vec3 cameraPosition, const vec3 worldPos, const vec3 worldNormal, const float depth, const int seed,
                    inout float totalWeight) {
   vec4 blueNoise = blueNoise();
 
   vec3 sampleWorldDir = cosineSampleHemisphere(worldNormal, blueNoise.rg);
 
-  vec3 sampleWorldPos = worldPos + aoDistance *
-                                       pow(blueNoise.b, distancePower + 1.0) *
-                                       sampleWorldDir;
+  vec3 sampleWorldPos = worldPos + aoDistance * pow(blueNoise.b, distancePower + 1.0) * sampleWorldDir;
 
   // Project the sample position to screen space
   vec4 sampleUv = projectionViewMatrix * vec4(sampleWorldPos, 1.);
@@ -86,8 +83,7 @@ void main() {
     seed += frame;
 #endif
 
-    float occlusion = getOcclusion(cameraPosition.xyz, worldPos, worldNormal,
-                                   depth, seed, totalWeight);
+    float occlusion = getOcclusion(cameraPosition.xyz, worldPos, worldNormal, depth, seed, totalWeight);
     ao += occlusion;
   }
 

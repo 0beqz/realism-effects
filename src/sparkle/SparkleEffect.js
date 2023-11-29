@@ -6,7 +6,7 @@ const fragmentShader = /* glsl */ `
 
     ${gbuffer_packing}
 
-    uniform sampler2D velocityTexture;
+    uniform highp sampler2D velocityTexture;
     uniform mat4 projectionMatrix;
     uniform mat4 projectionMatrixInverse;
     uniform mat4 viewMatrix;

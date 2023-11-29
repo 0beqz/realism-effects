@@ -18,7 +18,7 @@ export class GBufferDebugPass extends Pass {
 		this.fullscreenMaterial = new ShaderMaterial({
 			fragmentShader: /* glsl */ `
             varying vec2 vUv;
-            uniform sampler2D depthTexture;
+            uniform highp sampler2D depthTexture;
 			uniform int mode;
 
             #include <common>

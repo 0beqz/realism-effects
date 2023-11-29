@@ -1,7 +1,7 @@
 varying vec2 vUv;
 
 uniform sampler2D inputTexture;
-uniform sampler2D depthTexture;
+uniform highp sampler2D depthTexture;
 uniform sampler2D normalTexture; // optional, in case no gBufferTexture is used
 uniform mat4 projectionMatrix;
 uniform mat4 projectionMatrixInverse;
@@ -42,7 +42,7 @@ struct InputTexel {
   bool isSpecular;
 };
 
-void getNeighborWeight(inout InputTexel[textureCount] inputs, inout vec2 neighborUv) {
+float getBasicNeighborWeight(inout vec2 neighborUv) {
 #ifdef GBUFFER_TEXTURE
   Material neighborMat = getMaterial(gBufferTexture, neighborUv);
   vec3 neighborNormal = neighborMat.normal;
@@ -54,7 +54,7 @@ void getNeighborWeight(inout InputTexel[textureCount] inputs, inout vec2 neighbo
 #endif
 
   if (neighborDepth == 1.0)
-    return;
+    return 0.;
 
   float normalDiff = 1. - max(dot(normal, neighborNormal), 0.);
   float depthDiff = 10000. * abs(depth - neighborDepth);
@@ -67,29 +67,7 @@ void getNeighborWeight(inout InputTexel[textureCount] inputs, inout vec2 neighbo
   float wBasic = exp(-normalDiff * normalPhi - depthDiff * depthPhi);
 #endif
 
-  float disocclW = pow(wBasic, 0.1);
-
-  for (int i = 0; i < textureCount; i++) {
-    float w = 1.0;
-
-    vec4 t;
-    if (inputs[i].isSpecular) {
-      t = textureLod(inputTexture2, neighborUv, 0.);
-      w *= specularFactor;
-    } else {
-      t = textureLod(inputTexture, neighborUv, 0.);
-    }
-
-    float lumaDiff = abs(inputs[i].luminance - luminance(t.rgb));
-    float lumaFactor = exp(-lumaDiff * lumaPhi);
-
-    w *= mix(wBasic * lumaFactor, disocclW, pow(inputs[i].w, 3.)) * inputs[i].w;
-
-    if (w > 0.01) {
-      inputs[i].rgb += w * t.rgb;
-      inputs[i].totalWeight += w;
-    }
-  }
+  return wBasic;
 }
 
 vec3 getNormal(Material mat) {
@@ -156,10 +134,32 @@ void outputTexel(inout vec4 outputFrag, InputTexel inp) {
   outputFrag.a = inp.a;
 }
 
+void applyWeight(inout InputTexel inp, vec2 neighborUv, float wBasic) {
+  float w = wBasic;
+  vec4 t;
+  if (inp.isSpecular) {
+    t = textureLod(inputTexture2, neighborUv, 0.);
+    w *= specularFactor;
+  } else {
+    t = textureLod(inputTexture, neighborUv, 0.);
+  }
+
+  float disocclW = pow(w, 0.1);
+
+  float lumaDiff = abs(inp.luminance - luminance(t.rgb));
+  float lumaFactor = exp(-lumaDiff * lumaPhi);
+  w = mix(w * lumaFactor, disocclW, pow(inp.w, 3.)) * inp.w;
+
+  if (w > 0.01) {
+    inp.rgb += w * t.rgb;
+    inp.totalWeight += w;
+  }
+}
+
 void main() {
   depth = textureLod(depthTexture, vUv, 0.).r;
 
-  if (depth == 1.0) {
+  if (depth == 1.0 && fwidth(depth) == 0.) {
     discard;
     return;
   }
@@ -167,22 +167,27 @@ void main() {
   InputTexel[textureCount] inputs;
 
   float maxAlpha = 0.;
-  for (int i = 0; i < textureCount; i++) {
-    vec4 t;
-    if (i == 0) {
-      t = textureLod(inputTexture, vUv, 0.);
-    } else {
-      t = textureLod(inputTexture2, vUv, 0.);
+#pragma unroll_loop_start
+  for (int i = 0; i < 2; i++) {
+    {
+      vec4 t;
+
+      if (isTextureSpecular[i]) {
+        t = textureLod(inputTexture2, vUv, 0.);
+      } else {
+        t = textureLod(inputTexture, vUv, 0.);
+      }
+
+      // check: https://www.desmos.com/calculator/jurqfiigcf for graphs
+      float age = 1. / log(exp(t.a * phi) + 1.718281828459045); // e - 1
+
+      InputTexel inp = InputTexel(t.rgb, t.a, luminance(t.rgb), age, 1., isTextureSpecular[i]);
+      maxAlpha = max(maxAlpha, inp.a);
+
+      inputs[i] = inp;
     }
-
-    // check: https://www.desmos.com/calculator/jurqfiigcf for graphs
-    float age = 1. / log(exp(t.a * phi) + 1.718281828459045); // e - 1
-
-    InputTexel inp = InputTexel(t.rgb, t.a, luminance(t.rgb), age, 1., isTextureSpecular[i]);
-    maxAlpha = max(maxAlpha, inp.a);
-
-    inputs[i] = inp;
   }
+#pragma unroll_loop_end
 
   mat = getMaterial(gBufferTexture, vUv);
   normal = getNormal(mat);
@@ -202,18 +207,24 @@ void main() {
   float s = sin(angle), c = cos(angle);
   mat2 rm = mat2(c, -s, s, c) * r;
 
+  int index = blueNoiseIndex;
+
+#pragma unroll_loop_start
   for (int i = 0; i < 8; i++) {
-    int index = blueNoiseIndex + i;
-    index = index % 128;
-    vec2 offset = VOGEL[index];
+    {
+      index++;
+      index = index % 128;
+      vec2 offset = VOGEL[index];
 
-    vec2 neighborUv = vUv + flatness * r * (offset / resolution);
+      vec2 neighborUv = vUv + flatness * r * (offset / resolution);
 
-    vec2 offset2 = rm * poissonDisk[i];
-    // neighborUv = vUv + offset2;
+      float wBasic = getBasicNeighborWeight(neighborUv);
 
-    getNeighborWeight(inputs, neighborUv);
+      applyWeight(inputs[0], neighborUv, wBasic);
+      applyWeight(inputs[1], neighborUv, wBasic);
+    }
   }
+#pragma unroll_loop_end
 
   // inputs[0].rgb = vec3(flatness);
   // inputs[0].totalWeight = 1.;

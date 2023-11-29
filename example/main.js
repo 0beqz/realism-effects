@@ -372,7 +372,6 @@ const initScene = async () => {
 		importanceSampling: true,
 		steps: 20,
 		refineSteps: 4,
-		spp: 1,
 		resolutionScale: 1,
 		missedRays: false
 	}
@@ -460,7 +459,7 @@ const initScene = async () => {
 	const bloomEffect = new POSTPROCESSING.BloomEffect({
 		intensity: 1,
 		mipmapBlur: true,
-		luminanceSmoothing: 11.25,
+		luminanceSmoothing: 0.5,
 		luminanceThreshold: 0.75,
 		kernelSize: POSTPROCESSING.KernelSize.MEDIUM
 	})
@@ -515,14 +514,14 @@ const initScene = async () => {
 				// composer.addPass(new POSTPROCESSING.RenderPass(scene, camera))
 
 				traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
-				composer.addPass(traaPass)
+				// composer.addPass(traaPass)
 
 				// const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass, {
 				// 	intensity: 1
 				// })
 
-				composer.addPass(new POSTPROCESSING.EffectPass(camera, sharpnessEffect))
-				composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect))
+				// composer.addPass(new POSTPROCESSING.EffectPass(camera, sharpnessEffect))
+				// composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect))
 			} else {
 				composer.addPass(
 					new POSTPROCESSING.EffectPass(camera, ssgiEffect, toneMappingEffect, vignetteEffect, lutEffect)

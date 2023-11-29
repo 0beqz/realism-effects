@@ -1,5 +1,15 @@
 import { Pass } from "postprocessing"
-import { Color, DepthTexture, FloatType, NearestFilter, Quaternion, Vector3, WebGLRenderTarget } from "three"
+import {
+	Color,
+	DepthTexture,
+	FloatType,
+	HalfFloatType,
+	NearestFilter,
+	Quaternion,
+	UnsignedByteType,
+	Vector3,
+	WebGLRenderTarget
+} from "three"
 import { didCameraMove, getVisibleChildren, isChildMaterialRenderable } from "../utils/SceneUtils.js"
 import { copyPropsToGBufferMaterial, createGBufferMaterial } from "./material/GBufferMaterial.js"
 

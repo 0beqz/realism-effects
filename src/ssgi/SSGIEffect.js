@@ -1,4 +1,4 @@
-﻿import { Effect, RenderPass, Selection } from "postprocessing"
+﻿import { DepthPass, Effect, RenderPass, Selection } from "postprocessing"
 import {
 	Color,
 	LinearFilter,

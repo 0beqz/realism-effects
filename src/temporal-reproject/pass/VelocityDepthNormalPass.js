@@ -68,7 +68,7 @@ export class VelocityDepthNormalPass extends Pass {
 	visibleMeshes = []
 	needsSwap = false
 
-	constructor(scene, camera, renderDepth = true) {
+	constructor(scene, camera) {
 		super("VelocityDepthNormalPass")
 
 		this._scene = scene
@@ -84,8 +84,6 @@ export class VelocityDepthNormalPass extends Pass {
 
 		this.renderTarget.depthTexture = new DepthTexture(1, 1)
 		this.renderTarget.depthTexture.type = FloatType
-
-		this.renderDepth = renderDepth
 	}
 
 	get texture() {
@@ -115,8 +113,6 @@ export class VelocityDepthNormalPass extends Pass {
 			c.material = velocityDepthNormalMaterial
 
 			c.visible = isChildMaterialRenderable(c, originalMaterial)
-
-			if (this.renderDepth) velocityDepthNormalMaterial.defines.renderDepth = ""
 
 			keepMaterialMapUpdated(
 				velocityDepthNormalMaterial,

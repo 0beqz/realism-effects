@@ -44,9 +44,7 @@ uniform mat4 prevVelocityMatrix;
 varying vec4 prevPosition;
 varying vec4 newPosition;
 
-#ifdef renderDepth
 varying vec2 vHighPrecisionZW;
-#endif
 `
 
 // Returns the body of the vertex shader for the velocity buffer
@@ -64,9 +62,7 @@ prevPosition = prevVelocityMatrix * vec4( transformed, 1.0 );
 
 gl_Position = newPosition;
 
-#ifdef renderDepth
 vHighPrecisionZW = gl_Position.zw;
-#endif
 `
 
 export const velocity_fragment_pars = /* glsl */ `
@@ -147,6 +143,7 @@ export class VelocityDepthNormalMaterial extends ShaderMaterial {
 
                     }`,
 			fragmentShader: /* glsl */ `
+					precision highp float;
 					uniform mat4 cameraMatrixWorld;
 
 					varying vec3 vViewPosition;

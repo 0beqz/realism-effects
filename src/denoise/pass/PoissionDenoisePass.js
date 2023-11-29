@@ -10,6 +10,7 @@ import { GBufferPass } from "../../gbuffer/GBufferPass"
 import { useBlueNoise } from "../../utils/BlueNoiseUtils"
 import fragmentShader from "../shader/poission_denoise.frag"
 import { generateDenoiseSamples, generatePoissonDiskConstant } from "../utils/PoissonUtils"
+import { unrollLoops } from "../../ssgi/utils/Utils"
 
 const finalFragmentShader = fragmentShader.replace("#include <gbuffer_packing>", gbuffer_packing)
 
@@ -40,8 +41,10 @@ export class PoissionDenoisePass extends Pass {
 
 		const textureCount = options.inputType === "diffuseSpecular" ? 2 : 1
 
+		const fragmentShader = unrollLoops(finalFragmentShader.replaceAll("textureCount", textureCount))
+
 		this.fullscreenMaterial = new ShaderMaterial({
-			fragmentShader: finalFragmentShader,
+			fragmentShader,
 			vertexShader,
 			uniforms: {
 				depthTexture: { value: null },
@@ -63,7 +66,6 @@ export class PoissionDenoisePass extends Pass {
 				resolution: { value: new Vector2() }
 			},
 			defines: {
-				textureCount,
 				isTextureSpecular: "bool[2](" + isTextureSpecular.join(",") + ")"
 			},
 			glslVersion: GLSL3

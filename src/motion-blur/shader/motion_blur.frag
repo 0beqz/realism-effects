@@ -1,5 +1,5 @@
 ﻿uniform sampler2D inputTexture;
-uniform sampler2D velocityTexture;
+uniform highp sampler2D velocityTexture;
 uniform vec2 resolution;
 uniform float intensity;
 uniform float jitter;
