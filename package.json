@@ -77,5 +77,8 @@
 	"version": "1.1.1",
 	"lint-staged": {
 		"*.{js,css,md}": "prettier --write"
+	},
+	"dependencies": {
+		"canvas": "^2.11.2"
 	}
 }

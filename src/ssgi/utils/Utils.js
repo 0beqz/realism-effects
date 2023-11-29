@@ -98,3 +98,23 @@ export const splitIntoGroupsOfVector4 = arr => {
 
 	return result
 }
+
+// this function generates a Vogel distribution for a given number of samples
+// source: https://www.shadertoy.com/view/4t2SDh
+export const generateVogelDistribution = (numSamples, scale = 1) => {
+	const samples = []
+	const goldenAngle = Math.PI * (3 - Math.sqrt(5))
+
+	for (let i = 0; i < numSamples; i++) {
+		const t = i / numSamples
+		const r = Math.sqrt(t)
+		const theta = i * goldenAngle
+
+		const x = r * Math.cos(theta)
+		const y = r * Math.sin(theta)
+
+		samples.push({ x, y })
+	}
+
+	return samples
+}
