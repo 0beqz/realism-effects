@@ -46,6 +46,9 @@ struct InputTexel {
   bool isSpecular;
 };
 
+void toDenoiseSpace(inout vec3 color) { color = log(color + 1.); }
+void toLinearSpace(inout vec3 color) { color = exp(color) - 1.; }
+
 float getBasicNeighborWeight(inout vec2 neighborUv) {
 #ifdef GBUFFER_TEXTURE
   Material neighborMat = getMaterial(gBufferTexture, neighborUv);
@@ -111,6 +114,7 @@ void outputTexel(inout vec4 outputFrag, InputTexel inp) {
   inp.rgb /= inp.totalWeight;
 
   outputFrag.rgb = inp.rgb;
+  toLinearSpace(outputFrag.rgb);
   outputFrag.a = inp.a;
 }
 
@@ -123,6 +127,8 @@ void applyWeight(inout InputTexel inp, vec2 neighborUv, float wBasic) {
   } else {
     t = textureLod(inputTexture, neighborUv, 0.);
   }
+
+  toDenoiseSpace(t.rgb);
 
   float disocclW = pow(w, 0.1);
 
@@ -157,6 +163,8 @@ void main() {
       } else {
         t = textureLod(inputTexture, vUv, 0.);
       }
+
+      toDenoiseSpace(t.rgb);
 
       // check: https://www.desmos.com/calculator/jurqfiigcf for graphs
       float age = 1. / log(exp(t.a * phi) + 1.718281828459045); // e - 1

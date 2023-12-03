@@ -105,7 +105,7 @@ void reproject(inout vec4 inp, inout vec4 acc, sampler2D accumulatedTexture, ino
   clampNeighborhood(inputTexture, clampedColor, inp.rgb, clampRadius, doReprojectSpecular);
   float r = doReprojectSpecular ? roughness : 1.0;
 
-  float clampAggressiveness = min(1., uvc.z * r * (1. - angleMix));
+  float clampAggressiveness = min(1., uvc.z * r);
 
   float clampIntensity = mix(0., min(1., moveFactor * 50. + neighborhoodClampIntensity), clampAggressiveness);
   // moveFactor = clampIntensity;
