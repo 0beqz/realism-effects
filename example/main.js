@@ -511,7 +511,7 @@ const initScene = async () => {
 				})
 
 				traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
-				// composer.addPass(traaPass)
+				composer.addPass(traaPass)
 
 				// const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass, {
 				// 	intensity: 1
