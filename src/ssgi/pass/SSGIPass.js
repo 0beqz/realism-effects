@@ -1,5 +1,5 @@
 import { Pass } from "postprocessing"
-import { Color, FloatType, HalfFloatType, LinearFilter, NearestFilter, WebGLRenderTarget } from "three"
+import { Color, FloatType, NearestFilter, WebGLRenderTarget } from "three"
 import { GBufferPass } from "../../gbuffer/GBufferPass.js"
 import { SSGIMaterial } from "../material/SSGIMaterial.js"
 
@@ -18,12 +18,12 @@ export class SSGIPass extends Pass {
 		this.fullscreenMaterial = new SSGIMaterial()
 		this.defaultFragmentShader = this.fullscreenMaterial.fragmentShader
 
-		const { mode } = options
+		// const { mode } = options
 
 		this.renderTarget = new WebGLRenderTarget(1, 1, {
-			type: mode === "ssgi" ? FloatType : HalfFloatType,
-			minFilter: mode === "ssgi" ? NearestFilter : LinearFilter,
-			magFilter: mode === "ssgi" ? NearestFilter : LinearFilter,
+			type: FloatType,
+			minFilter: NearestFilter,
+			magFilter: NearestFilter,
 			depthBuffer: false
 		})
 

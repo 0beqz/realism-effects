@@ -1,10 +1,10 @@
 import { Effect } from "postprocessing"
 import { RepeatWrapping, TextureLoader, Vector2 } from "three"
-import chessboard from "./chessboard.png"
+// import chessboard from "./chessboard.png"
 
 const fragmentShader = /* glsl */ `
     uniform sampler2D inputTexture;
-    uniform sampler2D chessboardTexture;
+    // uniform sampler2D chessboardTexture;
     uniform vec2 resolution;
 
     uniform float alphax;
@@ -45,13 +45,13 @@ const fragmentShader = /* glsl */ `
 `
 export class LensDistortionEffect extends Effect {
 	constructor({ alphax = -0.05, alphay = -0.05, aberration = 1 } = {}) {
-		const chessboardTexture = new TextureLoader().load(chessboard)
-		chessboardTexture.wrapS = chessboardTexture.wrapT = RepeatWrapping
+		// const chessboardTexture = new TextureLoader().load(chessboard)
+		// chessboardTexture.wrapS = chessboardTexture.wrapT = RepeatWrapping
 
 		super("LensDistortionEffect", fragmentShader, {
 			uniforms: new Map([
 				["inputTexture", { value: null }],
-				["chessboardTexture", { value: chessboardTexture }],
+				// ["chessboardTexture", { value: chessboardTexture }],
 				["resolution", { value: new Vector2() }],
 				["alphax", { value: alphax }],
 				["alphay", { value: alphay }],

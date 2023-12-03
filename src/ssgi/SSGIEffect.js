@@ -1,4 +1,4 @@
-﻿import { DepthPass, Effect, RenderPass, Selection } from "postprocessing"
+﻿import { Effect, RenderPass, Selection } from "postprocessing"
 import {
 	Color,
 	LinearFilter,
@@ -73,6 +73,28 @@ export class SSGIEffect extends Effect {
 		} else if (options.mode === "ssgi") {
 			options.reprojectSpecular = [false, true]
 			options.neighborhoodClamp = [false, true]
+		}
+
+		if (typeof options.preset === "string") {
+			switch (options.preset) {
+				case "low":
+					options.steps = 10
+					options.refineSteps = 2
+					options.denoiseMode = "full_temporal"
+					break
+
+				case "medium":
+					options.steps = 20
+					options.refineSteps = 4
+					options.denoiseMode = "full"
+					break
+
+				case "medium":
+					options.steps = 40
+					options.refineSteps = 4
+					options.denoiseMode = "full"
+					break
+			}
 		}
 
 		this.ssgiPass = new SSGIPass(this, options)

@@ -2,8 +2,8 @@
 
 vec2 dilatedUv, velocity;
 vec3 worldNormal, worldPos, viewDir;
-float depth, flatness, viewAngle, rayLength = 0.0, angleMix;
-float roughness = -1.0;
+float depth, curvature, viewAngle, rayLength, angleMix;
+float roughness = 1.;
 float moveFactor = 0.;
 
 #define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
@@ -167,8 +167,7 @@ float validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const
 }
 
 vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength) {
-  // Check if the ray is too long, if it is return -1
-  if (rayLength > 10.0e3) {
+  if (curvature > 0.05 || rayLength < 0.001) {
     return vec2(-1.);
   }
 
@@ -190,7 +189,7 @@ vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength) {
   vec2 diffuseUv = vUv - velocity.xy;
   float m = min(max(0., roughness - 0.25) / 0.25, 1.);
 
-  return mix(reprojectedHitPoint.xy, diffuseUv, m);
+  return reprojectedHitPoint.xy;
 }
 
 vec3 getReprojectedUV(const bool doReprojectSpecular, const float depth, const vec3 worldPos, const vec3 worldNormal) {
@@ -255,4 +254,16 @@ vec4 BiCubicCatmullRom5Tap(sampler2D tex, vec2 P) {
   return max((Ct + Cl + Cc + Cr + Cb) * WeightMultiplier, vec4(0.));
 }
 
-vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv) { return BiCubicCatmullRom5Tap(tex, reprojectedUv); }
+vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv) {
+  // this causes severe reprojection artifacts on iPhone devices
+  // todo: figure out why and find different solution
+  vec4 catmull = BiCubicCatmullRom5Tap(tex, reprojectedUv);
+  // vec4 bilinear = max(textureLod(tex, reprojectedUv, 0.0), vec4(0.));
+  return catmull;
+}
+
+float getCurvature(vec3 n) {
+  float curvature = length(fwidth(n));
+
+  return curvature;
+}

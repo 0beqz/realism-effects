@@ -42,7 +42,6 @@ export const defaultSSGIOptions = {
 	importanceSampling: true,
 	steps: 20,
 	refineSteps: 5,
-	spp: 1,
 	resolutionScale: 1,
 	missedRays: false,
 	outputTexture: null

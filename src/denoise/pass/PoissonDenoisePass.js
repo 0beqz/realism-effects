@@ -7,10 +7,9 @@ import gbuffer_packing from "../../gbuffer/shader/gbuffer_packing.glsl"
 import vertexShader from "../../utils/shader/basic.vert"
 
 import { GBufferPass } from "../../gbuffer/GBufferPass"
-import { useBlueNoise } from "../../utils/BlueNoiseUtils"
-import fragmentShader from "../shader/poission_denoise.frag"
-import { generateDenoiseSamples, generatePoissonDiskConstant } from "../utils/PoissonUtils"
 import { unrollLoops } from "../../ssgi/utils/Utils"
+import { useBlueNoise } from "../../utils/BlueNoiseUtils"
+import fragmentShader from "../shader/Poisson_denoise.frag"
 
 const finalFragmentShader = fragmentShader.replace("#include <gbuffer_packing>", gbuffer_packing)
 
@@ -24,12 +23,12 @@ const defaultPoissonBlurOptions = {
 	inputType: "diffuseSpecular" // can be "diffuseSpecular", "diffuse" or "specular"
 }
 
-export class PoissionDenoisePass extends Pass {
+export class PoissonDenoisePass extends Pass {
 	iterations = defaultPoissonBlurOptions.iterations
 	index = 0
 
 	constructor(camera, textures, options = defaultPoissonBlurOptions) {
-		super("PoissionBlurPass")
+		super("PoissonBlurPass")
 
 		options = { ...defaultPoissonBlurOptions, ...options }
 
@@ -82,10 +81,10 @@ export class PoissionDenoisePass extends Pass {
 		this.renderTargetB = new WebGLMultipleRenderTargets(1, 1, textureCount, renderTargetOptions)
 
 		// give the textures of renderTargetA and renderTargetB names
-		this.renderTargetB.texture[0].name = "PoissionDenoisePass." + (isTextureSpecular[0] ? "specular" : "diffuse")
+		this.renderTargetB.texture[0].name = "PoissonDenoisePass." + (isTextureSpecular[0] ? "specular" : "diffuse")
 
 		if (textureCount > 1) {
-			this.renderTargetB.texture[1].name = "PoissionDenoisePass." + (isTextureSpecular[1] ? "specular" : "diffuse")
+			this.renderTargetB.texture[1].name = "PoissonDenoisePass." + (isTextureSpecular[1] ? "specular" : "diffuse")
 		}
 
 		const { uniforms } = this.fullscreenMaterial
@@ -94,21 +93,11 @@ export class PoissionDenoisePass extends Pass {
 		uniforms["normalPhi"].value = options.normalPhi
 	}
 
-	updatePoissionDiskSamples(width, height) {
-		const poissonDisk = generateDenoiseSamples(new Vector2(1 / width, 1 / height))
-
-		const poissonDiskConstant = generatePoissonDiskConstant(poissonDisk)
-		this.fullscreenMaterial.defines.POISSON_DISK_SAMPLES = poissonDiskConstant
-		this.fullscreenMaterial.needsUpdate = true
-	}
-
 	setSize(width, height) {
 		this.renderTargetA.setSize(width, height)
 		this.renderTargetB.setSize(width, height)
 
 		this.fullscreenMaterial.uniforms.resolution.value.set(width, height)
-
-		this.updatePoissionDiskSamples(width, height)
 	}
 
 	get texture() {
@@ -127,7 +116,7 @@ export class PoissionDenoisePass extends Pass {
 		this.fullscreenMaterial.uniforms.depthTexture.value = gBufferPass.renderTarget.depthTexture
 	}
 
-	setnormalTexture(texture) {
+	setnNormalTexture(texture) {
 		this.fullscreenMaterial.uniforms.normalTexture.value = texture
 	}
 
@@ -160,4 +149,4 @@ export class PoissionDenoisePass extends Pass {
 	}
 }
 
-PoissionDenoisePass.DefaultOptions = defaultPoissonBlurOptions
+PoissonDenoisePass.DefaultOptions = defaultPoissonBlurOptions

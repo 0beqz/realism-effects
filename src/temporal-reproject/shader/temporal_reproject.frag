@@ -64,10 +64,16 @@ void accumulate(inout vec4 outputColor, inout vec4 inp, inout vec4 acc, inout fl
   // calculate the alpha from temporalReprojectMix
   acc.a = 1. / (1. - temporalReprojectMix) - 1.;
   acc.a = min(65536., acc.a);
+  // acc.a = 10.;
 
   outputColor.rgb = mix(inp.rgb, acc.rgb, temporalReprojectMix);
   outputColor.a = acc.a;
   undoColorTransform(outputColor.rgb);
+
+  // outputColor.rgb = vec3(roughness);
+  // if (length(fwidth(worldNormal)) < 0.02) {
+  //   outputColor.rgb = vec3(0., 1., 0.);
+  // }
   // outputColor.rgb = vec3(moveFactor);
 }
 
@@ -163,7 +169,9 @@ void getRoughnessRayLength(vec4 inputTexel[textureCount]) {
   rayLength = inputTexel[1].a;
   roughness = clamp(inputTexel[0].a, 0., 1.);
 #elif inputType == SPECULAR
-  rayLength = inputTexel[0].a;
+  vec2 data = unpackHalf2x16(floatBitsToUint(inputTexel[0].a));
+  rayLength = data.r;
+  roughness = clamp(data.g, 0., 1.);
 #endif
 }
 
@@ -177,11 +185,12 @@ void main() {
   getTexels(inputTexel, textureSampledThisFrame);
 
   // ! todo: find better solution
-
-  if (depth == 1.0 && fwidth(depth) == 0.0) {
+  if (textureCount == 2 && depth == 1.0 && fwidth(depth) == 0.0) {
     discard;
     return;
   }
+
+  curvature = getCurvature(worldNormal);
 
   computeGVariables(dilatedUv, depth);
   getRoughnessRayLength(inputTexel);

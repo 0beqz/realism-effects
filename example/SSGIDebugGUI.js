@@ -65,7 +65,7 @@ export class SSGIDebugGUI {
 
 		denoiseFolder.addBinding(params, "specularPhi", {
 			min: -20,
-			max: 20,
+			max: 100,
 			step: 0.001
 		})
 
@@ -73,7 +73,6 @@ export class SSGIDebugGUI {
 
 		definesFolder.addBinding(params, "steps", { min: 0, max: 256, step: 1 })
 		definesFolder.addBinding(params, "refineSteps", { min: 0, max: 16, step: 1 })
-		definesFolder.addBinding(params, "spp", { min: 1, max: 32, step: 1 })
 		definesFolder.addBinding(params, "missedRays")
 
 		const resolutionFolder = pane.addFolder({ title: "Resolution", expanded: false })

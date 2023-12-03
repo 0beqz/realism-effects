@@ -367,11 +367,12 @@ const initScene = async () => {
 		depthPhi: 6.522000000000001,
 		normalPhi: 40.217,
 		roughnessPhi: 28.261,
-		specularPhi: 1.7929999999999988,
+		specularPhi: 9.129999999999999,
 		envBlur: 0,
 		importanceSampling: true,
 		steps: 20,
 		refineSteps: 4,
+		spp: 1,
 		resolutionScale: 1,
 		missedRays: false
 	}
@@ -471,7 +472,7 @@ const initScene = async () => {
 
 	ssgiEffect = new SSGIEffect(composer, scene, camera, { ...options, velocityDepthNormalPass })
 	// ssgiEffect = new SSREffect(composer, scene, camera, {
-	// 	denoiseMode: "full_temporal",
+	// 	preset: "high",
 	// 	velocityDepthNormalPass
 	// })
 	window.ssgiEffect = ssgiEffect
@@ -498,7 +499,6 @@ const initScene = async () => {
 				const sharpnessEffect = new SharpnessEffect({ sharpness: 0.75 })
 
 				// const depthTexture = ssgiEffect.depthTexture
-				const gBufferPass = ssgiEffect.ssgiPass.gBufferPass
 				// const bgColor = new Color(0xffffff)
 
 				// const gradualBackgroundEffect = new GradualBackgroundEffect(camera, depthTexture, bgColor, 51)
@@ -510,18 +510,15 @@ const initScene = async () => {
 					aberration: 1
 				})
 
-				// add a render pass
-				// composer.addPass(new POSTPROCESSING.RenderPass(scene, camera))
-
 				traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
-				// composer.addPass(traaPass)
+				composer.addPass(traaPass)
 
 				// const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass, {
 				// 	intensity: 1
 				// })
 
-				// composer.addPass(new POSTPROCESSING.EffectPass(camera, sharpnessEffect))
-				// composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect))
+				composer.addPass(new POSTPROCESSING.EffectPass(camera, sharpnessEffect, vignetteEffect))
+				composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, lutEffect))
 			} else {
 				composer.addPass(
 					new POSTPROCESSING.EffectPass(camera, ssgiEffect, toneMappingEffect, vignetteEffect, lutEffect)

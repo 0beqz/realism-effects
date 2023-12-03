@@ -100,6 +100,7 @@ void calculateAngles(inout vec3 h, inout vec3 l, inout vec3 v, inout vec3 n, ino
 }
 
 vec3 worldPos;
+Material mat;
 
 void main() {
   float unpackedDepth = textureLod(depthTexture, vUv, 0.0).r;
@@ -111,7 +112,7 @@ void main() {
     return;
   }
 
-  Material mat = getMaterial(gBufferTexture, vUv);
+  mat = getMaterial(gBufferTexture, vUv);
   float roughnessSq = clamp(mat.roughness * mat.roughness, 0.000001, 1.0);
 
   invTexSize = 1. / resolution;
@@ -284,9 +285,9 @@ void main() {
   vec4 hitPosWS;
   vec3 cameraPosWS = cameraMatrixWorld[3].xyz;
 
-  if (isMissedRay) {
-    rayLength = 10.0e4;
-  } else {
+  isMissedRay = hitPos.x > 10.0e8;
+
+  if (!isMissedRay) {
     // convert hitPos from view- to world-space
     hitPosWS = cameraMatrixWorld * vec4(specularHitPos, 1.0);
 
@@ -294,7 +295,10 @@ void main() {
     rayLength = distance(cameraPosWS, hitPosWS.xyz);
   }
 
-  gSpecular = vec4(specularGI, rayLength);
+  // encode both roughness and rayLength into the alpha channel
+  float a = uintBitsToFloat(packHalf2x16(vec2(rayLength, mat.roughness)));
+
+  gSpecular = vec4(specularGI, a);
 
 #if mode == MODE_SSGI
   gl_FragColor = packTwoVec4(gDiffuse, gSpecular);
@@ -340,6 +344,20 @@ vec3 getEnvColor(vec3 l, vec3 worldPos, float roughness, bool isDiffuseSample, b
 #endif
 }
 
+float getSaturation(vec3 c) {
+  float maxComponent = max(max(c.r, c.g), c.b);
+  float minComponent = min(min(c.r, c.g), c.b);
+
+  float delta = maxComponent - minComponent;
+
+  // If the maximum and minimum components are equal, the color is achromatic (gray)
+  if (maxComponent == minComponent) {
+    return 0.0;
+  } else {
+    return delta / maxComponent;
+  }
+}
+
 vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, const vec3 worldPos, const float metalness, const float roughness,
               const bool isDiffuseSample, const bool isEnvSample, const float NoV, const float NoL, const float NoH, const float LoH, const float VoH,
               const vec4 random, inout vec3 l, inout vec3 hitPos, out bool isMissedRay, out vec3 brdf, out float pdf) {
@@ -369,7 +387,7 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
   allowMissedRays = true;
 #endif
 
-  isMissedRay = coords.x == -1.0;
+  isMissedRay = hitPos.x == 10.0e9;
 
   vec3 envMapSample = vec3(0.);
 
@@ -397,13 +415,10 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
 
     vec4 reprojectedGI = textureLod(accumulatedTexture, reprojectedUv, 0.);
 
-    float pixelAge = reprojectedGI.a;
-
-    float saturation = 1. / (pixelAge + 1.);
-    saturation = mix(saturation, 1., roughness);
+    float saturation = getSaturation(mat.diffuse.rgb);
 
     // saturate reprojected GI by the saturation value
-    reprojectedGI.rgb = mix(vec3(luminance(reprojectedGI.rgb)), reprojectedGI.rgb, saturation * 0.75 + 0.25);
+    reprojectedGI.rgb = mix(reprojectedGI.rgb, vec3(luminance(reprojectedGI.rgb)), (1. - roughness) * saturation * 0.4);
 
     SSGI = reprojectedGI.rgb;
 
@@ -460,9 +475,7 @@ vec2 RayMarch(inout vec3 dir, inout vec3 hitPos, vec4 random) {
     }
   }
 
-#ifndef missedRays
-  return INVALID_RAY_COORDS;
-#endif
+  hitPos.xyz = vec3(10.0e9);
 
   return uv;
 }

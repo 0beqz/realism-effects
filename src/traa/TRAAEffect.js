@@ -12,10 +12,7 @@ export class TRAAEffect extends Effect {
 	constructor(scene, camera, velocityDepthNormalPass, options = defaultTemporalReprojectPassOptions) {
 		super("TRAAEffect", traa_compose, {
 			type: "FinalTRAAEffectMaterial",
-			uniforms: new Map([
-				["inputTexture", new Uniform(null)],
-				["velocityTexture", new Uniform(velocityDepthNormalPass.texture)]
-			])
+			uniforms: new Map([["accumulatedTexture", new Uniform(null)]])
 		})
 
 		this._scene = scene
@@ -64,7 +61,7 @@ export class TRAAEffect extends Effect {
 			)
 			this.temporalReprojectPass.setSize(inputBuffer.width, inputBuffer.height)
 
-			this.uniforms.get("inputTexture").value = this.temporalReprojectPass.texture
+			this.uniforms.get("accumulatedTexture").value = this.temporalReprojectPass.texture
 		}
 
 		this.temporalReprojectPass.unjitter()

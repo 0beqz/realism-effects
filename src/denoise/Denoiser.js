@@ -1,7 +1,7 @@
 import { TemporalReprojectPass } from "../temporal-reproject/TemporalReprojectPass"
 import { VelocityDepthNormalPass } from "../temporal-reproject/pass/VelocityDepthNormalPass"
 import { DenoiserComposePass } from "./pass/DenoiserComposePass"
-import { PoissionDenoisePass } from "./pass/PoissionDenoisePass"
+import { PoissonDenoisePass } from "./pass/PoissonDenoisePass"
 
 const defaultDenosierOptions = {
 	denoiseMode: "full", // can be "full" | "full_temporal" | "denoised" | "temporal"
@@ -37,7 +37,7 @@ export default class Denoiser {
 				reprojectSpecular: [false, true],
 				neighborhoodClamp: [true, true],
 				neighborhoodClampRadius: 2,
-				neighborhoodClampIntensity: 0.25,
+				neighborhoodClampIntensity: 0.5,
 				...options
 			}
 		)
@@ -45,7 +45,7 @@ export default class Denoiser {
 		const textures = this.temporalReprojectPass.renderTarget.texture.slice(0, textureCount)
 
 		if (this.options.denoiseMode === "full" || this.options.denoiseMode === "denoised") {
-			this.denoisePass = new PoissionDenoisePass(camera, textures, options)
+			this.denoisePass = new PoissonDenoisePass(camera, textures, options)
 			this.denoisePass.setGBufferPass(options.gBufferPass ?? this.velocityDepthNormalPass)
 
 			this.temporalReprojectPass.overrideAccumulatedTextures = this.denoisePass.renderTargetB.texture
