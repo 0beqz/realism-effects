@@ -1,31 +1,34 @@
 # three.js Realism Effects
 
-A collection of the following effects for three.js:
+ℹ Note: A new version of SSGI (version 2) and realism-effects in general is currently in the works. You can checkout the most recent progress on the `v2` branch. It features many performance and quality improvements over the current released version.
+<br>
+<br>
+realism-effects is collection of the following effects for three.js:
 
 - SSGI
   <br></br>
-  [<img src="https://raw.githubusercontent.com/0beqz/realism-effects/main/screenshots/ssgi.webp">](https://realism-effects.vercel.app)
+  [<img src="https://raw.githubusercontent.com/0beqz/realism-effects/main/screenshots/ssgi.webp">](https://realism-effects-git-v2-obeqz.vercel.app/)
   <br></br>
   <br></br>
-  [<img src="https://raw.githubusercontent.com/0beqz/realism-effects/main/screenshots/ssgi2.webp">](https://realism-effects.vercel.app)
+  [<img src="https://raw.githubusercontent.com/0beqz/realism-effects/main/screenshots/ssgi2.webp">](https://realism-effects-git-v2-obeqz.vercel.app/)
   <br></br>
 - Motion Blur
   <br></br>
-  [<img src="https://raw.githubusercontent.com/0beqz/realism-effects/main/screenshots/motion_blur.webp">](https://realism-effects.vercel.app)
+  [<img src="https://raw.githubusercontent.com/0beqz/realism-effects/main/screenshots/motion_blur.webp">](https://realism-effects-git-v2-obeqz.vercel.app/)
   <br></br>
 - TRAA
   <br>
   TRAA (left)&nbsp;&nbsp;&nbsp; No Anti-Aliasing (right)
   <br></br>
-  [<img src="https://raw.githubusercontent.com/0beqz/realism-effects/main/screenshots/traa_comp.webp">](https://realism-effects.vercel.app?traa_test=true)
+  [<img src="https://raw.githubusercontent.com/0beqz/realism-effects/main/screenshots/traa_comp.webp">](https://realism-effects-git-v2-obeqz.vercel.app/?traa_test=true)
   <br></br>
-  AA comparison scenes: [Model Comparision](https://realism-effects.vercel.app/?traa_test=true&traa_test_model=true), [General Comparison](https://realism-effects.vercel.app/?traa_test=true)
+  AA comparison scenes: [Model Comparision](https://realism-effects-git-v2-obeqz.vercel.app//?traa_test=true&traa_test_model=true), [General Comparison](https://realism-effects-git-v2-obeqz.vercel.app//?traa_test=true)
   <br></br>
 - Ambient Occlusion
   <br>
   SSAO (left) &nbsp;&nbsp;&nbsp; HBAO (right)
   <br></br>
-  [<img src="https://raw.githubusercontent.com/0beqz/realism-effects/main/screenshots/ssao_hbao.webp">](https://realism-effects.vercel.app/?ao)
+  [<img src="https://raw.githubusercontent.com/0beqz/realism-effects/main/screenshots/ssao_hbao.webp">](https://realism-effects-git-v2-obeqz.vercel.app//?ao)
   Credits go to [N8programs](https://github.com/N8python) for the SSAO effect as well as the denoiser used for both AO effects (namely the `PoissonDenoisePass`)
   <br></br>
 - SSR (Screen-Space Reflections)
