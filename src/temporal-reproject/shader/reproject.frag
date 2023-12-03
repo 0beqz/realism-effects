@@ -167,7 +167,7 @@ float validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const
 }
 
 vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength) {
-  if (curvature > 0.05 || rayLength < 0.001) {
+  if (curvature > 0.05 || rayLength < 0.01) {
     return vec2(-1.);
   }
 
