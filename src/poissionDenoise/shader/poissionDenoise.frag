@@ -62,7 +62,7 @@ void main() {
     float center = texel.a;
 #else
     vec3 denoised = texel.rgb;
-    float center = texel.rgb;
+    vec3 center = texel.rgb;
 #endif
 
     float depth = depthTexel.x;
@@ -84,7 +84,11 @@ void main() {
         vec4 neighborTexel = textureLod(inputTexture, neighborUv, 0.0);
 
         vec3 neighborNormal = getNormal(neighborUv, neighborTexel);
+#ifdef NORMAL_IN_RGB
         float neighborColor = neighborTexel.a;
+#else
+        vec3 neighborColor = neighborTexel.rgb;
+#endif
 
         float sampleDepth = textureLod(depthTexture, neighborUv, 0.0).x;
 

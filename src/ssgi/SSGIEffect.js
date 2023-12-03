@@ -52,7 +52,7 @@ export class SSGIEffect extends Effect {
 			])
 		})
 
-		if (!(camera instanceof PerspectiveCamera)) {
+		if (!camera?.isPerspectiveCamera) {
 			throw new Error(
 				this.constructor.name +
 					" doesn't support cameras of type '" +
