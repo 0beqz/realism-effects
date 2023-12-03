@@ -9,7 +9,7 @@ import vertexShader from "../../utils/shader/basic.vert"
 import { GBufferPass } from "../../gbuffer/GBufferPass"
 import { unrollLoops } from "../../ssgi/utils/Utils"
 import { useBlueNoise } from "../../utils/BlueNoiseUtils"
-import fragmentShader from "../shader/Poisson_denoise.frag"
+import fragmentShader from "../shader/poisson_denoise.frag"
 
 const finalFragmentShader = fragmentShader.replace("#include <gbuffer_packing>", gbuffer_packing)
 
