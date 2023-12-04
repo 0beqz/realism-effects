@@ -37,7 +37,7 @@ float getOcclusion(const vec3 cameraPosition, const vec3 worldPos, const vec3 wo
     float deltaDepth = depth - sampleDepth;
 
     // distance based bias
-    float d = distance(sampleWorldPos, cameraPosition);
+    float d = distance(sampleWorldPos, cameraPosition) / aoDistance;
     deltaDepth *= 0.001 * d * d;
 
     float th = thickness * 0.01;
