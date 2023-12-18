@@ -18,7 +18,7 @@ export class SSGIDebugGUI {
 
 		params = { ...SSGIEffect.DefaultOptions, ...params }
 
-		const generalFolder = pane.addFolder({ title: "General" })
+		const generalFolder = pane.addFolder({ title: "General", expanded: false })
 		generalFolder.addBinding(params, "distance", { min: 0.001, max: 50, step: 0.01 })
 		generalFolder.addBinding(params, "thickness", {
 			min: 0,
@@ -29,7 +29,7 @@ export class SSGIDebugGUI {
 		generalFolder.addBinding(params, "envBlur", { min: 0, max: 1, step: 0.01 })
 		generalFolder.addBinding(params, "importanceSampling")
 
-		const denoiseFolder = pane.addFolder({ title: "Denoise" })
+		const denoiseFolder = pane.addFolder({ title: "Denoise", expanded: false })
 		denoiseFolder.addBinding(params, "denoiseIterations", { min: 0, max: 5, step: 1 })
 		denoiseFolder.addBinding(params, "radius", { min: 0, max: 32, step: 1 })
 
@@ -69,7 +69,7 @@ export class SSGIDebugGUI {
 			step: 0.001
 		})
 
-		const definesFolder = pane.addFolder({ title: "Tracing" })
+		const definesFolder = pane.addFolder({ title: "Tracing", expanded: false })
 
 		definesFolder.addBinding(params, "steps", { min: 0, max: 256, step: 1 })
 		definesFolder.addBinding(params, "refineSteps", { min: 0, max: 16, step: 1 })
@@ -107,7 +107,7 @@ export class SSGIDebugGUI {
 
 		const textureDebugParams = { Texture: "DenoiserComposePass.Texture" }
 
-		const debugFolder = pane.addFolder({ title: "Debug", expanded: false })
+		const debugFolder = pane.addFolder({ title: "Debug" })
 		debugFolder
 			.addBinding(textureDebugParams, "Texture", {
 				options: textureObject

@@ -33,6 +33,10 @@ import { GradualBackgroundEffect } from "../src/gradual-background/GradualBackgr
 import { SparkleEffect } from "../src/sparkle/SparkleEffect"
 import { LensDistortionEffect } from "../src/lens-distortion/LensDistortionEffect"
 
+import eruda from "eruda"
+eruda.init()
+eruda.show()
+
 let traaEffect
 let traaPass
 let taaPass
@@ -644,7 +648,7 @@ const resize = () => {
 	camera.updateProjectionMatrix()
 
 	const dpr = window.devicePixelRatio
-	renderer.setPixelRatio(fps < 256 ? Math.max(1, dpr * 0.5) : dpr)
+	renderer.setPixelRatio(Math.min(2, dpr))
 
 	renderer.setSize(window.innerWidth, window.innerHeight)
 	composer.setSize(window.innerWidth, window.innerHeight)

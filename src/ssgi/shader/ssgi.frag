@@ -271,7 +271,7 @@ void main() {
   specularGI += directLight;
 #endif
 
-  vec4 gDiffuse, gSpecular;
+  highp vec4 gDiffuse, gSpecular;
 
 #if mode == MODE_SSGI
   if (diffuseSamples == 0.0)
@@ -281,7 +281,7 @@ void main() {
 
   // calculate world-space ray length used for reprojecting hit points instead
   // of screen-space pixels in the temporal reproject pass
-  float rayLength = 0.0;
+  highp float rayLength = 0.0;
   vec4 hitPosWS;
   vec3 cameraPosWS = cameraMatrixWorld[3].xyz;
 
@@ -296,13 +296,14 @@ void main() {
   }
 
   // encode both roughness and rayLength into the alpha channel
-  float a = uintBitsToFloat(packHalf2x16(vec2(rayLength, mat.roughness)));
-
-  gSpecular = vec4(specularGI, a);
+  highp uint packedRoughnessRayLength = packHalf2x16(vec2(rayLength, mat.roughness));
+  highp float a = uintBitsToFloat(packedRoughnessRayLength);
 
 #if mode == MODE_SSGI
+  gSpecular = vec4(specularGI, a);
   gl_FragColor = packTwoVec4(gDiffuse, gSpecular);
 #else
+  gSpecular = vec4(specularGI, rayLength);
   gl_FragColor = gSpecular;
 #endif
 }

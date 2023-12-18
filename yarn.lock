@@ -1684,6 +1684,11 @@ end-of-stream@^1.0.0:
   dependencies:
     once "^1.4.0"
 
+eruda@^3.0.1:
+  version "3.0.1"
+  resolved "https://registry.npmjs.org/eruda/-/eruda-3.0.1.tgz"
+  integrity sha512-6q1Xdwga4JTr1mKSW4mzuWSSbmXgqpm/8Wa1QGFGfCWRjC0bCQjbS4u06M1te1moucIS3hBLlbSTPWYH2W0qbQ==
+
 es-abstract@^1.19.0, es-abstract@^1.19.1, es-abstract@^1.19.2, es-abstract@^1.19.5:
   version "1.20.1"
   resolved "https://registry.npmjs.org/es-abstract/-/es-abstract-1.20.1.tgz"

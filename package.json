@@ -79,6 +79,7 @@
 		"*.{js,css,md}": "prettier --write"
 	},
 	"dependencies": {
-		"canvas": "^2.11.2"
+		"canvas": "^2.11.2",
+		"eruda": "^3.0.1"
 	}
 }

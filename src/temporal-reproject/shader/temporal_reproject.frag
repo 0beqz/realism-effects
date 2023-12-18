@@ -121,19 +121,19 @@ void reproject(inout vec4 inp, inout vec4 acc, sampler2D accumulatedTexture, ino
   acc.rgb = newColor;
 }
 
-void preprocessInput(inout vec4 texel, inout bool sampledThisFrame) {
+void preprocessInput(inout highp vec4 texel, inout bool sampledThisFrame) {
   sampledThisFrame = texel.r >= 0.;
   texel.rgb = max(texel.rgb, vec3(0.));
   transformColor(texel.rgb);
 }
 
-void getTexels(inout vec4 inputTexel[textureCount], inout bool sampledThisFrame[textureCount]) {
+void getTexels(inout highp vec4 inputTexel[textureCount], inout bool sampledThisFrame[textureCount]) {
 #if inputType == DIFFUSE_SPECULAR
   // not defining the sampled texture as a variable but passing it to the function directly causes platform-specific errors
   // on Samsung Galaxy S21, for example the textures seems to be sampled as HalfFloats instead of Floats (it gives the same errorneous results as
   // packing the 2 textures in a single HalfFloat RGBA texture). This is probably a bug in the driver. The diffuse texture appears blueish in that
   // case
-  vec4 tex = textureLod(inputTexture, vUv, 0.);
+  highp vec4 tex = textureLod(inputTexture, vUv, 0.);
   unpackTwoVec4(tex, inputTexel[0], inputTexel[1]);
 
   preprocessInput(inputTexel[0], sampledThisFrame[0]);
@@ -164,7 +164,7 @@ void computeReprojectedUv(float depth, vec3 worldPos, vec3 worldNormal) {
 #endif
 }
 
-void getRoughnessRayLength(vec4 inputTexel[textureCount]) {
+void getRoughnessRayLength(inout highp vec4 inputTexel[textureCount]) {
 #if inputType == DIFFUSE_SPECULAR
   rayLength = inputTexel[1].a;
   roughness = clamp(inputTexel[0].a, 0., 1.);
@@ -179,7 +179,7 @@ void main() {
   vec2 dilatedUv = vUv;
   getVelocityNormalDepth(dilatedUv, velocity, worldNormal, depth);
 
-  vec4 inputTexel[textureCount], accumulatedTexel[textureCount];
+  highp vec4 inputTexel[textureCount], accumulatedTexel[textureCount];
   bool textureSampledThisFrame[textureCount];
 
   getTexels(inputTexel, textureSampledThisFrame);
