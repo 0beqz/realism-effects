@@ -572,7 +572,7 @@ const tapHandler = ev => {
 		return false
 	}
 
-	gui2.pane.element.style.visibility = "hidden"
+	// gui2.pane.element.style.visibility = "hidden"
 	toggleMenu()
 }
 
@@ -972,4 +972,10 @@ const setupAsset = asset => {
 	if (taaPass) taaPass.needsUpdate = true
 
 	requestAnimationFrame(refreshLighting)
+}
+
+const consoleError = console.error.bind(console)
+console.error = (...args) => {
+	alert(args.join("\n"))
+	consoleError(...args)
 }
