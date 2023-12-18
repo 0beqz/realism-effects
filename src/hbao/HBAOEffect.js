@@ -5,8 +5,8 @@ import { AOEffect } from "../ao/AOEffect"
 class HBAOEffect extends AOEffect {
 	lastSize = { width: 0, height: 0, resolutionScale: 0 }
 
-	constructor(composer, camera, scene, options = AOEffect.DefaultOptions) {
-		const hbaoPass = new HBAOPass(camera, scene)
+	constructor(composer, camera, scene, depthTexture, options = AOEffect.DefaultOptions) {
+		const hbaoPass = new HBAOPass(camera, scene, depthTexture)
 
 		options = {
 			...AOEffect.DefaultOptions,
@@ -14,7 +14,7 @@ class HBAOEffect extends AOEffect {
 			...options
 		}
 
-		super(composer, camera, scene, hbaoPass, options)
+		super(composer, depthTexture, hbaoPass, options)
 
 		options = { ...AOEffect.DefaultOptions, ...options }
 	}

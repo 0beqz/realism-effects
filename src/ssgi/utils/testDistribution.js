@@ -44,7 +44,7 @@ function generatePoissonDiskSamples(numSamples) {
 	return samples
 }
 
-const numSamples = 64
+const numSamples = 8
 const samples = generateVogelDistribution(numSamples)
 const samples2 = generatePoissonDiskSamples(numSamples)
 

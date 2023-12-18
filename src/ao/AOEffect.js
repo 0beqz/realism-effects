@@ -1,9 +1,8 @@
-import { Effect, NormalPass } from "postprocessing"
+import { Effect } from "postprocessing"
 import { Color, Uniform } from "three"
-import { PoissonDenoisePass } from "../denoise/pass/PoissonDenoisePass"
 // eslint-disable-next-line camelcase
-import ao_compose from "./shader/ao_compose.frag"
 import { TRAAEffect } from "../traa/TRAAEffect"
+import ao_compose from "./shader/ao_compose.frag"
 
 const defaultAOOptions = {
 	resolutionScale: 1,
@@ -14,21 +13,19 @@ const defaultAOOptions = {
 	bias: 40,
 	thickness: 0.075,
 	color: new Color("black"),
-	useNormalPass: false,
 	velocityDepthNormalPass: null,
-	normalTexture: null,
-	...PoissonDenoisePass.DefaultOptions
+	normalTexture: null
 }
 
 class AOEffect extends Effect {
 	lastSize = { width: 0, height: 0, resolutionScale: 0 }
 
-	constructor(composer, camera, scene, aoPass, options = defaultAOOptions) {
+	constructor(composer, depthTexture, aoPass, options = defaultAOOptions) {
 		super("AOEffect", ao_compose, {
 			type: "FinalAOMaterial",
 			uniforms: new Map([
 				["inputTexture", new Uniform(null)],
-				["depthTexture", new Uniform(null)],
+				["depthTexture", new Uniform(depthTexture)],
 				["power", new Uniform(0)],
 				["color", new Uniform(new Color("black"))]
 			])
@@ -37,26 +34,6 @@ class AOEffect extends Effect {
 		this.composer = composer
 		this.aoPass = aoPass
 		options = { ...defaultAOOptions, ...options }
-
-		// set up depth texture
-		if (!composer.depthTexture) composer.createDepthTexture()
-
-		this.aoPass.fullscreenMaterial.uniforms.depthTexture.value = composer.depthTexture
-		this.uniforms.get("depthTexture").value = composer.depthTexture
-
-		// set up optional normal texture
-		if (options.useNormalPass || options.normalTexture) {
-			if (options.useNormalPass) this.normalPass = new NormalPass(scene, camera)
-
-			const normalTexture = options.normalTexture ?? this.normalPass.texture
-
-			this.aoPass.fullscreenMaterial.uniforms.normalTexture.value = normalTexture
-			this.aoPass.fullscreenMaterial.defines.useNormalTexture = ""
-		}
-
-		this.PoissonDenoisePass = new PoissonDenoisePass(camera, this.aoPass.texture, composer.depthTexture, {
-			normalInRgb: true
-		})
 
 		this.makeOptionsReactive(options)
 	}
@@ -95,20 +72,6 @@ class AOEffect extends Effect {
 							this.uniforms.get("color").value.copy(new Color(value))
 							break
 
-						// denoiser
-						case "iterations":
-						case "radius":
-						case "rings":
-						case "samples":
-							this.PoissonDenoisePass[key] = value
-							break
-
-						case "lumaPhi":
-						case "depthPhi":
-						case "normalPhi":
-							this.PoissonDenoisePass.fullscreenMaterial.uniforms[key].value = Math.max(value, 0.0001)
-							break
-
 						default:
 							if (key in this.aoPass.fullscreenMaterial.uniforms) {
 								this.aoPass.fullscreenMaterial.uniforms[key].value = value
@@ -133,10 +96,7 @@ class AOEffect extends Effect {
 			return
 		}
 
-		this.normalPass?.setSize(width, height)
 		this.aoPass.setSize(width * this.resolutionScale, height * this.resolutionScale)
-
-		this.PoissonDenoisePass.setSize(width, height)
 
 		this.lastSize = {
 			width,
@@ -170,10 +130,7 @@ class AOEffect extends Effect {
 
 		this.uniforms.get("inputTexture").value = this.texture
 
-		this.normalPass?.render(renderer)
 		this.aoPass.render(renderer)
-
-		this.PoissonDenoisePass.render(renderer)
 	}
 }
 
