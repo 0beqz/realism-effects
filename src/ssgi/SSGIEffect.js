@@ -137,6 +137,7 @@ export class SSGIEffect extends Effect {
 		this.makeOptionsReactive(options)
 
 		this.outputTexture = this.denoiser.texture
+		// this.outputTexture = this.denoiser.denoisePass.textures[1]
 	}
 
 	updateUsingRenderPass() {
