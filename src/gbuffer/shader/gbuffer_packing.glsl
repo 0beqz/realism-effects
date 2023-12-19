@@ -57,6 +57,7 @@ highp float packNormal(highp vec3 normal) { return uintBitsToFloat(packHalf2x16(
 highp vec3 unpackNormal(highp float packedNormal) { return decodeOctWrap(unpackHalf2x16(floatBitsToUint(packedNormal))); }
 
 highp vec4 packTwoVec4(highp vec4 v1, highp vec4 v2) {
+  // note: we get artifacts on some back-ends such as v2 = vec3(1., 0., 0.) being decoded as black (only applies for v2 and red channel)
   highp vec4 encoded = vec4(0.0);
 
   highp uint v1r = packHalf2x16(v1.rg);

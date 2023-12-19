@@ -74,7 +74,6 @@ void accumulate(inout vec4 outputColor, inout vec4 inp, inout vec4 acc, inout fl
   // if (length(fwidth(worldNormal)) < 0.02) {
   //   outputColor.rgb = vec3(0., 1., 0.);
   // }
-  // outputColor.rgb = vec3(moveFactor);
 }
 
 // this function reprojects the input texture to the current frame
@@ -108,7 +107,6 @@ void reproject(inout vec4 inp, inout vec4 acc, sampler2D accumulatedTexture, ino
   float clampAggressiveness = min(1., uvc.z * r);
 
   float clampIntensity = mix(0., min(1., moveFactor * 50. + neighborhoodClampIntensity), clampAggressiveness);
-  // moveFactor = clampIntensity;
 
   vec3 newColor = mix(acc.rgb, clampedColor, clampIntensity);
 

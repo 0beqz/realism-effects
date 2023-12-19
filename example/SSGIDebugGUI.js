@@ -18,7 +18,7 @@ export class SSGIDebugGUI {
 
 		params = { ...SSGIEffect.DefaultOptions, ...params }
 
-		const generalFolder = pane.addFolder({ title: "General", expanded: false })
+		const generalFolder = pane.addFolder({ title: "General" })
 		generalFolder.addBinding(params, "distance", { min: 0.001, max: 50, step: 0.01 })
 		generalFolder.addBinding(params, "thickness", {
 			min: 0,
@@ -29,7 +29,7 @@ export class SSGIDebugGUI {
 		generalFolder.addBinding(params, "envBlur", { min: 0, max: 1, step: 0.01 })
 		generalFolder.addBinding(params, "importanceSampling")
 
-		const denoiseFolder = pane.addFolder({ title: "Denoise", expanded: false })
+		const denoiseFolder = pane.addFolder({ title: "Denoise" })
 		denoiseFolder.addBinding(params, "denoiseIterations", { min: 0, max: 5, step: 1 })
 		denoiseFolder.addBinding(params, "radius", { min: 0, max: 32, step: 1 })
 
@@ -74,9 +74,6 @@ export class SSGIDebugGUI {
 		definesFolder.addBinding(params, "steps", { min: 0, max: 256, step: 1 })
 		definesFolder.addBinding(params, "refineSteps", { min: 0, max: 16, step: 1 })
 		definesFolder.addBinding(params, "missedRays")
-
-		const resolutionFolder = pane.addFolder({ title: "Resolution", expanded: false })
-		resolutionFolder.addBinding(params, "resolutionScale", { min: 0.25, max: 1, step: 0.25 })
 
 		let textures = [
 			ssgiEffect.ssgiPass.renderTarget.texture,

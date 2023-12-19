@@ -32,10 +32,11 @@ import "./style.css"
 import { GradualBackgroundEffect } from "../src/gradual-background/GradualBackgroundEffect"
 import { SparkleEffect } from "../src/sparkle/SparkleEffect"
 import { LensDistortionEffect } from "../src/lens-distortion/LensDistortionEffect"
+import { fromHalfFloat, toHalfFloat } from "three/src/extras/DataUtils"
 
-import eruda from "eruda"
-eruda.init()
-eruda.show()
+// import eruda from "eruda"
+// eruda.init()
+// eruda.show()
 
 let traaEffect
 let traaPass
@@ -113,6 +114,7 @@ renderer.setSize(window.innerWidth, window.innerHeight)
 const effectPass = new POSTPROCESSING.EffectPass(camera)
 
 const setAA = value => {
+	return
 	composer.multisampling = 0
 	composer.removePass(smaaPass)
 	composer.removePass(traaPass)
@@ -221,7 +223,7 @@ stats.init(renderer.domElement)
 // append the stats container to the body of the document
 document.body.appendChild(stats.container)
 
-const rgbeLoader = new RGBELoader().setDataType(FloatType)
+const rgbeLoader = new RGBELoader()
 
 const initEnvMap = async envMap => {
 	scene.environment?.dispose()
@@ -492,43 +494,49 @@ const initScene = async () => {
 
 	gui2.pane.on("change", ev => taaPass && (taaPass.needsUpdate = true))
 
-	new POSTPROCESSING.LUT3dlLoader().load("lut.3dl").then(lutTexture => {
-		const lutEffect = new POSTPROCESSING.LUT3DEffect(lutTexture)
+	const convertFloat32TextureToHalfFloat = texture => {
+		texture.type = THREE.HalfFloatType
 
+		const lutData = new Uint16Array(texture.image.data.length)
+		const lutF32Data = texture.image.data
+
+		for (let i = 0; i < lutData.length; i++) {
+			lutData[i] = toHalfFloat(lutF32Data[i])
+		}
+
+		texture.image.data = lutData
+	}
+
+	new POSTPROCESSING.LUT3dlLoader().load("lut_v2.3dl").then(lutTexture => {
+		convertFloat32TextureToHalfFloat(lutTexture)
+		const lutEffect = new POSTPROCESSING.LUT3DEffect(lutTexture)
 		const toneMappingEffect = new POSTPROCESSING.ToneMappingEffect()
 		toneMappingEffect.mode = POSTPROCESSING.ToneMappingMode.ACES_FILMIC
 
 		if (!traaTest) {
-			if (fps >= 256) {
-				const sharpnessEffect = new SharpnessEffect({ sharpness: 0.75 })
+			const sharpnessEffect = new SharpnessEffect({ sharpness: 0.75 })
 
-				// const depthTexture = ssgiEffect.depthTexture
-				// const bgColor = new Color(0xffffff)
+			// const depthTexture = ssgiEffect.depthTexture
+			// const bgColor = new Color(0xffffff)
 
-				// const gradualBackgroundEffect = new GradualBackgroundEffect(camera, depthTexture, bgColor, 51)
-				// const sparkleEffect = new SparkleEffect(camera, velocityDepthNormalPass)
-				// sparkleEffect.setSpread(0.25)
-				composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, toneMappingEffect))
+			// const gradualBackgroundEffect = new GradualBackgroundEffect(camera, depthTexture, bgColor, 51)
+			// const sparkleEffect = new SparkleEffect(camera, velocityDepthNormalPass)
+			// sparkleEffect.setSpread(0.25)
+			composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, toneMappingEffect))
 
-				const lensDistortionEffect = new LensDistortionEffect({
-					aberration: 1
-				})
+			const lensDistortionEffect = new LensDistortionEffect({
+				aberration: 1
+			})
 
-				traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
-				composer.addPass(traaPass)
+			traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
+			composer.addPass(traaPass)
 
-				// const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass, {
-				// 	intensity: 1
-				// })
+			// const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass, {
+			// 	intensity: 1
+			// })
 
-				composer.addPass(new POSTPROCESSING.EffectPass(camera, sharpnessEffect, vignetteEffect))
-				composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, lutEffect))
-			} else {
-				composer.addPass(
-					new POSTPROCESSING.EffectPass(camera, ssgiEffect, toneMappingEffect, vignetteEffect, lutEffect)
-				)
-				loadFiles--
-			}
+			composer.addPass(new POSTPROCESSING.EffectPass(camera, sharpnessEffect, vignetteEffect))
+			composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, lutEffect))
 		}
 
 		const smaaEffect = new POSTPROCESSING.SMAAEffect()
@@ -579,6 +587,10 @@ const tapHandler = ev => {
 	// gui2.pane.element.style.visibility = "hidden"
 	toggleMenu()
 }
+
+setTimeout(() => {
+	toggleMenu()
+}, 1000)
 
 document.body.addEventListener("touchstart", tapHandler)
 

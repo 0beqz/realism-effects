@@ -150,10 +150,6 @@ export class TemporalReprojectPass extends Pass {
 		}
 	}
 
-	setInputTexture(texture, index = 0) {
-		this.fullscreenMaterial.uniforms["inputTexture" + index].value = texture
-	}
-
 	get texture() {
 		return this.renderTarget.texture[0]
 	}

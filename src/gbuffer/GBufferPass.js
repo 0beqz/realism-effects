@@ -1,15 +1,5 @@
 import { Pass } from "postprocessing"
-import {
-	Color,
-	DepthTexture,
-	FloatType,
-	HalfFloatType,
-	NearestFilter,
-	Quaternion,
-	UnsignedByteType,
-	Vector3,
-	WebGLRenderTarget
-} from "three"
+import { Color, DepthTexture, FloatType, NearestFilter, Quaternion, Vector3, WebGLRenderTarget } from "three"
 import { didCameraMove, getVisibleChildren, isChildMaterialRenderable } from "../utils/SceneUtils.js"
 import { copyPropsToGBufferMaterial, createGBufferMaterial } from "./material/GBufferMaterial.js"
 
@@ -43,7 +33,8 @@ export class GBufferPass extends Pass {
 		this.renderTarget = new WebGLRenderTarget(1, 1, {
 			type: FloatType,
 			minFilter: NearestFilter,
-			magFilter: NearestFilter
+			magFilter: NearestFilter,
+			depthBuffer: true
 		})
 
 		this.renderTarget.texture.name = "GBufferPass.Texture"

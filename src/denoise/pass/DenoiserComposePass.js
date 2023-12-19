@@ -1,6 +1,6 @@
 /* eslint-disable camelcase */
 import { Pass } from "postprocessing"
-import { FloatType, NoBlending, ShaderMaterial, WebGLRenderTarget } from "three"
+import { FloatType, NearestFilter, NoBlending, ShaderMaterial, WebGLRenderTarget } from "three"
 import gbuffer_packing from "../../gbuffer/shader/gbuffer_packing.glsl"
 import basicVertexShader from "../../utils/shader/basic.vert"
 import ssgi_poisson_compose_functions from "../shader/denoiser_compose_functions.glsl"
@@ -13,7 +13,9 @@ export class DenoiserComposePass extends Pass {
 
 		this.renderTarget = new WebGLRenderTarget(1, 1, {
 			depthBuffer: false,
-			type: FloatType
+			type: FloatType,
+			minFilter: NearestFilter,
+			magFilter: NearestFilter
 		})
 
 		this.renderTarget.texture.name = "DenoiserComposePass.Texture"

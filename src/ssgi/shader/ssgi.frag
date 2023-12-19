@@ -300,10 +300,10 @@ void main() {
   highp float a = uintBitsToFloat(packedRoughnessRayLength);
 
 #if mode == MODE_SSGI
-  gSpecular = vec4(specularGI, a);
+  gSpecular = vec4(specularGI, rayLength);
   gl_FragColor = packTwoVec4(gDiffuse, gSpecular);
 #else
-  gSpecular = vec4(specularGI, rayLength);
+  gSpecular = vec4(specularGI, a);
   gl_FragColor = gSpecular;
 #endif
 }
@@ -448,8 +448,6 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
 
 vec2 RayMarch(inout vec3 dir, inout vec3 hitPos, vec4 random) {
   float rayHitDepthDifference;
-
-  hitPos += dir * 0.05;
 
   dir *= rayDistance / float(steps);
 

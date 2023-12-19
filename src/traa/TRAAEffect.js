@@ -104,8 +104,6 @@ export class TRAAEffect extends Effect {
 			})
 		}
 
-		this.temporalReprojectPass.setInputTexture(inputBuffer.texture)
-
 		this.temporalReprojectPass.jitter()
 
 		this.temporalReprojectPass.render(renderer)

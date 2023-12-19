@@ -1,8 +1,8 @@
 /* eslint-disable camelcase */
 import { Pass } from "postprocessing"
-import { FloatType, NoBlending, ShaderMaterial, WebGLRenderTarget } from "three"
-import gbuffer_packing from "../shader/gbuffer_packing.glsl"
+import { FloatType, NearestFilter, NoBlending, ShaderMaterial, WebGLRenderTarget } from "three"
 import basicVertexShader from "../../utils/shader/basic.vert"
+import gbuffer_packing from "../shader/gbuffer_packing.glsl"
 
 export class GBufferDebugPass extends Pass {
 	constructor(gBufferTexture) {
@@ -10,7 +10,9 @@ export class GBufferDebugPass extends Pass {
 
 		this.renderTarget = new WebGLRenderTarget(1, 1, {
 			depthBuffer: false,
-			type: FloatType
+			type: FloatType,
+			minFilter: NearestFilter,
+			magFilter: NearestFilter
 		})
 
 		this.renderTarget.texture.name = "GBufferDebugPass.Texture"
@@ -27,7 +29,7 @@ export class GBufferDebugPass extends Pass {
             ${gbuffer_packing}
 
             void main() {
-                float depth = textureLod(depthTexture, vUv, 0.).r;
+                highp float depth = textureLod(depthTexture, vUv, 0.).r;
 
 				if(depth == 0.){
 					gl_FragColor = vec4(0.);
