@@ -406,14 +406,6 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
 
   // check if the reprojected coordinates are within the screen
   if (reprojectedUv.x >= 0.0 && reprojectedUv.x <= 1.0 && reprojectedUv.y >= 0.0 && reprojectedUv.y <= 1.0) {
-    vec3 hitNormal = getNormal(gBufferTexture, coords.xy);
-
-    // check for self-occlusion
-    if (dot(worldNormal, hitNormal) == 1.0) {
-      isMissedRay = true;
-      return envColor;
-    }
-
     vec4 reprojectedGI = textureLod(accumulatedTexture, reprojectedUv, 0.);
 
     float saturation = getSaturation(mat.diffuse.rgb);
@@ -450,7 +442,7 @@ vec2 RayMarch(inout vec3 dir, inout vec3 hitPos, vec4 random) {
   float rayHitDepthDifference;
 
   // todo: investigate offset (different value?)
-  hitPos += dir * 0.05;
+  // hitPos += dir * 0.01;
 
   dir *= rayDistance / float(steps);
 

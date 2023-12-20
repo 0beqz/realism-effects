@@ -52,12 +52,14 @@ void accumulate(inout vec4 outputColor, inout vec4 inp, inout vec4 acc, inout fl
   float maxValue = (fullAccumulate ? 1. : maxBlend) * keepData; // keepData is a flag that is either 1 or 0 when we call reset()
   // maxValue *= 0.;
 
+  #if inputType != DIFFUSE
   const float roughnessMaximum = 0.1;
 
   if (doReprojectSpecular && roughness >= 0.0 && roughness < roughnessMaximum) {
     float maxRoughnessValue = mix(0., maxValue, roughness / roughnessMaximum);
     maxValue = mix(maxValue, maxRoughnessValue, min(100. * moveFactor, 1.));
   }
+  #endif
 
   float temporalReprojectMix = min(accumBlend, maxValue);
 
@@ -183,10 +185,12 @@ void main() {
   getTexels(inputTexel, textureSampledThisFrame);
 
   // ! todo: find better solution
-  if (textureCount == 2 && depth == 1.0 && fwidth(depth) == 0.0) {
+  #if inputType != DIFFUSE
+  if (depth == 1.0 && fwidth(depth) == 0.0) {
     discard;
     return;
   }
+  #endif
 
   curvature = getCurvature(worldNormal);
 

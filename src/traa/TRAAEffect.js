@@ -69,41 +69,6 @@ export class TRAAEffect extends Effect {
 
 		this._camera.projectionMatrix.copy(this.unjitteredProjectionMatrix)
 
-		const noJitterMeshes = getVisibleChildren(this._scene).filter(c => isGroundProjectedEnv(c))
-
-		for (const mesh of noJitterMeshes) {
-			const renderData = renderer.properties.get(mesh.material)
-
-			if (!renderData?.programs) continue
-
-			const uniforms = Array.from(renderData.programs.values())[0].getUniforms()
-
-			if (!uniforms._patchedProjectionMatrix) {
-				const oldSetValue = uniforms.setValue.bind(uniforms)
-				uniforms._oldSetValue = oldSetValue
-				uniforms.setValue = (gl, name, value, ...args) => {
-					if (name === "projectionMatrix") {
-						value = this.unjitteredProjectionMatrix
-					}
-
-					oldSetValue(gl, name, value, ...args)
-				}
-
-				uniforms._patchedProjectionMatrix = true
-			}
-
-			cancelAnimationFrame(uniforms._destroyPatchRAF)
-			cancelAnimationFrame(uniforms._destroyPatchRAF2)
-
-			uniforms._destroyPatchRAF = requestAnimationFrame(() => {
-				uniforms._destroyPatchRAF2 = requestAnimationFrame(() => {
-					uniforms.setValue = uniforms._oldSetValue
-					delete uniforms._oldSetValue
-					delete uniforms._patchedProjectionMatrix
-				})
-			})
-		}
-
 		this.temporalReprojectPass.jitter()
 
 		this.temporalReprojectPass.render(renderer)

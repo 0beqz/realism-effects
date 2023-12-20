@@ -128,8 +128,6 @@ void applyWeight(inout InputTexel inp, vec2 neighborUv, float wBasic) {
     t = textureLod(inputTexture, neighborUv, 0.);
   }
 
-  toDenoiseSpace(t.rgb);
-
   float disocclW = pow(w, 0.1);
 
   float lumaDiff = abs(inp.luminance - luminance(t.rgb));
@@ -137,6 +135,7 @@ void applyWeight(inout InputTexel inp, vec2 neighborUv, float wBasic) {
   w = mix(w * lumaFactor, disocclW, pow(inp.w, 3.)) * inp.w;
 
   if (w > 0.01) {
+    toDenoiseSpace(t.rgb);
     inp.rgb += w * t.rgb;
     inp.totalWeight += w;
   }
@@ -164,13 +163,13 @@ void main() {
         t = textureLod(inputTexture, vUv, 0.);
       }
 
-      toDenoiseSpace(t.rgb);
-
       // check: https://www.desmos.com/calculator/jurqfiigcf for graphs
       float age = 1. / log(exp(t.a * phi) + 1.718281828459045); // e - 1
 
       InputTexel inp = InputTexel(t.rgb, t.a, luminance(t.rgb), age, 1., isTextureSpecular[i]);
       maxAlpha = max(maxAlpha, inp.a);
+
+      toDenoiseSpace(inp.rgb);
 
       inputs[i] = inp;
     }

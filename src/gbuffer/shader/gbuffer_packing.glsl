@@ -85,6 +85,18 @@ void unpackTwoVec4(highp vec4 encoded, out highp vec4 v1, out highp vec4 v2) {
   v2.ba = unpackHalf2x16(a);
 }
 
+vec4 unpackTwoVec4(highp vec4 encoded, const int index) {
+  highp uint r = floatBitsToUint(index == 0 ? encoded.r : encoded.b);
+  highp uint g = floatBitsToUint(index == 0 ? encoded.g : encoded.a);
+
+  vec4 v1;
+
+  v1.rg = unpackHalf2x16(r);
+  v1.ba = unpackHalf2x16(g);
+
+  return v1;
+}
+
 highp vec4 encodeRGBE8(highp vec3 rgb) {
   highp vec4 vEncoded;
   highp float maxComponent = max(max(rgb.r, rgb.g), rgb.b);
