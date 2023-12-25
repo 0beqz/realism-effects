@@ -9,12 +9,14 @@ struct Material {
 };
 
 #define ONE_SAFE 0.999999
+#define NON_ZERO_OFFSET 0.0001
 
 const highp float c_precision = 256.0;
 const highp float c_precisionp1 = c_precision + 1.0;
 
 highp float color2float(in highp vec3 color) {
-  color = clamp(color, 0.0, 1.0);
+  color = min(color + NON_ZERO_OFFSET, vec3(ONE_SAFE));
+
   return floor(color.r * c_precision + 0.5) + floor(color.b * c_precision + 0.5) * c_precisionp1 +
          floor(color.g * c_precision + 0.5) * c_precisionp1 * c_precisionp1;
 }
@@ -24,6 +26,11 @@ highp vec3 float2color(in highp float value) {
   color.r = mod(value, c_precisionp1) / c_precision;
   color.b = mod(floor(value / c_precisionp1), c_precisionp1) / c_precision;
   color.g = floor(value / (c_precisionp1 * c_precisionp1)) / c_precision;
+
+  color -= NON_ZERO_OFFSET;
+
+  color = max(color, vec3(0.0));
+
   return color;
 }
 
@@ -52,13 +59,19 @@ highp vec3 decodeOctWrap(highp vec2 f) {
   return normalize(n);
 }
 
-highp float packNormal(highp vec3 normal) { return uintBitsToFloat(packHalf2x16(encodeOctWrap(normal))); }
+highp float packNormal(highp vec3 normal) { return uintBitsToFloat(packUnorm2x16(encodeOctWrap(normal))); }
 
-highp vec3 unpackNormal(highp float packedNormal) { return decodeOctWrap(unpackHalf2x16(floatBitsToUint(packedNormal))); }
+highp vec3 unpackNormal(highp float packedNormal) { return decodeOctWrap(unpackUnorm2x16(floatBitsToUint(packedNormal))); }
 
 highp vec4 packTwoVec4(highp vec4 v1, highp vec4 v2) {
-  // note: we get artifacts on some back-ends such as v2 = vec3(1., 0., 0.) being decoded as black (only applies for v2 and red channel)
+  // note: we get artifacts on some back-ends such as v2 = vec3(1., 0., 0.) being decoded as black (only applies for param v2 and red channel)
   highp vec4 encoded = vec4(0.0);
+
+  // we need to add a small offset to avoid precision issues on some back-ends
+  // we get artifacts for v1 = vec3(1., 0., 0.) being decoded as black otherwise
+  // on Big Sur with Chrome v120 we blue channel of para, v2 is decoded as 0.0 if v2.a is 0.0 when we don't add the offset
+  v1 += NON_ZERO_OFFSET;
+  v2 += NON_ZERO_OFFSET;
 
   highp uint v1r = packHalf2x16(v1.rg);
   highp uint v1g = packHalf2x16(v1.ba);
@@ -83,18 +96,40 @@ void unpackTwoVec4(highp vec4 encoded, out highp vec4 v1, out highp vec4 v2) {
   v1.ba = unpackHalf2x16(g);
   v2.rg = unpackHalf2x16(b);
   v2.ba = unpackHalf2x16(a);
+
+  v1 -= NON_ZERO_OFFSET;
+  v2 -= NON_ZERO_OFFSET;
+
+  v1 = max(v1, vec4(0.0));
+  v2 = max(v2, vec4(0.0));
 }
 
 vec4 unpackTwoVec4(highp vec4 encoded, const int index) {
   highp uint r = floatBitsToUint(index == 0 ? encoded.r : encoded.b);
   highp uint g = floatBitsToUint(index == 0 ? encoded.g : encoded.a);
 
-  vec4 v1;
+  vec4 v;
 
-  v1.rg = unpackHalf2x16(r);
-  v1.ba = unpackHalf2x16(g);
+  v.rg = unpackHalf2x16(r);
+  v.ba = unpackHalf2x16(g);
 
-  return v1;
+  v -= NON_ZERO_OFFSET;
+  v = max(v, vec4(0.0));
+
+  return v;
+}
+
+highp float packVec2(highp vec2 value) {
+  value = min(value + NON_ZERO_OFFSET, vec2(ONE_SAFE));
+
+  return uintBitsToFloat(packUnorm2x16(value));
+}
+
+highp vec2 unpackVec2(highp float packedValue) {
+  vec2 v = unpackUnorm2x16(floatBitsToUint(packedValue));
+  v = max(v - NON_ZERO_OFFSET, vec2(0.0));
+
+  return v;
 }
 
 highp vec4 encodeRGBE8(highp vec3 rgb) {
@@ -114,6 +149,8 @@ highp vec3 decodeRGBE8(highp vec4 rgbe) {
 }
 
 highp float vec4ToFloat(highp vec4 vec) {
+  vec = min(vec + NON_ZERO_OFFSET, vec4(ONE_SAFE));
+
   highp uvec4 v = uvec4(vec * 255.0);
   highp uint value = (v.a << 24u) | (v.b << 16u) | (v.g << 8u) | (v.r);
   return uintBitsToFloat(value);
@@ -128,26 +165,21 @@ highp vec4 floatToVec4(highp float f) {
   v.b = float((value >> 16u) & 0xFFu) / 255.0;
   v.a = float((value >> 24u) & 0xFFu) / 255.0;
 
+  v -= NON_ZERO_OFFSET;
+  v = max(v, vec4(0.0));
+
   return v;
 }
 
 highp vec4 packGBuffer(highp vec4 diffuse, highp vec3 normal, highp float roughness, highp float metalness, highp vec3 emissive) {
   highp vec4 gBuffer;
 
-  // clamp diffuse to [0;1[
-  // has to be done as otherwise we get blue instead of white on Metal backends
-  diffuse = clamp(diffuse, vec4(0.), vec4(ONE_SAFE));
-
-  // clamp roughness and metalness to [0;1[
-  roughness = clamp(roughness, 0.0, ONE_SAFE);
-  metalness = clamp(metalness, 0.0, ONE_SAFE);
-
   gBuffer.r = vec4ToFloat(diffuse);
   gBuffer.g = packNormal(normal);
 
   // unfortunately packVec2 results in severe precision loss and artifacts for
   // the first on Metal backends thus we use color2float instead
-  gBuffer.b = color2float(vec3(roughness, metalness, 0.));
+  gBuffer.b = packVec2(vec2(roughness, metalness));
   gBuffer.a = vec4ToFloat(encodeRGBE8(emissive));
 
   return gBuffer;
@@ -158,14 +190,13 @@ Material getMaterial(highp sampler2D gBufferTexture, highp vec2 uv) {
   highp vec4 gBuffer = textureLod(gBufferTexture, uv, 0.0);
 
   highp vec4 diffuse = floatToVec4(gBuffer.r);
-  diffuse = clamp(diffuse, vec4(0.), vec4(ONE_SAFE));
   highp vec3 normal = unpackNormal(gBuffer.g);
 
   // using float2color instead of unpackVec2 as the latter results in severe
   // precision loss and artifacts on Metal backends
-  highp vec3 roughnessMetalness = float2color(gBuffer.b);
-  highp float roughness = clamp(roughnessMetalness.r, 0., 1.);
-  highp float metalness = clamp(roughnessMetalness.g, 0., 1.);
+  highp vec2 roughnessMetalness = unpackVec2(gBuffer.b);
+  highp float roughness = roughnessMetalness.r;
+  highp float metalness = roughnessMetalness.g;
 
   highp vec3 emissive = decodeRGBE8(floatToVec4(gBuffer.a));
 

@@ -138,7 +138,7 @@ void main() {
 
   vec4 random;
   vec3 H, l, h, F, T, B, envMisDir, gi;
-  vec3 diffuseGI, specularGI, brdf, hitPos, specularHitPos;
+  highp vec3 diffuseGI, specularGI, brdf, hitPos, specularHitPos;
 
   Onb(N, T, B);
 
@@ -301,6 +301,7 @@ void main() {
 
 #if mode == MODE_SSGI
   gSpecular = vec4(specularGI, rayLength);
+  gDiffuse.rgb = max(gDiffuse.rgb, vec3(0.));
   gl_FragColor = packTwoVec4(gDiffuse, gSpecular);
 #else
   gSpecular = vec4(specularGI, a);

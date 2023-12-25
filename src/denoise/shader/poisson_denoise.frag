@@ -179,7 +179,7 @@ void main() {
   mat = getMaterial(gBufferTexture, vUv);
   normal = getNormal(mat);
   glossiness = max(0., 4. * (1. - mat.roughness / 0.25));
-  specularFactor = exp(-glossiness * specularPhi);
+  specularFactor = exp(-glossiness * glossiness * specularPhi);
 
   float flatness = 1. - min(length(fwidth(normal)), 1.);
   flatness = pow(flatness, 2.) * 0.75 + 0.25;
