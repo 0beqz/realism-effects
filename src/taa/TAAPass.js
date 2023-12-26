@@ -2,6 +2,7 @@ import { Pass } from "postprocessing"
 import {
 	FloatType,
 	FramebufferTexture,
+	NearestFilter,
 	Quaternion,
 	RGBAFormat,
 	ShaderMaterial,
@@ -26,6 +27,8 @@ export class TAAPass extends Pass {
 
 	renderTarget = new WebGLRenderTarget(1, 1, {
 		type: FloatType,
+		minFilter: NearestFilter,
+		magFilter: NearestFilter,
 		depthBuffer: false
 	})
 

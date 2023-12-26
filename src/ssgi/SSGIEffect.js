@@ -1,6 +1,7 @@
 ﻿import { Effect, RenderPass, Selection } from "postprocessing"
 import {
 	Color,
+	FloatType,
 	LinearFilter,
 	LinearMipMapLinearFilter,
 	SRGBColorSpace,
@@ -136,6 +137,7 @@ export class SSGIEffect extends Effect {
 		this.makeOptionsReactive(options)
 
 		this.outputTexture = this.denoiser.texture
+		// this.outputTexture = this.denoiser.denoisePass.textures[1]
 	}
 
 	updateUsingRenderPass() {
@@ -324,6 +326,12 @@ export class SSGIEffect extends Effect {
 					environment.minFilter = LinearMipMapLinearFilter
 					environment.magFilter = LinearFilter
 					environment.needsUpdate = true
+				}
+
+				if (environment.type === FloatType) {
+					console.warn(
+						"SSGI: Environment map is FloatType, this causes the environment map to be black in the SSGI pass for many modern Apple devices. Please use HalfFloatType instead."
+					)
 				}
 
 				ssgiMaterial.uniforms.envMapInfo.value.mapUuid = environment.uuid

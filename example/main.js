@@ -32,6 +32,11 @@ import "./style.css"
 import { GradualBackgroundEffect } from "../src/gradual-background/GradualBackgroundEffect"
 import { SparkleEffect } from "../src/sparkle/SparkleEffect"
 import { LensDistortionEffect } from "../src/lens-distortion/LensDistortionEffect"
+import { fromHalfFloat, toHalfFloat } from "three/src/extras/DataUtils"
+
+// import eruda from "eruda"
+// eruda.init()
+// eruda.show()
 
 let traaEffect
 let traaPass
@@ -109,6 +114,7 @@ renderer.setSize(window.innerWidth, window.innerHeight)
 const effectPass = new POSTPROCESSING.EffectPass(camera)
 
 const setAA = value => {
+	return
 	composer.multisampling = 0
 	composer.removePass(smaaPass)
 	composer.removePass(traaPass)
@@ -217,7 +223,7 @@ stats.init(renderer.domElement)
 // append the stats container to the body of the document
 document.body.appendChild(stats.container)
 
-const rgbeLoader = new RGBELoader().setDataType(FloatType)
+const rgbeLoader = new RGBELoader()
 
 const initEnvMap = async envMap => {
 	scene.environment?.dispose()
@@ -362,17 +368,16 @@ const initScene = async () => {
 		denoiseDiffuse: 25,
 		denoiseSpecular: 25.54,
 		radius: 16,
-		phi: 0.522,
-		lumaPhi: 25.543,
-		depthPhi: 6.522000000000001,
-		normalPhi: 40.217,
-		roughnessPhi: 28.261,
-		specularPhi: 9.129999999999999,
+		phi: 0.41300000000000003,
+		lumaPhi: 24.999999999999996,
+		depthPhi: 9.939965517347105e-16,
+		normalPhi: 26.087,
+		roughnessPhi: 18.477999999999998,
+		specularPhi: 0.9999999999999988,
 		envBlur: 0,
 		importanceSampling: true,
 		steps: 20,
 		refineSteps: 4,
-		spp: 1,
 		resolutionScale: 1,
 		missedRays: false
 	}
@@ -488,43 +493,49 @@ const initScene = async () => {
 
 	gui2.pane.on("change", ev => taaPass && (taaPass.needsUpdate = true))
 
-	new POSTPROCESSING.LUT3dlLoader().load("lut.3dl").then(lutTexture => {
-		const lutEffect = new POSTPROCESSING.LUT3DEffect(lutTexture)
+	const convertFloat32TextureToHalfFloat = texture => {
+		texture.type = THREE.HalfFloatType
 
+		const lutData = new Uint16Array(texture.image.data.length)
+		const lutF32Data = texture.image.data
+
+		for (let i = 0; i < lutData.length; i++) {
+			lutData[i] = toHalfFloat(lutF32Data[i])
+		}
+
+		texture.image.data = lutData
+	}
+
+	new POSTPROCESSING.LUT3dlLoader().load("lut_v2.3dl").then(lutTexture => {
+		convertFloat32TextureToHalfFloat(lutTexture)
+		const lutEffect = new POSTPROCESSING.LUT3DEffect(lutTexture)
 		const toneMappingEffect = new POSTPROCESSING.ToneMappingEffect()
 		toneMappingEffect.mode = POSTPROCESSING.ToneMappingMode.ACES_FILMIC
 
 		if (!traaTest) {
-			if (fps >= 256) {
-				const sharpnessEffect = new SharpnessEffect({ sharpness: 0.75 })
+			const sharpnessEffect = new SharpnessEffect({ sharpness: 0.75 })
 
-				// const depthTexture = ssgiEffect.depthTexture
-				// const bgColor = new Color(0xffffff)
+			// const depthTexture = ssgiEffect.depthTexture
+			// const bgColor = new Color(0xffffff)
 
-				// const gradualBackgroundEffect = new GradualBackgroundEffect(camera, depthTexture, bgColor, 51)
-				// const sparkleEffect = new SparkleEffect(camera, velocityDepthNormalPass)
-				// sparkleEffect.setSpread(0.25)
-				composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, toneMappingEffect))
+			// const gradualBackgroundEffect = new GradualBackgroundEffect(camera, depthTexture, bgColor, 51)
+			// const sparkleEffect = new SparkleEffect(camera, velocityDepthNormalPass)
+			// sparkleEffect.setSpread(0.25)
+			composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, toneMappingEffect))
 
-				const lensDistortionEffect = new LensDistortionEffect({
-					aberration: 1
-				})
+			const lensDistortionEffect = new LensDistortionEffect({
+				aberration: 1
+			})
 
-				traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
-				composer.addPass(traaPass)
+			traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
+			// composer.addPass(traaPass)
 
-				// const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass, {
-				// 	intensity: 1
-				// })
+			// const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass, {
+			// 	intensity: 1
+			// })
 
-				composer.addPass(new POSTPROCESSING.EffectPass(camera, sharpnessEffect, vignetteEffect))
-				composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, lutEffect))
-			} else {
-				composer.addPass(
-					new POSTPROCESSING.EffectPass(camera, ssgiEffect, toneMappingEffect, vignetteEffect, lutEffect)
-				)
-				loadFiles--
-			}
+			composer.addPass(new POSTPROCESSING.EffectPass(camera, sharpnessEffect, vignetteEffect))
+			composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, lutEffect))
 		}
 
 		const smaaEffect = new POSTPROCESSING.SMAAEffect()
@@ -572,9 +583,13 @@ const tapHandler = ev => {
 		return false
 	}
 
-	gui2.pane.element.style.visibility = "hidden"
+	// gui2.pane.element.style.visibility = "hidden"
 	toggleMenu()
 }
+
+setTimeout(() => {
+	toggleMenu()
+}, 1000)
 
 document.body.addEventListener("touchstart", tapHandler)
 
@@ -644,7 +659,7 @@ const resize = () => {
 	camera.updateProjectionMatrix()
 
 	const dpr = window.devicePixelRatio
-	renderer.setPixelRatio(fps < 256 ? Math.max(1, dpr * 0.5) : dpr)
+	renderer.setPixelRatio(Math.min(2, dpr))
 
 	renderer.setSize(window.innerWidth, window.innerHeight)
 	composer.setSize(window.innerWidth, window.innerHeight)
@@ -972,4 +987,10 @@ const setupAsset = asset => {
 	if (taaPass) taaPass.needsUpdate = true
 
 	requestAnimationFrame(refreshLighting)
+}
+
+const consoleError = console.error.bind(console)
+console.error = (...args) => {
+	alert(args.join("\n"))
+	consoleError(...args)
 }

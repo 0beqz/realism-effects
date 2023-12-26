@@ -138,7 +138,7 @@ void main() {
 
   vec4 random;
   vec3 H, l, h, F, T, B, envMisDir, gi;
-  vec3 diffuseGI, specularGI, brdf, hitPos, specularHitPos;
+  highp vec3 diffuseGI, specularGI, brdf, hitPos, specularHitPos;
 
   Onb(N, T, B);
 
@@ -271,7 +271,7 @@ void main() {
   specularGI += directLight;
 #endif
 
-  vec4 gDiffuse, gSpecular;
+  highp vec4 gDiffuse, gSpecular;
 
 #if mode == MODE_SSGI
   if (diffuseSamples == 0.0)
@@ -281,7 +281,7 @@ void main() {
 
   // calculate world-space ray length used for reprojecting hit points instead
   // of screen-space pixels in the temporal reproject pass
-  float rayLength = 0.0;
+  highp float rayLength = 0.0;
   vec4 hitPosWS;
   vec3 cameraPosWS = cameraMatrixWorld[3].xyz;
 
@@ -296,13 +296,15 @@ void main() {
   }
 
   // encode both roughness and rayLength into the alpha channel
-  float a = uintBitsToFloat(packHalf2x16(vec2(rayLength, mat.roughness)));
-
-  gSpecular = vec4(specularGI, a);
+  highp uint packedRoughnessRayLength = packHalf2x16(vec2(rayLength, mat.roughness));
+  highp float a = uintBitsToFloat(packedRoughnessRayLength);
 
 #if mode == MODE_SSGI
+  gSpecular = vec4(specularGI, rayLength);
+  gDiffuse.rgb = max(gDiffuse.rgb, vec3(0.));
   gl_FragColor = packTwoVec4(gDiffuse, gSpecular);
 #else
+  gSpecular = vec4(specularGI, a);
   gl_FragColor = gSpecular;
 #endif
 }
@@ -405,14 +407,6 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
 
   // check if the reprojected coordinates are within the screen
   if (reprojectedUv.x >= 0.0 && reprojectedUv.x <= 1.0 && reprojectedUv.y >= 0.0 && reprojectedUv.y <= 1.0) {
-    vec3 hitNormal = getNormal(gBufferTexture, coords.xy);
-
-    // check for self-occlusion
-    if (dot(worldNormal, hitNormal) == 1.0) {
-      isMissedRay = true;
-      return envColor;
-    }
-
     vec4 reprojectedGI = textureLod(accumulatedTexture, reprojectedUv, 0.);
 
     float saturation = getSaturation(mat.diffuse.rgb);
@@ -448,6 +442,7 @@ vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, con
 vec2 RayMarch(inout vec3 dir, inout vec3 hitPos, vec4 random) {
   float rayHitDepthDifference;
 
+  // todo: investigate offset (different value?)
   hitPos += dir * 0.05;
 
   dir *= rayDistance / float(steps);

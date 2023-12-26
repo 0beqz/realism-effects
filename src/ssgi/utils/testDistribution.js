@@ -82,10 +82,10 @@ for (let i = 0; i < numSamples; i++) {
 }
 
 // shuffle samples
-for (let i = samples.length - 1; i > 0; i--) {
-	const j = Math.floor(Math.random() * (i + 1))
-	;[samples[i], samples[j]] = [samples[j], samples[i]]
-}
+// for (let i = samples.length - 1; i > 0; i--) {
+// 	const j = Math.floor(Math.random() * (i + 1))
+// 	;[samples[i], samples[j]] = [samples[j], samples[i]]
+// }
 
 // create a glsl constant array from the samples
 const glslArray = samples.map(sample => `vec2(${sample.x}, ${sample.y})`).join(",\n")

@@ -1,6 +1,6 @@
 /* eslint-disable camelcase */
 import { Pass } from "postprocessing"
-import { FloatType, GLSL3, ShaderMaterial, Vector2, WebGLMultipleRenderTargets } from "three"
+import { GLSL3, HalfFloatType, ShaderMaterial, Vector2, WebGLMultipleRenderTargets } from "three"
 // eslint-disable-next-line camelcase
 
 import gbuffer_packing from "../../gbuffer/shader/gbuffer_packing.glsl"
@@ -73,7 +73,7 @@ export class PoissonDenoisePass extends Pass {
 		useBlueNoise(this.fullscreenMaterial)
 
 		const renderTargetOptions = {
-			type: FloatType, // using HalfFloatType causes the texture to become darker over time
+			type: HalfFloatType, // using HalfFloatType as FloatType with bilinear filtering isn't supported on some Apple devices
 			depthBuffer: false
 		}
 

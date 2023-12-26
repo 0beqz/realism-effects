@@ -23,6 +23,9 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
     // Apply the sharpness effect by adding the difference scaled by the sharpness value
     vec4 sharpenedPixel = inputColor + sharpDiff * sharpness;
 
+	// set minimun to 0 as otherwise we get severe edge artifacts on Mac Sonoma Firefox v120 for example
+	sharpenedPixel.rgb = max(sharpenedPixel.rgb, vec3(0.0));
+
     outputColor = sharpenedPixel;
 }
 `

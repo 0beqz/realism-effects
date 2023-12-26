@@ -50,8 +50,8 @@
 		"rollup-plugin-glslify": "^1.3.0"
 	},
 	"peerDependencies": {
-		"postprocessing": ">=6.30.1",
-		"three": ">=0.148.0"
+		"postprocessing": "^6.33.4",
+		"three": "^0.151.3"
 	},
 	"prettier": {
 		"semi": false,
@@ -79,6 +79,7 @@
 		"*.{js,css,md}": "prettier --write"
 	},
 	"dependencies": {
-		"canvas": "^2.11.2"
+		"canvas": "^2.11.2",
+		"eruda": "^3.0.1"
 	}
 }

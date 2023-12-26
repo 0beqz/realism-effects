@@ -69,14 +69,11 @@ export class SSGIDebugGUI {
 			step: 0.001
 		})
 
-		const definesFolder = pane.addFolder({ title: "Tracing" })
+		const definesFolder = pane.addFolder({ title: "Tracing", expanded: false })
 
 		definesFolder.addBinding(params, "steps", { min: 0, max: 256, step: 1 })
 		definesFolder.addBinding(params, "refineSteps", { min: 0, max: 16, step: 1 })
 		definesFolder.addBinding(params, "missedRays")
-
-		const resolutionFolder = pane.addFolder({ title: "Resolution", expanded: false })
-		resolutionFolder.addBinding(params, "resolutionScale", { min: 0.25, max: 1, step: 0.25 })
 
 		let textures = [
 			ssgiEffect.ssgiPass.renderTarget.texture,
@@ -107,7 +104,7 @@ export class SSGIDebugGUI {
 
 		const textureDebugParams = { Texture: "DenoiserComposePass.Texture" }
 
-		const debugFolder = pane.addFolder({ title: "Debug", expanded: false })
+		const debugFolder = pane.addFolder({ title: "Debug" })
 		debugFolder
 			.addBinding(textureDebugParams, "Texture", {
 				options: textureObject
