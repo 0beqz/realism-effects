@@ -443,7 +443,7 @@ vec2 RayMarch(inout vec3 dir, inout vec3 hitPos, vec4 random) {
   float rayHitDepthDifference;
 
   // todo: investigate offset (different value?)
-  // hitPos += dir * 0.01;
+  hitPos += dir * 0.05;
 
   dir *= rayDistance / float(steps);
 
