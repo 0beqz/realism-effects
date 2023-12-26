@@ -64,9 +64,9 @@ export class SSGIDebugGUI {
 		})
 
 		denoiseFolder.addBinding(params, "specularPhi", {
-			min: -20,
-			max: 100,
-			step: 0.001
+			min: 0,
+			max: 10,
+			step: 0.1
 		})
 
 		const definesFolder = pane.addFolder({ title: "Tracing", expanded: false })

@@ -86,10 +86,10 @@ vec3 getNormal(Material mat) {
 #endif
 }
 
-const vec2 VOGEL[8] = vec2[8](vec2(0, 0), vec2(-0.26069926696254825, 0.23882188384900999), vec2(0.04371286235847994, -0.4980855204324139),
-                              vec2(0.37259118726960094, 0.48597922503850827), vec2(-0.6962975829923794, -0.12316523827351),
-                              vec2(0.6670471298585071, -0.42432078260147466), vec2(-0.22482392297649015, 0.8363337872270026),
-                              vec2(-0.43113904340869436, -0.8301319926666095));
+const vec2 VOGEL[7] = vec2[](vec2(-0.26069926696254825, 0.23882188384900999), vec2(0.04371286235847994, -0.4980855204324139),
+                             vec2(0.37259118726960094, 0.48597922503850827), vec2(-0.6962975829923794, -0.12316523827351),
+                             vec2(0.6670471298585071, -0.42432078260147466), vec2(-0.22482392297649015, 0.8363337872270026),
+                             vec2(-0.43113904340869436, -0.8301319926666095));
 
 void outputTexel(inout vec4 outputFrag, InputTexel inp) {
   inp.rgb /= inp.totalWeight;
@@ -105,6 +105,7 @@ void applyWeight(inout InputTexel inp, vec2 neighborUv, float wBasic, float wDis
   if (inp.isSpecular) {
     t = textureLod(inputTexture2, neighborUv, 0.);
     w *= specularFactor;
+    wDisoccl *= specularFactor;
   } else {
     t = textureLod(inputTexture, neighborUv, 0.);
   }
@@ -157,27 +158,32 @@ void main() {
 
   mat = getMaterial(gBufferTexture, vUv);
   normal = getNormal(mat);
-  glossiness = max(0., 4. * (1. - mat.roughness / 0.25));
-  specularFactor = exp(-glossiness * glossiness * specularPhi);
 
   float flatness = 1. - min(length(fwidth(normal)), 1.);
-  flatness = pow(flatness, 2.) * 0.75 + 0.25;
+  flatness *= flatness;
+  flatness *= flatness;
+  flatness = flatness * 0.9 + 0.1;
 
-  float roughnessRadius = mix(sqrt(mat.roughness), 1., 0.5 * (1. - mat.metalness));
+  glossiness = 1. - mat.roughness;
+  glossiness *= glossiness;
+  specularFactor = exp(-glossiness * specularPhi);
+
+  float roughnessRadius = mix(mat.roughness, 1., (1. - mat.metalness));
+  roughnessRadius = mix(roughnessRadius, 1., specularFactor);
 
   vec4 random = blueNoise();
-  float r = radius * roughnessRadius * exp(-maxAlpha * 0.01);
+  float r = radius * roughnessRadius;
 
   // rotate the poisson disk
   float angle = random.r * 2. * PI;
   float s = sin(angle), c = cos(angle);
-  mat2 rm = mat2(c, -s, s, c) * r;
+  mat2 rm = flatness * r * mat2(c, -s, s, c);
 
-  for (int i = 0; i < 8; i++) {
+  for (int i = 0; i < 7; i++) {
     {
       vec2 offset = VOGEL[i];
 
-      vec2 neighborUv = vUv + flatness * rm * (offset / resolution);
+      vec2 neighborUv = vUv + rm * (offset / resolution);
 
       float wBasic, wDisoccl;
 

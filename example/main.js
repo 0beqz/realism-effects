@@ -367,13 +367,13 @@ const initScene = async () => {
 		denoiseKernel: 3,
 		denoiseDiffuse: 25,
 		denoiseSpecular: 25.54,
-		radius: 16,
-		phi: 0.41300000000000003,
-		lumaPhi: 24.999999999999996,
+		radius: 11,
+		phi: 0.337,
+		lumaPhi: 20.651999999999997,
 		depthPhi: 9.939965517347105e-16,
 		normalPhi: 26.087,
 		roughnessPhi: 18.477999999999998,
-		specularPhi: 0.9999999999999988,
+		specularPhi: 3.799999999999999,
 		envBlur: 0,
 		importanceSampling: true,
 		steps: 20,
@@ -528,7 +528,7 @@ const initScene = async () => {
 			})
 
 			traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
-			// composer.addPass(traaPass)
+			composer.addPass(traaPass)
 
 			// const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass, {
 			// 	intensity: 1

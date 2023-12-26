@@ -72,7 +72,7 @@ void accumulate(inout vec4 outputColor, inout vec4 inp, inout vec4 acc, inout fl
   outputColor.a = acc.a;
   undoColorTransform(outputColor.rgb);
 
-  // outputColor.rgb = vec3(1. / rayLength);
+  // outputColor.rgb = vec3(confidence);
   // if (length(fwidth(worldNormal)) < 0.02) {
   //   outputColor.rgb = vec3(0., 1., 0.);
   // }

@@ -104,9 +104,9 @@ void getVelocityNormalDepth(inout vec2 dilatedUv, out vec2 vel, out vec3 normal,
   depth = velocityTexel.a;
 }
 
-#define PLANE_DISTANCE 20.
-#define WORLD_DISTANCE 20.
-#define NORMAL_DISTANCE 10.
+#define PLANE_DISTANCE 15.
+#define WORLD_DISTANCE 15.
+#define NORMAL_DISTANCE 15.
 
 float planeDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos, const vec3 worldNormal, const float distFactor) {
   // Calculate distance to plane
@@ -155,10 +155,10 @@ float validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const
 
   disoccl += worldDistanceDisocclusionCheck(worldPos, lastWorldPos, distFactor);
   disoccl += planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal, distFactor);
-  // disoccl += normalDisocclusionCheck(worldNormal, lastWorldNormal, distFactor);
+  disoccl += normalDisocclusionCheck(worldNormal, lastWorldNormal, distFactor);
 
   float confidence = 1. - min(disoccl, 1.);
-  // confidence *= 1. - pow(angleMix, 2.);
+  confidence *= 1. - angleMix;
   confidence = max(confidence, 0.);
 
   confidence = pow(confidence, confidencePower);

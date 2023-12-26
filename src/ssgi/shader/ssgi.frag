@@ -322,9 +322,6 @@ vec3 getEnvColor(vec3 l, vec3 worldPos, float roughness, bool isDiffuseSample, b
 
   float mip = envBlur * maxEnvMapMipLevel;
 
-  if (!isDiffuseSample && roughness < 0.15)
-    mip *= roughness / 0.15;
-
   envMapSample = sampleEquirectEnvMapColor(reflectedWS, envMapInfo.map, mip);
 
   float maxEnvLum = isEnvSample ? 100.0 : 25.0;
