@@ -149,8 +149,6 @@ highp vec3 decodeRGBE8(highp vec4 rgbe) {
 }
 
 highp float vec4ToFloat(highp vec4 vec) {
-  vec = min(vec + NON_ZERO_OFFSET, vec4(ONE_SAFE));
-
   highp uvec4 v = uvec4(vec * 255.0);
   highp uint value = (v.a << 24u) | (v.b << 16u) | (v.g << 8u) | (v.r);
   return uintBitsToFloat(value);
@@ -164,9 +162,6 @@ highp vec4 floatToVec4(highp float f) {
   v.g = float((value >> 8u) & 0xFFu) / 255.0;
   v.b = float((value >> 16u) & 0xFFu) / 255.0;
   v.a = float((value >> 24u) & 0xFFu) / 255.0;
-
-  v -= NON_ZERO_OFFSET;
-  v = max(v, vec4(0.0));
 
   return v;
 }
