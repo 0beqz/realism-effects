@@ -1,307 +1,171 @@
 #define GLSLIFY                                                                                                                                      \
-  1\nvarying vec2 vUv;                                                                                                                               \
-  uniform sampler2D accumulatedTexture;                                                                                                              \
-  uniform highp sampler2D depthTexture;                                                                                                              \
-  uniform highp sampler2D velocityTexture;                                                                                                           \
-  uniform sampler2D directLightTexture;                                                                                                              \
-  uniform vec3 backgroundColor;                                                                                                                      \
-  uniform mat4 projectionMatrix;                                                                                                                     \
-  uniform mat4 projectionMatrixInverse;                                                                                                              \
-  uniform mat4 cameraMatrixWorld;                                                                                                                    \
-  uniform float maxEnvMapMipLevel;                                                                                                                   \
-  uniform float rayDistance;                                                                                                                         \
-  uniform float thickness;                                                                                                                           \
-  uniform float envBlur;                                                                                                                             \
-  uniform vec2 resolution;                                                                                                                           \
-  uniform float cameraNear;                                                                                                                          \
-  uniform float cameraFar;                                                                                                                           \
-  uniform float nearMinusFar;                                                                                                                        \
-  uniform float nearMulFar;                                                                                                                          \
-  uniform float farMinusNear;                                                                                                                        \
-  struct EquirectHdrInfo {                                                                                                                           \
-    sampler2D marginalWeights;                                                                                                                       \
-    sampler2D conditionalWeights;                                                                                                                    \
-    sampler2D map;                                                                                                                                   \
-    vec2 size;                                                                                                                                       \
-    float totalSumWhole;                                                                                                                             \
-    float totalSumDecimal;                                                                                                                           \
-  };                                                                                                                                                 \
-  uniform EquirectHdrInfo envMapInfo;                                                                                                                \
-  \n #define INVALID_RAY_COORDS vec2(-1.0);                                                                                                          \
-  \n #define EPSILON 0.00001\n #define ONE_MINUS_EPSILON 1.0 - EPSILON\nvec2 invTexSize;                                                             \
-  \n #define MODE_SSGI 0\n #define MODE_SSR 1\n #include<packing>\n #include<gbuffer_packing>\n #include<ssgi_utils>\nvec2 RayMarch(                 \
-      inout vec3 dir, inout vec3 hitPos, vec4 random);                                                                                               \
-  vec2 BinarySearch(inout vec3 dir, inout vec3 hitPos);                                                                                              \
-  struct RayTracingInfo {                                                                                                                            \
-    float NoV;                                                                                                                                       \
-    float NoL;                                                                                                                                       \
-    float NoH;                                                                                                                                       \
-    float LoH;                                                                                                                                       \
-    float VoH;                                                                                                                                       \
-    bool isDiffuseSample;                                                                                                                            \
-    bool isEnvSample;                                                                                                                                \
-  };                                                                                                                                                 \
-  struct RayTracingResult {                                                                                                                          \
-    vec3 gi;                                                                                                                                         \
-    vec3 l;                                                                                                                                          \
-    vec3 hitPos;                                                                                                                                     \
-    bool isMissedRay;                                                                                                                                \
-    vec3 brdf;                                                                                                                                       \
-    float pdf;                                                                                                                                       \
-  };                                                                                                                                                 \
-  struct EnvMisSample {                                                                                                                              \
-    float pdf;                                                                                                                                       \
-    float probability;                                                                                                                               \
-    bool isEnvSample;                                                                                                                                \
-  };                                                                                                                                                 \
-  vec3 worldNormal;                                                                                                                                  \
-  vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, const vec3 worldPos, const float metalness, const float roughness,    \
-                const bool isDiffuseSample, const bool isEnvSample, const float NoV, const float NoL, const float NoH, const float LoH,              \
-                const float VoH, const vec4 random, inout vec3 l, inout vec3 hitPos, out bool isMissedRay, out vec3 brdf, out float pdf);            \
-  void calculateAngles(inout vec3 h, inout vec3 l, inout vec3 v, inout vec3 n, inout float NoL, inout float NoH, inout float LoH, inout float VoH) { \
-    h = normalize(v + l);                                                                                                                            \
-    NoL = clamp(dot(n, l), EPSILON, ONE_MINUS_EPSILON);                                                                                              \
-    NoH = clamp(dot(n, h), EPSILON, ONE_MINUS_EPSILON);                                                                                              \
-    LoH = clamp(dot(l, h), EPSILON, ONE_MINUS_EPSILON);                                                                                              \
-    VoH = clamp(dot(v, h), EPSILON, ONE_MINUS_EPSILON);                                                                                              \
-  }                                                                                                                                                  \
-  vec3 worldPos;                                                                                                                                     \
-  Material mat;                                                                                                                                      \
-  void main() {                                                                                                                                      \
-    float unpackedDepth = textureLod(depthTexture, vUv, 0.0).r;                                                                                      \
-    if (unpackedDepth == 1.0) {                                                                                                                      \
-      vec4 directLight = textureLod(directLightTexture, vUv, 0.0);                                                                                   \
-      gl_FragColor = packTwoVec4(directLight, directLight);                                                                                          \
-      return;                                                                                                                                        \
-    }                                                                                                                                                \
-    mat = getMaterial(gBufferTexture, vUv);                                                                                                          \
-    float roughnessSq = clamp(mat.roughness * mat.roughness, 0.000001, 1.0);                                                                         \
-    invTexSize = 1. / resolution;                                                                                                                    \
-    float viewZ = getViewZ(unpackedDepth);                                                                                                           \
-    vec3 viewPos = getViewPosition(viewZ);                                                                                                           \
-    vec3 viewDir = normalize(viewPos);                                                                                                               \
-    worldNormal = mat.normal;                                                                                                                        \
-    vec3 viewNormal = normalize((vec4(worldNormal, 0.) * cameraMatrixWorld).xyz);                                                                    \
-    worldPos = (cameraMatrixWorld * vec4(viewPos, 1.)).xyz;                                                                                          \
-    vec3 n = viewNormal;                                                                                                                             \
-    vec3 v = -viewDir;                                                                                                                               \
-    float NoV = max(EPSILON, dot(n, v));                                                                                                             \
-    vec3 V = (vec4(v, 0.) * viewMatrix).xyz;                                                                                                         \
-    vec3 N = worldNormal;                                                                                                                            \
-    vec4 random;                                                                                                                                     \
-    vec3 H, l, h, F, T, B, envMisDir, gi;                                                                                                            \
-    vec3 diffuseGI, specularGI, brdf, hitPos, specularHitPos;                                                                                        \
-    Onb(N, T, B);                                                                                                                                    \
-    V = ToLocal(T, B, N, V);                                                                                                                         \
-    vec3 f0 = mix(vec3(0.04), mat.diffuse.rgb, mat.metalness);                                                                                       \
-    float NoL, NoH, LoH, VoH, diffW, specW, invW, pdf, envPdf, diffuseSamples, specularSamples;                                                      \
-    bool isDiffuseSample, isEnvSample, isMissedRay;                                                                                                  \
-    random = blueNoise();                                                                                                                            \
-    H = SampleGGXVNDF(V, roughnessSq, roughnessSq, random.r, random.g);                                                                              \
-    if (H.z < 0.0)                                                                                                                                   \
-      H = -H;                                                                                                                                        \
-    l = normalize(reflect(-V, H));                                                                                                                   \
-    l = ToWorld(T, B, N, l);                                                                                                                         \
-    l = (vec4(l, 0.) * cameraMatrixWorld).xyz;                                                                                                       \
-    l = normalize(l);                                                                                                                                \
-    calculateAngles(h, l, v, n, NoL, NoH, LoH, VoH);                                                                                                 \
-    \n #if mode == MODE_SSGI\nF = F_Schlick(f0, VoH);                                                                                                \
-    diffW = (1. - mat.metalness) * luminance(mat.diffuse.rgb);                                                                                       \
-    specW = luminance(F);                                                                                                                            \
-    diffW = max(diffW, EPSILON);                                                                                                                     \
-    specW = max(specW, EPSILON);                                                                                                                     \
-    invW = 1. / (diffW + specW);                                                                                                                     \
-    diffW *= invW;                                                                                                                                   \
-    isDiffuseSample = random.b < diffW;                                                                                                              \
-    \n #else \nisDiffuseSample = false;                                                                                                              \
-    \n #endif \nEnvMisSample ems;                                                                                                                    \
-    ems.pdf = 1.;                                                                                                                                    \
-    envMisDir = vec3(0.0);                                                                                                                           \
-    envPdf = 1.;                                                                                                                                     \
-    \n #ifdef importanceSampling\nems.pdf = sampleEquirectProbability(envMapInfo, random.rg, envMisDir);                                             \
-    envMisDir = normalize((vec4(envMisDir, 0.) * cameraMatrixWorld).xyz);                                                                            \
-    ems.probability = dot(envMisDir, viewNormal);                                                                                                    \
-    ems.probability *= mat.roughness;                                                                                                                \
-    ems.probability = min(ONE_MINUS_EPSILON, ems.probability);                                                                                       \
-    ems.isEnvSample = random.a < ems.probability;                                                                                                    \
-    if (ems.isEnvSample) {                                                                                                                           \
-      ems.pdf /= 1. - ems.probability;                                                                                                               \
-      l = envMisDir;                                                                                                                                 \
-      calculateAngles(h, l, v, n, NoL, NoH, LoH, VoH);                                                                                               \
-    } else {                                                                                                                                         \
-      ems.pdf = 1. - ems.probability;                                                                                                                \
-    }                                                                                                                                                \
-    \n #endif \nvec3 diffuseRay = ems.isEnvSample ? envMisDir : cosineSampleHemisphere(viewNormal, random.rg);                                       \
-    vec3 specularRay = ems.isEnvSample ? envMisDir : l;                                                                                              \
-    \n #if mode == MODE_SSGI\nif(isDiffuseSample) {                                                                                                  \
-      l = diffuseRay;                                                                                                                                \
-      calculateAngles(h, l, v, n, NoL, NoH, LoH, VoH);                                                                                               \
-      gi = doSample(viewPos, viewDir, viewNormal, worldPos, mat.metalness, roughnessSq, isDiffuseSample, ems.isEnvSample, NoV, NoL, NoH, LoH, VoH,   \
-                    random, l, hitPos, isMissedRay, brdf, pdf);                                                                                      \
-      gi *= brdf;                                                                                                                                    \
-      if (ems.isEnvSample) {                                                                                                                         \
-        gi *= misHeuristic(ems.pdf, pdf);                                                                                                            \
-      } else {                                                                                                                                       \
-        gi /= pdf;                                                                                                                                   \
-      }                                                                                                                                              \
-      gi /= ems.pdf;                                                                                                                                 \
-      diffuseSamples++;                                                                                                                              \
-      diffuseGI = mix(diffuseGI, gi, 1. / diffuseSamples);                                                                                           \
-    }                                                                                                                                                \
-    \n #endif \nl = specularRay;                                                                                                                     \
-    calculateAngles(h, l, v, n, NoL, NoH, LoH, VoH);                                                                                                 \
-    gi = doSample(viewPos, viewDir, viewNormal, worldPos, mat.metalness, roughnessSq, isDiffuseSample, ems.isEnvSample, NoV, NoL, NoH, LoH, VoH,     \
-                  random, l, hitPos, isMissedRay, brdf, pdf);                                                                                        \
-    gi *= brdf;                                                                                                                                      \
-    if (ems.isEnvSample) {                                                                                                                           \
-      gi *= misHeuristic(ems.pdf, pdf);                                                                                                              \
-    } else {                                                                                                                                         \
-      gi /= pdf;                                                                                                                                     \
-    }                                                                                                                                                \
-    gi /= ems.pdf;                                                                                                                                   \
-    specularHitPos = hitPos;                                                                                                                         \
-    specularSamples++;                                                                                                                               \
-    specularGI = mix(specularGI, gi, 1. / specularSamples);                                                                                          \
-    \n #ifdef useDirectLight\nvec3 directLight = textureLod(directLightTexture, vUv, 0.).rgb;                                                        \
-    diffuseGI += directLight;                                                                                                                        \
-    specularGI += directLight;                                                                                                                       \
-    \n #endif \nhighp vec4 gDiffuse, gSpecular;                                                                                                      \
-    \n #if mode == MODE_SSGI\nif(diffuseSamples == 0.0) diffuseGI = vec3(-1.0);                                                                      \
-    gDiffuse = vec4(diffuseGI, mat.roughness);                                                                                                       \
-    \n #endif \nhighp float rayLength = 0.0;                                                                                                         \
-    vec4 hitPosWS;                                                                                                                                   \
-    vec3 cameraPosWS = cameraMatrixWorld[3].xyz;                                                                                                     \
-    isMissedRay = hitPos.x > 10.0e8;                                                                                                                 \
-    if (!isMissedRay) {                                                                                                                              \
-      hitPosWS = cameraMatrixWorld * vec4(specularHitPos, 1.0);                                                                                      \
-      rayLength = distance(cameraPosWS, hitPosWS.xyz);                                                                                               \
-    }                                                                                                                                                \
-    highp uint packedRoughnessRayLength = packHalf2x16(vec2(rayLength, mat.roughness));                                                              \
-    highp float a = uintBitsToFloat(packedRoughnessRayLength);                                                                                       \
-    \n #if mode == MODE_SSGI\ngSpecular = vec4(specularGI, rayLength);                                                                               \
-    gl_FragColor = packTwoVec4(gDiffuse, gSpecular);                                                                                                 \
-    \n #else \ngSpecular = vec4(specularGI, a);                                                                                                      \
-    gl_FragColor = gSpecular;                                                                                                                        \
+  1\n #define PI M_PI\n #define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)\nfloat getViewZ(const in float depth) {                            \
+    \n #ifdef PERSPECTIVE_CAMERA\nreturn nearMulFar / (farMinusNear * depth - cameraFar);                                                            \
+    \n #else \nreturn depth *nearMinusFar - cameraNear;                                                                                              \
     \n #endif \n                                                                                                                                     \
   }                                                                                                                                                  \
-  vec3 getEnvColor(vec3 l, vec3 worldPos, float roughness, bool isDiffuseSample, bool isEnvSample) {                                                 \
-    vec3 envMapSample;                                                                                                                               \
-    \n #ifdef USE_ENVMAP\nvec3 reflectedWS = normalize((vec4(l, 0.) * viewMatrix).xyz);                                                              \
-    \n #ifdef BOX_PROJECTED_ENV_MAP\nreflectedWS = parallaxCorrectNormal(reflectedWS.xyz, envMapSize, envMapPosition, worldPos);                     \
-    reflectedWS = normalize(reflectedWS.xyz);                                                                                                        \
-    \n #endif \nfloat mip = envBlur * maxEnvMapMipLevel;                                                                                             \
-    if (!isDiffuseSample && roughness < 0.15)                                                                                                        \
-      mip *= roughness / 0.15;                                                                                                                       \
-    envMapSample = sampleEquirectEnvMapColor(reflectedWS, envMapInfo.map, mip);                                                                      \
-    float maxEnvLum = isEnvSample ? 100.0 : 25.0;                                                                                                    \
-    if (maxEnvLum != 0.0) {                                                                                                                          \
-      float envLum = luminance(envMapSample);                                                                                                        \
-      if (envLum > maxEnvLum) {                                                                                                                      \
-        envMapSample *= maxEnvLum / envLum;                                                                                                          \
-      }                                                                                                                                              \
-    }                                                                                                                                                \
-    return envMapSample;                                                                                                                             \
-    \n #else \nreturn vec3(0.0);                                                                                                                     \
-    \n #endif \n                                                                                                                                     \
+  vec3 getViewPosition(float viewZ) {                                                                                                                \
+    float clipW = projectionMatrix[2][3] * viewZ + projectionMatrix[3][3];                                                                           \
+    vec4 clipPosition = vec4((vec3(vUv, viewZ) - 0.5) * 2.0, 1.0);                                                                                   \
+    clipPosition *= clipW;                                                                                                                           \
+    vec3 p = (projectionMatrixInverse * clipPosition).xyz;                                                                                           \
+    p.z = viewZ;                                                                                                                                     \
+    return p;                                                                                                                                        \
   }                                                                                                                                                  \
-  float getSaturation(vec3 c) {                                                                                                                      \
-    float maxComponent = max(max(c.r, c.g), c.b);                                                                                                    \
-    float minComponent = min(min(c.r, c.g), c.b);                                                                                                    \
-    float delta = maxComponent - minComponent;                                                                                                       \
-    if (maxComponent == minComponent) {                                                                                                              \
+  vec2 viewSpaceToScreenSpace(const vec3 position) {                                                                                                 \
+    vec4 projectedCoord = projectionMatrix * vec4(position, 1.0);                                                                                    \
+    projectedCoord.xy /= projectedCoord.w;                                                                                                           \
+    projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;                                                                                               \
+    return projectedCoord.xy;                                                                                                                        \
+  }                                                                                                                                                  \
+  vec3 worldSpaceToViewSpace(vec3 worldPosition) {                                                                                                   \
+    vec4 viewPosition = viewMatrix * vec4(worldPosition, 1.0);                                                                                       \
+    return viewPosition.xyz / viewPosition.w;                                                                                                        \
+  }                                                                                                                                                  \
+  \n #ifdef BOX_PROJECTED_ENV_MAP\nuniform vec3 envMapSize;                                                                                          \
+  uniform vec3 envMapPosition;                                                                                                                       \
+  vec3 parallaxCorrectNormal(const vec3 v, const vec3 cubeSize, const vec3 cubePos, const vec3 worldPosition) {                                      \
+    vec3 nDir = normalize(v);                                                                                                                        \
+    vec3 rbmax = (.5 * cubeSize + cubePos - worldPosition) / nDir;                                                                                   \
+    vec3 rbmin = (-.5 * cubeSize + cubePos - worldPosition) / nDir;                                                                                  \
+    vec3 rbminmax;                                                                                                                                   \
+    rbminmax.x = (nDir.x > 0.) ? rbmax.x : rbmin.x;                                                                                                  \
+    rbminmax.y = (nDir.y > 0.) ? rbmax.y : rbmin.y;                                                                                                  \
+    rbminmax.z = (nDir.z > 0.) ? rbmax.z : rbmin.z;                                                                                                  \
+    float correction = min(min(rbminmax.x, rbminmax.y), rbminmax.z);                                                                                 \
+    vec3 boxIntersection = worldPosition + nDir * correction;                                                                                        \
+    return boxIntersection - cubePos;                                                                                                                \
+  }                                                                                                                                                  \
+  \n #endif \n #define M_PI 3.1415926535897932384626433832795\nvec2 equirectDirectionToUv(const vec3 direction) {                                    \
+    vec2 uv = vec2(atan(direction.z, direction.x), acos(direction.y));                                                                               \
+    uv /= vec2(2.0 * M_PI, M_PI);                                                                                                                    \
+    uv.x += 0.5;                                                                                                                                     \
+    uv.y = 1.0 - uv.y;                                                                                                                               \
+    return uv;                                                                                                                                       \
+  }                                                                                                                                                  \
+  vec3 equirectUvToDirection(vec2 uv) {                                                                                                              \
+    uv.x -= 0.5;                                                                                                                                     \
+    uv.y = 1.0 - uv.y;                                                                                                                               \
+    float theta = uv.x * 2.0 * PI;                                                                                                                   \
+    float phi = uv.y * PI;                                                                                                                           \
+    float sinPhi = sin(phi);                                                                                                                         \
+    return vec3(sinPhi * cos(theta), cos(phi), sinPhi * sin(theta));                                                                                 \
+  }                                                                                                                                                  \
+  vec3 sampleEquirectEnvMapColor(const vec3 direction, const sampler2D map, const float lod) {                                                       \
+    return textureLod(map, equirectDirectionToUv(direction), lod).rgb;                                                                               \
+  }                                                                                                                                                  \
+  mat3 getBasisFromNormal(const vec3 normal) {                                                                                                       \
+    vec3 other;                                                                                                                                      \
+    if (abs(normal.x) > 0.5) {                                                                                                                       \
+      other = vec3(0.0, 1.0, 0.0);                                                                                                                   \
+    } else {                                                                                                                                         \
+      other = vec3(1.0, 0.0, 0.0);                                                                                                                   \
+    }                                                                                                                                                \
+    vec3 ortho = normalize(cross(normal, other));                                                                                                    \
+    vec3 ortho2 = normalize(cross(normal, ortho));                                                                                                   \
+    return mat3(ortho2, ortho, normal);                                                                                                              \
+  }                                                                                                                                                  \
+  vec3 F_Schlick(const vec3 f0, const float theta) { return f0 + (1. - f0) * pow(1.0 - theta, 5.); }                                                 \
+  float F_Schlick(const float f0, const float f90, const float theta) { return f0 + (f90 - f0) * pow(1.0 - theta, 5.0); }                            \
+  float D_GTR(const float roughness, const float NoH, const float k) {                                                                               \
+    float a2 = pow(roughness, 2.);                                                                                                                   \
+    return a2 / (PI * pow((NoH * NoH) * (a2 * a2 - 1.) + 1., k));                                                                                    \
+  }                                                                                                                                                  \
+  float SmithG(const float NDotV, const float alphaG) {                                                                                              \
+    float a = alphaG * alphaG;                                                                                                                       \
+    float b = NDotV * NDotV;                                                                                                                         \
+    return (2.0 * NDotV) / (NDotV + sqrt(a + b - a * b));                                                                                            \
+  }                                                                                                                                                  \
+  float GGXVNDFPdf(const float NoH, const float NoV, const float roughness) {                                                                        \
+    float D = D_GTR(roughness, NoH, 2.);                                                                                                             \
+    float G1 = SmithG(NoV, roughness * roughness);                                                                                                   \
+    return (D * G1) / max(0.00001, 4.0 * NoV);                                                                                                       \
+  }                                                                                                                                                  \
+  float GeometryTerm(const float NoL, const float NoV, const float roughness) {                                                                      \
+    float a2 = roughness * roughness;                                                                                                                \
+    float G1 = SmithG(NoV, a2);                                                                                                                      \
+    float G2 = SmithG(NoL, a2);                                                                                                                      \
+    return G1 * G2;                                                                                                                                  \
+  }                                                                                                                                                  \
+  vec3 evalDisneyDiffuse(const float NoL, const float NoV, const float LoH, const float roughness, const float metalness) {                          \
+    float FD90 = 0.5 + 2. * roughness * pow(LoH, 2.);                                                                                                \
+    float a = F_Schlick(1., FD90, NoL);                                                                                                              \
+    float b = F_Schlick(1., FD90, NoV);                                                                                                              \
+    return vec3((a * b / PI) * (1. - metalness));                                                                                                    \
+  }                                                                                                                                                  \
+  vec3 evalDisneySpecular(const float roughness, const float NoH, const float NoV, const float NoL) {                                                \
+    float D = D_GTR(roughness, NoH, 2.);                                                                                                             \
+    float G = GeometryTerm(NoL, NoV, pow(0.5 + roughness * .5, 2.));                                                                                 \
+    vec3 spec = vec3(D * G / (4. * NoL * NoV));                                                                                                      \
+    return spec;                                                                                                                                     \
+  }                                                                                                                                                  \
+  vec3 SampleGGXVNDF(const vec3 V, const float ax, const float ay, const float r1, const float r2) {                                                 \
+    vec3 Vh = normalize(vec3(ax * V.x, ay * V.y, V.z));                                                                                              \
+    float lensq = Vh.x * Vh.x + Vh.y * Vh.y;                                                                                                         \
+    vec3 T1 = lensq > 0. ? vec3(-Vh.y, Vh.x, 0.) * inversesqrt(lensq) : vec3(1., 0., 0.);                                                            \
+    vec3 T2 = cross(Vh, T1);                                                                                                                         \
+    float r = sqrt(r1);                                                                                                                              \
+    float phi = 2.0 * PI * r2;                                                                                                                       \
+    float t1 = r * cos(phi);                                                                                                                         \
+    float t2 = r * sin(phi);                                                                                                                         \
+    float s = 0.5 * (1.0 + Vh.z);                                                                                                                    \
+    t2 = (1.0 - s) * sqrt(1.0 - t1 * t1) + s * t2;                                                                                                   \
+    vec3 Nh = t1 * T1 + t2 * T2 + sqrt(max(0.0, 1.0 - t1 * t1 - t2 * t2)) * Vh;                                                                      \
+    return normalize(vec3(ax * Nh.x, ay * Nh.y, max(0.0, Nh.z)));                                                                                    \
+  }                                                                                                                                                  \
+  void Onb(const vec3 N, inout vec3 T, inout vec3 B) {                                                                                               \
+    vec3 up = abs(N.z) < 0.9999999 ? vec3(0, 0, 1) : vec3(1, 0, 0);                                                                                  \
+    T = normalize(cross(up, N));                                                                                                                     \
+    B = cross(N, T);                                                                                                                                 \
+  }                                                                                                                                                  \
+  vec3 ToLocal(const vec3 X, const vec3 Y, const vec3 Z, const vec3 V) { return vec3(dot(V, X), dot(V, Y), dot(V, Z)); }                             \
+  vec3 ToWorld(const vec3 X, const vec3 Y, const vec3 Z, const vec3 V) { return V.x * X + V.y * Y + V.z * Z; }                                       \
+  vec3 cosineSampleHemisphere(const vec3 n, const vec2 u) {                                                                                          \
+    float r = sqrt(u.x);                                                                                                                             \
+    float theta = 2.0 * PI * u.y;                                                                                                                    \
+    vec3 b = normalize(cross(n, vec3(0.0, 1.0, 1.0)));                                                                                               \
+    vec3 t = cross(b, n);                                                                                                                            \
+    return normalize(r * sin(theta) * b + sqrt(1.0 - u.x) * n + r * cos(theta) * t);                                                                 \
+  }                                                                                                                                                  \
+  float equirectDirectionPdf(vec3 direction) {                                                                                                       \
+    vec2 uv = equirectDirectionToUv(direction);                                                                                                      \
+    float theta = uv.y * PI;                                                                                                                         \
+    float sinTheta = sin(theta);                                                                                                                     \
+    if (sinTheta == 0.0) {                                                                                                                           \
       return 0.0;                                                                                                                                    \
-    } else {                                                                                                                                         \
-      return delta / maxComponent;                                                                                                                   \
     }                                                                                                                                                \
+    return 1.0 / (2.0 * PI * PI * sinTheta);                                                                                                         \
   }                                                                                                                                                  \
-  vec3 doSample(const vec3 viewPos, const vec3 viewDir, const vec3 viewNormal, const vec3 worldPos, const float metalness, const float roughness,    \
-                const bool isDiffuseSample, const bool isEnvSample, const float NoV, const float NoL, const float NoH, const float LoH,              \
-                const float VoH, const vec4 random, inout vec3 l, inout vec3 hitPos, out bool isMissedRay, out vec3 brdf, out float pdf) {           \
-    float cosTheta = max(0.0, dot(viewNormal, l));                                                                                                   \
-    if (isDiffuseSample) {                                                                                                                           \
-      vec3 diffuseBrdf = evalDisneyDiffuse(NoL, NoV, LoH, roughness, metalness);                                                                     \
-      pdf = NoL / M_PI;                                                                                                                              \
-      brdf = diffuseBrdf;                                                                                                                            \
-    } else {                                                                                                                                         \
-      vec3 specularBrdf = evalDisneySpecular(roughness, NoH, NoV, NoL);                                                                              \
-      pdf = GGXVNDFPdf(NoH, NoV, roughness);                                                                                                         \
-      brdf = specularBrdf;                                                                                                                           \
-    }                                                                                                                                                \
-    brdf *= cosTheta;                                                                                                                                \
-    pdf = max(EPSILON, pdf);                                                                                                                         \
-    hitPos = viewPos;                                                                                                                                \
-    vec2 coords = RayMarch(l, hitPos, random);                                                                                                       \
-    bool allowMissedRays = false;                                                                                                                    \
-    \n #ifdef missedRays\nallowMissedRays = true;                                                                                                    \
-    \n #endif \nisMissedRay = hitPos.x == 10.0e9;                                                                                                    \
-    vec3 envMapSample = vec3(0.);                                                                                                                    \
-    if (isMissedRay && !allowMissedRays)                                                                                                             \
-      return getEnvColor(l, worldPos, roughness, isDiffuseSample, isEnvSample);                                                                      \
-    vec4 velocity = textureLod(velocityTexture, coords.xy, 0.0);                                                                                     \
-    vec2 reprojectedUv = coords.xy - velocity.xy;                                                                                                    \
-    vec3 SSGI;                                                                                                                                       \
-    vec3 envColor = getEnvColor(l, worldPos, roughness, isDiffuseSample, isEnvSample);                                                               \
-    if (reprojectedUv.x >= 0.0 && reprojectedUv.x <= 1.0 && reprojectedUv.y >= 0.0 && reprojectedUv.y <= 1.0) {                                      \
-      vec4 reprojectedGI = textureLod(accumulatedTexture, reprojectedUv, 0.);                                                                        \
-      float saturation = getSaturation(mat.diffuse.rgb);                                                                                             \
-      reprojectedGI.rgb = mix(reprojectedGI.rgb, vec3(luminance(reprojectedGI.rgb)), (1. - roughness) * saturation * 0.4);                           \
-      SSGI = reprojectedGI.rgb;                                                                                                                      \
-      float aspect = resolution.x / resolution.y;                                                                                                    \
-      float border = 0.15;                                                                                                                           \
-      float borderFactor = smoothstep(0.0, border, coords.x) * smoothstep(1.0, 1.0 - border, coords.x) * smoothstep(0.0, border, coords.y) *         \
-                           smoothstep(1.0, 1.0 - border, coords.y);                                                                                  \
-      borderFactor = sqrt(borderFactor);                                                                                                             \
-      SSGI = mix(envColor, SSGI, borderFactor);                                                                                                      \
-    } else {                                                                                                                                         \
-      return envColor;                                                                                                                               \
-    }                                                                                                                                                \
-    if (allowMissedRays) {                                                                                                                           \
-      float ssgiLum = luminance(SSGI);                                                                                                               \
-      float envLum = luminance(envMapSample);                                                                                                        \
-      if (envLum > ssgiLum)                                                                                                                          \
-        SSGI = envMapSample;                                                                                                                         \
-    }                                                                                                                                                \
-    return SSGI;                                                                                                                                     \
+  float sampleEquirectProbability(EquirectHdrInfo info, vec2 blueNoise, out vec3 direction) {                                                        \
+    float v = textureLod(info.marginalWeights, vec2(blueNoise.x, 0.0), 0.).x;                                                                        \
+    float u = textureLod(info.conditionalWeights, vec2(blueNoise.y, v), 0.).x;                                                                       \
+    vec2 uv = vec2(u, v);                                                                                                                            \
+    vec3 derivedDirection = equirectUvToDirection(uv);                                                                                               \
+    direction = derivedDirection;                                                                                                                    \
+    vec3 color = texture(info.map, uv).rgb;                                                                                                          \
+    float totalSum = info.totalSumWhole + info.totalSumDecimal;                                                                                      \
+    float lum = luminance(color);                                                                                                                    \
+    float pdf = lum / totalSum;                                                                                                                      \
+    return info.size.x * info.size.y * pdf;                                                                                                          \
   }                                                                                                                                                  \
-  vec2 RayMarch(inout vec3 dir, inout vec3 hitPos, vec4 random) {                                                                                    \
-    float rayHitDepthDifference;                                                                                                                     \
-    dir *= rayDistance / float(steps);                                                                                                               \
-    vec2 uv;                                                                                                                                         \
-    for (int i = 1; i < steps; i++) {                                                                                                                \
-      float cs = 1. - exp(-0.25 * pow(float(i) + random.b - 0.5, 2.));                                                                               \
-      hitPos += dir * cs;                                                                                                                            \
-      uv = viewSpaceToScreenSpace(hitPos);                                                                                                           \
-      float unpackedDepth = textureLod(depthTexture, uv, 0.0).r;                                                                                     \
-      float z = getViewZ(unpackedDepth);                                                                                                             \
-      rayHitDepthDifference = z - hitPos.z;                                                                                                          \
-      if (rayHitDepthDifference >= 0.0 && rayHitDepthDifference < thickness) {                                                                       \
-        if (refineSteps == 0) {                                                                                                                      \
-          return uv;                                                                                                                                 \
-        } else {                                                                                                                                     \
-          return BinarySearch(dir, hitPos);                                                                                                          \
-        }                                                                                                                                            \
-      }                                                                                                                                              \
-    }                                                                                                                                                \
-    hitPos.xyz = vec3(10.0e9);                                                                                                                       \
-    return uv;                                                                                                                                       \
+  float misHeuristic(float a, float b) {                                                                                                             \
+    float aa = a * a;                                                                                                                                \
+    float bb = b * b;                                                                                                                                \
+    return aa / (aa + bb);                                                                                                                           \
   }                                                                                                                                                  \
-  vec2 BinarySearch(inout vec3 dir, inout vec3 hitPos) {                                                                                             \
-    float rayHitDepthDifference;                                                                                                                     \
-    vec2 uv;                                                                                                                                         \
-    dir *= 0.5;                                                                                                                                      \
-    hitPos -= dir;                                                                                                                                   \
-    for (int i = 0; i < refineSteps; i++) {                                                                                                          \
-      uv = viewSpaceToScreenSpace(hitPos);                                                                                                           \
-      float unpackedDepth = textureLod(depthTexture, uv, 0.0).r;                                                                                     \
-      float z = getViewZ(unpackedDepth);                                                                                                             \
-      rayHitDepthDifference = z - hitPos.z;                                                                                                          \
-      dir *= 0.5;                                                                                                                                    \
-      if (rayHitDepthDifference >= 0.0) {                                                                                                            \
-        hitPos -= dir;                                                                                                                               \
-      } else {                                                                                                                                       \
-        hitPos += dir;                                                                                                                               \
-      }                                                                                                                                              \
-    }                                                                                                                                                \
-    uv = viewSpaceToScreenSpace(hitPos);                                                                                                             \
-    return uv;                                                                                                                                       \
+  vec3 alignToNormal(const vec3 normal, const vec3 direction) {                                                                                      \
+    vec3 tangent;                                                                                                                                    \
+    vec3 bitangent;                                                                                                                                  \
+    Onb(normal, tangent, bitangent);                                                                                                                 \
+    vec3 localDir = ToLocal(tangent, bitangent, normal, direction);                                                                                  \
+    vec3 localDirAligned = vec3(localDir.x, localDir.y, abs(localDir.z));                                                                            \
+    vec3 alignedDir = ToWorld(tangent, bitangent, normal, localDirAligned);                                                                          \
+    return alignedDir;                                                                                                                               \
+  }                                                                                                                                                  \
+  float getFlatness(vec3 g, vec3 rp) {                                                                                                               \
+    vec3 gw = fwidth(g);                                                                                                                             \
+    vec3 pw = fwidth(rp);                                                                                                                            \
+    float wfcurvature = length(gw) / length(pw);                                                                                                     \
+    wfcurvature = smoothstep(0.0, 30., wfcurvature);                                                                                                 \
+    return clamp(wfcurvature, 0., 1.);                                                                                                               \
   }
