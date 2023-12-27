@@ -5,7 +5,6 @@ import {
 	defaultTemporalReprojectPassOptions
 } from "../temporal-reproject/TemporalReprojectPass.js"
 // eslint-disable-next-line camelcase
-import { getVisibleChildren, isGroundProjectedEnv } from "../utils/SceneUtils.js"
 import traa_compose from "./shader/traa_compose.frag"
 
 export class TRAAEffect extends Effect {
@@ -26,7 +25,8 @@ export class TRAAEffect extends Effect {
 				neighborhoodClamp: true,
 				neighborhoodClampIntensity: 1,
 				neighborhoodClampRadius: 1,
-				logTransform: true
+				logTransform: true,
+				confidencePower: 4
 			}
 		}
 
