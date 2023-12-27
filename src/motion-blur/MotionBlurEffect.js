@@ -4,7 +4,8 @@ import { Effect } from "postprocessing"
 import { NoColorSpace, NearestFilter, RepeatWrapping, TextureLoader, Uniform, Vector2 } from "three"
 import motion_blur from "./shader/motion_blur.frag"
 
-import blueNoiseImage from "./../utils/LDR_RGBA_0.png"
+import blueNoiseImage from "./../utils/blue_noise_rgba.png"
+import { setupBlueNoise } from "../utils/BlueNoiseUtils"
 
 // https://www.nvidia.com/docs/io/8230/gdc2003_openglshadertricks.pdf
 // http://john-chapman-graphics.blogspot.com/2013/01/per-object-motion-blur.html
@@ -18,14 +19,21 @@ export class MotionBlurEffect extends Effect {
 	constructor(velocityPass, options = defaultOptions) {
 		options = { ...defaultOptions, ...options }
 
-		super("MotionBlurEffect", motion_blur, {
+		const { fragmentShader, uniforms } = setupBlueNoise(motion_blur)
+
+		// convert the uniforms from type { uniform: value,... } to type ["uniform", value,...]
+		const formattedUniforms = []
+		for (const key of Object.keys(uniforms)) {
+			formattedUniforms.push([key, uniforms[key]])
+		}
+
+		super("MotionBlurEffect", fragmentShader, {
 			type: "MotionBlurMaterial",
 			uniforms: new Map([
+				...formattedUniforms,
 				["inputTexture", new Uniform(null)],
 				["velocityTexture", new Uniform(velocityPass.texture)],
-				["blueNoiseTexture", new Uniform(null)],
-				["blueNoiseSize", new Uniform(new Vector2())],
-				["texSize", new Uniform(new Vector2())],
+				["resolution", new Uniform(new Vector2())],
 				["intensity", new Uniform(1)],
 				["jitter", new Uniform(1)],
 				["frame", new Uniform(0)],
@@ -80,10 +88,10 @@ export class MotionBlurEffect extends Effect {
 		this.uniforms.get("inputTexture").value = inputBuffer.texture
 		this.uniforms.get("deltaTime").value = Math.max(1 / 1000, deltaTime)
 
-		const frame = renderer.info.render.frame % 65536
+		const frame = renderer.info.render.frame % 4096
 		this.uniforms.get("frame").value = frame
 
-		this.uniforms.get("texSize").value.set(window.innerWidth, window.innerHeight)
+		this.uniforms.get("resolution").value.set(window.innerWidth, window.innerHeight)
 
 		const noiseTexture = this.uniforms.get("blueNoiseTexture").value
 		if (noiseTexture) {

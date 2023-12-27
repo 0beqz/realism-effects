@@ -1,20 +1,4 @@
-﻿import { DataTexture, FloatType, RGBAFormat, ShaderChunk, ShaderLib, UniformsUtils, Vector4 } from "three"
-
-export const getVisibleChildren = object => {
-	const queue = [object]
-	const objects = []
-
-	while (queue.length !== 0) {
-		const mesh = queue.shift()
-		if (mesh.material) objects.push(mesh)
-
-		for (const c of mesh.children) {
-			if (c.visible) queue.push(c)
-		}
-	}
-
-	return objects
-}
+﻿import { ShaderChunk, ShaderLib, UniformsUtils, Vector4 } from "three"
 
 export const generateCubeUVSize = parameters => {
 	const imageHeight = parameters.envMapCubeUVHeight
@@ -43,79 +27,10 @@ export const setupEnvMap = (ssgiMaterial, envMap, envMapCubeUVHeight) => {
 	ssgiMaterial.needsUpdate = true
 }
 
-export const keepMaterialMapUpdated = (mrtMaterial, originalMaterial, prop, define, useKey) => {
-	if (useKey) {
-		if (originalMaterial[prop] !== mrtMaterial[prop]) {
-			mrtMaterial[prop] = originalMaterial[prop]
-			mrtMaterial.uniforms[prop].value = originalMaterial[prop]
-
-			if (originalMaterial[prop]) {
-				mrtMaterial.defines[define] = ""
-
-				if (define === "USE_NORMALMAP") {
-					mrtMaterial.defines.TANGENTSPACE_NORMALMAP = ""
-				}
-			} else {
-				delete mrtMaterial.defines[define]
-			}
-
-			mrtMaterial.needsUpdate = true
-		}
-	} else if (mrtMaterial[prop] !== undefined) {
-		mrtMaterial[prop] = undefined
-		mrtMaterial.uniforms[prop].value = undefined
-		delete mrtMaterial.defines[define]
-		mrtMaterial.needsUpdate = true
-	}
-}
-
 export const getMaxMipLevel = texture => {
 	const { width, height } = texture.image
 
 	return Math.floor(Math.log2(Math.max(width, height))) + 1
-}
-
-export const saveBoneTexture = object => {
-	let boneTexture = object.material.uniforms.prevBoneTexture.value
-
-	if (boneTexture && boneTexture.image.width === object.skeleton.boneTexture.image.width) {
-		boneTexture = object.material.uniforms.prevBoneTexture.value
-		boneTexture.image.data.set(object.skeleton.boneTexture.image.data)
-		boneTexture.needsUpdate = true
-	} else {
-		boneTexture?.dispose()
-
-		const boneMatrices = object.skeleton.boneTexture.image.data.slice()
-		const size = object.skeleton.boneTexture.image.width
-
-		boneTexture = new DataTexture(boneMatrices, size, size, RGBAFormat, FloatType)
-		object.material.uniforms.prevBoneTexture.value = boneTexture
-
-		boneTexture.needsUpdate = true
-	}
-}
-
-export const updateVelocityDepthNormalMaterialBeforeRender = (c, camera) => {
-	if (c.skeleton?.boneTexture) {
-		c.material.uniforms.boneTexture.value = c.skeleton.boneTexture
-
-		if (!("USE_SKINNING" in c.material.defines)) {
-			c.material.defines.USE_SKINNING = ""
-			c.material.defines.BONE_TEXTURE = ""
-
-			c.material.needsUpdate = true
-		}
-	}
-
-	c.modelViewMatrix.multiplyMatrices(camera.matrixWorldInverse, c.matrixWorld)
-
-	c.material.uniforms.velocityMatrix.value.multiplyMatrices(camera.projectionMatrix, c.modelViewMatrix)
-}
-
-export const updateVelocityDepthNormalMaterialAfterRender = (c, camera) => {
-	c.material.uniforms.prevVelocityMatrix.value.multiplyMatrices(camera.projectionMatrix, c.modelViewMatrix)
-
-	if (c.skeleton?.boneTexture) saveBoneTexture(c)
 }
 
 export const createGlobalDisableIblRadianceUniform = () => {
@@ -153,42 +68,6 @@ export const createGlobalDisableIblRadianceUniform = () => {
 	return globalIblRadianceDisabledUniform
 }
 
-export const createGlobalDisableIblIradianceUniform = () => {
-	if (!ShaderChunk.envmap_physical_pars_fragment.includes("iblIrradianceDisabled")) {
-		ShaderChunk.envmap_physical_pars_fragment = ShaderChunk.envmap_physical_pars_fragment.replace(
-			"vec3 getIBLIrradiance( const in vec3 normal ) {",
-			/* glsl */ `
-			uniform bool iblIrradianceDisabled;
-		
-			vec3 getIBLIrradiance( const in vec3 normal ) {
-			 if(iblIrradianceDisabled) return vec3(0.);
-			`
-		)
-	}
-
-	if ("iblIrradianceDisabled" in ShaderLib.physical.uniforms)
-		return ShaderLib.physical.uniforms["iblIrradianceDisabled"]
-
-	const globalIblIrradianceDisabledUniform = {
-		value: false
-	}
-
-	ShaderLib.physical.uniforms.iblIrradianceDisabled = globalIblIrradianceDisabledUniform
-
-	const { clone } = UniformsUtils
-	UniformsUtils.clone = uniforms => {
-		const result = clone(uniforms)
-
-		if ("iblIrradianceDisabled" in uniforms) {
-			result.iblIrradianceDisabled = globalIblIrradianceDisabledUniform
-		}
-
-		return result
-	}
-
-	return globalIblIrradianceDisabledUniform
-}
-
 // source: https://github.com/mrdoob/three.js/blob/b9bc47ab1978022ab0947a9bce1b1209769b8d91/src/renderers/webgl/WebGLProgram.js#L228
 // Unroll Loops
 
@@ -216,41 +95,26 @@ export const splitIntoGroupsOfVector4 = arr => {
 	for (let i = 0; i < arr.length; i += 4) {
 		result.push(new Vector4(...arr.slice(i, i + 4)))
 	}
+
 	return result
 }
 
-export const isGroundProjectedEnv = c => {
-	return c.material.fragmentShader?.includes(
-		"float intersection2 = diskIntersectWithBackFaceCulling( camPos, p, h, vec3( 0.0, 1.0, 0.0 ), radius );"
-	)
-}
+// this function generates a Vogel distribution for a given number of samples
+// source: https://www.shadertoy.com/view/4t2SDh
+export const generateVogelDistribution = (numSamples, scale = 1) => {
+	const samples = []
+	const goldenAngle = Math.PI * (3 - Math.sqrt(5))
 
-export const isChildMaterialRenderable = (c, material = c.material) => {
-	return (
-		material.visible &&
-		material.depthWrite &&
-		material.depthTest &&
-		(!material.transparent || material.opacity > 0) &&
-		!isGroundProjectedEnv(c)
-	)
-}
+	for (let i = 0; i < numSamples; i++) {
+		const t = i / numSamples
+		const r = Math.sqrt(t)
+		const theta = i * goldenAngle
 
-const materialProps = [
-	"vertexTangent",
-	"vertexColors",
-	"vertexAlphas",
-	"vertexUvs",
-	"uvsVertexOnly",
-	"supportsVertexTextures",
-	"instancing",
-	"instancingColor",
-	"side",
-	"flatShading",
-	"skinning",
-	"doubleSided",
-	"flipSided"
-]
+		const x = r * Math.cos(theta)
+		const y = r * Math.sin(theta)
 
-export const copyNecessaryProps = (originalMaterial, newMaterial) => {
-	for (const props of materialProps) newMaterial[props] = originalMaterial[props]
+		samples.push({ x, y })
+	}
+
+	return samples
 }

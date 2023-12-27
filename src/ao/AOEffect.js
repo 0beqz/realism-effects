@@ -1,6 +1,6 @@
 import { Effect, NormalPass } from "postprocessing"
 import { Color, Uniform } from "three"
-import { PoissionDenoisePass } from "../poissionDenoise/PoissionDenoisePass"
+import { PoissonDenoisePass } from "../denoise/pass/PoissonDenoisePass"
 // eslint-disable-next-line camelcase
 import ao_compose from "./shader/ao_compose.frag"
 import { TRAAEffect } from "../traa/TRAAEffect"
@@ -17,7 +17,7 @@ const defaultAOOptions = {
 	useNormalPass: false,
 	velocityDepthNormalPass: null,
 	normalTexture: null,
-	...PoissionDenoisePass.DefaultOptions
+	...PoissonDenoisePass.DefaultOptions
 }
 
 class AOEffect extends Effect {
@@ -54,7 +54,9 @@ class AOEffect extends Effect {
 			this.aoPass.fullscreenMaterial.defines.useNormalTexture = ""
 		}
 
-		this.poissionDenoisePass = new PoissionDenoisePass(camera, this.aoPass.texture, composer.depthTexture)
+		this.PoissonDenoisePass = new PoissonDenoisePass(camera, this.aoPass.texture, composer.depthTexture, {
+			normalInRgb: true
+		})
 
 		this.makeOptionsReactive(options)
 	}
@@ -98,13 +100,13 @@ class AOEffect extends Effect {
 						case "radius":
 						case "rings":
 						case "samples":
-							this.poissionDenoisePass[key] = value
+							this.PoissonDenoisePass[key] = value
 							break
 
 						case "lumaPhi":
 						case "depthPhi":
 						case "normalPhi":
-							this.poissionDenoisePass.fullscreenMaterial.uniforms[key].value = Math.max(value, 0.0001)
+							this.PoissonDenoisePass.fullscreenMaterial.uniforms[key].value = Math.max(value, 0.0001)
 							break
 
 						default:
@@ -134,13 +136,21 @@ class AOEffect extends Effect {
 		this.normalPass?.setSize(width, height)
 		this.aoPass.setSize(width * this.resolutionScale, height * this.resolutionScale)
 
-		this.poissionDenoisePass.setSize(width, height)
+		this.PoissonDenoisePass.setSize(width, height)
 
 		this.lastSize = {
 			width,
 			height,
 			resolutionScale: this.resolutionScale
 		}
+	}
+
+	get texture() {
+		if (this.iterations > 0) {
+			return this.PoissonDenoisePass.texture
+		}
+
+		return this.aoPass.texture
 	}
 
 	update(renderer) {
@@ -158,17 +168,12 @@ class AOEffect extends Effect {
 			this.aoPass.fullscreenMaterial.needsUpdate = true
 		}
 
-		// set input texture
-		if (this.iterations > 0) {
-			this.uniforms.get("inputTexture").value = this.poissionDenoisePass.texture
-		} else {
-			this.uniforms.get("inputTexture").value = this.aoPass.texture
-		}
+		this.uniforms.get("inputTexture").value = this.texture
 
 		this.normalPass?.render(renderer)
 		this.aoPass.render(renderer)
 
-		this.poissionDenoisePass.render(renderer)
+		this.PoissonDenoisePass.render(renderer)
 	}
 }
 

@@ -1,7 +1,6 @@
 // source: https://github.com/gkjohnson/three-gpu-pathtracer/blob/main/src/uniforms/EquirectHdrInfoUniform.js
 
-import { Source } from "three"
-import { DataTexture, FloatType, LinearFilter, RedFormat, RepeatWrapping, RGBAFormat, Vector2 } from "three"
+import { DataTexture, FloatType, NearestFilter, RGBAFormat, RedFormat, RepeatWrapping, Vector2 } from "three"
 
 const workerOnMessage = ({ data: { width, height, isFloatType, flipY, data } }) => {
 	// from: https://github.com/mrdoob/three.js/blob/dev/src/extras/DataUtils.js
@@ -249,7 +248,7 @@ const workerOnMessage = ({ data: { width, height, isFloatType, flipY, data } }) 
 		const newData = new Float32Array(data.length)
 
 		// eslint-disable-next-line guard-for-in
-		for (const i in data) {
+		for (let i = 0; i < data.length; i++) {
 			newData[i] = fromHalfFloat(data[i])
 		}
 
@@ -261,11 +260,7 @@ const workerOnMessage = ({ data: { width, height, isFloatType, flipY, data } }) 
 
 	const totalSumValue = gatherData(data, width, height, flipY, marginalDataArray, conditionalDataArray)
 
-	if (isFloatType) {
-		postMessage({ totalSumValue, marginalDataArray, conditionalDataArray })
-	} else {
-		postMessage({ data, totalSumValue, marginalDataArray, conditionalDataArray })
-	}
+	postMessage({ totalSumValue, marginalDataArray, conditionalDataArray })
 }
 
 const blob = new Blob(["onmessage = " + workerOnMessage], { type: "application/javascript" })
@@ -273,13 +268,15 @@ const workerUrl = URL.createObjectURL(blob)
 
 export class EquirectHdrInfoUniform {
 	constructor() {
+		// we use NearestFilter instead of LinearFilter because on many recent Apple devices filtering from such a texture does not work
+
 		// Default to a white texture and associated weights so we don't
 		// just render black initially.
 		const whiteTex = new DataTexture(new Float32Array([1, 1, 1, 1]), 1, 1)
 		whiteTex.type = FloatType
 		whiteTex.format = RGBAFormat
-		whiteTex.minFilter = LinearFilter
-		whiteTex.magFilter = LinearFilter
+		whiteTex.minFilter = NearestFilter
+		whiteTex.magFilter = NearestFilter
 		whiteTex.wrapS = RepeatWrapping
 		whiteTex.wrapT = RepeatWrapping
 		whiteTex.generateMipmaps = false
@@ -290,8 +287,8 @@ export class EquirectHdrInfoUniform {
 		const marginalWeights = new DataTexture(new Float32Array([0, 1]), 1, 2)
 		marginalWeights.type = FloatType
 		marginalWeights.format = RedFormat
-		marginalWeights.minFilter = LinearFilter
-		marginalWeights.magFilter = LinearFilter
+		marginalWeights.minFilter = NearestFilter
+		marginalWeights.magFilter = NearestFilter
 		marginalWeights.generateMipmaps = false
 		marginalWeights.needsUpdate = true
 
@@ -300,8 +297,8 @@ export class EquirectHdrInfoUniform {
 		const conditionalWeights = new DataTexture(new Float32Array([0, 0, 1, 1]), 2, 2)
 		conditionalWeights.type = FloatType
 		conditionalWeights.format = RedFormat
-		conditionalWeights.minFilter = LinearFilter
-		conditionalWeights.magFilter = LinearFilter
+		conditionalWeights.minFilter = NearestFilter
+		conditionalWeights.magFilter = NearestFilter
 		conditionalWeights.generateMipmaps = false
 		conditionalWeights.needsUpdate = true
 
@@ -336,7 +333,7 @@ export class EquirectHdrInfoUniform {
 			this.worker = new Worker(workerUrl)
 
 			this.worker.postMessage({ width, height, isFloatType: type === FloatType, flipY: map.flipY, data })
-			this.worker.onmessage = ({ data: { data, totalSumValue, marginalDataArray, conditionalDataArray } }) => {
+			this.worker.onmessage = ({ data: { totalSumValue, marginalDataArray, conditionalDataArray } }) => {
 				this.dispose()
 
 				const { marginalWeights, conditionalWeights } = this
@@ -350,12 +347,6 @@ export class EquirectHdrInfoUniform {
 				const totalSumDecimal = totalSumValue - totalSumWhole
 				this.totalSumWhole = totalSumWhole
 				this.totalSumDecimal = totalSumDecimal
-
-				if (data) {
-					map.source = new Source({ ...map.image })
-					map.image = { width, height, data }
-					map.type = FloatType
-				}
 
 				this.map = map
 

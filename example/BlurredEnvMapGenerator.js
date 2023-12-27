@@ -165,7 +165,7 @@ export class MaterialBase extends ShaderMaterial {
 	}
 }
 
-import blueNoiseImage from "../src/utils/LDR_RGBA_0.png"
+import blueNoiseImage from "../src/utils/blue_noise_rgba.png"
 
 class PMREMCopyMaterial extends MaterialBase {
 	constructor() {
@@ -173,7 +173,7 @@ class PMREMCopyMaterial extends MaterialBase {
 			uniforms: {
 				envMap: { value: null },
 				blur: { value: 0 },
-				texSize: { value: new Vector2() },
+				resolution: { value: new Vector2() },
 				blueNoiseTexture: { value: null },
 				blueNoiseRepeat: { value: new Vector2() }
 			},
@@ -199,7 +199,7 @@ class PMREMCopyMaterial extends MaterialBase {
 				uniform sampler2D blueNoiseTexture;
 				uniform vec2 blueNoiseRepeat;
 				uniform float blur;
-				uniform vec2 texSize;
+				uniform vec2 resolution;
 				varying vec2 vUv;
 
 				#define SAMPLES 1024.0
@@ -241,12 +241,12 @@ class PMREMCopyMaterial extends MaterialBase {
 				}
 
 				void main() {
-					float pos = vUv.y * texSize.x * texSize.y + vUv.x * texSize.x;
-				    rng_initialize(vUv * texSize, int(pos));
+					float pos = vUv.y * resolution.x * resolution.y + vUv.x * resolution.x;
+				    rng_initialize(vUv * resolution, int(pos));
 
 					vec3 color;
 
-					vec2 blueNoiseUv = vec2(shift2()) * blueNoiseRepeat * (1. / texSize);
+					vec2 blueNoiseUv = vec2(shift2()) * blueNoiseRepeat * (1. / resolution);
 					vec4 blueNoise = textureLod(blueNoiseTexture, blueNoiseUv, 0.);
 				
 					for(float i = 0.; i < SAMPLES; i++){
@@ -319,11 +319,11 @@ export class BlurredEnvMapGenerator {
 		copyQuad.material.envMap = pmremTarget.texture
 		copyQuad.material.blur = blur
 
-		const { blueNoiseRepeat, blueNoiseTexture, texSize } = copyQuad.material.uniforms
+		const { blueNoiseRepeat, blueNoiseTexture, resolution } = copyQuad.material.uniforms
 
 		blueNoiseRepeat.value.set(width / blueNoiseTexture.value.image.width, height / blueNoiseTexture.value.image.height)
 
-		texSize.value.set(width, height)
+		resolution.value.set(width, height)
 
 		// render
 		const prevRenderTarget = renderer.getRenderTarget()

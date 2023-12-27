@@ -1,71 +1,93 @@
 ﻿import { Pass } from "postprocessing"
 import {
 	Color,
+	DataTexture,
 	DepthTexture,
 	FloatType,
 	FramebufferTexture,
 	Matrix4,
 	NearestFilter,
-	PerspectiveCamera,
 	RGBAFormat,
-	UnsignedByteType,
 	Vector2,
-	WebGLMultipleRenderTargets
+	WebGLRenderTarget
 } from "three"
-import {
-	copyNecessaryProps,
-	getVisibleChildren,
-	isChildMaterialRenderable,
-	saveBoneTexture,
-	updateVelocityDepthNormalMaterialAfterRender,
-	updateVelocityDepthNormalMaterialBeforeRender
-} from "../../ssgi/utils/Utils"
 import { VelocityDepthNormalMaterial } from "../material/VelocityDepthNormalMaterial.js"
+import { copyNecessaryProps, keepMaterialMapUpdated } from "../../gbuffer/utils/GBufferUtils.js"
+import { getVisibleChildren } from "../../utils/SceneUtils.js"
+import { isChildMaterialRenderable } from "../../utils/SceneUtils.js"
 
 const backgroundColor = new Color(0)
 const zeroVec2 = new Vector2()
 const tmpProjectionMatrix = new Matrix4()
 const tmpProjectionMatrixInverse = new Matrix4()
 
+const saveBoneTexture = object => {
+	let boneTexture = object.material.uniforms.prevBoneTexture.value
+
+	if (boneTexture && boneTexture.image.width === object.skeleton.boneTexture.width) {
+		boneTexture = object.material.uniforms.prevBoneTexture.value
+		boneTexture.image.data.set(object.skeleton.boneTexture.image.data)
+	} else {
+		boneTexture?.dispose()
+
+		const boneMatrices = object.skeleton.boneTexture.image.data.slice()
+		const size = object.skeleton.boneTexture.image.width
+
+		boneTexture = new DataTexture(boneMatrices, size, size, RGBAFormat, FloatType)
+		object.material.uniforms.prevBoneTexture.value = boneTexture
+
+		boneTexture.needsUpdate = true
+	}
+}
+
+const updateVelocityDepthNormalMaterialBeforeRender = (c, camera) => {
+	if (c.skeleton?.boneTexture) {
+		c.material.uniforms.boneTexture.value = c.skeleton.boneTexture
+
+		if (!("USE_SKINNING" in c.material.defines)) {
+			c.material.defines.USE_SKINNING = ""
+			c.material.defines.BONE_TEXTURE = ""
+
+			c.material.needsUpdate = true
+		}
+	}
+
+	c.modelViewMatrix.multiplyMatrices(camera.matrixWorldInverse, c.matrixWorld)
+
+	c.material.uniforms.velocityMatrix.value.multiplyMatrices(camera.projectionMatrix, c.modelViewMatrix)
+}
+
+const updateVelocityDepthNormalMaterialAfterRender = (c, camera) => {
+	c.material.uniforms.prevVelocityMatrix.value.multiplyMatrices(camera.projectionMatrix, c.modelViewMatrix)
+
+	if (c.skeleton?.boneTexture) saveBoneTexture(c)
+}
+
 export class VelocityDepthNormalPass extends Pass {
 	cachedMaterials = new WeakMap()
 	visibleMeshes = []
 	needsSwap = false
 
-	constructor(scene, camera, renderDepth = true) {
-		super("velocityDepthNormalPass")
-
-		if (!camera?.isPerspectiveCamera) {
-			throw new Error(
-				this.constructor.name +
-					" doesn't support cameras of type '" +
-					camera.constructor.name +
-					"' yet. Only cameras of type 'PerspectiveCamera' are supported."
-			)
-		}
+	constructor(scene, camera) {
+		super("VelocityDepthNormalPass")
 
 		this._scene = scene
 		this._camera = camera
 
-		const bufferCount = renderDepth ? 2 : 1
-
-		this.renderTarget = new WebGLMultipleRenderTargets(1, 1, bufferCount, {
+		this.renderTarget = new WebGLRenderTarget(1, 1, {
+			type: FloatType,
 			minFilter: NearestFilter,
 			magFilter: NearestFilter
 		})
 
+		this.renderTarget.texture.name = "VelocityDepthNormalPass.Texture"
+
 		this.renderTarget.depthTexture = new DepthTexture(1, 1)
 		this.renderTarget.depthTexture.type = FloatType
+	}
 
-		if (renderDepth) {
-			this.renderTarget.texture[0].type = UnsignedByteType
-			this.renderTarget.texture[0].needsUpdate = true
-
-			this.renderTarget.texture[1].type = FloatType
-			this.renderTarget.texture[1].needsUpdate = true
-		}
-
-		this.renderDepth = renderDepth
+	get texture() {
+		return this.renderTarget.texture
 	}
 
 	setVelocityDepthNormalMaterialInScene() {
@@ -77,7 +99,7 @@ export class VelocityDepthNormalPass extends Pass {
 			let [cachedOriginalMaterial, velocityDepthNormalMaterial] = this.cachedMaterials.get(c) || []
 
 			if (originalMaterial !== cachedOriginalMaterial) {
-				velocityDepthNormalMaterial = new VelocityDepthNormalMaterial()
+				velocityDepthNormalMaterial = new VelocityDepthNormalMaterial(this._camera)
 
 				copyNecessaryProps(originalMaterial, velocityDepthNormalMaterial)
 
@@ -92,7 +114,14 @@ export class VelocityDepthNormalPass extends Pass {
 
 			c.visible = isChildMaterialRenderable(c, originalMaterial)
 
-			if (this.renderDepth) velocityDepthNormalMaterial.defines.renderDepth = ""
+			keepMaterialMapUpdated(
+				velocityDepthNormalMaterial,
+				originalMaterial,
+				"normalMap",
+				"USE_NORMALMAP_TANGENTSPACE",
+				true
+			)
+			velocityDepthNormalMaterial.uniforms.normalMap.value = originalMaterial.normalMap
 
 			const map =
 				originalMaterial.map ||
@@ -119,25 +148,18 @@ export class VelocityDepthNormalPass extends Pass {
 	setSize(width, height) {
 		this.renderTarget.setSize(width, height)
 
-		this.lastDepthTexture?.dispose()
+		this.lastVelocityTexture?.dispose()
 
-		this.lastDepthTexture = new FramebufferTexture(width, height, RGBAFormat)
-		this.lastDepthTexture.minFilter = NearestFilter
-		this.lastDepthTexture.magFilter = NearestFilter
+		this.lastVelocityTexture = new FramebufferTexture(width, height, RGBAFormat)
+		this.lastVelocityTexture.type = FloatType
+		this.lastVelocityTexture.minFilter = NearestFilter
+		this.lastVelocityTexture.magFilter = NearestFilter
 	}
 
 	dispose() {
 		super.dispose()
 
 		this.renderTarget.dispose()
-	}
-
-	get texture() {
-		return Array.isArray(this.renderTarget.texture) ? this.renderTarget.texture[1] : this.renderTarget.texture
-	}
-
-	get depthTexture() {
-		return this.renderTarget.texture[0]
 	}
 
 	render(renderer) {
@@ -157,7 +179,7 @@ export class VelocityDepthNormalPass extends Pass {
 		this._scene.background = backgroundColor
 
 		renderer.setRenderTarget(this.renderTarget)
-		renderer.copyFramebufferToTexture(zeroVec2, this.lastDepthTexture)
+		renderer.copyFramebufferToTexture(zeroVec2, this.lastVelocityTexture)
 
 		renderer.render(this._scene, this._camera)
 

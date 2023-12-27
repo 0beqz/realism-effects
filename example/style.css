@@ -17,6 +17,7 @@ html {
 }
 
 .webgl {
+	/* transform: scale(4); */
 	position: fixed;
 	top: 0;
 	left: 0;

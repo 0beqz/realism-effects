@@ -1,11 +1,9 @@
 ﻿import { SSGIEffect } from "./SSGIEffect"
-import { defaultSSGIOptions } from "./SSGIOptions"
 
 export class SSREffect extends SSGIEffect {
-	constructor(scene, camera, velocityDepthNormalPass, options = defaultSSGIOptions) {
-		options = { ...defaultSSGIOptions, ...options }
-		options.specularOnly = true
+	constructor(composer, scene, camera, options = {}) {
+		options.mode = "ssr"
 
-		super(scene, camera, velocityDepthNormalPass, options)
+		super(composer, scene, camera, options)
 	}
 }

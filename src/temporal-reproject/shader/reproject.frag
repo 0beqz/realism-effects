@@ -1,325 +1,269 @@
-vec4 velocityTexel;
-float dilatedDepth;
-vec2 dilatedUvOffset;
-int texIndex;
-bool didMove;
+// #define VISUALIZE_DISOCCLUSIONS
 
-vec4 depthTexel;
-float depth;
-float edgeStrength;
+vec2 dilatedUv, velocity;
+vec3 worldNormal, worldPos, viewDir;
+float depth, curvature, viewAngle, rayLength, angleMix;
+float roughness = 1.;
+float moveFactor = 0.;
 
 #define luminance(a) dot(vec3(0.2125, 0.7154, 0.0721), a)
 
+// source:
+// https://github.com/mrdoob/three.js/blob/342946c8392639028da439b6dc0597e58209c696/examples/js/shaders/SAOShader.js#L123
+float getViewZ(const in float depth) {
+#ifdef PERSPECTIVE_CAMERA
+  return perspectiveDepthToViewZ(depth, cameraNear, cameraFar);
+#else
+  return orthographicDepthToViewZ(depth, cameraNear, cameraFar);
+#endif
+}
+
 vec3 screenSpaceToWorldSpace(const vec2 uv, const float depth, mat4 curMatrixWorld, const mat4 projMatrixInverse) {
-    vec4 ndc = vec4(
-        (uv.x - 0.5) * 2.0,
-        (uv.y - 0.5) * 2.0,
-        (depth - 0.5) * 2.0,
-        1.0);
+  vec4 ndc = vec4((uv.x - 0.5) * 2.0, (uv.y - 0.5) * 2.0, (depth - 0.5) * 2.0, 1.0);
 
-    vec4 clip = projMatrixInverse * ndc;
-    vec4 view = curMatrixWorld * (clip / clip.w);
+  vec4 clip = projMatrixInverse * ndc;
+  vec4 view = curMatrixWorld * (clip / clip.w);
 
-    return view.xyz;
+  return view.xyz;
 }
 
 vec2 viewSpaceToScreenSpace(const vec3 position, const mat4 projMatrix) {
-    vec4 projectedCoord = projMatrix * vec4(position, 1.0);
-    projectedCoord.xy /= projectedCoord.w;
-    // [-1, 1] --> [0, 1] (NDC to screen position)
-    projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;
+  vec4 projectedCoord = projMatrix * vec4(position, 1.0);
+  projectedCoord.xy /= projectedCoord.w;
+  // [-1, 1] --> [0, 1] (NDC to screen position)
+  projectedCoord.xy = projectedCoord.xy * 0.5 + 0.5;
 
-    return projectedCoord.xy;
+  return projectedCoord.xy;
 }
-
-bool doColorTransform[textureCount];
 
 #ifdef logTransform
-// idea from: https://www.elopezr.com/temporal-aa-and-the-quest-for-the-holy-trail/
-void transformColor(inout vec3 color) {
-    if (!doColorTransform[texIndex]) return;
-    float lum = luminance(color);
-
-    float diff = min(1.0, lum - 0.99);
-    if (diff > 0.0) {
-        color = vec3(diff * 0.1);
-        return;
-    }
-
-    color = log(max(color, vec3(EPSILON)));
-}
-
-void undoColorTransform(inout vec3 color) {
-    if (!doColorTransform[texIndex]) return;
-
-    color = exp(color);
-}
+// idea from:
+// https://www.elopezr.com/temporal-aa-and-the-quest-for-the-holy-trail/
+void transformColor(inout vec3 color) { color = log(color + 1.); }
+void undoColorTransform(inout vec3 color) { color = exp(color) - 1.; }
 #else
-    #define transformColor
-    #define undoColorTransform
+#define transformColor
+#define undoColorTransform
 #endif
 
-void getNeighborhoodAABB(const sampler2D tex, inout vec3 minNeighborColor, inout vec3 maxNeighborColor) {
-    for (int x = -neighborhoodClampRadius; x <= neighborhoodClampRadius; x++) {
-        for (int y = -neighborhoodClampRadius; y <= neighborhoodClampRadius; y++) {
-            if (x != 0 || y != 0) {
-                vec2 offset = vec2(x, y) * invTexSize;
-                vec2 neighborUv = vUv + offset;
+// Extract the minimum and maximum color values from the neighborhood of the current pixel.
+// The neighborhood is defined by the clampRadius.
+// The neighborhood is in a square centered around the current pixel.
+// The neighborhood does not include the current pixel.
+void getNeighborhoodAABB(const sampler2D tex, const int clampRadius, inout vec3 minNeighborColor, inout vec3 maxNeighborColor,
+                         const bool isSpecular) {
 
-                vec4 neighborTexel = textureLod(tex, neighborUv, 0.0);
-                transformColor(neighborTexel.rgb);
+  // For each pixel in the neighborhood of the current pixel...
+  for (int x = -clampRadius; x <= clampRadius; x++) {
+    for (int y = -clampRadius; y <= clampRadius; y++) {
+      // Calculate the offset of the current pixel relative to the current pixel.
+      vec2 offset = vec2(x, y) * invTexSize;
+      // Calculate the texture coordinate of the current pixel.
+      vec2 neighborUv = vUv + offset;
 
-                minNeighborColor = min(neighborTexel.rgb, minNeighborColor);
-                maxNeighborColor = max(neighborTexel.rgb, maxNeighborColor);
-            }
-        }
-    }
-}
-
-void clampNeighborhood(const sampler2D tex, inout vec3 color, const vec3 inputColor) {
-    vec3 minNeighborColor = inputColor;
-    vec3 maxNeighborColor = inputColor;
-
-    getNeighborhoodAABB(tex, minNeighborColor, maxNeighborColor);
-
-    color = clamp(color, minNeighborColor, maxNeighborColor);
-}
-
-#ifdef dilation
-void getDilatedDepthUVOffset(const sampler2D tex, const vec2 centerUv, out float depth, out float dilatedDepth, out vec4 closestDepthTexel) {
-    float closestDepth = 0.0;
-
-    for (int x = -1; x <= 1; x++) {
-        for (int y = -1; y <= 1; y++) {
-            vec2 offset = vec2(x, y) * invTexSize;
-            vec2 neighborUv = centerUv + offset;
-
-            vec4 neighborDepthTexel = textureLod(tex, neighborUv, 0.0);
-            float neighborDepth = unpackRGBAToDepth(neighborDepthTexel);
-
-            if (x == 0 && y == 0) depth = neighborDepth;
-
-            if (neighborDepth > closestDepth) {
-                closestDepth = neighborDepth;
-                closestDepthTexel = neighborDepthTexel;
-                dilatedUvOffset = offset;
-            }
-        }
-    }
-
-    dilatedDepth = closestDepth;
-}
-#endif
-
-void getDepthAndDilatedUVOffset(sampler2D depthTex, vec2 uv, out float depth, out float dilatedDepth, out vec4 depthTexel) {
-#ifdef dilation
-    getDilatedDepthUVOffset(depthTex, uv, depth, dilatedDepth, depthTexel);
+      // Get the current pixel's color.
+#if inputType == DIFFUSE_SPECULAR
+      vec4 t1, t2;
+      vec4 packedNeighborTexel = textureLod(inputTexture, neighborUv, 0.0);
+      unpackTwoVec4(packedNeighborTexel, t1, t2);
+      vec4 neighborTexel = isSpecular ? t2 : t1;
 #else
-    depthTexel = textureLod(depthTex, uv, 0.);
-    depth = unpackRGBAToDepth(depthTexel);
-    dilatedDepth = depth;
-#endif
-}
-
-bool planeDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos, const vec3 worldNormal, const float worldDistFactor) {
-    if (abs(dot(worldNormal, worldPos)) == 0.0) return false;
-
-    vec3 toCurrent = worldPos - lastWorldPos;
-    float distToPlane = abs(dot(toCurrent, worldNormal));
-
-    return distToPlane > depthDistance * worldDistFactor;
-}
-
-bool worldDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos, const float worldDistFactor) {
-    return distance(worldPos, lastWorldPos) > worldDistance * worldDistFactor;
-}
-
-bool validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const vec3 worldNormal) {
-    if (reprojectedUv.x > 1.0 || reprojectedUv.x < 0.0 || reprojectedUv.y > 1.0 || reprojectedUv.y < 0.0) return false;
-
-    vec3 dilatedWorldPos = worldPos;
-    vec3 lastWorldPos;
-    float dilatedLastDepth, lastDepth;
-    vec4 lastDepthTexel;
-    vec2 dilatedReprojectedUv;
-
-#ifdef dilation
-    // by default the worldPos is not dilated as it would otherwise mess up reprojecting hit points in the method "reprojectHitPoint"
-    dilatedWorldPos = screenSpaceToWorldSpace(vUv + dilatedUvOffset, dilatedDepth, cameraMatrixWorld, projectionMatrixInverse);
-
-    getDepthAndDilatedUVOffset(lastDepthTexture, reprojectedUv, lastDepth, dilatedLastDepth, lastDepthTexel);
-
-    dilatedReprojectedUv = reprojectedUv + dilatedUvOffset;
-#else
-    lastDepthTexel = textureLod(lastDepthTexture, reprojectedUv, 0.);
-    lastDepth = unpackRGBAToDepth(lastDepthTexel);
-    dilatedLastDepth = lastDepth;
-
-    dilatedReprojectedUv = reprojectedUv;
+      vec4 neighborTexel = textureLod(inputTexture, neighborUv, 0.0);
 #endif
 
-    lastWorldPos = screenSpaceToWorldSpace(dilatedReprojectedUv, dilatedLastDepth, prevCameraMatrixWorld, prevProjectionMatrixInverse);
-
-    float worldDistFactor = clamp((50.0 + distance(dilatedWorldPos, cameraPos)) / 100., 0.25, 1.);
-
-    if (worldDistanceDisocclusionCheck(dilatedWorldPos, lastWorldPos, worldDistFactor)) return false;
-
-    return !planeDistanceDisocclusionCheck(dilatedWorldPos, lastWorldPos, worldNormal, worldDistFactor);
+      if (neighborTexel.r >= 0.) {
+        // Update the minimum and maximum color values for the current pixel's neighborhood.
+        minNeighborColor = min(neighborTexel.rgb, minNeighborColor);
+        maxNeighborColor = max(neighborTexel.rgb, maxNeighborColor);
+      }
+    }
+  }
 }
 
-vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength, const float depth) {
-    vec3 cameraRay = normalize(rayOrig - cameraPos);
-    float cameraRayLength = distance(rayOrig, cameraPos);
+void clampNeighborhood(const sampler2D tex, inout vec3 color, vec3 inputColor, const int clampRadius, const bool isSpecular) {
+  undoColorTransform(inputColor);
+  vec3 minNeighborColor = inputColor;
+  vec3 maxNeighborColor = inputColor;
 
-    vec3 parallaxHitPoint = cameraPos + cameraRay * (cameraRayLength + rayLength);
+  // Find the AABB of the neighborhood.
+  getNeighborhoodAABB(tex, clampRadius, minNeighborColor, maxNeighborColor, isSpecular);
 
-    vec4 reprojectedParallaxHitPoint = prevViewMatrix * vec4(parallaxHitPoint, 1.0);
-    vec2 hitPointUv = viewSpaceToScreenSpace(reprojectedParallaxHitPoint.xyz, prevProjectionMatrix);
+  transformColor(minNeighborColor);
+  transformColor(maxNeighborColor);
 
-    return hitPointUv;
+  color = clamp(color, minNeighborColor, maxNeighborColor);
 }
 
-vec2 getReprojectedUV(const float depth, const vec3 worldPos, const vec3 worldNormal, const float rayLength) {
-    // hit point reprojection
-    if (rayLength != 0.0) {
-        vec2 reprojectedUv = reprojectHitPoint(worldPos, rayLength, depth);
+void getVelocityNormalDepth(inout vec2 dilatedUv, out vec2 vel, out vec3 normal, out float depth) {
+  vec2 centerUv = dilatedUv;
 
-        if (validateReprojectedUV(reprojectedUv, worldPos, worldNormal)) {
-            return reprojectedUv;
-        }
+  vec4 velocityTexel = textureLod(velocityTexture, centerUv, 0.0);
 
-        return vec2(-1.);
-    }
+  vel = velocityTexel.rg;
+  normal = unpackNormal(velocityTexel.b);
+  depth = velocityTexel.a;
+}
 
-    // reprojection using motion vectors
-    vec2 reprojectedUv = vUv - velocityTexel.rg;
+#define PLANE_DISTANCE 20.
+#define WORLD_DISTANCE 20.
+#define NORMAL_DISTANCE 15.
 
-    if (validateReprojectedUV(reprojectedUv, worldPos, worldNormal)) {
-        return reprojectedUv;
-    }
+float planeDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos, const vec3 worldNormal, const float distFactor) {
+  // Calculate distance to plane
+  vec3 toCurrent = worldPos - lastWorldPos;
+  float distToPlane = abs(dot(toCurrent, worldNormal));
 
-    // invalid reprojection
+  // Return the distance to the plane scaled by the distFactor
+  return distToPlane / PLANE_DISTANCE * distFactor;
+}
+
+float worldDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos, const float distFactor) {
+  // Calculate the distance between the current and last world position
+  return length(worldPos - lastWorldPos) / WORLD_DISTANCE * distFactor;
+}
+
+float normalDisocclusionCheck(const vec3 worldNormal, const vec3 lastWorldNormal, const float distFactor) {
+  // Calculate the distance between the current and last world position
+  return min(1. - dot(worldNormal, lastWorldNormal), 1.) / NORMAL_DISTANCE * distFactor;
+}
+
+float validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const vec3 worldNormal, const bool isHitPoint) {
+  if (reprojectedUv.x > 1.0 || reprojectedUv.x < 0.0 || reprojectedUv.y > 1.0 || reprojectedUv.y < 0.0)
+    return 0.;
+
+  vec2 dilatedReprojectedUv = reprojectedUv;
+  vec2 lastVelocity = vec2(0.0);
+  vec3 lastWorldNormal = vec3(0.0);
+  float lastDepth = 0.0;
+
+  getVelocityNormalDepth(dilatedReprojectedUv, lastVelocity, lastWorldNormal, lastDepth);
+  vec3 lastWorldPos = screenSpaceToWorldSpace(dilatedReprojectedUv, lastDepth, prevCameraMatrixWorld, prevProjectionMatrixInverse);
+
+  vec3 lastViewPos = (prevViewMatrix * vec4(lastWorldPos, 1.0)).xyz;
+
+  vec3 lastViewDir = normalize(lastViewPos);
+  vec3 lastViewNormal = (vec4(lastWorldNormal, 0.0) * prevViewMatrix).xyz;
+
+  // get the angle between the view direction and the normal
+  float lastViewAngle = dot(-lastViewDir, lastViewNormal);
+  angleMix = abs(lastViewAngle - viewAngle);
+
+  float viewZ = abs(getViewZ(depth));
+  float distFactor = 1. + 1. / (viewZ + 1.0);
+
+  float disoccl = 0.;
+
+  disoccl += worldDistanceDisocclusionCheck(worldPos, lastWorldPos, distFactor);
+  disoccl += planeDistanceDisocclusionCheck(worldPos, lastWorldPos, worldNormal, distFactor);
+  // disoccl += normalDisocclusionCheck(worldNormal, lastWorldNormal, distFactor);
+
+  float confidence = 1. - min(disoccl, 1.);
+  // confidence *= 1. - angleMix;
+  confidence = max(confidence, 0.);
+
+  confidence = pow(confidence, confidencePower);
+
+  return confidence;
+}
+
+vec2 reprojectHitPoint(const vec3 rayOrig, const float rayLength) {
+  if (curvature > 0.05 || rayLength < 0.01) {
     return vec2(-1.);
+  }
+
+  // todo: don't use hit point reprojection if the surface is too curvy
+
+  // Find the direction of the ray
+  vec3 cameraRay = normalize(rayOrig - cameraPos);
+
+  // Find the position of the hit point
+  vec3 parallaxHitPoint = cameraPos + cameraRay * rayLength;
+
+  // Reproject the hit point into the previous frame
+  vec4 reprojectedHitPoint = prevProjectionMatrix * prevViewMatrix * vec4(parallaxHitPoint, 1.0);
+
+  // Convert to screen space coordinates
+  reprojectedHitPoint.xyz /= reprojectedHitPoint.w;
+  reprojectedHitPoint.xy = reprojectedHitPoint.xy * 0.5 + 0.5;
+
+  vec2 diffuseUv = vUv - velocity.xy;
+  float m = min(max(0., roughness - 0.25) / 0.25, 1.);
+
+  return reprojectedHitPoint.xy;
 }
 
-vec4 SampleTextureCatmullRom(const sampler2D tex, const vec2 uv, const vec2 texSize) {
-    // We're going to sample a a 4x4 grid of texels surrounding the target UV coordinate. We'll do this by rounding
-    // down the sample location to get the exact center of our "starting" texel. The starting texel will be at
-    // location [1, 1] in the grid, where [0, 0] is the top left corner.
-    vec2 samplePos = uv * texSize;
-    vec2 texPos1 = floor(samplePos - 0.5f) + 0.5f;
+vec3 getReprojectedUV(const bool doReprojectSpecular, const float depth, const vec3 worldPos, const vec3 worldNormal) {
+  if (doReprojectSpecular) {
+    // hit point reprojection
+    vec2 reprojectedUv = reprojectHitPoint(worldPos, rayLength);
 
-    // Compute the fractional offset from our starting texel to our original sample location, which we'll
-    // feed into the Catmull-Rom spline function to get our filter weights.
-    vec2 f = samplePos - texPos1;
+    float confidence = validateReprojectedUV(reprojectedUv, worldPos, worldNormal, true);
+    return vec3(reprojectedUv, confidence);
+  } else {
+    // reprojection using motion vectors
+    vec2 reprojectedUv = vUv - velocity;
 
-    // Compute the Catmull-Rom weights using the fractional offset that we calculated earlier.
-    // These equations are pre-expanded based on our knowledge of where the texels will be located,
-    // which lets us avoid having to evaluate a piece-wise function.
-    vec2 w0 = f * (-0.5f + f * (1.0f - 0.5f * f));
-    vec2 w1 = 1.0f + f * f * (-2.5f + 1.5f * f);
-    vec2 w2 = f * (0.5f + f * (2.0f - 1.5f * f));
-    vec2 w3 = f * f * (-0.5f + 0.5f * f);
-
-    // Work out weighting factors and sampling offsets that will let us use bilinear filtering to
-    // simultaneously evaluate the middle 2 samples from the 4x4 grid.
-    vec2 w12 = w1 + w2;
-    vec2 offset12 = w2 / (w1 + w2);
-
-    // Compute the final UV coordinates we'll use for sampling the texture
-    vec2 texPos0 = texPos1 - 1.;
-    vec2 texPos3 = texPos1 + 2.;
-    vec2 texPos12 = texPos1 + offset12;
-
-    texPos0 /= texSize;
-    texPos3 /= texSize;
-    texPos12 /= texSize;
-
-    vec4 result = vec4(0.0);
-    result += textureLod(tex, vec2(texPos0.x, texPos0.y), 0.0f) * w0.x * w0.y;
-    result += textureLod(tex, vec2(texPos12.x, texPos0.y), 0.0f) * w12.x * w0.y;
-    result += textureLod(tex, vec2(texPos3.x, texPos0.y), 0.0f) * w3.x * w0.y;
-    result += textureLod(tex, vec2(texPos0.x, texPos12.y), 0.0f) * w0.x * w12.y;
-    result += textureLod(tex, vec2(texPos12.x, texPos12.y), 0.0f) * w12.x * w12.y;
-    result += textureLod(tex, vec2(texPos3.x, texPos12.y), 0.0f) * w3.x * w12.y;
-    result += textureLod(tex, vec2(texPos0.x, texPos3.y), 0.0f) * w0.x * w3.y;
-    result += textureLod(tex, vec2(texPos12.x, texPos3.y), 0.0f) * w12.x * w3.y;
-    result += textureLod(tex, vec2(texPos3.x, texPos3.y), 0.0f) * w3.x * w3.y;
-
-    result = max(result, vec4(0.));
-
-    return result;
+    float confidence = validateReprojectedUV(reprojectedUv, worldPos, worldNormal, false);
+    return vec3(reprojectedUv, confidence);
+  }
 }
 
-// source: https://www.shadertoy.com/view/stSfW1
-vec2 sampleBlocky(vec2 p) {
-    vec2 d = vec2(dFdx(p.x), dFdy(p.y)) / invTexSize;
-    p /= invTexSize;
-    vec2 fA = p - 0.5 * d, iA = floor(fA);
-    vec2 fB = p + 0.5 * d, iB = floor(fB);
-    return (iA + (iB - iA) * (fB - iB) / d + 0.5) * invTexSize;
-}
+// source: https://www.shadertoy.com/view/styXDh
+vec4 BiCubicCatmullRom5Tap(sampler2D tex, vec2 P) {
+  vec2 Weight[3];
+  vec2 Sample[3];
 
-float computeEdgeStrength(float unpackedDepth, vec2 texelSize) {
-    // Compute the depth gradients in the x and y directions using central differences
-    float depthX = unpackRGBAToDepth(textureLod(depthTexture, vUv + vec2(texelSize.x, 0.0), 0.0)) -
-                   unpackRGBAToDepth(textureLod(depthTexture, vUv - vec2(texelSize.x, 0.0), 0.0));
+  vec2 UV = P / invTexSize;
+  vec2 tc = floor(UV - 0.5) + 0.5;
+  vec2 f = UV - tc;
+  vec2 f2 = f * f;
+  vec2 f3 = f2 * f;
 
-    float depthY = unpackRGBAToDepth(textureLod(depthTexture, vUv + vec2(0.0, texelSize.y), 0.0)) -
-                   unpackRGBAToDepth(textureLod(depthTexture, vUv - vec2(0.0, texelSize.y), 0.0));
+  vec2 w0 = f2 - 0.5 * (f3 + f);
+  vec2 w1 = 1.5 * f3 - 2.5 * f2 + vec2(1.);
+  vec2 w3 = 0.5 * (f3 - f2);
+  vec2 w2 = vec2(1.) - w0 - w1 - w3;
 
-    // Calculate the gradient magnitude
-    float gradientMagnitude = sqrt(depthX * depthX + depthY * depthY);
+  Weight[0] = w0;
+  Weight[1] = w1 + w2;
+  Weight[2] = w3;
 
-    // Calculate the edge strength
-    float edgeStrength = min(100000. * gradientMagnitude / (unpackedDepth + 0.001), 1.);
+  Sample[0] = tc - vec2(1.);
+  Sample[1] = tc + w2 / Weight[1];
+  Sample[2] = tc + vec2(2.);
 
-    return edgeStrength * edgeStrength;
-}
+  Sample[0] *= invTexSize;
+  Sample[1] *= invTexSize;
+  Sample[2] *= invTexSize;
 
-float computeEdgeStrengthFast(float unpackedDepth) {
-    float depthX = dFdx(unpackedDepth);
-    float depthY = dFdy(unpackedDepth);
+  float sampleWeight[5];
+  sampleWeight[0] = Weight[1].x * Weight[0].y;
+  sampleWeight[1] = Weight[0].x * Weight[1].y;
+  sampleWeight[2] = Weight[1].x * Weight[1].y;
+  sampleWeight[3] = Weight[2].x * Weight[1].y;
+  sampleWeight[4] = Weight[1].x * Weight[2].y;
 
-    // Compute the edge strength as the magnitude of the gradient
-    float edgeStrength = depthX * depthX + depthY * depthY;
+  vec4 Ct = textureLod(tex, vec2(Sample[1].x, Sample[0].y), 0.) * sampleWeight[0];
+  vec4 Cl = textureLod(tex, vec2(Sample[0].x, Sample[1].y), 0.) * sampleWeight[1];
+  vec4 Cc = textureLod(tex, vec2(Sample[1].x, Sample[1].y), 0.) * sampleWeight[2];
+  vec4 Cr = textureLod(tex, vec2(Sample[2].x, Sample[1].y), 0.) * sampleWeight[3];
+  vec4 Cb = textureLod(tex, vec2(Sample[1].x, Sample[2].y), 0.) * sampleWeight[4];
 
-    return min(1., pow(pow(edgeStrength, 0.25) * 500., 4.));
+  float WeightMultiplier = 1. / (sampleWeight[0] + sampleWeight[1] + sampleWeight[2] + sampleWeight[3] + sampleWeight[4]);
+
+  return max((Ct + Cl + Cc + Cr + Cb) * WeightMultiplier, vec4(0.));
 }
 
 vec4 sampleReprojectedTexture(const sampler2D tex, const vec2 reprojectedUv) {
-    vec4 catmull = SampleTextureCatmullRom(tex, reprojectedUv, 1.0 / invTexSize);
-    vec4 blocky = SampleTextureCatmullRom(tex, sampleBlocky(reprojectedUv), 1.0 / invTexSize);
-
-    vec4 reprojectedTexel = mix(catmull, blocky, edgeStrength);
-    reprojectedTexel.a = min(catmull.a, blocky.a);
-
-    return reprojectedTexel;
+  // this causes severe reprojection artifacts on iPhone devices
+  // todo: figure out why and find different solution
+  vec4 catmull = BiCubicCatmullRom5Tap(tex, reprojectedUv);
+  // vec4 bilinear = max(textureLod(tex, reprojectedUv, 0.0), vec4(0.));
+  return catmull;
 }
 
-// source: https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/
-vec2 OctWrap(vec2 v) {
-    vec2 w = 1.0 - abs(v.yx);
-    if (v.x < 0.0) w.x = -w.x;
-    if (v.y < 0.0) w.y = -w.y;
-    return w;
-}
+float getCurvature(vec3 n) {
+  float curvature = length(fwidth(n));
 
-vec2 Encode(vec3 n) {
-    n /= (abs(n.x) + abs(n.y) + abs(n.z));
-    n.xy = n.z > 0.0 ? n.xy : OctWrap(n.xy);
-    n.xy = n.xy * 0.5 + 0.5;
-    return n.xy;
-}
-
-// source: https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/
-vec3 Decode(vec2 f) {
-    f = f * 2.0 - 1.0;
-
-    // https://twitter.com/Stubbesaurus/status/937994790553227264
-    vec3 n = vec3(f.x, f.y, 1.0 - abs(f.x) - abs(f.y));
-    float t = max(-n.z, 0.0);
-    n.x += n.x >= 0.0 ? -t : t;
-    n.y += n.y >= 0.0 ? -t : t;
-    return normalize(n);
+  return curvature;
 }

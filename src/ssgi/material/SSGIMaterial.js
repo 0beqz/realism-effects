@@ -1,9 +1,10 @@
-﻿import { GLSL3, Matrix4, NoBlending, ShaderMaterial, Uniform, Vector2, Vector3 } from "three"
+﻿/* eslint-disable camelcase */
+import { Color, Matrix4, NoBlending, ShaderMaterial, Uniform, Vector2, Vector3 } from "three"
 import vertexShader from "../../utils/shader/basic.vert"
 import fragmentShader from "../shader/ssgi.frag"
-// eslint-disable-next-line camelcase
 import ssgi_utils from "../shader/ssgi_utils.frag"
-import sampleBlueNoise from "../../utils/shader/sampleBlueNoise.glsl"
+import { useBlueNoise } from "../../utils/BlueNoiseUtils"
+import gbuffer_packing from "../../gbuffer/shader/gbuffer_packing.glsl"
 import { EquirectHdrInfoUniform } from "../utils/EquirectHdrInfoUniform"
 
 export class SSGIMaterial extends ShaderMaterial {
@@ -12,40 +13,37 @@ export class SSGIMaterial extends ShaderMaterial {
 			type: "SSGIMaterial",
 
 			uniforms: {
-				directLightTexture: new Uniform(null),
 				accumulatedTexture: new Uniform(null),
-				normalTexture: new Uniform(null),
+				gBufferTexture: new Uniform(null),
 				depthTexture: new Uniform(null),
-				diffuseTexture: new Uniform(null),
-				emissiveTexture: new Uniform(null),
 				velocityTexture: new Uniform(null),
+				directLightTexture: new Uniform(null),
 				blueNoiseTexture: new Uniform(null),
-				backSideDepthTexture: new Uniform(null),
 				projectionMatrix: new Uniform(new Matrix4()),
-				inverseProjectionMatrix: new Uniform(new Matrix4()),
+				projectionMatrixInverse: new Uniform(new Matrix4()),
 				cameraMatrixWorld: new Uniform(new Matrix4()),
 				viewMatrix: new Uniform(new Matrix4()),
 				cameraNear: new Uniform(0),
 				cameraFar: new Uniform(0),
+				nearMulFar: new Uniform(0),
+				nearMinusFar: new Uniform(0),
+				farMinusNear: new Uniform(0),
 				rayDistance: new Uniform(0),
 				thickness: new Uniform(0),
 				frame: new Uniform(0),
 				envBlur: new Uniform(0),
-				maxRoughness: new Uniform(0),
 				maxEnvMapMipLevel: new Uniform(0),
 				envMapInfo: { value: new EquirectHdrInfoUniform() },
 				envMapPosition: new Uniform(new Vector3()),
 				envMapSize: new Uniform(new Vector3()),
-				viewMatrix: new Uniform(new Matrix4()),
-				texSize: new Uniform(new Vector2()),
+				backgroundColor: new Uniform(new Color()),
+				resolution: new Uniform(new Vector2()),
 				blueNoiseRepeat: new Uniform(new Vector2())
 			},
 
 			defines: {
 				steps: 20,
 				refineSteps: 5,
-				spp: 1,
-				directLightMultiplier: 1,
 				CUBEUV_TEXEL_WIDTH: 0,
 				CUBEUV_TEXEL_HEIGHT: 0,
 				CUBEUV_MAX_MIP: 0,
@@ -54,15 +52,15 @@ export class SSGIMaterial extends ShaderMaterial {
 
 			fragmentShader: fragmentShader
 				.replace("#include <ssgi_utils>", ssgi_utils)
-				.replace("#include <sampleBlueNoise>", sampleBlueNoise),
+				.replace("#include <gbuffer_packing>", gbuffer_packing),
 			vertexShader,
 
 			blending: NoBlending,
 			depthWrite: false,
 			depthTest: false,
-			toneMapped: false,
-
-			glslVersion: GLSL3
+			toneMapped: false
 		})
+
+		useBlueNoise(this)
 	}
 }

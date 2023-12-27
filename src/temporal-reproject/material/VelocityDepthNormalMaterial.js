@@ -1,7 +1,7 @@
 ﻿// this shader is from: https://github.com/gkjohnson/threejs-sandbox
 /* eslint-disable camelcase */
 
-import { GLSL3, Matrix3, Matrix4, ShaderChunk, ShaderMaterial, UniformsUtils, Vector2 } from "three"
+import { Matrix3, Matrix4, ShaderChunk, ShaderMaterial, UniformsUtils, Vector2 } from "three"
 
 // Modified ShaderChunk.skinning_pars_vertex to handle
 // a second set of bone information from the previous frame
@@ -44,9 +44,7 @@ uniform mat4 prevVelocityMatrix;
 varying vec4 prevPosition;
 varying vec4 newPosition;
 
-#ifdef renderDepth
 varying vec2 vHighPrecisionZW;
-#endif
 `
 
 // Returns the body of the vertex shader for the velocity buffer
@@ -64,18 +62,14 @@ prevPosition = prevVelocityMatrix * vec4( transformed, 1.0 );
 
 gl_Position = newPosition;
 
-#ifdef renderDepth
 vHighPrecisionZW = gl_Position.zw;
-#endif
 `
 
 export const velocity_fragment_pars = /* glsl */ `
 varying vec4 prevPosition;
 varying vec4 newPosition;
 
-#ifdef renderDepth
 varying vec2 vHighPrecisionZW;
-#endif
 `
 
 export const velocity_fragment_main = /* glsl */ `
@@ -84,9 +78,7 @@ vec2 pos1 = (newPosition.xy / newPosition.w) * 0.5 + 0.5;
 
 vec2 vel = pos1 - pos0;
 
-#ifdef renderDepth
 float fragCoordZ = 0.5 * vHighPrecisionZW[0] / vHighPrecisionZW[1] + 0.5;
-#endif
 
 gl_FragColor = vec4(vel.x, vel.y, 0., 0.);
 `
@@ -97,15 +89,19 @@ export const velocity_uniforms = {
 	prevBoneTexture: { value: null },
 	boneTexture: { value: null },
 	normalMap: { value: null },
-	normalScale: { value: new Vector2() },
+	normalScale: { value: new Vector2(1, 1) },
 	uvTransform: { value: new Matrix3() }
 }
 
 export class VelocityDepthNormalMaterial extends ShaderMaterial {
-	constructor() {
+	constructor(camera) {
 		super({
-			uniforms: UniformsUtils.clone(velocity_uniforms),
-			glslVersion: GLSL3,
+			uniforms: {
+				...UniformsUtils.clone(velocity_uniforms),
+				...{
+					cameraMatrixWorld: { value: camera.matrixWorld }
+				}
+			},
 			vertexShader: /* glsl */ `
 					#include <common>
 					#include <uv_pars_vertex>
@@ -115,9 +111,9 @@ export class VelocityDepthNormalMaterial extends ShaderMaterial {
 					#include <logdepthbuf_pars_vertex>
 					#include <clipping_planes_pars_vertex>
 
-					#if defined( FLAT_SHADED ) || defined( USE_BUMPMAP ) || defined( TANGENTSPACE_NORMALMAP )
-						varying vec3 vViewPosition;
-					#endif
+					varying vec2 vUv;
+
+					varying vec3 vViewPosition;
 					
                     ${velocity_vertex_pars}
         
@@ -141,28 +137,25 @@ export class VelocityDepthNormalMaterial extends ShaderMaterial {
 
 						${velocity_vertex_main}
 
-						#if defined( FLAT_SHADED ) || defined( USE_BUMPMAP ) || defined( TANGENTSPACE_NORMALMAP )
-							vViewPosition = - mvPosition.xyz;
-						#endif
+						vViewPosition = - mvPosition.xyz;
+
+						vUv = uv;
 
                     }`,
 			fragmentShader: /* glsl */ `
-					#if defined( FLAT_SHADED ) || defined( USE_BUMPMAP ) || defined( TANGENTSPACE_NORMALMAP )
-						varying vec3 vViewPosition;
-					#endif
+					precision highp float;
+					uniform mat4 cameraMatrixWorld;
 
-					#ifdef renderDepth
-					layout(location = 0) out vec4 gDepth;
-					layout(location = 1) out vec4 gVelocity;
-					#else
-					#define gVelocity gl_FragColor
-					#endif
+					varying vec3 vViewPosition;
 
 					${velocity_fragment_pars}
 					#include <packing>
 
 					#include <uv_pars_fragment>
 					#include <normal_pars_fragment>
+					#include <normalmap_pars_fragment>
+
+					varying vec2 vUv;
 
 					// source: https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/
 					vec2 OctWrap( vec2 v ) {
@@ -172,27 +165,28 @@ export class VelocityDepthNormalMaterial extends ShaderMaterial {
 						return w;
 					}
 
-					vec2 Encode( vec3 n ) {
-						n /= ( abs( n.x ) + abs( n.y ) + abs( n.z ) );
-						n.xy = n.z > 0.0 ? n.xy : OctWrap( n.xy );
+					vec2 encodeOctWrap(vec3 n) {
+						n /= (abs(n.x) + abs(n.y) + abs(n.z));
+						n.xy = n.z > 0.0 ? n.xy : OctWrap(n.xy);
 						n.xy = n.xy * 0.5 + 0.5;
 						return n.xy;
 					}
 
+					float packNormal(vec3 normal) {
+						return uintBitsToFloat(packHalf2x16(encodeOctWrap(normal)));
+					}
+
                     void main() {
+						#define vNormalMapUv vUv
+
 						#include <normal_fragment_begin>
                     	#include <normal_fragment_maps>
 
-						${velocity_fragment_main.replaceAll("gl_FragColor", "gVelocity")}
-						vec3 worldNormal = normalize((vec4(normal, 0.) * viewMatrix).xyz);
-						gVelocity.ba = Encode(worldNormal);
-
-						#ifdef renderDepth
-						gDepth = packDepthToRGBA(fragCoordZ);
-						#endif
+						${velocity_fragment_main}
+						vec3 worldNormal = normalize((cameraMatrixWorld * vec4(normal, 0.)).xyz);
+						gl_FragColor.b = packNormal(worldNormal);
+						gl_FragColor.a = fragCoordZ;
                     }`
 		})
-
-		this.isVelocityMaterial = true
 	}
 }

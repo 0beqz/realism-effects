@@ -1,49 +1,60 @@
 ﻿import { Pass } from "postprocessing"
 import {
 	Clock,
-	HalfFloatType,
+	FramebufferTexture,
 	LinearFilter,
 	Matrix4,
+	NearestFilter,
 	Quaternion,
-	Uniform,
+	Vector2,
 	Vector3,
 	WebGLMultipleRenderTargets
 } from "three"
-import { CopyPass } from "../ssgi/pass/CopyPass"
+import { jitter } from "../taa/TAAUtils"
 import { TemporalReprojectMaterial } from "./material/TemporalReprojectMaterial"
-import { generateR2 } from "./utils/QuasirandomGenerator"
+import { didCameraMove } from "../utils/SceneUtils"
 
 export const defaultTemporalReprojectPassOptions = {
-	blend: 0.9,
 	dilation: false,
-	constantBlend: false,
 	fullAccumulate: false,
 	neighborhoodClamp: false,
 	neighborhoodClampRadius: 1,
 	neighborhoodClampIntensity: 1,
+	maxBlend: 1,
 	logTransform: false,
-	depthDistance: 0.25,
-	worldDistance: 0.375,
+	depthDistance: 2,
+	worldDistance: 4,
 	reprojectSpecular: false,
-	temporalReprojectCustomComposeShader: null,
-	renderTarget: null
+	renderTarget: null,
+	copyTextures: true,
+	confidencePower: 1,
+	inputType: "diffuse"
 }
 
 const tmpProjectionMatrix = new Matrix4()
 const tmpProjectionMatrixInverse = new Matrix4()
+const tmpVec2 = new Vector2()
 
 export class TemporalReprojectPass extends Pass {
 	needsSwap = false
 
+	overrideAccumulatedTextures = []
 	clock = new Clock()
 	r2Sequence = []
-	pointsIndex = 0
+	frame = 0
 	lastCameraTransform = {
 		position: new Vector3(),
 		quaternion: new Quaternion()
 	}
 
-	constructor(scene, camera, velocityDepthNormalPass, textureCount = 1, options = defaultTemporalReprojectPassOptions) {
+	constructor(
+		scene,
+		camera,
+		velocityDepthNormalPass,
+		texture,
+		textureCount,
+		options = defaultTemporalReprojectPassOptions
+	) {
 		super("TemporalReprojectPass")
 
 		this._scene = scene
@@ -52,31 +63,31 @@ export class TemporalReprojectPass extends Pass {
 		options = { ...defaultTemporalReprojectPassOptions, ...options }
 
 		this.renderTarget = new WebGLMultipleRenderTargets(1, 1, textureCount, {
-			minFilter: LinearFilter,
-			magFilter: LinearFilter,
-			type: HalfFloatType,
+			minFilter: NearestFilter,
+			magFilter: NearestFilter,
+			type: texture.type,
 			depthBuffer: false
 		})
 
-		this.renderTarget.texture.map(
+		this.renderTarget.texture.forEach(
 			(texture, index) => (texture.name = "TemporalReprojectPass.accumulatedTexture" + index)
 		)
 
-		this.fullscreenMaterial = new TemporalReprojectMaterial(textureCount, options.temporalReprojectCustomComposeShader)
+		this.fullscreenMaterial = new TemporalReprojectMaterial(textureCount)
 		this.fullscreenMaterial.defines.textureCount = textureCount
 
 		if (options.dilation) this.fullscreenMaterial.defines.dilation = ""
 		if (options.neighborhoodClamp) this.fullscreenMaterial.defines.neighborhoodClamp = ""
 		if (options.logTransform) this.fullscreenMaterial.defines.logTransform = ""
+		if (camera.isPerspectiveCamera) this.fullscreenMaterial.defines.PERSPECTIVE_CAMERA = ""
 		this.fullscreenMaterial.defines.neighborhoodClampRadius = parseInt(options.neighborhoodClampRadius)
 
 		this.fullscreenMaterial.defines.depthDistance = options.depthDistance.toPrecision(5)
 		this.fullscreenMaterial.defines.worldDistance = options.worldDistance.toPrecision(5)
 
-		this.fullscreenMaterial.uniforms.blend.value = options.blend
-		this.fullscreenMaterial.uniforms.constantBlend.value = options.constantBlend
 		this.fullscreenMaterial.uniforms.fullAccumulate.value = options.fullAccumulate
 		this.fullscreenMaterial.uniforms.neighborhoodClampIntensity.value = options.neighborhoodClampIntensity
+		this.fullscreenMaterial.uniforms.maxBlend.value = options.maxBlend
 
 		this.fullscreenMaterial.uniforms.projectionMatrix.value = camera.projectionMatrix.clone()
 		this.fullscreenMaterial.uniforms.projectionMatrixInverse.value = camera.projectionMatrixInverse.clone()
@@ -89,19 +100,11 @@ export class TemporalReprojectPass extends Pass {
 		this.fullscreenMaterial.uniforms.prevProjectionMatrix.value = camera.projectionMatrix.clone()
 		this.fullscreenMaterial.uniforms.prevProjectionMatrixInverse.value = camera.projectionMatrixInverse.clone()
 
-		// init copy pass to save the accumulated textures and the textures from the last frame
-		this.copyPass = new CopyPass(textureCount)
-
-		for (let i = 0; i < textureCount; i++) {
-			const accumulatedTexture = this.copyPass.renderTarget.texture[i]
-			accumulatedTexture.type = HalfFloatType
-			accumulatedTexture.minFilter = LinearFilter
-			accumulatedTexture.magFilter = LinearFilter
-			accumulatedTexture.needsUpdate = true
-		}
-
-		this.fullscreenMaterial.uniforms.velocityTexture.value = velocityDepthNormalPass.texture
+		this.fullscreenMaterial.uniforms.velocityTexture.value = velocityDepthNormalPass.renderTarget.texture
 		this.fullscreenMaterial.uniforms.depthTexture.value = velocityDepthNormalPass.depthTexture
+
+		this.fullscreenMaterial.defines.inputType =
+			["diffuseSpecular", "diffuse", "specular"].indexOf(options.inputType) ?? 1
 
 		for (const opt of ["reprojectSpecular", "neighborhoodClamp"]) {
 			let value = options[opt]
@@ -111,32 +114,41 @@ export class TemporalReprojectPass extends Pass {
 			this.fullscreenMaterial.defines[opt] = /* glsl */ `bool[](${value.join(", ")})`
 		}
 
+		this.fullscreenMaterial.defines.confidencePower = options.confidencePower.toPrecision(5)
+
 		this.options = options
 		this.velocityDepthNormalPass = velocityDepthNormalPass
-	}
 
-	setTextures(textures) {
-		if (!Array.isArray(textures)) textures = [textures]
-
-		for (let i = 0; i < textures.length; i++) {
-			const texture = textures[i]
-			this.fullscreenMaterial.uniforms["inputTexture" + i] = new Uniform(texture)
-		}
+		this.fullscreenMaterial.uniforms.inputTexture.value = texture
 	}
 
 	dispose() {
 		super.dispose()
 
 		this.renderTarget.dispose()
-		this.copyPass.dispose()
 		this.fullscreenMaterial.dispose()
 	}
 
 	setSize(width, height) {
 		this.renderTarget.setSize(width, height)
-		this.copyPass.setSize(width, height)
 
 		this.fullscreenMaterial.uniforms.invTexSize.value.set(1 / width, 1 / height)
+
+		this.framebufferTexture?.dispose()
+
+		const inputTexture = this.fullscreenMaterial.uniforms.inputTexture.value
+
+		this.framebufferTexture = new FramebufferTexture(width, height, inputTexture.format)
+		this.framebufferTexture.type = inputTexture.type
+		this.framebufferTexture.minFilter = LinearFilter
+		this.framebufferTexture.magFilter = LinearFilter
+
+		this.framebufferTexture.needsUpdate = true
+
+		for (let i = 0; i < this.textureCount; i++) {
+			const accumulatedTexture = this.overrideAccumulatedTextures[i] ?? this.framebufferTexture
+			this.fullscreenMaterial.uniforms["accumulatedTexture" + i].value = accumulatedTexture
+		}
 	}
 
 	get texture() {
@@ -144,10 +156,12 @@ export class TemporalReprojectPass extends Pass {
 	}
 
 	reset() {
-		this.fullscreenMaterial.uniforms.reset.value = true
+		this.fullscreenMaterial.uniforms.keepData.value = 0
 	}
 
 	render(renderer) {
+		this.frame = (this.frame + 1) % 4096
+
 		const delta = Math.min(1 / 10, this.clock.getDelta())
 		this.fullscreenMaterial.uniforms.delta.value = delta
 
@@ -159,22 +173,31 @@ export class TemporalReprojectPass extends Pass {
 
 		this.fullscreenMaterial.uniforms.projectionMatrix.value.copy(this._camera.projectionMatrix)
 		this.fullscreenMaterial.uniforms.projectionMatrixInverse.value.copy(this._camera.projectionMatrixInverse)
-		this.fullscreenMaterial.uniforms.lastDepthTexture.value = this.velocityDepthNormalPass.lastDepthTexture
+		this.fullscreenMaterial.uniforms.lastVelocityTexture.value = this.velocityDepthNormalPass.lastVelocityTexture
+
+		this.fullscreenMaterial.uniforms.fullAccumulate.value =
+			this.options.fullAccumulate &&
+			!didCameraMove(this._camera, this.lastCameraTransform.position, this.lastCameraTransform.quaternion)
+
+		this.lastCameraTransform.position.copy(this._camera.position)
+		this.lastCameraTransform.quaternion.copy(this._camera.quaternion)
 
 		if (this._camera.view) this._camera.view.enabled = true
 		this._camera.projectionMatrix.copy(tmpProjectionMatrix)
 		this._camera.projectionMatrixInverse.copy(tmpProjectionMatrixInverse)
 
+		this.fullscreenMaterial.uniforms.cameraNear.value = this._camera.near
+		this.fullscreenMaterial.uniforms.cameraFar.value = this._camera.far
+
 		renderer.setRenderTarget(this.renderTarget)
 		renderer.render(this.scene, this.camera)
-		this.fullscreenMaterial.uniforms.reset.value = false
 
-		for (let i = 0; i < this.textureCount; i++) {
-			this.copyPass.fullscreenMaterial.uniforms["inputTexture" + i].value = this.renderTarget.texture[i]
-			this.fullscreenMaterial.uniforms["accumulatedTexture" + i].value = this.copyPass.renderTarget.texture[i]
+		this.fullscreenMaterial.uniforms.keepData.value = 1
+
+		if (this.overrideAccumulatedTextures.length === 0) {
+			this.framebufferTexture.needsUpdate = true
+			renderer.copyFramebufferToTexture(tmpVec2, this.framebufferTexture)
 		}
-
-		this.copyPass.render(renderer)
 
 		// save last transformations
 		this.fullscreenMaterial.uniforms.prevCameraMatrixWorld.value.copy(this._camera.matrixWorld)
@@ -186,21 +209,14 @@ export class TemporalReprojectPass extends Pass {
 		this.fullscreenMaterial.uniforms.prevProjectionMatrixInverse.value.copy(
 			this.fullscreenMaterial.uniforms.projectionMatrixInverse.value
 		)
+
+		this.fullscreenMaterial.uniforms.prevCameraPos.value.copy(this._camera.position)
 	}
 
 	jitter(jitterScale = 1) {
 		this.unjitter()
 
-		if (this.r2Sequence.length === 0) this.r2Sequence = generateR2(256).map(([a, b]) => [a - 0.5, b - 0.5])
-
-		this.pointsIndex = (this.pointsIndex + 1) % this.r2Sequence.length
-
-		const [x, y] = this.r2Sequence[this.pointsIndex]
-
-		const { width, height } = this.renderTarget
-
-		if (this._camera.setViewOffset)
-			this._camera.setViewOffset(width, height, x * jitterScale, y * jitterScale, width, height)
+		jitter(this.renderTarget.width, this.renderTarget.height, this._camera, this.frame, jitterScale)
 	}
 
 	unjitter() {

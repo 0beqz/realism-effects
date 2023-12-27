@@ -1,26 +1,22 @@
-﻿import { GLSL3, Matrix4, NoBlending } from "three"
+﻿/* eslint-disable camelcase */
+import { GLSL3, Matrix4, NoBlending } from "three"
 import { Vector3 } from "three"
 import { ShaderMaterial, Uniform, Vector2 } from "three"
 import vertexShader from "../../utils/shader/basic.vert"
 import fragmentShader from "../shader/temporal_reproject.frag"
 import reproject from "../shader/reproject.frag"
+import gbuffer_packing from "../../gbuffer/shader/gbuffer_packing.glsl"
 import { unrollLoops } from "../../ssgi/utils/Utils"
 
 export class TemporalReprojectMaterial extends ShaderMaterial {
-	constructor(textureCount = 1, temporalReprojectCustomComposeShader = "") {
-		let finalFragmentShader = fragmentShader.replace("#include <reproject>", reproject)
-
-		if (typeof temporalReprojectCustomComposeShader === "string") {
-			finalFragmentShader = finalFragmentShader.replace(
-				"temporalReprojectCustomComposeShader",
-				temporalReprojectCustomComposeShader
-			)
-		}
+	constructor(textureCount = 1) {
+		let finalFragmentShader = fragmentShader
+			.replace("#include <reproject>", reproject)
+			.replace("#include <gbuffer_packing>", gbuffer_packing)
 
 		let definitions = ""
 		for (let i = 0; i < textureCount; i++) {
 			definitions += /* glsl */ `
-				uniform sampler2D inputTexture${i};
 				uniform sampler2D accumulatedTexture${i};
 
 				layout(location = ${i}) out vec4 gOutput${i};
@@ -29,13 +25,6 @@ export class TemporalReprojectMaterial extends ShaderMaterial {
 
 		finalFragmentShader = definitions + finalFragmentShader.replaceAll("textureCount", textureCount)
 		finalFragmentShader = unrollLoops(finalFragmentShader)
-
-		const matches = finalFragmentShader.matchAll(/inputTexture\[\s*[0-9]+\s*]/g)
-
-		for (const [key] of matches) {
-			const number = key.replace(/[^0-9]/g, "")
-			finalFragmentShader = finalFragmentShader.replace(key, "inputTexture" + number)
-		}
 
 		const matches2 = finalFragmentShader.matchAll(/accumulatedTexture\[\s*[0-9]+\s*]/g)
 
@@ -54,14 +43,13 @@ export class TemporalReprojectMaterial extends ShaderMaterial {
 		super({
 			type: "TemporalReprojectMaterial",
 			uniforms: {
+				inputTexture: new Uniform(null),
 				velocityTexture: new Uniform(null),
 				depthTexture: new Uniform(null),
-				lastDepthTexture: new Uniform(null),
-				blend: new Uniform(0),
+				lastVelocityTexture: new Uniform(null),
 				neighborhoodClampIntensity: new Uniform(0),
-				constantBlend: new Uniform(false),
 				fullAccumulate: new Uniform(false),
-				reset: new Uniform(false),
+				keepData: new Uniform(1),
 				delta: new Uniform(0),
 				invTexSize: new Uniform(new Vector2()),
 				projectionMatrix: new Uniform(new Matrix4()),
@@ -72,7 +60,11 @@ export class TemporalReprojectMaterial extends ShaderMaterial {
 				prevCameraMatrixWorld: new Uniform(new Matrix4()),
 				prevProjectionMatrix: new Uniform(new Matrix4()),
 				prevProjectionMatrixInverse: new Uniform(new Matrix4()),
-				cameraPos: new Uniform(new Vector3())
+				cameraPos: new Uniform(new Vector3()),
+				prevCameraPos: new Uniform(new Vector3()),
+				cameraNear: new Uniform(0),
+				cameraFar: new Uniform(0),
+				maxBlend: new Uniform(0)
 			},
 			vertexShader,
 			fragmentShader: finalFragmentShader,
@@ -87,8 +79,5 @@ export class TemporalReprojectMaterial extends ShaderMaterial {
 			this.uniforms["inputTexture" + i] = new Uniform(null)
 			this.uniforms["accumulatedTexture" + i] = new Uniform(null)
 		}
-
-		if (typeof temporalReprojectCustomComposeShader === "string")
-			this.defines.useTemporalReprojectCustomComposeShader = ""
 	}
 }

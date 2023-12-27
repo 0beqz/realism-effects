@@ -1,27 +1,31 @@
 ﻿import { TRAAEffect } from "./traa/TRAAEffect"
 import { SSGIEffect } from "./ssgi/SSGIEffect"
 import { SSREffect } from "./ssgi/SSREffect"
-import { SSDGIEffect } from "./ssgi/SSDGIEffect"
 import { MotionBlurEffect } from "./motion-blur/MotionBlurEffect"
 import { VelocityDepthNormalPass } from "./temporal-reproject/pass/VelocityDepthNormalPass"
 import { VelocityPass } from "./temporal-reproject/pass/VelocityPass"
-import { SVGF } from "./svgf/SVGF"
 import { TemporalReprojectPass } from "./temporal-reproject/TemporalReprojectPass"
-import { PoissionDenoisePass } from "./poissionDenoise/PoissionDenoisePass"
+import { PoissonDenoisePass } from "./denoise/pass/PoissonDenoisePass"
 import { HBAOEffect } from "./hbao/HBAOEffect"
-import { SSAOEffect } from "./ssao/SSAOEffect"
+import { TAAPass } from "./taa/TAAPass"
+import { SharpnessEffect } from "./sharpness/SharpnessEffect"
+import { GradualBackgroundEffect } from "./gradual-background/GradualBackgroundEffect"
+import { SparkleEffect } from "./sparkle/SparkleEffect"
+import { LensDistortionEffect } from "./lens-distortion/LensDistortionEffect"
 
 export {
 	SSGIEffect,
 	SSREffect,
-	SSDGIEffect,
+	TAAPass,
 	TRAAEffect,
 	MotionBlurEffect,
 	VelocityPass,
 	VelocityDepthNormalPass,
 	TemporalReprojectPass,
-	SVGF,
-	PoissionDenoisePass,
+	PoissonDenoisePass,
 	HBAOEffect,
-	SSAOEffect
+	SharpnessEffect,
+	GradualBackgroundEffect,
+	SparkleEffect,
+	LensDistortionEffect
 }

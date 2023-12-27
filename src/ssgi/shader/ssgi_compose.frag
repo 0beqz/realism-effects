@@ -1,45 +1,45 @@
 ﻿uniform sampler2D inputTexture;
 uniform sampler2D sceneTexture;
-uniform sampler2D depthTexture;
-uniform int toneMapping;
+uniform highp sampler2D depthTexture;
+uniform bool isDebug;
 
-#include <tonemapping_pars_fragment>
+uniform float cameraNear;
+uniform float cameraFar;
 
-#pragma tonemapping_pars_fragment
+#include <fog_pars_fragment>
+
+// source: https://github.com/mrdoob/three.js/blob/79ea10830dfc97b6c0a7e29d217c7ff04c081095/examples/jsm/shaders/BokehShader.js#L66
+float getViewZ(const in float depth) {
+#if PERSPECTIVE_CAMERA == 1
+  return perspectiveDepthToViewZ(depth, cameraNear, cameraFar);
+#else
+  return orthographicDepthToViewZ(depth, cameraNear, cameraFar);
+#endif
+}
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
-    vec4 depthTexel = textureLod(depthTexture, uv, 0.);
-    vec3 ssgiClr;
+  if (isDebug) {
+    outputColor = textureLod(inputTexture, uv, 0.);
+    return;
+  }
 
-    if (dot(depthTexel.rgb, depthTexel.rgb) == 0.) {
-        ssgiClr = textureLod(sceneTexture, uv, 0.).rgb;
-    } else {
-        ssgiClr = textureLod(inputTexture, uv, 0.).rgb;
+  float depth = textureLod(depthTexture, uv, 0.).r;
+  vec3 ssgiClr;
 
-        switch (toneMapping) {
-            case 1:
-                ssgiClr = LinearToneMapping(ssgiClr);
-                break;
+  if (depth == 1.0) {
+    ssgiClr = textureLod(sceneTexture, uv, 0.).rgb;
+  } else {
+    ssgiClr = textureLod(inputTexture, uv, 0.).rgb;
 
-            case 2:
-                ssgiClr = ReinhardToneMapping(ssgiClr);
-                break;
+#ifdef USE_FOG
+    float viewZ = getViewZ(depth) * 0.4; // todo: find why 0.4 is needed to somewhat match three.js's result
+    vFogDepth = -viewZ;
 
-            case 3:
-                ssgiClr = OptimizedCineonToneMapping(ssgiClr);
-                break;
+#include <fog_fragment>
 
-            case 4:
-                ssgiClr = ACESFilmicToneMapping(ssgiClr);
-                break;
+    ssgiClr = mix(ssgiClr, fogColor, fogFactor);
+#endif
+  }
 
-            case 5:
-                ssgiClr = CustomToneMapping(ssgiClr);
-                break;
-        }
-
-        ssgiClr *= toneMappingExposure;
-    }
-
-    outputColor = vec4(ssgiClr, 1.0);
+  outputColor = vec4(ssgiClr, 1.0);
 }

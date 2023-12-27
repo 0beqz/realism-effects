@@ -32,7 +32,6 @@ realism-effects is collection of the following effects for three.js:
   Credits go to [N8programs](https://github.com/N8python) for the SSAO effect as well as the denoiser used for both AO effects (namely the `PoissonDenoisePass`)
   <br></br>
 - SSR (Screen-Space Reflections)
-- SSDGI (Screen-Space Diffuse Global Illumination)
 
 <br>
 
@@ -74,13 +73,10 @@ const traaEffect = new TRAAEffect(scene, camera, velocityDepthNormalPass)
 // Motion Blur
 const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass)
 
-// SSAO
-const ssaoEffect = new SSAOEffect(composer, camera, scene)
-
 // HBAO
 const hbaoEffect = new HBAOEffect(composer, camera, scene)
 
-const effectPass = new POSTPROCESSING.EffectPass(camera, ssgiEffect, hbaoEffect, ssaoEffect, traaEffect, motionBlur)
+const effectPass = new POSTPROCESSING.EffectPass(camera, ssgiEffect, hbaoEffect, traaEffect, motionBlur)
 
 composer.addPass(effectPass)
 ```
@@ -88,13 +84,16 @@ composer.addPass(effectPass)
 > **NOTE**: `OrthographicCamera` isn't supported yet. Only `PerspectiveCamera` is supported at the moment. It'll be supported in the future.
 
 ## SSGI
+
 ### NOTE:
+
 SSGI is being reworked in the branch [poisson-recursive](https://github.com/0beqz/realism-effects/tree/poisson-recursive) which provides far better performance, quality and memory usage over the current version of the main branch.
 You can check out the up-to-date demo [here](https://realism-effects-git-poisson-recursive-obeqz.vercel.app/).
 <br>
 Keep in mind that it is a WIP version and thus issues like device-specific rendering issues will be adressed later on.
 
 To-Dos:
+
 - [ ] support most properties of MeshPhysicalMaterial (especially transmission, clearcoat, attenuation, sheen)
 - [ ] proper alpha support
 - [ ] approximate glossiness through blurring in the denoiser for less smearing
@@ -118,9 +117,6 @@ To-Dos:
 const options = {
 	distance: 10,
 	thickness: 10,
-	autoThickness: false,
-	maxRoughness: 1,
-	blend: 0.9,
 	denoiseIterations: 1,
 	denoiseKernel: 2,
 	denoiseDiffuse: 10,
@@ -128,12 +124,11 @@ const options = {
 	depthPhi: 2,
 	normalPhi: 50,
 	roughnessPhi: 1,
+	specularPhi: 1,
 	envBlur: 0.5,
 	importanceSampling: true,
-	directLightMultiplier: 1,
 	steps: 20,
 	refineSteps: 5,
-	spp: 1,
 	resolutionScale: 1,
 	missedRays: false
 }
@@ -207,6 +202,16 @@ If you'd like, you could also buy me a coffee:
 
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/0beqz)
 
+## Todos
+
+- [ ] Use bent normals and/or calculate them at run-time? https://80.lv/articles/ssrtgi-toughest-challenge-in-real-time-3d/
+- [ ] Proper transparency support
+- [ ] Support OrthographicCameras
+- [ ] Fog support (SSGI)
+- [ ] Background support (SSGI without render pass)
+- [ ] Fix TRAA dilation issue
+- [ ] Test Log Transform with TRAA
+
 ## Credits
 
 - SSR code: [Screen Space Reflections on Epsilon Engine](https://imanolfotia.com/blog/1)
@@ -216,6 +221,8 @@ If you'd like, you could also buy me a coffee:
 - Velocity Shader: [three.js sandbox](https://github.com/gkjohnson/threejs-sandbox)
 
 - SSAO effect and PoissonDenoisePass: [N8programs](https://github.com/N8python) - GitHub Repo: [ssao](https://github.com/N8python/ssao)
+
+- Lens distortion shader: [Radial lens undistortion filtering](https://marcodiiga.github.io/radial-lens-undistortion-filtering)
 
 ### Demo Scene
 
@@ -234,17 +241,26 @@ If you'd like, you could also buy me a coffee:
 - Golden Knight: [FrancisLam](https://sketchfab.com/francislam)
 
 ## Possible Future Work
+
 #### Screen Space Horizon GI
+
 - Paper: https://arxiv.org/pdf/2301.11376.pdf
 - Shadertoy Demo: https://www.shadertoy.com/view/dsGBzW
 - Reddit Demos with author information: https://www.reddit.com/r/GraphicsProgramming/comments/17k4hpr/screen_space_horizon_gi/
 
 #### Screen Space Contact Shadows
+
 - Article discussing implementation: https://panoskarabelas.com/posts/screen_space_shadows/
 - Presentation video from SCC: https://youtu.be/btWy-BAERoY?t=1933
 - Example code and presentation from SCC: https://www.bendstudio.com/blog/inside-bend-screen-space-shadows/
 
 ## Resources
+
+## Raytracing
+
+- [EXPLORING RAYTRACED FUTURE IN METRO EXODUS](https://developer.download.nvidia.com/video/gputechconf/gtc/2019/presentation/s9985-exploring-ray-traced-future-in-metro-exodus.pdf)
+
+- [Adventures in Hybrid Rendering](https://diharaw.github.io/post/adventures_in_hybrid_rendering/)
 
 ### Tracing in screen-space
 
@@ -284,7 +300,13 @@ If you'd like, you could also buy me a coffee:
 
 - [Filmic SMAA: Sharp Morphological and Temporal Antialiasing](https://research.activision.com/publications/archives/filmic-smaasharp-morphological-and-temporal-antialiasing)
 
+- [Reprojecting Reflections](http://bitsquid.blogspot.com/2017/06/reprojecting-reflections_22.html)
+
 ### HBAO
 
 - [Horizon-Based Indirect Lighting (HBIL)](https://drive.google.com/file/d/1fmceYuM5J2s8puNHZ9o4OF3YjqzIvmRR/view)
 - [Pyramid HBAO — a Scalable Horizon-based Ambient Occlusion Method](https://ceur-ws.org/Vol-3027/paper5.pdf)
+
+## Lens Distortion
+
+- [Realistic Lens Distortion Rendering](http://wscg.zcu.cz/WSCG2018/Poster/P83-full.PDF)

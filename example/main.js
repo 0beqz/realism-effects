@@ -1,8 +1,8 @@
 import { getGPUTier } from "detect-gpu"
 import dragDrop from "drag-drop"
 import * as POSTPROCESSING from "postprocessing"
-import { MotionBlurEffect, SSGIEffect, TRAAEffect } from "realism-effects"
-import Stats from "stats.js"
+import { MotionBlurEffect, SSGIEffect, SSREffect, TRAAEffect } from "realism-effects"
+import Stats from "stats-gl"
 import * as THREE from "three"
 import {
 	Box3,
@@ -24,22 +24,27 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader"
 import { GroundProjectedSkybox } from "three/examples/jsm/objects/GroundProjectedSkybox"
 import { Pane } from "tweakpane"
+import { SharpnessEffect } from "../src/sharpness/SharpnessEffect"
+import { TAAPass } from "../src/taa/TAAPass"
 import { VelocityDepthNormalPass } from "../src/temporal-reproject/pass/VelocityDepthNormalPass"
 import { SSGIDebugGUI } from "./SSGIDebugGUI"
 import "./style.css"
-import { HBAOEffect } from "../src/hbao/HBAOEffect"
-import { HBAODebugGUI } from "./HBAODebugGUI"
-import { SSAODebugGUI } from "./SSAODebugGUI"
-import { SSAOEffect } from "../src/ssao/SSAOEffect"
-import { HBAOSSAOComparisonEffect } from "./HBAOSSAOComparisonEffect"
+import { GradualBackgroundEffect } from "../src/gradual-background/GradualBackgroundEffect"
+import { SparkleEffect } from "../src/sparkle/SparkleEffect"
+import { LensDistortionEffect } from "../src/lens-distortion/LensDistortionEffect"
+import { fromHalfFloat, toHalfFloat } from "three/src/extras/DataUtils"
+
+// import eruda from "eruda"
+// eruda.init()
+// eruda.show()
 
 let traaEffect
 let traaPass
+let taaPass
 let smaaPass
 let fxaaPass
 let ssgiEffect
 let postprocessingEnabled = true
-let hbaoSsaoComparisonEffect
 let pane
 let gui2
 let envMesh
@@ -60,6 +65,9 @@ scene.matrixWorldAutoUpdate = false
 window.scene = scene
 
 const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.01, 250)
+// const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.01, 250)
+
+window.camera = camera
 
 // const w = window.innerWidth
 // const h = window.innerHeight
@@ -79,14 +87,14 @@ if (traaTest && !window.location.search.includes("traa_test_model=true")) {
 	traaModelBtn.remove()
 }
 
-let rendererCanvas = canvas
+const rendererCanvas = canvas
 
 // use an offscreen canvas if available
-if (window.OffscreenCanvas && !navigator.userAgent.toLowerCase().includes("firefox")) {
-	rendererCanvas = canvas.transferControlToOffscreen()
-	rendererCanvas.style = canvas.style
-	rendererCanvas.toDataURL = canvas.toDataURL.bind(canvas)
-}
+// if (window.OffscreenCanvas && !navigator.userAgent.toLowerCase().includes("firefox")) {
+// 	rendererCanvas = canvas.transferControlToOffscreen()
+// 	rendererCanvas.style = canvas.style
+// 	rendererCanvas.toDataURL = canvas.toDataURL.bind(canvas)
+// }
 
 // Renderer
 const renderer = new THREE.WebGLRenderer({
@@ -106,6 +114,7 @@ renderer.setSize(window.innerWidth, window.innerHeight)
 const effectPass = new POSTPROCESSING.EffectPass(camera)
 
 const setAA = value => {
+	return
 	composer.multisampling = 0
 	composer.removePass(smaaPass)
 	composer.removePass(traaPass)
@@ -161,23 +170,29 @@ if (isAoDemo) {
 	controls.target.set(0, 3, 0)
 }
 
-const composer = new POSTPROCESSING.EffectComposer(renderer)
-if (traaTest || true) {
-	const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
-	composer.addPass(renderPass)
-}
+const composer = new POSTPROCESSING.EffectComposer(renderer, { frameBufferType: THREE.HalfFloatType })
 
 const lightParams = {
 	yaw: 55,
 	pitch: 27,
-	intensity: 0
+	intensity: 2.5
 }
 
 const light = new DirectionalLight(0xffffff, lightParams.intensity)
-light.position.set(217, 43, 76)
 light.updateMatrixWorld()
 light.castShadow = true
-scene.add(light)
+// scene.add(light)
+
+// const fog = new THREE.FogExp2(0xffffff, 0.025)
+// const fog = new THREE.Fog(0xffffff, 10, 10.0001)
+// scene.fog = fog
+
+const useRenderPass = false
+
+if (useRenderPass || scene.getObjectByProperty("isDirectionalLight", true)) {
+	const renderPass = new POSTPROCESSING.RenderPass(scene, camera)
+	composer.addPass(renderPass)
+}
 
 renderer.shadowMap.enabled = true
 renderer.shadowMap.autoUpdate = false
@@ -196,22 +211,24 @@ light.shadow.camera.bottom = -s
 light.shadow.camera.right = s
 light.shadow.camera.top = s
 
-const stats = new Stats()
-stats.showPanel(1)
-stats.dom.style.top = "initial"
-stats.dom.style.bottom = "0"
-document.body.appendChild(stats.dom)
+const stats = new Stats({
+	logsPerSecond: 100,
+	samplesLog: 100,
+	samplesGraph: 10,
+	precision: 2
+})
 
-const rgbeLoader = new RGBELoader().setDataType(FloatType)
+stats.init(renderer.domElement)
+
+// append the stats container to the body of the document
+document.body.appendChild(stats.container)
+
+const rgbeLoader = new RGBELoader()
 
 const initEnvMap = async envMap => {
 	scene.environment?.dispose()
-
 	envMap.mapping = EquirectangularReflectionMapping
-
 	scene.environment = envMap
-	scene.background = traaTest ? new Color(0x4c7fe5) : null
-
 	setEnvMesh(envMap)
 }
 
@@ -237,7 +254,12 @@ const setEnvMesh = envMap => {
 		envMesh.height = 20
 		envMesh.scale.setScalar(100)
 		envMesh.updateMatrixWorld()
-		scene.add(envMesh)
+		// scene.add(envMesh)
+
+		const skyBlueColor = new Color(0x90b4f5)
+		scene.background = skyBlueColor
+
+		if (taaPass) taaPass.needsUpdate = true
 	}
 }
 
@@ -248,12 +270,12 @@ const environments = [
 	"future_parking",
 	"quarry_02",
 	"snowy_field",
-	"spruit_sunrise",
+	"studio_small_08",
 	"vintage_measuring_lab",
 	"# cube map test"
 ]
 
-rgbeLoader.load("hdr/chinese_garden_1k.hdr", initEnvMap)
+rgbeLoader.load("hdr/spree_bank_1k.hdr", initEnvMap)
 
 const gltflLoader = new GLTFLoader()
 
@@ -279,7 +301,7 @@ if (traaTest) {
 		loadFiles = 4
 	} else {
 		url = "squid_game.optimized.glb"
-		loadFiles = 10
+		loadFiles = 9
 	}
 }
 
@@ -297,7 +319,7 @@ let loadedCount = 0
 THREE.DefaultLoadingManager.onProgress = () => {
 	loadedCount++
 
-	if (loadedCount === loadFiles) {
+	if (loadedCount >= loadFiles) {
 		setTimeout(() => {
 			if (loadingEl) loadingEl.remove()
 		}, 150)
@@ -321,37 +343,53 @@ const refreshLighting = () => {
 	renderer.shadowMap.needsUpdate = true
 }
 
+// when the mouse moves, update the light yaw and pitch based on the mouse position
+document.addEventListener("mousemove", ev => {
+	// check if control is pressed
+	if (!ev.ctrlKey) return
+
+	lightParams.yaw = (ev.clientX / window.innerWidth) * 360
+	lightParams.pitch = (1 - ev.clientY / window.innerHeight) * 180
+
+	refreshLighting()
+	if (ssgiEffect) ssgiEffect.reset()
+	if (taaPass) taaPass.needsUpdate = true
+})
+
 const initScene = async () => {
 	const gpuTier = await getGPUTier()
 	fps = gpuTier.fps
 
 	const options = {
-		distance: 2.7200000000000104,
-		thickness: 1.2999999999999972,
-		autoThickness: false,
-		maxRoughness: 1,
-		blend: 0.95,
-		denoiseIterations: 3,
+		distance: 5.980000000000011,
+		thickness: 2.829999999999997,
+		denoiseIterations: 1,
 		denoiseKernel: 3,
 		denoiseDiffuse: 25,
 		denoiseSpecular: 25.54,
-		depthPhi: 5,
-		normalPhi: 28,
-		roughnessPhi: 18.75,
-		envBlur: 0.5,
+		radius: 11,
+		phi: 0.337,
+		lumaPhi: 20.651999999999997,
+		depthPhi: 9.939965517347105e-16,
+		normalPhi: 26.087,
+		roughnessPhi: 18.477999999999998,
+		specularPhi: 3.799999999999999,
+		envBlur: 0,
 		importanceSampling: true,
-		directLightMultiplier: 1,
 		steps: 20,
 		refineSteps: 4,
-		spp: 1,
 		resolutionScale: 1,
 		missedRays: false
 	}
 
 	const velocityDepthNormalPass = new VelocityDepthNormalPass(scene, camera)
 	composer.addPass(velocityDepthNormalPass)
+	renderer.toneMapping = THREE.ACESFilmicToneMapping
+	renderer.toneMappingExposure = 1.5
 
-	traaEffect = new TRAAEffect(scene, camera, velocityDepthNormalPass)
+	traaEffect = new TRAAEffect(scene, camera, velocityDepthNormalPass, {
+		fullAccumulate: true
+	})
 
 	pane = new Pane()
 	pane.containerElem_.style.userSelect = "none"
@@ -360,7 +398,7 @@ const initScene = async () => {
 	const aaFolder = pane.addFolder({ title: "Anti-aliasing", expanded: false })
 
 	aaFolder
-		.addInput(guiParams, "Method", {
+		.addBinding(guiParams, "Method", {
 			options: {
 				TRAA: "TRAA",
 
@@ -375,6 +413,7 @@ const initScene = async () => {
 		})
 
 	const modelNames = [
+		"squid_game",
 		"amg",
 		"chevrolet",
 		"clay_bust_study",
@@ -384,11 +423,10 @@ const initScene = async () => {
 		"flashbang_grenade",
 		"motorbike",
 		"statue",
-		"squid_game",
 		"swordsman"
 	]
 
-	const sceneParams = { Environment: "chinese_garden", Model: "squid_game" }
+	const sceneParams = { Environment: "vintage_measuring_lab", Model: "sg_bake" }
 
 	const envObject = {}
 	const modelObject = {}
@@ -398,7 +436,7 @@ const initScene = async () => {
 
 	const assetsFolder = pane.addFolder({ title: "Assets" })
 	assetsFolder
-		.addInput(sceneParams, "Environment", {
+		.addBinding(sceneParams, "Environment", {
 			options: envObject
 		})
 		.on("change", ev => {
@@ -407,23 +445,29 @@ const initScene = async () => {
 				return
 			}
 
+			// rgbeLoader.load("hdr/8k/" + ev.value + "_8k.hdr", initEnvMap)
 			rgbeLoader.load("hdr/" + ev.value + "_1k.hdr", initEnvMap)
 		})
 
+	let curModel = modelNames[0]
+
 	assetsFolder
-		.addInput(sceneParams, "Model", {
+		.addBinding(sceneParams, "Model", {
 			options: modelObject
 		})
 		.on("change", ev => {
+			if (ev.value === curModel) return
+			curModel = ev.value
+
 			gltflLoader.load(ev.value + ".optimized.glb", setupAsset)
 		})
 
 	const bloomEffect = new POSTPROCESSING.BloomEffect({
 		intensity: 1,
 		mipmapBlur: true,
-		luminanceSmoothing: 0.75,
+		luminanceSmoothing: 0.5,
 		luminanceThreshold: 0.75,
-		kernelSize: POSTPROCESSING.KernelSize.HUGE
+		kernelSize: POSTPROCESSING.KernelSize.MEDIUM
 	})
 
 	const vignetteEffect = new POSTPROCESSING.VignetteEffect({
@@ -431,154 +475,79 @@ const initScene = async () => {
 		offset: 0.3
 	})
 
-	ssgiEffect = new SSGIEffect(scene, camera, velocityDepthNormalPass, options)
+	ssgiEffect = new SSGIEffect(composer, scene, camera, { ...options, velocityDepthNormalPass })
+	// ssgiEffect = new SSREffect(composer, scene, camera, {
+	// 	preset: "high",
+	// 	velocityDepthNormalPass
+	// })
+	window.ssgiEffect = ssgiEffect
+
+	// scene.traverse(c => {
+	// 	if (c.name === "Object_2") ssgiEffect.selection.add(c)
+	// })
 
 	gui2 = new SSGIDebugGUI(ssgiEffect, options)
 	gui2.pane.containerElem_.style.left = "8px"
+	gui2.pane.containerElem_.style.top = "56px"
 	if (traaTest) gui2.pane.element.style.visibility = "hidden"
 
-	new POSTPROCESSING.LUT3dlLoader().load("lut.3dl").then(lutTexture => {
-		const lutEffect = new POSTPROCESSING.LUT3DEffect(lutTexture)
+	gui2.pane.on("change", ev => taaPass && (taaPass.needsUpdate = true))
 
-		if (isAoDemo) {
-			const hbaoOptions = {
-				resolutionScale: 1,
-				spp: 16,
-				distance: 2.1399999999999997,
-				distancePower: 1,
-				power: 2,
-				bias: 39,
-				thickness: 0.1,
-				color: 0,
-				useNormalPass: false,
-				velocityDepthNormalPass: null,
-				normalTexture: null,
-				iterations: 1,
-				samples: 5
-			}
+	const convertFloat32TextureToHalfFloat = texture => {
+		texture.type = THREE.HalfFloatType
 
-			const ssaoOptions = {
-				resolutionScale: 1,
-				spp: 16,
-				distance: 1,
-				distancePower: 0.25,
-				power: 2,
-				bias: 250,
-				thickness: 0.075,
-				color: 0,
-				useNormalPass: false,
-				velocityDepthNormalPass: null,
-				normalTexture: null,
-				iterations: 1,
-				samples: 5
-			}
+		const lutData = new Uint16Array(texture.image.data.length)
+		const lutF32Data = texture.image.data
 
-			const hbaoEffect = new HBAOEffect(composer, camera, scene, hbaoOptions)
-
-			const ssaoEffect = new SSAOEffect(composer, camera, scene, ssaoOptions)
-
-			const ssaoPass = new POSTPROCESSING.EffectPass(camera, ssaoEffect)
-			const hbaoPass = new POSTPROCESSING.EffectPass(camera, hbaoEffect)
-
-			const gui3 = new HBAODebugGUI(hbaoEffect, hbaoOptions)
-			const gui4 = new SSAODebugGUI(ssaoEffect, ssaoOptions)
-
-			const hbaoText = document.createElement("div")
-			hbaoText.innerHTML = "HBAO"
-			hbaoText.style.position = "absolute"
-			hbaoText.style.bottom = "128px"
-			hbaoText.style.right = "64px"
-			hbaoText.style.color = "#00ff00"
-			hbaoText.style.fontFamily = "monospace"
-			hbaoText.style.fontSize = "48px"
-			hbaoText.style.fontWeight = "bold"
-			hbaoText.style.userSelect = "none"
-			hbaoText.style.letterSpacing = "4px"
-			hbaoText.style.pointerEvents = "none"
-			hbaoText.style.zIndex = "1000"
-			document.body.appendChild(hbaoText)
-
-			const ssaoText = document.createElement("div")
-			ssaoText.innerHTML = "SSAO"
-			ssaoText.style.position = "absolute"
-			ssaoText.style.bottom = "128px"
-			ssaoText.style.left = "64px"
-			ssaoText.style.color = "#00ff00"
-			ssaoText.style.fontFamily = "monospace"
-			ssaoText.style.fontSize = "48px"
-			ssaoText.style.fontWeight = "bold"
-			ssaoText.style.userSelect = "none"
-			ssaoText.style.letterSpacing = "4px"
-			ssaoText.style.pointerEvents = "none"
-			ssaoText.style.zIndex = "1000"
-			document.body.appendChild(ssaoText)
-
-			document.querySelector("#info").style.color = "black"
-			document.querySelector("#info").innerHTML = "SSAO & HBAO Comparison<br>Hold <b>SHIFT</b> to move blue line"
-
-			const toggle = document.createElement("div")
-			toggle.style.background = "white"
-			toggle.style.borderRadius = "8px"
-			toggle.style.padding = "8px"
-			toggle.style.cursor = "pointer"
-			toggle.innerHTML = "HBAO"
-			toggle.style.position = "absolute"
-			toggle.style.bottom = "64px"
-			toggle.style.left = "50%"
-			toggle.style.userSelect = "none"
-			toggle.style.transform = "translateX(-50%)"
-			toggle.style.boxShadow = "0 0 16px rgba(0, 0, 0, 0.25)"
-			toggle.innerHTML = `
-			AO only&ensp;<input type="checkbox" id="aoToggle" checked>
-			`
-			document.body.appendChild(toggle)
-
-			toggle.onclick = ev => {
-				if (ev.target === document.querySelector("#aoToggle")) return
-				document.querySelector("#aoToggle").checked = !document.querySelector("#aoToggle").checked
-
-				hbaoSsaoComparisonEffect.setAlbedo(!hbaoSsaoComparisonEffect.isAlbedo())
-			}
-
-			// gui3.pane.containerElem_.style.visibility = "hidden"
-			gui3.pane.containerElem_.style.right = "8px"
-			gui4.pane.containerElem_.style.left = "8px"
-
-			composer.addPass(hbaoPass)
-			composer.addPass(ssaoPass)
-
-			hbaoSsaoComparisonEffect = new HBAOSSAOComparisonEffect(hbaoEffect, ssaoEffect)
-
-			composer.addPass(new POSTPROCESSING.EffectPass(camera, hbaoSsaoComparisonEffect))
-		} else {
-			if (!traaTest) {
-				if (fps >= 256) {
-					composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, bloomEffect, vignetteEffect, lutEffect))
-
-					const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass)
-
-					composer.addPass(new POSTPROCESSING.EffectPass(camera, motionBlurEffect))
-				} else {
-					composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, vignetteEffect, lutEffect))
-					loadFiles--
-				}
-			}
+		for (let i = 0; i < lutData.length; i++) {
+			lutData[i] = toHalfFloat(lutF32Data[i])
 		}
 
-		traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
+		texture.image.data = lutData
+	}
+
+	new POSTPROCESSING.LUT3dlLoader().load("lut_v2.3dl").then(lutTexture => {
+		convertFloat32TextureToHalfFloat(lutTexture)
+		const lutEffect = new POSTPROCESSING.LUT3DEffect(lutTexture)
+		const toneMappingEffect = new POSTPROCESSING.ToneMappingEffect()
+		toneMappingEffect.mode = POSTPROCESSING.ToneMappingMode.ACES_FILMIC
+
+		if (!traaTest) {
+			const sharpnessEffect = new SharpnessEffect({ sharpness: 0.75 })
+
+			// const depthTexture = ssgiEffect.depthTexture
+			// const bgColor = new Color(0xffffff)
+
+			// const gradualBackgroundEffect = new GradualBackgroundEffect(camera, depthTexture, bgColor, 51)
+			// const sparkleEffect = new SparkleEffect(camera, velocityDepthNormalPass)
+			// sparkleEffect.setSpread(0.25)
+			composer.addPass(new POSTPROCESSING.EffectPass(camera, ssgiEffect, toneMappingEffect))
+
+			const lensDistortionEffect = new LensDistortionEffect({
+				aberration: 1
+			})
+
+			traaPass = new POSTPROCESSING.EffectPass(camera, traaEffect)
+			composer.addPass(traaPass)
+
+			// const motionBlurEffect = new MotionBlurEffect(velocityDepthNormalPass, {
+			// 	intensity: 1
+			// })
+
+			composer.addPass(new POSTPROCESSING.EffectPass(camera, sharpnessEffect, vignetteEffect))
+			composer.addPass(new POSTPROCESSING.EffectPass(camera, bloomEffect, lutEffect))
+		}
 
 		const smaaEffect = new POSTPROCESSING.SMAAEffect()
 
 		smaaPass = new POSTPROCESSING.EffectPass(camera, smaaEffect)
 
 		const fxaaEffect = new POSTPROCESSING.FXAAEffect()
-
 		fxaaPass = new POSTPROCESSING.EffectPass(camera, fxaaEffect)
 
 		if (!isAoDemo) {
 			if (fps >= 256) {
-				setAA("TRAA")
-
+				// setAA("SMAA")
 				resize()
 			} else {
 				setAA("FXAA")
@@ -614,9 +583,13 @@ const tapHandler = ev => {
 		return false
 	}
 
-	gui2.pane.element.style.visibility = "hidden"
+	// gui2.pane.element.style.visibility = "hidden"
 	toggleMenu()
 }
+
+setTimeout(() => {
+	toggleMenu()
+}, 1000)
 
 document.body.addEventListener("touchstart", tapHandler)
 
@@ -650,7 +623,7 @@ onLongPress(document.body, () => {
 })
 
 const loop = () => {
-	if (stats?.dom.style.display !== "none") stats.begin()
+	stats.begin()
 
 	const dt = clock.getDelta()
 
@@ -659,6 +632,11 @@ const loop = () => {
 		lastScene.updateMatrixWorld()
 		refreshLighting()
 	}
+
+	// light.color.setHSL(Math.sin(performance.now() / 5000), 1, 0.6)
+	// lightParams.yaw = (lightParams.yaw + 40 * dt) % 360
+
+	// refreshLighting()
 
 	if (controls.enableDamping) controls.dampingFactor = 0.075 * 120 * Math.max(1 / 1000, dt)
 
@@ -672,7 +650,7 @@ const loop = () => {
 		renderer.render(scene, camera)
 	}
 
-	if (stats?.dom.style.display !== "none") stats.end()
+	stats.end()
 	window.requestAnimationFrame(loop)
 }
 
@@ -681,10 +659,22 @@ const resize = () => {
 	camera.updateProjectionMatrix()
 
 	const dpr = window.devicePixelRatio
-	renderer.setPixelRatio(fps < 256 ? Math.max(1, dpr * 0.5) : dpr)
+	renderer.setPixelRatio(Math.min(2, dpr))
 
 	renderer.setSize(window.innerWidth, window.innerHeight)
 	composer.setSize(window.innerWidth, window.innerHeight)
+
+	const w = window.innerWidth
+	const h = window.innerHeight
+
+	if (camera.isOrthographicCamera) {
+		camera.left = w / -2 / 100
+		camera.right = w / 2 / 100
+		camera.top = h / 2 / 100
+		camera.bottom = h / -2 / 100
+
+		camera.updateProjectionMatrix()
+	}
 }
 
 // event handlers
@@ -763,11 +753,7 @@ document.addEventListener("keydown", ev => {
 		a.click() // Downloaded file
 	}
 
-	// if space was pressed
-	if (ev.code === "Space" && isAoDemo) {
-		document.querySelector("#aoToggle").checked = !document.querySelector("#aoToggle").checked
-		hbaoSsaoComparisonEffect.setAlbedo(!hbaoSsaoComparisonEffect.isAlbedo())
-	}
+	taaPass && (taaPass.needsUpdate = true)
 })
 
 dragDrop("body", files => {
@@ -793,6 +779,19 @@ const setupAsset = asset => {
 		pointsObj.removeFromParent()
 	}
 
+	const ground = new THREE.Mesh(
+		new THREE.PlaneGeometry(100, 100),
+		new THREE.MeshStandardMaterial({
+			metalness: 0,
+			roughness: 0
+		})
+	)
+
+	ground.rotation.x = -Math.PI / 2
+	ground.receiveShadow = true
+	ground.updateMatrixWorld()
+	// scene.add(ground)
+
 	if (lastScene) {
 		lastScene.removeFromParent()
 		lastScene.traverse(c => {
@@ -806,7 +805,7 @@ const setupAsset = asset => {
 	}
 
 	scene.add(asset.scene)
-	asset.scene.scale.setScalar(1)
+	if (ssgiEffect) ssgiEffect.reset()
 
 	let planeShaderMaterial
 	let cylinderShaderMaterial
@@ -871,8 +870,6 @@ const setupAsset = asset => {
 			c.castShadow = c.receiveShadow = true
 			c.material.depthWrite = true
 
-			if (c.material.transparent) c.material.alphaMap = c.material.roughnessMap
-
 			if (traaTest && c.name === "shader") c.material = planeShaderMaterial
 
 			if (traaTest && c.name === "Cube") c.material = new MeshNormalMaterial()
@@ -883,6 +880,14 @@ const setupAsset = asset => {
 				c.material.map.minFilter = NearestFilter
 				c.material.map.magFilter = NearestFilter
 			}
+
+			// c.material.transparent = true
+			// c.material.opacity = 0.25
+			// const lm = c.material.emissiveMap
+			// c.material.emissiveMap = null
+			// c.material.emissive = new Color(0x000000)
+			// c.material.emissiveIntensity = 0.0
+			// c.material.lightMap = lm
 		}
 
 		c.frustumCulled = false
@@ -979,5 +984,13 @@ const setupAsset = asset => {
 
 	lastScene = asset.scene
 
+	if (taaPass) taaPass.needsUpdate = true
+
 	requestAnimationFrame(refreshLighting)
+}
+
+const consoleError = console.error.bind(console)
+console.error = (...args) => {
+	alert(args.join("\n"))
+	consoleError(...args)
 }
