@@ -86,11 +86,6 @@ vec3 getNormal(Material mat) {
 #endif
 }
 
-const vec2 VOGEL[7] = vec2[](vec2(-0.26069926696254825, 0.23882188384900999), vec2(0.04371286235847994, -0.4980855204324139),
-                             vec2(0.37259118726960094, 0.48597922503850827), vec2(-0.6962975829923794, -0.12316523827351),
-                             vec2(0.6670471298585071, -0.42432078260147466), vec2(-0.22482392297649015, 0.8363337872270026),
-                             vec2(-0.43113904340869436, -0.8301319926666095));
-
 void outputTexel(inout vec4 outputFrag, InputTexel inp) {
   inp.rgb /= inp.totalWeight;
 
@@ -112,11 +107,12 @@ void applyWeight(inout InputTexel inp, vec2 neighborUv, float wBasic, float wDis
 
   float lumaDiff = abs(inp.luminance - luminance(t.rgb));
   float lumaFactor = exp(-lumaDiff * lumaPhi);
-  w = mix(w * lumaFactor, wDisoccl, pow(inp.w, 3.)) * inp.w;
+  w = mix(w * lumaFactor, wDisoccl * exp(-lumaDiff), pow(inp.w, 3.)) * inp.w;
 
   w *= step(0.01, w);
 
   toDenoiseSpace(t.rgb);
+
   inp.rgb += w * t.rgb;
   inp.totalWeight += w;
 }
@@ -168,17 +164,17 @@ void main() {
   glossiness *= glossiness;
   specularFactor = exp(-glossiness * specularPhi);
 
-  float roughnessRadius = mix(mat.roughness, 1., (1. - mat.metalness));
-  roughnessRadius = mix(roughnessRadius, 1., specularFactor);
+  float roughnessRadius = mix(mat.roughness * mat.roughness, 1., specularPhi);
 
-  float r = flatness * radius * roughnessRadius;
+  float r = flatness * radius;
 
-  for (int i = 0; i < 7; i++) {
+  for (int i = 0; i < 8; i++) {
     {
-      vec4 rand = blueNoise(vUv, blueNoiseIndex * 7 + i);
+      vec4 rand = blueNoise(vUv, blueNoiseIndex * 8 + i);
       vec2 u = r * (rand.xy * 2. - 1.) / resolution;
+      float rRoughness = rand.b < mat.metalness ? roughnessRadius : 1.;
 
-      vec2 neighborUv = vUv + u;
+      vec2 neighborUv = vUv + rRoughness * u;
 
       float wBasic, wDisoccl;
 
