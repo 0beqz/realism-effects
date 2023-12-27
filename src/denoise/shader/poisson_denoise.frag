@@ -171,19 +171,14 @@ void main() {
   float roughnessRadius = mix(mat.roughness, 1., (1. - mat.metalness));
   roughnessRadius = mix(roughnessRadius, 1., specularFactor);
 
-  vec4 random = blueNoise();
-  float r = radius * roughnessRadius;
-
-  // rotate the poisson disk
-  float angle = random.r * 2. * PI;
-  float s = sin(angle), c = cos(angle);
-  mat2 rm = flatness * r * mat2(c, -s, s, c);
+  float r = flatness * radius * roughnessRadius;
 
   for (int i = 0; i < 7; i++) {
     {
-      vec2 offset = VOGEL[i];
+      vec4 rand = blueNoise(vUv, blueNoiseIndex * 7 + i);
+      vec2 u = r * (rand.xy * 2. - 1.) / resolution;
 
-      vec2 neighborUv = vUv + rm * (offset / resolution);
+      vec2 neighborUv = vUv + u;
 
       float wBasic, wDisoccl;
 
