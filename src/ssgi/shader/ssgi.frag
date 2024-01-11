@@ -138,7 +138,7 @@ void main() {
 
   vec4 random;
   vec3 H, l, h, F, T, B, envMisDir, gi;
-  highp vec3 diffuseGI, specularGI, brdf, hitPos, specularHitPos;
+  vec3 diffuseGI, specularGI, brdf, hitPos, specularHitPos;
 
   Onb(N, T, B);
 
@@ -301,7 +301,6 @@ void main() {
 
 #if mode == MODE_SSGI
   gSpecular = vec4(specularGI, rayLength);
-  gDiffuse.rgb = max(gDiffuse.rgb, vec3(0.));
   gl_FragColor = packTwoVec4(gDiffuse, gSpecular);
 #else
   gSpecular = vec4(specularGI, a);
@@ -321,6 +320,9 @@ vec3 getEnvColor(vec3 l, vec3 worldPos, float roughness, bool isDiffuseSample, b
 #endif
 
   float mip = envBlur * maxEnvMapMipLevel;
+
+  if (!isDiffuseSample && roughness < 0.15)
+    mip *= roughness / 0.15;
 
   envMapSample = sampleEquirectEnvMapColor(reflectedWS, envMapInfo.map, mip);
 
@@ -440,7 +442,7 @@ vec2 RayMarch(inout vec3 dir, inout vec3 hitPos, vec4 random) {
   float rayHitDepthDifference;
 
   // todo: investigate offset (different value?)
-  hitPos += dir * 0.05;
+  // hitPos += dir * 0.01;
 
   dir *= rayDistance / float(steps);
 
