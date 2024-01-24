@@ -120,16 +120,17 @@ void outputTexel(inout vec4 outputFrag, InputTexel inp) {
 
 void applyWeight(inout InputTexel inp, vec2 neighborUv, float wBasic) {
   float w = wBasic;
+  float disocclW = pow(w, 0.1);
 
   vec4 t;
   if (inp.isSpecular) {
     t = textureLod(inputTexture2, neighborUv, 0.);
     w *= specularFactor;
+    disocclW *= specularFactor;
   } else {
     t = textureLod(inputTexture, neighborUv, 0.);
   }
 
-  float disocclW = pow(w, 0.1);
   float lumaDiff = abs(inp.luminance - luminance(t.rgb));
   float lumaFactor = exp(-lumaDiff * lumaPhi);
   w = mix(w * lumaFactor, disocclW, pow(inp.w, 3.)) * inp.w;
