@@ -59,19 +59,13 @@ highp vec3 decodeOctWrap(highp vec2 f) {
   return normalize(n);
 }
 
-highp float packNormal(highp vec3 normal) { return uintBitsToFloat(packUnorm2x16(encodeOctWrap(normal))); }
+highp float packNormal(highp vec3 normal) { return uintBitsToFloat(packHalf2x16(encodeOctWrap(normal))); }
 
-highp vec3 unpackNormal(highp float packedNormal) { return decodeOctWrap(unpackUnorm2x16(floatBitsToUint(packedNormal))); }
+highp vec3 unpackNormal(highp float packedNormal) { return decodeOctWrap(unpackHalf2x16(floatBitsToUint(packedNormal))); }
 
 highp vec4 packTwoVec4(highp vec4 v1, highp vec4 v2) {
-  // note: we get artifacts on some back-ends such as v2 = vec3(1., 0., 0.) being decoded as black (only applies for param v2 and red channel)
+  // note: we get artifacts on some back-ends such as v2 = vec3(1., 0., 0.) being decoded as black (only applies for v2 and red channel)
   highp vec4 encoded = vec4(0.0);
-
-  // we need to add a small offset to avoid precision issues on some back-ends
-  // we get artifacts for v1 = vec3(1., 0., 0.) being decoded as black otherwise
-  // on Big Sur with Chrome v120 we blue channel of para, v2 is decoded as 0.0 if v2.a is 0.0 when we don't add the offset
-  v1 += NON_ZERO_OFFSET;
-  v2 += NON_ZERO_OFFSET;
 
   highp uint v1r = packHalf2x16(v1.rg);
   highp uint v1g = packHalf2x16(v1.ba);
@@ -96,12 +90,6 @@ void unpackTwoVec4(highp vec4 encoded, out highp vec4 v1, out highp vec4 v2) {
   v1.ba = unpackHalf2x16(g);
   v2.rg = unpackHalf2x16(b);
   v2.ba = unpackHalf2x16(a);
-
-  v1 -= NON_ZERO_OFFSET;
-  v2 -= NON_ZERO_OFFSET;
-
-  v1 = max(v1, vec4(0.0));
-  v2 = max(v2, vec4(0.0));
 }
 
 vec4 unpackTwoVec4(highp vec4 encoded, const int index) {
