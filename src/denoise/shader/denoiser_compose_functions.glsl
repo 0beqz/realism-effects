@@ -15,7 +15,7 @@ vec3 getViewPosition(float viewZ) {
   vec4 clipPosition = vec4((vec3(vUv, viewZ) - 0.5) * 2.0, 1.0);
   clipPosition *= clipW;
   vec3 p = (projectionMatrixInverse * clipPosition).xyz;
-  p.z = -viewZ;
+  p.z = viewZ;
   return p;
 }
 

@@ -93,6 +93,7 @@ export class GBufferPass extends Pass {
 		for (const c of this.visibleMeshes) {
 			const [originalMaterial] = this.cachedMaterials.get(c)
 
+			c.visible = true
 			c.material = originalMaterial
 		}
 	}
@@ -114,7 +115,6 @@ export class GBufferPass extends Pass {
 		// reset state
 		this.lastCameraPosition.copy(this._camera.position)
 		this.lastCameraQuaternion.copy(this._camera.quaternion)
-
 		this._scene.background = background
 	}
 }
