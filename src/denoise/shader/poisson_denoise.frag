@@ -166,7 +166,7 @@ void main() {
 
   float roughnessRadius = mix(mat.roughness * mat.roughness, 1., specularPhi);
 
-  float r = flatness * radius * exp(-max(inputs[0].a, inputs[1].a) * 0.01);
+  float r = flatness * radius;
 
   for (int i = 0; i < 8; i++) {
     {
