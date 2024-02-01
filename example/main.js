@@ -368,12 +368,12 @@ const initScene = async () => {
 		denoiseDiffuse: 25,
 		denoiseSpecular: 25.54,
 		radius: 11,
-		phi: 0.337,
+		phi: 0.5760000000000001,
 		lumaPhi: 20.651999999999997,
-		depthPhi: 9.939965517347105e-16,
+		depthPhi: 23.37,
 		normalPhi: 26.087,
 		roughnessPhi: 18.477999999999998,
-		specularPhi: 3.799999999999999,
+		specularPhi: 7.099999999999999,
 		envBlur: 0,
 		importanceSampling: true,
 		steps: 20,
@@ -477,6 +477,7 @@ const initScene = async () => {
 
 	ssgiEffect = new SSGIEffect(composer, scene, camera, { ...options, velocityDepthNormalPass })
 	// ssgiEffect = new SSREffect(composer, scene, camera, {
+	// 	denoiseMode: "full_temporal",
 	// 	preset: "high",
 	// 	velocityDepthNormalPass
 	// })
