@@ -162,7 +162,7 @@ highp vec4 packGBuffer(highp vec4 diffuse, highp vec3 normal, highp float roughn
 
   // unfortunately packVec2 results in severe precision loss and artifacts for
   // the first on Metal backends thus we use color2float instead
-  gBuffer.b = packVec2(vec2(roughness, metalness));
+  gBuffer.b = color2float(vec3(roughness, metalness, 0.));
   gBuffer.a = vec4ToFloat(encodeRGBE8(emissive));
 
   return gBuffer;
@@ -177,7 +177,7 @@ Material getMaterial(highp sampler2D gBufferTexture, highp vec2 uv) {
 
   // using float2color instead of unpackVec2 as the latter results in severe
   // precision loss and artifacts on Metal backends
-  highp vec2 roughnessMetalness = unpackVec2(gBuffer.b);
+  highp vec3 roughnessMetalness = float2color(gBuffer.b);
   highp float roughness = roughnessMetalness.r;
   highp float metalness = roughnessMetalness.g;
 
