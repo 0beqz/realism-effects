@@ -27,7 +27,7 @@ export const defaultTemporalReprojectPassOptions = {
 	reprojectSpecular: false,
 	renderTarget: null,
 	copyTextures: true,
-	confidencePower: 0.5,
+	confidencePower: 1,
 	inputType: "diffuse"
 }
 
