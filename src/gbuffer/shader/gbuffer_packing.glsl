@@ -28,7 +28,6 @@ highp vec3 float2color(in highp float value) {
   color.g = floor(value / (c_precisionp1 * c_precisionp1)) / c_precision;
 
   color -= NON_ZERO_OFFSET;
-
   color = max(color, vec3(0.0));
 
   return color;
@@ -67,6 +66,9 @@ highp vec4 packTwoVec4(highp vec4 v1, highp vec4 v2) {
   // note: we get artifacts on some back-ends such as v2 = vec3(1., 0., 0.) being decoded as black (only applies for v2 and red channel)
   highp vec4 encoded = vec4(0.0);
 
+  v1 += NON_ZERO_OFFSET;
+  v2 += NON_ZERO_OFFSET;
+
   highp uint v1r = packHalf2x16(v1.rg);
   highp uint v1g = packHalf2x16(v1.ba);
   highp uint v2r = packHalf2x16(v2.rg);
@@ -90,6 +92,9 @@ void unpackTwoVec4(highp vec4 encoded, out highp vec4 v1, out highp vec4 v2) {
   v1.ba = unpackHalf2x16(g);
   v2.rg = unpackHalf2x16(b);
   v2.ba = unpackHalf2x16(a);
+
+  v1 -= NON_ZERO_OFFSET;
+  v2 -= NON_ZERO_OFFSET;
 }
 
 vec4 unpackTwoVec4(highp vec4 encoded, const int index) {
@@ -102,23 +107,22 @@ vec4 unpackTwoVec4(highp vec4 encoded, const int index) {
   v.ba = unpackHalf2x16(g);
 
   v -= NON_ZERO_OFFSET;
-  v = max(v, vec4(0.0));
 
   return v;
 }
 
-highp float packVec2(highp vec2 value) {
-  value = min(value + NON_ZERO_OFFSET, vec2(ONE_SAFE));
+// highp float packVec2(highp vec2 value) {
+//   value = min(value + NON_ZERO_OFFSET, vec2(ONE_SAFE));
 
-  return uintBitsToFloat(packUnorm2x16(value));
-}
+//   return uintBitsToFloat(packUnorm2x16(value));
+// }
 
-highp vec2 unpackVec2(highp float packedValue) {
-  vec2 v = unpackUnorm2x16(floatBitsToUint(packedValue));
-  v = max(v - NON_ZERO_OFFSET, vec2(0.0));
+// highp vec2 unpackVec2(highp float packedValue) {
+//   vec2 v = unpackUnorm2x16(floatBitsToUint(packedValue));
+//   v = max(v - NON_ZERO_OFFSET, vec2(0.0));
 
-  return v;
-}
+//   return v;
+// }
 
 highp vec4 encodeRGBE8(highp vec3 rgb) {
   highp vec4 vEncoded;
@@ -137,6 +141,8 @@ highp vec3 decodeRGBE8(highp vec4 rgbe) {
 }
 
 highp float vec4ToFloat(highp vec4 vec) {
+  vec = min(vec + NON_ZERO_OFFSET, vec4(ONE_SAFE));
+
   highp uvec4 v = uvec4(vec * 255.0);
   highp uint value = (v.a << 24u) | (v.b << 16u) | (v.g << 8u) | (v.r);
   return uintBitsToFloat(value);
@@ -150,6 +156,9 @@ highp vec4 floatToVec4(highp float f) {
   v.g = float((value >> 8u) & 0xFFu) / 255.0;
   v.b = float((value >> 16u) & 0xFFu) / 255.0;
   v.a = float((value >> 24u) & 0xFFu) / 255.0;
+
+  v -= NON_ZERO_OFFSET;
+  v = max(v, vec4(0.0));
 
   return v;
 }
