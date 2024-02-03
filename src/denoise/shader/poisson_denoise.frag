@@ -109,17 +109,18 @@ void applyWeight(inout InputTexel inp, vec2 neighborUv, float wBasic) {
   } else {
     t = textureLod(inputTexture, neighborUv, 0.);
   }
+  toDenoiseSpace(t.rgb);
 
   float disocclW = pow(w, 0.1);
   float lumaDiff = abs(inp.luminance - luminance(t.rgb));
+  lumaDiff = min(lumaDiff, 0.5);
   float lumaFactor = exp(-lumaDiff * lumaPhi);
   w = mix(w * lumaFactor, disocclW, inp.w) * inp.w;
 
-  if (w > 0.01) {
-    toDenoiseSpace(t.rgb);
-    inp.rgb += w * t.rgb;
-    inp.totalWeight += w;
-  }
+  w *= step(0.0001, w);
+
+  inp.rgb += w * t.rgb;
+  inp.totalWeight += w;
 }
 
 void main() {
@@ -145,13 +146,18 @@ void main() {
       }
 
       // check: https://www.desmos.com/calculator/isdut5hmdm for graphs
-      float age = exp(-pow(log(t.a + 1.), phi));
-      // age = 1. / pow(t.a + 1., phi);
+      float age = 1. / pow(t.a + 1., 1.2 * phi);
+      // age = exp(-pow(log(t.a + 1.), phi));
+      // float l = log2(t.a + 2.);
+      // l *= l;
+      // age = exp(-phi * l);
 
+      // the color becomes darker over time possibly due to precision issues, so we brighten it a bit
+      t.rgb *= 1.0003;
+
+      toDenoiseSpace(t.rgb);
       InputTexel inp = InputTexel(t.rgb, t.a, luminance(t.rgb), age, 1., isTextureSpecular[i]);
       maxAlpha = max(maxAlpha, inp.a);
-
-      toDenoiseSpace(inp.rgb);
 
       inputs[i] = inp;
     }

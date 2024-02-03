@@ -34,7 +34,7 @@ export class SSGIDebugGUI {
 		denoiseFolder.addBinding(params, "radius", { min: 0, max: 32, step: 1 })
 
 		denoiseFolder.addBinding(params, "phi", {
-			min: 0.75,
+			min: 0,
 			max: 1,
 			step: 0.001
 		})
