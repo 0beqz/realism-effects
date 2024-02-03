@@ -104,8 +104,8 @@ void getVelocityNormalDepth(inout vec2 dilatedUv, out vec2 vel, out vec3 normal,
   depth = velocityTexel.a;
 }
 
-#define PLANE_DISTANCE 25.
-#define WORLD_DISTANCE 25.
+#define PLANE_DISTANCE 20.
+#define WORLD_DISTANCE 10.
 #define NORMAL_DISTANCE 1.
 
 float planeDistanceDisocclusionCheck(const vec3 worldPos, const vec3 lastWorldPos, const vec3 worldNormal, const float distFactor) {
