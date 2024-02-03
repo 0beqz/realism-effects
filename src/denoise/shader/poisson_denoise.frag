@@ -172,10 +172,10 @@ void main() {
   float flatness = 1. - min(length(fwidth(normal)), 1.);
   flatness = pow(flatness, 2.) * 0.75 + 0.25;
 
-  float roughnessRadius = mix(sqrt(mat.roughness), 1., 0.5 * (1. - mat.metalness));
+  // float roughnessRadius = mix(sqrt(mat.roughness), 1., 0.5 * (1. - mat.metalness));
 
   vec4 random = blueNoise();
-  float r = radius * roughnessRadius;
+  float r = radius;
 
   // rotate the poisson disk
   float angle = random.r * 2. * PI;
