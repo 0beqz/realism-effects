@@ -158,7 +158,7 @@ float validateReprojectedUV(const vec2 reprojectedUv, const vec3 worldPos, const
   // disoccl += normalDisocclusionCheck(worldNormal, lastWorldNormal, distFactor);
 
   float confidence = 1. - min(disoccl, 1.);
-  // confidence *= 1. - angleMix;
+  confidence *= 1. - angleMix;
   confidence = max(confidence, 0.);
 
   confidence = pow(confidence, confidencePower);

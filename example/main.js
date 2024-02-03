@@ -368,7 +368,7 @@ const initScene = async () => {
 		denoiseDiffuse: 25,
 		denoiseSpecular: 25.54,
 		radius: 11,
-		phi: 0.5760000000000001,
+		phi: 0.875,
 		lumaPhi: 20.651999999999997,
 		depthPhi: 23.37,
 		normalPhi: 26.087,
